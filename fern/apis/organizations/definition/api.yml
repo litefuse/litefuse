@@ -1,0 +1,31 @@
+name: litefuse-organizations
+docs: |
+  ## General Notes
+
+  This admin API is only available on self-hosted instances, not on Litefuse Cloud.
+  An administrator must set the `ADMIN_API_KEY` environment variable to use this API.
+
+  ## Authentication
+
+  Authenticate with the API by setting the Authorization header to `Bearer $ADMIN_API_KEY` where
+  `$ADMIN_API_KEY` is the API key set via the container environment.
+
+  ## Exports
+
+  - OpenAPI spec: https://cloud.litefuse.ai/generated/organizations-api/openapi.yml
+
+  ## Looking for the Litefuse API?
+
+  Are you looking for the full Litefuse API?
+  Check out our [API reference](https://api.reference.litefuse.ai/#overview).
+
+error-discrimination:
+  strategy: status-code
+auth: bearer
+imports:
+  commons: commons.yml
+errors:
+  - commons.Error
+  - commons.UnauthorizedError
+  - commons.AccessDeniedError
+  - commons.MethodNotAllowedError

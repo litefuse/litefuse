@@ -1,0 +1,2246 @@
+import { Cluster, Redis } from "ioredis";
+import { v4 } from "uuid";
+import { Decimal } from "decimal.js";
+import {
+  Model,
+  ObservationLevel,
+  PrismaClient,
+  Prompt,
+} from "@langfuse/shared";
+import { env } from "../../env";
+import {
+  convertObservationReadToInsert,
+  convertScoreReadToInsert,
+  convertTraceReadToInsert,
+  convertTraceToStagingObservation,
+  DorisClientType,
+  eventTypes,
+  IngestionEntityTypes,
+  IngestionEventType,
+  instrumentAsync,
+  logger,
+  ObservationEvent,
+  observationRecordInsertSchema,
+  ObservationRecordInsertType,
+  observationRecordReadSchema,
+  PromptService,
+  QueueJobs,
+  recordIncrement,
+  ScoreEventType,
+  DatasetRunItemEventType,
+  scoreRecordInsertSchema,
+  ScoreRecordInsertType,
+  scoreRecordReadSchema,
+  TraceEventType,
+  traceRecordInsertSchema,
+  TraceRecordInsertType,
+  traceRecordReadSchema,
+  TraceUpsertQueue,
+  UsageCostType,
+  findModel,
+  matchPricingTier,
+  validateAndInflateScore,
+  DatasetRunItemRecordInsertType,
+  EventRecordInsertType,
+  traceException,
+  flattenJsonToPathArrays,
+  getDatasetItemById,
+  extractToolsFromObservation,
+  convertDefinitionsToMap,
+  convertCallsToArrays,
+  hasNoEvalConfigsCache,
+  convertDateToAnalyticsDateTime,
+} from "@langfuse/shared/src/server";
+
+import { tokenCountAsync } from "../../features/tokenisation/async-usage";
+import { tokenCount } from "../../features/tokenisation/usage";
+import { DorisWriter, TableName } from "../DorisWriter";
+import {
+  convertJsonSchemaToRecord,
+  convertPostgresJsonToMetadataRecord,
+  convertRecordValuesToString,
+  overwriteObject,
+} from "./utils";
+import { randomUUID } from "crypto";
+import { SpanKind } from "@opentelemetry/api";
+
+type InsertRecord =
+  | TraceRecordInsertType
+  | ScoreRecordInsertType
+  | ObservationRecordInsertType
+  | DatasetRunItemRecordInsertType;
+
+/**
+ * Flexible input type for writing events to the events table.
+ * This is intentionally loose to allow for iteration as the events
+ * table schema evolves. Only required fields are enforced.
+ */
+export type EventInput = {
+  // Required identifiers
+  projectId: string;
+  traceId: string;
+  spanId: string;
+  startTimeISO: string;
+
+  // Optional identifiers
+  orgId?: string;
+  parentSpanId?: string;
+
+  // Core properties
+  name?: string;
+  type?: string;
+  environment?: string;
+  version?: string;
+  release?: string;
+  endTimeISO: string;
+  completionStartTime?: string;
+
+  traceName?: string;
+  tags?: string[];
+  bookmarked?: boolean;
+  public?: boolean;
+
+  // User/session
+  userId?: string;
+  sessionId?: string;
+  level?: string;
+  statusMessage?: string;
+
+  // Prompt
+  promptId?: string;
+  promptName?: string;
+  promptVersion?: string;
+
+  // Model
+  modelId?: string;
+  modelName?: string;
+  modelParameters?: string | Record<string, unknown>;
+
+  // Usage & Cost
+  providedUsageDetails?: Record<string, number>;
+  usageDetails?: Record<string, number>;
+  providedCostDetails?: Record<string, number>;
+  costDetails?: Record<string, number>;
+
+  // Tool Calls
+  toolDefinitions?: Record<string, string>;
+  toolCalls?: string[];
+  toolCallNames?: string[];
+
+  // I/O
+  input?: string;
+  output?: string;
+
+  // Metadata
+  // metadata can be a complex nested object with attributes, resourceAttributes, scopeAttributes, etc.
+  metadata: Record<string, unknown>;
+
+  // Source/instrumentation metadata
+  source: string;
+  serviceName?: string;
+  serviceVersion?: string;
+  scopeName?: string;
+  scopeVersion?: string;
+  telemetrySdkLanguage?: string;
+  telemetrySdkName?: string;
+  telemetrySdkVersion?: string;
+
+  // Storage
+  blobStorageFilePath?: string;
+  eventRaw?: string;
+  eventBytes?: number;
+
+  // Experiment fields
+  experimentId?: string;
+  experimentName?: string;
+  experimentMetadataNames?: string[];
+  experimentMetadataValues?: Array<string | null | undefined>;
+  experimentDescription?: string;
+  experimentDatasetId?: string;
+  experimentItemId?: string;
+  experimentItemVersion?: string;
+  experimentItemRootSpanId?: string;
+  experimentItemExpectedOutput?: string;
+  experimentItemMetadataNames?: string[];
+  experimentItemMetadataValues?: Array<string | null | undefined>;
+
+  // Catch-all for future fields
+  [key: string]: any;
+};
+
+const immutableEntityKeys: {
+  [TableName.Traces]: (keyof TraceRecordInsertType)[];
+  [TableName.Scores]: (keyof ScoreRecordInsertType)[];
+  [TableName.Observations]: (keyof ObservationRecordInsertType)[];
+} = {
+  [TableName.Traces]: [
+    "id",
+    "project_id",
+    "timestamp",
+    "created_at",
+    "environment",
+  ],
+  [TableName.Scores]: [
+    "id",
+    "project_id",
+    "timestamp",
+    "trace_id",
+    "created_at",
+    "environment",
+  ],
+  [TableName.Observations]: [
+    "id",
+    "project_id",
+    "trace_id",
+    "start_time",
+    "created_at",
+    "environment",
+  ],
+};
+
+export class IngestionService {
+  private promptService: PromptService;
+
+  constructor(
+    private redis: Redis | Cluster,
+    private prisma: PrismaClient,
+    private dorisWriter: DorisWriter | null,
+    private dorisClient: DorisClientType | null,
+  ) {
+    this.promptService = new PromptService(prisma, redis);
+  }
+
+  public async mergeAndWrite(
+    eventType: IngestionEntityTypes,
+    projectId: string,
+    eventBodyId: string,
+    createdAtTimestamp: Date,
+    events: IngestionEventType[],
+    forwardToEventsTable: boolean,
+  ): Promise<void> {
+    logger.debug(
+      `Merging ingestion ${eventType} event for project ${projectId} and event ${eventBodyId}`,
+    );
+
+    switch (eventType) {
+      case "trace":
+        return await this.processTraceEventList({
+          projectId,
+          entityId: eventBodyId,
+          createdAtTimestamp,
+          traceEventList: events as TraceEventType[],
+          createEventTraceRecord: forwardToEventsTable,
+        });
+      case "observation":
+        return await this.processObservationEventList({
+          projectId,
+          entityId: eventBodyId,
+          createdAtTimestamp,
+          observationEventList: events as ObservationEvent[],
+          writeToStagingTables: forwardToEventsTable,
+        });
+      case "score": {
+        return await this.processScoreEventList({
+          projectId,
+          entityId: eventBodyId,
+          createdAtTimestamp,
+          scoreEventList: events as ScoreEventType[],
+        });
+      }
+      case "dataset_run_item": {
+        return await this.processDatasetRunItemEventList({
+          projectId,
+          entityId: eventBodyId,
+          createdAtTimestamp,
+          datasetRunItemEventList: events as DatasetRunItemEventType[],
+        });
+      }
+    }
+  }
+
+  /**
+   * Creates an EventRecordInsertType from EventInput.
+   * Performs all necessary enrichments:
+   * - Prompt lookup (by name + version)
+   * - Model/usage enrichment (tokenization, cost calculation)
+   * - Metadata flattening
+   * - Timestamp normalization
+   *
+   * This is the single point of transformation from loose EventInput
+   * to strict EventRecordInsertType.
+   *
+   * @param eventData - The event data from processToEvent()
+   * @param fileKey - The file key where the raw event data is stored
+   * @returns The enriched event record ready for writing or eval scheduling
+   */
+  public async createEventRecord(
+    eventData: EventInput,
+    fileKey: string,
+  ): Promise<EventRecordInsertType> {
+    logger.debug(
+      `Creating event record for project ${eventData.projectId} and span ${eventData.spanId}`,
+    );
+
+    // Perform lookups for prompt and model/usage enrichment
+    const [prompt, generationUsage] = await Promise.all([
+      // Lookup prompt by name and version
+      eventData.promptName && eventData.promptVersion
+        ? this.promptService.getPrompt({
+            projectId: eventData.projectId,
+            promptName: eventData.promptName,
+            version:
+              typeof eventData.promptVersion === "string"
+                ? parseInt(eventData.promptVersion, 10)
+                : eventData.promptVersion,
+            label: undefined,
+          })
+        : null,
+      // Lookup model and enrich usage/cost details (includes tokenization if needed)
+      eventData.modelName
+        ? this.getGenerationUsage({
+            projectId: eventData.projectId,
+            observationRecord: {
+              id: eventData.spanId,
+              project_id: eventData.projectId,
+              trace_id: eventData.traceId,
+              provided_model_name: eventData.modelName,
+              provided_usage_details: eventData.providedUsageDetails ?? {},
+              provided_cost_details: eventData.providedCostDetails ?? {},
+              input: eventData.input,
+              output: eventData.output,
+            },
+          })
+        : null,
+    ]);
+
+    // Doris DateTime(3) is millisecond-precision; the upstream langfuse-main
+    // uses microseconds for ClickHouse DateTime64(6). Use ms here so
+    // start_time_date partition derivation and the column values match
+    // events_full's DateTime(3) shape (otherwise dates land in year 58000+).
+    const now = this.getMillisecondTimestamp();
+
+    // Flatten raw metadata first (before stringification destroys nested structure)
+    const flattened = eventData.metadata
+      ? flattenJsonToPathArrays(eventData.metadata)
+      : { names: [], values: [] };
+    const metadataNames = flattened.names;
+    // Defensive: coerce null/undefined to empty string for Array(String) Doris column.
+    // Should not be required as convertValueToPlainJavascript() never returns null.
+    const metadataValues = flattened.values.map((v) => v ?? "");
+
+    const resolvedInput: string | null | undefined = eventData.input;
+
+    const eventRecord: EventRecordInsertType = {
+      // Required identifiers
+      id: eventData.spanId,
+      project_id: eventData.projectId,
+      trace_id: eventData.traceId,
+      span_id: eventData.spanId,
+
+      // Optional identifiers
+      // OTel root spans arrive with parentSpanId=null/undefined.
+      // events_full read queries (buildTraceAggregationQuery,
+      // getObservationsForTrace, batch streams, etc.) identify the root
+      // span via `parent_span_id = ''`. Coerce NULL -> '' here so the
+      // wire-level invariant holds — same shape upstream langfuse-main
+      // uses against ClickHouse's non-nullable String column.
+      parent_span_id: eventData.parentSpanId ?? "",
+
+      // Core properties with defaults
+      name: eventData.name ?? "",
+      type: eventData.type ?? "SPAN",
+      environment: eventData.environment ?? "default",
+      version: eventData.version,
+      release: eventData.release,
+
+      tags: eventData.tags ?? [],
+      bookmarked: eventData.bookmarked ?? false,
+      public: eventData.public ?? false,
+
+      // Trace-level attributes: Name/User/session
+      trace_name: eventData.traceName,
+      user_id: eventData.userId,
+      session_id: eventData.sessionId,
+
+      // Status
+      level: eventData.level ?? "DEFAULT",
+      status_message: eventData.statusMessage,
+
+      // Timestamps
+      // Doris DateTime(3) — see comment on `now` above.
+      start_time: this.getMillisecondTimestamp(eventData.startTimeISO),
+      end_time: this.getMillisecondTimestamp(eventData.endTimeISO),
+      completion_start_time: eventData.completionStartTime
+        ? this.getMillisecondTimestamp(eventData.completionStartTime)
+        : null,
+
+      // Prompt
+      prompt_id: prompt?.id || "",
+      prompt_name: eventData.promptName,
+      // events_full.prompt_version is `int`; coerce SDK-supplied string form.
+      prompt_version:
+        typeof eventData.promptVersion === "string"
+          ? parseInt(eventData.promptVersion, 10)
+          : (eventData.promptVersion ?? null),
+
+      // Model
+      model_id: generationUsage?.internal_model_id || "",
+      provided_model_name: eventData.modelName,
+      model_parameters: eventData.modelParameters
+        ? typeof eventData.modelParameters === "string"
+          ? JSON.parse(eventData.modelParameters)
+          : eventData.modelParameters
+        : {},
+
+      // Usage & Cost
+      provided_usage_details: eventData.providedUsageDetails ?? {},
+      usage_details:
+        generationUsage?.usage_details ?? eventData.usageDetails ?? {},
+      provided_cost_details: eventData.providedCostDetails ?? {},
+      cost_details:
+        generationUsage?.cost_details ?? eventData.costDetails ?? {},
+      // total_cost (denormalised from cost_details) is what dashboards
+      // sum() in Doris — without this, events_full.total_cost stays 0
+      // even though cost_details has the per-key breakdown, and the
+      // Home/Model-Usage cost widgets show $0.
+      total_cost: generationUsage?.total_cost ?? null,
+
+      usage_pricing_tier_id: generationUsage?.usage_pricing_tier_id,
+      usage_pricing_tier_name: generationUsage?.usage_pricing_tier_name,
+
+      // Tool Calls
+      tool_definitions: eventData.toolDefinitions ?? {},
+      tool_calls: eventData.toolCalls ?? [],
+      tool_call_names: eventData.toolCallNames ?? [],
+
+      input: resolvedInput,
+      output: eventData.output,
+
+      // Metadata (parallel arrays). The old `metadata` Map + `metadata_raw_values`
+      // shape was a transitional fork artifact; events_full uses just the two
+      // arrays — same as langfuse-main V4. Cross-batch metadata merge does not
+      // happen here (OTel-only ingestion has no create/update split).
+      metadata_names: metadataNames,
+      metadata_values: metadataValues,
+
+      // Source/instrumentation metadata
+      source: eventData.source,
+      service_name: eventData.serviceName,
+      service_version: eventData.serviceVersion,
+      scope_name: eventData.scopeName,
+      scope_version: eventData.scopeVersion,
+      telemetry_sdk_language: eventData.telemetrySdkLanguage,
+      telemetry_sdk_name: eventData.telemetrySdkName,
+      telemetry_sdk_version: eventData.telemetrySdkVersion,
+
+      // Storage
+      blob_storage_file_path: fileKey,
+      event_bytes: eventData.eventBytes ?? 0,
+
+      // Experiment fields
+      experiment_id: eventData.experimentId,
+      experiment_name: eventData.experimentName,
+      experiment_metadata_names: eventData.experimentMetadataNames ?? [],
+      experiment_metadata_values: eventData.experimentMetadataValues ?? [],
+      experiment_description: eventData.experimentDescription,
+      experiment_dataset_id: eventData.experimentDatasetId,
+      experiment_item_id: eventData.experimentItemId,
+      experiment_item_version: eventData.experimentItemVersion,
+      experiment_item_root_span_id: eventData.experimentItemRootSpanId,
+      experiment_item_expected_output: eventData.experimentItemExpectedOutput,
+      experiment_item_metadata_names:
+        eventData.experimentItemMetadataNames ?? [],
+      experiment_item_metadata_values:
+        eventData.experimentItemMetadataValues ?? [],
+
+      // System timestamps
+      created_at: now,
+      updated_at: now,
+      event_ts: now,
+      is_deleted: 0,
+    };
+
+    return eventRecord;
+  }
+
+  /**
+   * Writes an event record directly to the events_full table.
+   * Use createEventRecord() first to get the record, then call this to write.
+   *
+   * Master fork is OTel-only for trace/observation ingestion: events_full
+   * is the single denormalized analytic store. Each call enqueues exactly
+   * one row into DorisWriter's events_full queue; the writer batches and
+   * flushes via Stream Load.
+   *
+   * @param eventRecord - The event record to write
+   */
+  public writeEventRecord(eventRecord: EventRecordInsertType): void {
+    if (!this.dorisWriter) {
+      logger.debug(
+        "writeEventRecord called but DorisWriter is not initialized, skipping",
+      );
+      return;
+    }
+    this.dorisWriter.addToQueue(TableName.EventsFull, eventRecord);
+    logger.debug(
+      `[writeEventRecord] queued events_full row for span ${eventRecord.span_id} (trace ${eventRecord.trace_id})`,
+    );
+    recordIncrement("langfuse.ingestion.write", 1, {
+      object: "event",
+      backend: "doris",
+      target: "events_full",
+    });
+  }
+
+  private async processDatasetRunItemEventList(params: {
+    projectId: string;
+    entityId: string;
+    createdAtTimestamp: Date;
+    datasetRunItemEventList: DatasetRunItemEventType[];
+  }) {
+    const { projectId, entityId, datasetRunItemEventList } = params;
+    logger.info(
+      `[IngestionService] processDatasetRunItemEventList called for project ${projectId}, entityId ${entityId}, events count: ${datasetRunItemEventList.length}`,
+    );
+    if (datasetRunItemEventList.length === 0) return;
+
+    const finalDatasetRunItemRecords: DatasetRunItemRecordInsertType[] = (
+      await Promise.all(
+        datasetRunItemEventList.map(
+          async (
+            event: DatasetRunItemEventType,
+          ): Promise<DatasetRunItemRecordInsertType[]> => {
+            const [runData, itemData] = await Promise.all([
+              this.prisma.datasetRuns.findFirst({
+                where: {
+                  id: event.body.runId,
+                  datasetId: event.body.datasetId,
+                  projectId,
+                },
+                select: {
+                  name: true,
+                  description: true,
+                  metadata: true,
+                  createdAt: true,
+                },
+              }),
+              await getDatasetItemById({
+                projectId,
+                datasetItemId: event.body.datasetItemId,
+                datasetId: event.body.datasetId,
+                version: event.body.datasetVersion
+                  ? new Date(event.body.datasetVersion)
+                  : undefined,
+                status: "ACTIVE",
+              }),
+            ]);
+
+            if (!runData || !itemData) return [];
+
+            const timestamp = event.body.createdAt
+              ? new Date(event.body.createdAt).getTime()
+              : new Date().getTime();
+
+            const datasetItemVersion = itemData.validFrom
+              ? itemData.validFrom.getTime()
+              : null;
+
+            return [
+              {
+                id: entityId,
+                project_id: projectId,
+                dataset_run_id: event.body.runId,
+                dataset_item_id: event.body.datasetItemId,
+                dataset_id: event.body.datasetId,
+                trace_id: event.body.traceId,
+                observation_id: event.body.observationId,
+                error: event.body.error,
+                created_at: timestamp,
+                updated_at: timestamp,
+                event_ts: timestamp,
+                is_deleted: 0,
+                // enriched with run data
+                dataset_run_name: runData.name,
+                dataset_run_description: runData.description,
+                dataset_run_metadata: runData.metadata
+                  ? convertPostgresJsonToMetadataRecord(runData.metadata)
+                  : {},
+                dataset_run_created_at: runData.createdAt.getTime(),
+                // enriched with item data
+                dataset_item_version: datasetItemVersion,
+                dataset_item_input: JSON.stringify(itemData.input),
+                dataset_item_expected_output: JSON.stringify(
+                  itemData.expectedOutput,
+                ),
+                dataset_item_metadata: itemData.metadata
+                  ? convertPostgresJsonToMetadataRecord(itemData.metadata)
+                  : {},
+              },
+            ];
+          },
+        ),
+      )
+    ).flat();
+
+    if (finalDatasetRunItemRecords.length > 0) {
+      // Write DatasetRunItem records to Doris
+      logger.info(
+        `[IngestionService] Adding ${finalDatasetRunItemRecords.length} DatasetRunItem records to DorisWriter`,
+      );
+      const writer = DorisWriter.getInstance();
+      for (const record of finalDatasetRunItemRecords) {
+        writer.addToQueue(TableName.DatasetRunItems, record);
+      }
+    }
+  }
+
+  private async processScoreEventList(params: {
+    projectId: string;
+    entityId: string;
+    createdAtTimestamp: Date;
+    scoreEventList: ScoreEventType[];
+  }) {
+    const { projectId, entityId, createdAtTimestamp, scoreEventList } = params;
+    if (scoreEventList.length === 0) return;
+
+    const timeSortedEvents =
+      IngestionService.toTimeSortedEventList(scoreEventList);
+
+    const minTimestamp = Math.min(
+      ...timeSortedEvents.flatMap((e) =>
+        e.timestamp ? [new Date(e.timestamp).getTime()] : [],
+      ),
+    );
+    const timestamp =
+      minTimestamp === Infinity
+        ? undefined
+        : convertDateToAnalyticsDateTime(new Date(minTimestamp));
+    const [existingScoreRecord, scoreRecords] = await Promise.all([
+      this.getAnalyticsRecord({
+        projectId,
+        entityId,
+        table: TableName.Scores,
+        additionalFilters: {
+          whereCondition: timestamp
+            ? " AND timestamp >= {timestamp: DateTime64(3)} "
+            : "",
+          params: { timestamp },
+        },
+      }),
+      Promise.all(
+        timeSortedEvents.map(async (scoreEvent) => {
+          try {
+            const validatedScore = await validateAndInflateScore({
+              body: scoreEvent.body,
+              scoreId: entityId,
+              projectId,
+            });
+
+            return {
+              id: entityId,
+              project_id: projectId,
+              environment: validatedScore.environment,
+              timestamp: this.getMillisecondTimestamp(scoreEvent.timestamp),
+              name: validatedScore.name,
+              value: validatedScore.value,
+              source: validatedScore.source,
+              trace_id: validatedScore.traceId,
+              session_id: validatedScore.sessionId,
+              dataset_run_id: validatedScore.datasetRunId,
+              data_type: validatedScore.dataType,
+              observation_id: validatedScore.observationId,
+              config_id: validatedScore.configId,
+              comment: validatedScore.comment,
+              metadata: scoreEvent.body.metadata
+                ? convertJsonSchemaToRecord(scoreEvent.body.metadata)
+                : {},
+              string_value: validatedScore.stringValue,
+              long_string_value: validatedScore.longStringValue,
+              execution_trace_id: validatedScore.executionTraceId,
+              queue_id: validatedScore.queueId ?? null,
+              created_at: Date.now(),
+              updated_at: Date.now(),
+              event_ts: new Date(scoreEvent.timestamp).getTime(),
+              is_deleted: 0,
+            };
+            // Gracefully handle any score schema validation errors, skip the score insert and reject silently.
+          } catch (error) {
+            logger.info(
+              `Failed to validate and enrich score body for project: ${projectId} and score: ${entityId}`,
+              error,
+            );
+            return null;
+          }
+        }),
+      ).then((results) =>
+        results.filter(
+          (record): record is NonNullable<typeof record> => record !== null,
+        ),
+      ),
+    ]);
+
+    if (existingScoreRecord) {
+      recordIncrement("langfuse.ingestion.lookup.hit", 1, {
+        store: env.LITEFUSE_ANALYTICS_BACKEND,
+        object: "score",
+      });
+    }
+
+    const finalScoreRecord: ScoreRecordInsertType =
+      await this.mergeScoreRecords({
+        dorisScoreRecord: existingScoreRecord,
+        scoreRecords,
+      });
+    finalScoreRecord.created_at =
+      existingScoreRecord?.created_at ?? createdAtTimestamp.getTime();
+
+    // Write to Doris backend
+    if (this.dorisWriter) {
+      this.dorisWriter.addToQueue(TableName.Scores, finalScoreRecord);
+    }
+  }
+
+  private async processTraceEventList(params: {
+    projectId: string;
+    entityId: string;
+    createdAtTimestamp: Date;
+    traceEventList: TraceEventType[];
+    createEventTraceRecord: boolean;
+  }) {
+    const {
+      projectId,
+      entityId,
+      createdAtTimestamp,
+      traceEventList,
+      createEventTraceRecord,
+    } = params;
+    if (traceEventList.length === 0) return;
+
+    const timeSortedEvents =
+      IngestionService.toTimeSortedEventList(traceEventList);
+
+    const traceRecords = this.mapTraceEventsToRecords({
+      projectId,
+      entityId,
+      traceEventList: timeSortedEvents,
+    });
+
+    // Search for the first non-null input and output in the trace events and set them on the merged result.
+    // Fallback to the Doris input/output if none are found within the events list.
+    const reversedRawRecords = timeSortedEvents.slice().reverse();
+    const finalIO = {
+      input: this.stringify(
+        reversedRawRecords.find((record) => record?.body?.input)?.body?.input,
+      ),
+      output: this.stringify(
+        reversedRawRecords.find((record) => record?.body?.output)?.body?.output,
+      ),
+    };
+
+    const minTimestamp = Math.min(
+      ...timeSortedEvents.flatMap((e) =>
+        e.body?.timestamp ? [new Date(e.body.timestamp).getTime()] : [],
+      ),
+    );
+    const timestamp =
+      minTimestamp === Infinity
+        ? undefined
+        : convertDateToAnalyticsDateTime(new Date(minTimestamp));
+
+    // 从配置的后端读取现有记录
+    const existingTraceRecord = await this.getAnalyticsRecord({
+      projectId,
+      entityId,
+      table: TableName.Traces,
+      additionalFilters: {
+        whereCondition: timestamp
+          ? " AND timestamp >= {timestamp: DateTime64(3)} "
+          : "",
+        params: { timestamp },
+      },
+    });
+
+    if (existingTraceRecord) {
+      recordIncrement("langfuse.ingestion.lookup.hit", 1, {
+        store: env.LITEFUSE_ANALYTICS_BACKEND,
+        object: "trace",
+      });
+    }
+
+    const finalTraceRecord = await this.mergeTraceRecords({
+      dorisTraceRecord: existingTraceRecord,
+      traceRecords,
+    });
+    finalTraceRecord.created_at =
+      existingTraceRecord?.created_at ?? createdAtTimestamp.getTime();
+
+    finalTraceRecord.input = finalIO.input ?? existingTraceRecord?.input;
+    finalTraceRecord.output = finalIO.output ?? existingTraceRecord?.output;
+
+    // Write to Doris backend
+    if (this.dorisWriter) {
+      this.dorisWriter.addToQueue(TableName.Traces, finalTraceRecord);
+      logger.debug(
+        `Added trace ${entityId} to Doris queue for project ${projectId}`,
+      );
+    }
+
+    // 记录写入指标
+    recordIncrement("langfuse.ingestion.write", 1, {
+      object: "trace",
+      backend: "doris",
+    });
+
+    // If the trace has a sessionId, we upsert the corresponding session into Postgres.
+    const traceRecordWithSession = traceRecords
+      .slice()
+      .reverse()
+      .find((t) => t.session_id);
+    if (traceRecordWithSession) {
+      try {
+        await this.prisma.$executeRaw`
+          INSERT INTO trace_sessions (id, project_id, environment, created_at, updated_at)
+          VALUES (${traceRecordWithSession.session_id}, ${projectId}, ${traceRecordWithSession.environment}, NOW(), NOW())
+          ON CONFLICT (id, project_id)
+          DO NOTHING
+        `;
+      } catch (e) {
+        logger.error(
+          `Failed to upsert session ${traceRecordWithSession.session_id}`,
+          e,
+        );
+        throw e;
+      }
+    }
+
+    // Doris does not support staging table writes - skipping event trace record
+    logger.debug(
+      `Skipping staging table write for trace ${entityId} - Doris does not support events table`,
+    );
+
+    // Add trace into trace upsert queue for eval processing
+    // First check if we already know this project has no job configurations
+    const hasNoJobConfigs = await hasNoEvalConfigsCache(
+      projectId,
+      "traceBased",
+    );
+    if (hasNoJobConfigs) {
+      logger.debug(
+        `Skipping TraceUpsert queue for project ${projectId} - no job configs cached`,
+      );
+      return;
+    } else {
+      // Job configs present, so we add to the TraceUpsert queue.
+      const shardingKey = `${projectId}-${entityId}`;
+      const traceUpsertQueue = TraceUpsertQueue.getInstance({ shardingKey });
+      if (!traceUpsertQueue) {
+        logger.error("TraceUpsertQueue is not initialized");
+        return;
+      }
+      await traceUpsertQueue.add(QueueJobs.TraceUpsert, {
+        payload: {
+          projectId,
+          traceId: entityId,
+          exactTimestamp: new Date(finalTraceRecord.timestamp),
+          traceEnvironment: finalTraceRecord.environment,
+        },
+        id: randomUUID(),
+        timestamp: new Date(),
+        name: QueueJobs.TraceUpsert as const,
+      });
+    }
+  }
+
+  private async processObservationEventList(params: {
+    projectId: string;
+    entityId: string;
+    createdAtTimestamp: Date;
+    observationEventList: ObservationEvent[];
+    writeToStagingTables: boolean;
+  }) {
+    const {
+      projectId,
+      entityId,
+      createdAtTimestamp,
+      observationEventList,
+      writeToStagingTables,
+    } = params;
+    if (observationEventList.length === 0) return;
+
+    const timeSortedEvents =
+      IngestionService.toTimeSortedEventList(observationEventList);
+
+    const type = this.getObservationType(observationEventList[0]);
+    const minStartTime = Math.min(
+      ...observationEventList.flatMap((e) =>
+        e.body?.startTime ? [new Date(e.body.startTime).getTime()] : [],
+      ),
+    );
+    const startTime =
+      minStartTime === Infinity
+        ? undefined
+        : convertDateToAnalyticsDateTime(new Date(minStartTime));
+
+    const [existingObservationRecord, prompt] = await Promise.all([
+      this.getAnalyticsRecord({
+        projectId,
+        entityId,
+        table: TableName.Observations,
+        additionalFilters: {
+          whereCondition: `AND type = {type: String} ${startTime ? "AND start_time >= {startTime: DateTime64(3)} " : ""}`,
+          params: {
+            type,
+            startTime,
+          },
+        },
+      }),
+      this.getPrompt(projectId, observationEventList),
+    ]);
+
+    if (existingObservationRecord) {
+      recordIncrement("langfuse.ingestion.lookup.hit", 1, {
+        store: env.LITEFUSE_ANALYTICS_BACKEND,
+        object: "observation",
+      });
+    }
+
+    const observationRecords = this.mapObservationEventsToRecords({
+      observationEventList: timeSortedEvents,
+      projectId,
+      entityId,
+      prompt,
+    });
+
+    const mergedObservationRecord = await this.mergeObservationRecords({
+      projectId,
+      observationRecords,
+      dorisObservationRecord: existingObservationRecord,
+    });
+    mergedObservationRecord.created_at =
+      existingObservationRecord?.created_at ?? createdAtTimestamp.getTime();
+    mergedObservationRecord.level = mergedObservationRecord.level ?? "DEFAULT";
+
+    // Search for the first non-null input and output in the observation events and set them on the merged result.
+    // Fallback to the existing record input/output if none are found within the events list.
+    const reversedRawRecords = timeSortedEvents.slice().reverse();
+    const rawInput =
+      reversedRawRecords.find((record) => record?.body?.input)?.body?.input ??
+      existingObservationRecord?.input;
+
+    mergedObservationRecord.input = this.stringify(rawInput);
+
+    mergedObservationRecord.output = this.stringify(
+      reversedRawRecords.find((record) => record?.body?.output)?.body?.output ??
+        existingObservationRecord?.output,
+    );
+
+    // Extract tool definitions and calls from raw input/output
+    try {
+      const rawInput = reversedRawRecords.find((record) => record?.body?.input)
+        ?.body?.input;
+      const rawOutput = reversedRawRecords.find(
+        (record) => record?.body?.output,
+      )?.body?.output;
+
+      const { toolDefinitions, toolArguments } = extractToolsFromObservation(
+        rawInput,
+        rawOutput,
+      );
+
+      if (toolDefinitions.length > 0) {
+        mergedObservationRecord.tool_definitions =
+          convertDefinitionsToMap(toolDefinitions);
+      }
+
+      if (toolArguments.length > 0) {
+        const { tool_calls, tool_call_names } =
+          convertCallsToArrays(toolArguments);
+        mergedObservationRecord.tool_calls = tool_calls;
+        mergedObservationRecord.tool_call_names = tool_call_names;
+      }
+    } catch (error) {
+      logger.error("Tool extraction failed", { error, projectId, entityId });
+      // Don't fail ingestion - just skip tool data
+    }
+
+    const generationUsage = await this.getGenerationUsage({
+      projectId,
+      observationRecord: mergedObservationRecord,
+    });
+    const finalObservationRecord = {
+      ...mergedObservationRecord,
+      ...generationUsage,
+    };
+
+    // Backward compat: create wrapper trace for SDK < 2.0.0 events that do not have a traceId
+    if (!finalObservationRecord.trace_id) {
+      const wrapperTraceRecord: TraceRecordInsertType = {
+        id: finalObservationRecord.id,
+        timestamp: finalObservationRecord.start_time,
+        project_id: projectId,
+        environment: finalObservationRecord.environment,
+        created_at: Date.now(),
+        updated_at: Date.now(),
+        metadata: {},
+        tags: [],
+        bookmarked: false,
+        public: false,
+        event_ts: Date.now(),
+        is_deleted: 0,
+      };
+
+      // Write wrapper trace to Doris backend
+      if (this.dorisWriter) {
+        this.dorisWriter.addToQueue(TableName.Traces, wrapperTraceRecord);
+      }
+      finalObservationRecord.trace_id = finalObservationRecord.id;
+    }
+
+    // Write observation to Doris backend
+    if (this.dorisWriter) {
+      this.dorisWriter.addToQueue(
+        TableName.Observations,
+        finalObservationRecord,
+      );
+    }
+
+    // Doris does not support staging table writes - skipping
+    logger.debug(
+      `Skipping staging table write for observation ${entityId} - Doris does not support staging tables`,
+    );
+  }
+
+  private async mergeScoreRecords(params: {
+    scoreRecords: ScoreRecordInsertType[];
+    dorisScoreRecord?: ScoreRecordInsertType | null;
+  }): Promise<ScoreRecordInsertType> {
+    const { scoreRecords, dorisScoreRecord } = params;
+
+    // Set doris record first as this is the baseline for immutable fields
+    const recordsToMerge = [dorisScoreRecord, ...scoreRecords].filter(
+      Boolean,
+    ) as ScoreRecordInsertType[];
+
+    const mergedRecord = this.mergeRecords(
+      recordsToMerge,
+      immutableEntityKeys[TableName.Scores],
+    );
+
+    // If metadata exists, it is an object due to previous parsing
+    mergedRecord.metadata = convertRecordValuesToString(
+      (mergedRecord.metadata as Record<string, unknown>) ?? {},
+    );
+
+    return scoreRecordInsertSchema.parse(mergedRecord);
+  }
+
+  private async mergeTraceRecords(params: {
+    traceRecords: TraceRecordInsertType[];
+    dorisTraceRecord?: TraceRecordInsertType | null;
+  }): Promise<TraceRecordInsertType> {
+    const { traceRecords, dorisTraceRecord } = params;
+
+    // Set doris record first as this is the baseline for immutable fields
+    const recordsToMerge = [dorisTraceRecord, ...traceRecords].filter(
+      Boolean,
+    ) as TraceRecordInsertType[];
+
+    const mergedRecord = this.mergeRecords(
+      recordsToMerge,
+      immutableEntityKeys[TableName.Traces],
+    );
+
+    // If metadata exists, it is an object due to previous parsing
+    mergedRecord.metadata = convertRecordValuesToString(
+      (mergedRecord.metadata as Record<string, unknown>) ?? {},
+    );
+
+    return traceRecordInsertSchema.parse(mergedRecord);
+  }
+
+  private async mergeObservationRecords(params: {
+    projectId: string;
+    observationRecords: ObservationRecordInsertType[];
+    dorisObservationRecord?: ObservationRecordInsertType | null;
+  }): Promise<ObservationRecordInsertType> {
+    const { observationRecords, dorisObservationRecord } = params;
+
+    // Set doris record first as this is the baseline for immutable fields
+    const recordsToMerge = [
+      dorisObservationRecord,
+      ...observationRecords,
+    ].filter(Boolean) as ObservationRecordInsertType[];
+
+    const mergedRecord = this.mergeRecords(
+      recordsToMerge,
+      immutableEntityKeys[TableName.Observations],
+    );
+
+    // If metadata exists, it is an object due to previous parsing
+    mergedRecord.metadata = convertRecordValuesToString(
+      (mergedRecord.metadata as Record<string, unknown>) ?? {},
+    );
+
+    const parsedObservationRecord =
+      observationRecordInsertSchema.parse(mergedRecord);
+
+    // Override endTimes that are before startTimes with the startTime
+    if (
+      parsedObservationRecord.end_time &&
+      parsedObservationRecord.end_time < parsedObservationRecord.start_time
+    ) {
+      parsedObservationRecord.end_time = parsedObservationRecord.start_time;
+    }
+
+    return parsedObservationRecord;
+  }
+
+  private mergeRecords<T extends InsertRecord>(
+    records: T[],
+    immutableEntityKeys: string[],
+  ): Record<string, unknown> {
+    if (records.length === 0) {
+      throw new Error("No records to merge");
+    }
+
+    let result: {
+      id: string;
+      project_id: string;
+      [key: string]: any;
+    } = { id: records[0].id, project_id: records[0].project_id };
+
+    for (const record of records) {
+      result = overwriteObject(result, record, immutableEntityKeys);
+    }
+
+    result.event_ts = new Date().getTime();
+
+    return result;
+  }
+
+  private static toTimeSortedEventList<
+    T extends TraceEventType | ScoreEventType | ObservationEvent,
+  >(eventList: T[]): T[] {
+    return eventList.slice().sort((a, b) => {
+      const aIsCreate = a.type.includes("create");
+      const bIsCreate = b.type.includes("create");
+
+      // Create events always come before update events regardless of timestamp.
+      // The Langfuse SDK's enqueue() uses fire-and-forget async processing, so
+      // a large create body (with input/output) can finish later than a small
+      // update body, giving the create event a later timestamp.  Sorting purely
+      // by timestamp would then place updates before create, causing the merge's
+      // immutable-key protection to lock in the update's wrong start_time.
+      if (aIsCreate !== bIsCreate) {
+        return aIsCreate ? -1 : 1;
+      }
+
+      const aTimestamp = new Date(a.timestamp).getTime();
+      const bTimestamp = new Date(b.timestamp).getTime();
+
+      return aTimestamp - bTimestamp;
+    });
+  }
+
+  private async getPrompt(
+    projectId: string,
+    observationEventList: ObservationEvent[],
+  ): Promise<ObservationPrompt | null> {
+    const lastObservationWithPromptInfo = observationEventList
+      .slice()
+      .reverse()
+      .find(this.hasPromptInformation);
+
+    if (!lastObservationWithPromptInfo) return null;
+
+    const { promptName, promptVersion: version } =
+      lastObservationWithPromptInfo.body;
+
+    return this.promptService.getPrompt({
+      projectId,
+      promptName,
+      version,
+      label: undefined,
+    });
+  }
+
+  private hasPromptInformation(
+    event: ObservationEvent,
+  ): event is ObservationEvent & {
+    body: { promptName: string; promptVersion: number };
+  } {
+    return (
+      "promptName" in event.body &&
+      typeof event.body.promptName === "string" &&
+      "promptVersion" in event.body &&
+      typeof event.body.promptVersion === "number"
+    );
+  }
+
+  private async getGenerationUsage(params: {
+    projectId: string;
+    observationRecord: Pick<
+      ObservationRecordInsertType,
+      | "project_id"
+      | "trace_id"
+      | "id"
+      | "provided_model_name"
+      | "provided_usage_details"
+      | "provided_cost_details"
+      | "level"
+      | "input"
+      | "output"
+    >;
+  }): Promise<
+    Pick<
+      ObservationRecordInsertType,
+      | "usage_details"
+      | "cost_details"
+      | "total_cost"
+      | "internal_model_id"
+      | "usage_pricing_tier_id"
+      | "usage_pricing_tier_name"
+    >
+  > {
+    const { projectId, observationRecord } = params;
+    const { model: internalModel, pricingTiers } =
+      observationRecord.provided_model_name
+        ? await findModel({
+            projectId,
+            model: observationRecord.provided_model_name,
+          })
+        : { model: null, pricingTiers: [] };
+
+    const final_usage_details = await this.getUsageUnits(
+      observationRecord,
+      internalModel,
+    );
+
+    // Match pricing tier based on usage_details
+    let modelPrices: Array<{ usageType: string; price: Decimal }> = [];
+    let usage_pricing_tier_id: string | null = null;
+    let usage_pricing_tier_name: string | null = null;
+
+    if (pricingTiers.length > 0 && final_usage_details.usage_details) {
+      const matchedTier = matchPricingTier(
+        pricingTiers,
+        final_usage_details.usage_details,
+      );
+
+      if (matchedTier) {
+        usage_pricing_tier_id = matchedTier.pricingTierId;
+        usage_pricing_tier_name = matchedTier.pricingTierName;
+
+        // Convert matched tier prices to simple format for calculateUsageCosts
+        modelPrices = Object.entries(matchedTier.prices).map(
+          ([usageType, price]) => ({
+            usageType,
+            price,
+          }),
+        );
+      }
+    }
+
+    const final_cost_details = IngestionService.calculateUsageCosts(
+      modelPrices,
+      observationRecord,
+      final_usage_details.usage_details ?? {},
+    );
+
+    logger.debug(
+      `Calculated costs and usage for observation ${observationRecord.id} with model ${internalModel?.id}`,
+      {
+        cost: final_cost_details.cost_details,
+        usage: final_usage_details.usage_details,
+        pricingTier: usage_pricing_tier_name,
+      },
+    );
+
+    return {
+      ...final_usage_details,
+      ...final_cost_details,
+      internal_model_id: internalModel?.id,
+      usage_pricing_tier_id,
+      usage_pricing_tier_name,
+    };
+  }
+
+  private async getUsageUnits(
+    observationRecord: Pick<
+      ObservationRecordInsertType,
+      "provided_usage_details" | "level" | "input" | "output" | "id"
+    >,
+    model: Model | null | undefined,
+  ): Promise<
+    Pick<
+      ObservationRecordInsertType,
+      "usage_details" | "provided_usage_details"
+    >
+  > {
+    // Convert all values to numbers to handle cases where Doris returns UInt64 as strings.
+    // This prevents string concatenation bugs like "100" + "200" = "100200" instead of 300.
+    const providedUsageDetails: Record<string, number> = {};
+    for (const [key, value] of Object.entries(
+      observationRecord.provided_usage_details,
+    )) {
+      if (value != null) {
+        const numValue = Number(value);
+        if (!isNaN(numValue) && numValue >= 0) {
+          providedUsageDetails[key] = numValue;
+        }
+      }
+    }
+
+    if (
+      // Manual tokenisation when no user provided usage and generation has not status ERROR
+      model &&
+      Object.keys(providedUsageDetails).length === 0 &&
+      observationRecord.level !== ObservationLevel.ERROR
+    ) {
+      try {
+        let newInputCount: number | undefined;
+        let newOutputCount: number | undefined;
+        await instrumentAsync(
+          {
+            name: "token-count",
+          },
+          async (span) => {
+            try {
+              [newInputCount, newOutputCount] = await Promise.all([
+                tokenCountAsync({
+                  text: observationRecord.input,
+                  model,
+                }),
+                tokenCountAsync({
+                  text: observationRecord.output,
+                  model,
+                }),
+              ]);
+            } catch (error) {
+              logger.warn(
+                `Async tokenization has failed. Falling back to synchronous tokenization`,
+                error,
+              );
+              newInputCount = tokenCount({
+                text: observationRecord.input,
+                model,
+              });
+              newOutputCount = tokenCount({
+                text: observationRecord.output,
+                model,
+              });
+            }
+
+            // Tracing
+            newInputCount
+              ? span.setAttribute(
+                  "langfuse.tokenization.input-count",
+                  newInputCount,
+                )
+              : undefined;
+            newOutputCount
+              ? span.setAttribute(
+                  "langfuse.tokenization.output-count",
+                  newOutputCount,
+                )
+              : undefined;
+            newInputCount || newOutputCount
+              ? span.setAttribute(
+                  "langfuse.tokenization.tokenizer",
+                  model.tokenizerId || "unknown",
+                )
+              : undefined;
+            newInputCount
+              ? recordIncrement("langfuse.tokenisedTokens", newInputCount)
+              : undefined;
+            newOutputCount
+              ? recordIncrement("langfuse.tokenisedTokens", newOutputCount)
+              : undefined;
+          },
+        );
+
+        logger.debug(
+          `Tokenized observation ${observationRecord.id} with model ${model.id}, input: ${newInputCount}, output: ${newOutputCount}`,
+        );
+
+        const newTotalCount =
+          newInputCount || newOutputCount
+            ? (newInputCount ?? 0) + (newOutputCount ?? 0)
+            : undefined;
+
+        const usage_details: Record<string, number> = {};
+
+        if (newInputCount != null) usage_details.input = newInputCount;
+        if (newOutputCount != null) usage_details.output = newOutputCount;
+        if (newTotalCount != null) usage_details.total = newTotalCount;
+
+        return { usage_details, provided_usage_details: providedUsageDetails };
+      } catch (error) {
+        traceException(error);
+        logger.error(
+          `Tokenization failed for observation ${observationRecord.id} with model ${model.id}. Continuing without token counts.`,
+          error,
+        );
+        // Continue without token counts - return empty usage_details
+        return {
+          usage_details: {},
+          provided_usage_details: providedUsageDetails,
+        };
+      }
+    }
+
+    const usageDetails = { ...providedUsageDetails };
+    if (Object.keys(usageDetails).length > 0 && !("total" in usageDetails)) {
+      usageDetails.total = Object.values(providedUsageDetails).reduce(
+        (acc, value) => acc + value,
+        0,
+      );
+    }
+
+    return {
+      usage_details: usageDetails,
+      provided_usage_details: providedUsageDetails,
+    };
+  }
+
+  static calculateUsageCosts(
+    modelPrices:
+      | Array<{ usageType: string; price: Decimal }>
+      | null
+      | undefined,
+    observationRecord: Pick<
+      ObservationRecordInsertType,
+      "provided_cost_details"
+    >,
+    usageUnits: UsageCostType,
+  ): Pick<ObservationRecordInsertType, "cost_details" | "total_cost"> {
+    const { provided_cost_details } = observationRecord;
+
+    const providedCostKeys = Object.entries(provided_cost_details ?? {})
+      .filter(([_, value]) => value != null)
+      .map(([key]) => key);
+
+    // If user has provided any cost point, do not calculate any other cost points
+    if (providedCostKeys.length) {
+      const cost_details = { ...provided_cost_details };
+      const finalTotalCost =
+        (provided_cost_details ?? {})["total"] ??
+        // Use provided input and output cost if available, but only if no other cost points are provided
+        (providedCostKeys.every((key) => ["input", "output"].includes(key))
+          ? ((provided_cost_details ?? {})["input"] ?? 0) +
+            ((provided_cost_details ?? {})["output"] ?? 0)
+          : undefined);
+
+      if (
+        !Object.prototype.hasOwnProperty.call(cost_details, "total") &&
+        finalTotalCost != null
+      ) {
+        cost_details.total = finalTotalCost;
+      }
+
+      return {
+        cost_details,
+        total_cost: finalTotalCost,
+      };
+    }
+
+    const finalCostEntries: [string, number][] = [];
+
+    for (const [key, units] of Object.entries(usageUnits)) {
+      const price = modelPrices?.find((price) => price.usageType === key);
+
+      if (units != null && price) {
+        finalCostEntries.push([key, price.price.mul(units).toNumber()]);
+      }
+    }
+
+    const finalCostDetails = Object.fromEntries(finalCostEntries);
+
+    let finalTotalCost;
+    if (
+      Object.prototype.hasOwnProperty.call(finalCostDetails, "total") &&
+      finalCostDetails.total != null
+    ) {
+      finalTotalCost = finalCostDetails.total;
+    } else if (finalCostEntries.length > 0) {
+      finalTotalCost = finalCostEntries.reduce(
+        (acc, [_, cost]) => acc + cost,
+        0,
+      );
+
+      finalCostDetails.total = finalTotalCost;
+    }
+
+    return {
+      cost_details: finalCostDetails,
+      total_cost: finalTotalCost,
+    };
+  }
+
+  private async getDorisRecord(params: {
+    projectId: string;
+    entityId: string;
+    table: TableName.Traces;
+    additionalFilters: {
+      whereCondition: string;
+      params: Record<string, unknown>;
+    };
+  }): Promise<TraceRecordInsertType | null>;
+  private async getDorisRecord(params: {
+    projectId: string;
+    entityId: string;
+    table: TableName.Scores;
+    additionalFilters: {
+      whereCondition: string;
+      params: Record<string, unknown>;
+    };
+  }): Promise<ScoreRecordInsertType | null>;
+  private async getDorisRecord(params: {
+    projectId: string;
+    entityId: string;
+    table: TableName.Observations;
+    additionalFilters: {
+      whereCondition: string;
+      params: Record<string, unknown>;
+    };
+  }): Promise<ObservationRecordInsertType | null>;
+  private async getDorisRecord(params: {
+    projectId: string;
+    entityId: string;
+    table: TableName;
+    additionalFilters: {
+      whereCondition: string;
+      params: Record<string, unknown>;
+    };
+  }) {
+    if (!this.dorisClient) {
+      logger.warn("Doris client not available, skipping read", {
+        projectId: params.projectId,
+        table: params.table,
+      });
+      return null;
+    }
+
+    recordIncrement("langfuse.ingestion.doris_read_for_update", 1, {
+      skipped: "false",
+      table: params.table,
+    });
+
+    const recordParser = {
+      [TableName.Traces]: traceRecordReadSchema,
+      [TableName.Scores]: scoreRecordReadSchema,
+      [TableName.Observations]: observationRecordReadSchema,
+    };
+    const { projectId, entityId, table, additionalFilters } = params;
+
+    return await instrumentAsync(
+      { name: `get-doris-${table}` },
+      async (span) => {
+        span.setAttribute("projectId", projectId);
+
+        // Convert query for Doris MySQL-compatible format
+        // Use to_json() for MAP/ARRAY columns because Doris's MySQL protocol
+        // serialization of raw MAP columns does not properly escape quotes
+        // in TEXT values that contain nested JSON.
+        const mapColumns: Record<string, string[]> = {
+          [TableName.Traces]: ["metadata"],
+          [TableName.Observations]: [
+            "metadata",
+            "provided_usage_details",
+            "usage_details",
+            "provided_cost_details",
+            "cost_details",
+          ],
+          [TableName.Scores]: [],
+          [TableName.DatasetRunItems]: [
+            "dataset_run_metadata",
+            "dataset_item_metadata",
+          ],
+        };
+        const mapsForTable = mapColumns[table] || [];
+        const selectClause =
+          mapsForTable.length > 0
+            ? `SELECT * EXCEPT(${mapsForTable.join(", ")}), ${mapsForTable.map((c) => `to_json(${c}) as ${c}`).join(", ")}`
+            : `SELECT *`;
+        let dorisQuery = `
+          ${selectClause}
+          FROM ${table}
+          WHERE project_id = {projectId: String}
+          AND id = {entityId: String}
+          ${additionalFilters.whereCondition}
+          ORDER BY event_ts DESC
+          LIMIT 1
+        `;
+
+        const queryResult = await this.dorisClient!.queryWithParams({
+          query: dorisQuery,
+          query_params: {
+            projectId,
+            entityId,
+            ...additionalFilters.params,
+          },
+        });
+
+        const result = await queryResult.json();
+
+        if (result.length === 0) return null;
+
+        // Preprocess Doris result to match schema expectations
+        const rawRecord = result[0];
+        const processedRecord = this.preprocessDorisRecord(rawRecord, table);
+
+        switch (table) {
+          case TableName.Traces:
+            return convertTraceReadToInsert(
+              recordParser[table].parse(processedRecord),
+            );
+          case TableName.Scores:
+            return convertScoreReadToInsert(
+              recordParser[table].parse(processedRecord),
+            );
+          case TableName.Observations:
+            return convertObservationReadToInsert(
+              recordParser[table].parse(processedRecord),
+            );
+          default:
+            throw new Error(`Unsupported table name: ${table}`);
+        }
+      },
+    );
+  }
+
+  /**
+   * Smart JSON parsing helper that handles complex nested JSON strings
+   * Optimized for malformed nested JSON like: "key":"{"nested":"value"}"
+   * Successfully tested with user's 289-character complex nested JSON example
+   */
+  private safeJsonParse(
+    jsonString: string,
+    fieldName: string,
+    table: TableName,
+    fallbackValue: any = {},
+  ): any {
+    const trimmed = jsonString.trim();
+
+    // Handle common null/empty cases
+    if (!trimmed || trimmed === "null" || trimmed === "NULL") {
+      return fallbackValue;
+    }
+
+    // Handle empty object/array cases
+    if (trimmed === "{}" || trimmed === "[]") {
+      return trimmed === "[]" ? [] : {};
+    }
+
+    // First, try direct JSON parsing
+    try {
+      return JSON.parse(trimmed);
+    } catch (e) {
+      // If direct parsing fails, try to fix malformed nested JSON
+      try {
+        const fixed = this.fixMalformedNestedJson(trimmed);
+        if (fixed !== trimmed) {
+          logger.debug(
+            `Fixed malformed JSON in field ${fieldName} for table ${table}`,
+          );
+          return JSON.parse(fixed);
+        }
+        // Regex didn't match — the malformation pattern is unknown
+        logger.warn(`Failed to parse JSON field (unfixable)`, {
+          originalError: e instanceof Error ? e.message : String(e),
+          field: fieldName,
+          table,
+          rawValue:
+            trimmed.substring(0, 100) + (trimmed.length > 100 ? "..." : ""),
+          valueLength: trimmed.length,
+        });
+      } catch (fixError) {
+        logger.warn(`Failed to parse JSON field (fix threw)`, {
+          originalError: e instanceof Error ? e.message : String(e),
+          fixError:
+            fixError instanceof Error ? fixError.message : String(fixError),
+          field: fieldName,
+          table,
+          rawValue:
+            trimmed.substring(0, 100) + (trimmed.length > 100 ? "..." : ""),
+          valueLength: trimmed.length,
+        });
+      }
+
+      return fallbackValue;
+    }
+  }
+
+  /**
+   * Fix malformed nested JSON strings produced by Doris MAP serialization.
+   *
+   * Doris's MySQL protocol serialization of Map<String,String> columns does not
+   * properly escape quotes inside TEXT values that contain nested JSON. This
+   * produces patterns like "key":"[{"inner":"val"}]" where inner {, ", and }
+   * are unescaped, making the string invalid JSON.
+   *
+   * Recursively applies regex fixes for object values ("key":"{...}") and array
+   * values ("key":"[{...}]") until the string stabilizes (no more unescaped
+   * nested JSON patterns remain).
+   */
+  private fixMalformedNestedJson(str: string): string {
+    const objectPattern = /"([^"]+)":"(\{(?:[^{}]*(?:\{[^{}]*\}[^{}]*)*)*\})"/g;
+    const arrayPattern =
+      /"([^"]+)":"(\[(?:[^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*)*\])"/g;
+
+    let fixed = str;
+
+    // Pass 1: escape unescaped quotes inside object values
+    fixed = fixed.replace(objectPattern, (_match, key, jsonContent) => {
+      const escapedContent = jsonContent.replace(/(?<!\\)"/g, '\\"');
+      return `"${key}":"${escapedContent}"`;
+    });
+
+    // Pass 2: escape unescaped quotes inside array values
+    fixed = fixed.replace(arrayPattern, (_match, key, jsonContent) => {
+      const escapedContent = jsonContent.replace(/(?<!\\)"/g, '\\"');
+      return `"${key}":"${escapedContent}"`;
+    });
+
+    // Remove trailing commas
+    fixed = fixed.replace(/,(\s*[}\]])/g, "$1");
+
+    // Recurse if changes were made (deeper nesting may now be exposed)
+    return fixed !== str ? this.fixMalformedNestedJson(fixed) : fixed;
+  }
+
+  /**
+   * Generic helper to parse JSON string fields into Record<string, string>
+   * Used for metadata and similar fields requiring z.record(z.string())
+   */
+  private parseRecordField(
+    fieldValue: any,
+    fieldName: string,
+    table: TableName,
+    fallbackValue: Record<string, string> = {},
+  ): Record<string, string> {
+    if (!fieldValue) return fallbackValue;
+
+    if (typeof fieldValue === "string") {
+      const parsed = this.safeJsonParse(
+        fieldValue,
+        fieldName,
+        table,
+        fallbackValue,
+      );
+      if (typeof parsed === "object" && !Array.isArray(parsed)) {
+        // Ensure all values are strings
+        const result: Record<string, string> = {};
+        for (const [key, value] of Object.entries(parsed)) {
+          result[key] = String(value);
+        }
+        return result;
+      }
+      // If parsing failed or result is not an object, use fallback value
+      return fallbackValue;
+    }
+
+    if (typeof fieldValue === "object") {
+      // Ensure all values are strings
+      const result: Record<string, string> = {};
+      for (const [key, value] of Object.entries(fieldValue)) {
+        result[key] = String(value);
+      }
+      return result;
+    }
+
+    return fallbackValue;
+  }
+
+  /**
+   * Generic helper to parse JSON string fields into UsageCostSchema format
+   * UsageCostSchema expects Record<string, string | null> that can be converted to numbers
+   * Used for usage/cost details fields (provided_usage_details, usage_details, etc.)
+   */
+  private parseUsageCostField(
+    fieldValue: any,
+    fieldName: string,
+    table: TableName,
+    fallbackValue: Record<string, string | null> = {},
+  ): Record<string, string | null> {
+    if (!fieldValue) return fallbackValue;
+
+    if (typeof fieldValue === "string") {
+      const parsed = this.safeJsonParse(
+        fieldValue,
+        fieldName,
+        table,
+        fallbackValue,
+      );
+      if (typeof parsed === "object" && !Array.isArray(parsed)) {
+        // Convert values to strings that can be parsed as numbers, or null
+        const result: Record<string, string | null> = {};
+        for (const [key, value] of Object.entries(parsed)) {
+          if (value === null || value === undefined) {
+            result[key] = null;
+          } else {
+            // Convert to string, but ensure it's a valid number string
+            const numValue = Number(value);
+            result[key] = isNaN(numValue) ? null : String(numValue);
+          }
+        }
+        return result;
+      }
+      return fallbackValue;
+    }
+
+    if (typeof fieldValue === "object") {
+      // Convert values to strings that can be parsed as numbers, or null
+      const result: Record<string, string | null> = {};
+      for (const [key, value] of Object.entries(fieldValue)) {
+        if (value === null || value === undefined) {
+          result[key] = null;
+        } else {
+          // Convert to string, but ensure it's a valid number string
+          const numValue = Number(value);
+          result[key] = isNaN(numValue) ? null : String(numValue);
+        }
+      }
+      return result;
+    }
+
+    return fallbackValue;
+  }
+
+  /**
+   * Generic helper to parse JSON string fields into string arrays
+   * Used for tags and similar array fields
+   */
+  private parseArrayField(
+    fieldValue: any,
+    fieldName: string,
+    table: TableName,
+    fallbackValue: string[] = [],
+  ): string[] {
+    if (!fieldValue) return fallbackValue;
+
+    if (typeof fieldValue === "string") {
+      const parsed = this.safeJsonParse(
+        fieldValue,
+        fieldName,
+        table,
+        fallbackValue,
+      );
+      if (Array.isArray(parsed)) {
+        return parsed.map((item: any) => String(item));
+      }
+      return fallbackValue;
+    }
+
+    if (Array.isArray(fieldValue)) {
+      return fieldValue.map((item: any) => String(item));
+    }
+
+    return fallbackValue;
+  }
+
+  /**
+   * Preprocess Doris query result to match schema expectations
+   * Based on the exact schema definitions in definitions.ts
+   */
+  private preprocessDorisRecord(record: any, table: TableName): any {
+    if (!record) return record;
+
+    const processed = { ...record };
+
+    // 1. Date fields: Convert Date objects to Doris format for dorisStringDateSchema
+    // dorisStringDateSchema expects: '2024-05-23 18:33:41.602000'
+    const dateFields = [
+      "created_at",
+      "updated_at",
+      "event_ts",
+      "timestamp",
+      "start_time",
+      "end_time",
+      "completion_start_time",
+    ];
+
+    for (const field of dateFields) {
+      if (processed[field] instanceof Date) {
+        // Convert Date to Doris format: '2024-05-23 18:33:41.602000'
+        const isoString = processed[field].toISOString();
+        processed[field] = isoString.replace("T", " ").replace("Z", "");
+
+        // Ensure microsecond precision (6 digits) as expected by Doris
+        if (!processed[field].includes(".")) {
+          processed[field] += ".000000";
+        } else {
+          const parts = processed[field].split(".");
+          const microseconds = parts[1].padEnd(6, "0").substring(0, 6);
+          processed[field] = parts[0] + "." + microseconds;
+        }
+      }
+    }
+
+    // 2. Metadata field: Convert JSON string to Record<string, string>
+    processed.metadata = this.parseRecordField(
+      processed.metadata,
+      "metadata",
+      table,
+      {},
+    );
+
+    // 3. Usage/Cost fields: Convert to format expected by UsageCostSchema
+    if (table === TableName.Observations) {
+      const usageCostFields = [
+        "provided_usage_details",
+        "usage_details",
+        "provided_cost_details",
+        "cost_details",
+      ];
+
+      for (const field of usageCostFields) {
+        processed[field] = this.parseUsageCostField(
+          processed[field],
+          field,
+          table,
+          {},
+        );
+      }
+    }
+
+    // 4. Array fields: Ensure they are arrays or convert null to undefined
+    if (table === TableName.Traces) {
+      processed.tags = this.parseArrayField(processed.tags, "tags", table, []);
+    }
+    if (table === TableName.Observations) {
+      // Doris SELECT * returns null for these optional fields, but schema expects undefined (not null)
+      if (processed.tool_definitions === null)
+        processed.tool_definitions = undefined;
+      if (processed.tool_calls === null) processed.tool_calls = undefined;
+      if (processed.tool_call_names === null)
+        processed.tool_call_names = undefined;
+    }
+
+    // 5. Boolean fields: Ensure they are booleans
+    const booleanFields = ["public", "bookmarked"];
+    for (const field of booleanFields) {
+      if (processed[field] !== undefined) {
+        if (typeof processed[field] === "string") {
+          processed[field] =
+            processed[field].toLowerCase() === "true" ||
+            processed[field] === "1";
+        } else if (typeof processed[field] === "number") {
+          processed[field] = processed[field] !== 0;
+        } else {
+          processed[field] = Boolean(processed[field]);
+        }
+      }
+    }
+
+    // 6. Number fields: Ensure they are numbers
+    const numberFields = ["is_deleted", "total_cost", "prompt_version"];
+    for (const field of numberFields) {
+      if (processed[field] !== undefined && processed[field] !== null) {
+        if (typeof processed[field] === "string") {
+          const parsed = Number(processed[field]);
+          processed[field] = isNaN(parsed) ? null : parsed;
+        }
+      }
+    }
+
+    return processed;
+  }
+
+  /**
+   * Get existing record from Doris backend
+   */
+  private async getAnalyticsRecord(params: {
+    projectId: string;
+    entityId: string;
+    table: TableName.Traces;
+    additionalFilters: {
+      whereCondition: string;
+      params: Record<string, unknown>;
+    };
+  }): Promise<TraceRecordInsertType | null>;
+  private async getAnalyticsRecord(params: {
+    projectId: string;
+    entityId: string;
+    table: TableName.Scores;
+    additionalFilters: {
+      whereCondition: string;
+      params: Record<string, unknown>;
+    };
+  }): Promise<ScoreRecordInsertType | null>;
+  private async getAnalyticsRecord(params: {
+    projectId: string;
+    entityId: string;
+    table: TableName.Observations;
+    additionalFilters: {
+      whereCondition: string;
+      params: Record<string, unknown>;
+    };
+  }): Promise<ObservationRecordInsertType | null>;
+  private async getAnalyticsRecord(params: {
+    projectId: string;
+    entityId: string;
+    table: TableName;
+    additionalFilters: {
+      whereCondition: string;
+      params: Record<string, unknown>;
+    };
+  }): Promise<
+    | TraceRecordInsertType
+    | ScoreRecordInsertType
+    | ObservationRecordInsertType
+    | null
+  > {
+    return await this.getDorisRecord(params as any);
+  }
+
+  private mapTraceEventsToRecords(params: {
+    traceEventList: TraceEventType[];
+    projectId: string;
+    entityId: string;
+  }) {
+    const { traceEventList, projectId, entityId } = params;
+
+    return traceEventList.map((trace) => {
+      const traceRecord: TraceRecordInsertType = {
+        id: entityId,
+        timestamp: this.getMillisecondTimestamp(
+          trace.body.timestamp ?? trace.timestamp,
+        ),
+        // timestamp: ("timestamp" in trace.body && trace.body.timestamp
+        //   ? this.getMillisecondTimestamp(trace.body.timestamp)
+        //   : undefined) as number, // Casting here is dirty, but our requirement is to have a start_time _after_ the merge
+        name: trace.body.name,
+        user_id: trace.body.userId,
+        metadata: trace.body.metadata
+          ? convertJsonSchemaToRecord(trace.body.metadata)
+          : {},
+        release: trace.body.release,
+        version: trace.body.version,
+        project_id: projectId,
+        environment: trace.body.environment,
+        public: trace.body.public ?? false,
+        bookmarked: false,
+        tags: trace.body.tags ?? [],
+        // We skip the processing here as stringifying is an expensive operation on large objects.
+        // Instead, we only take the last truthy value and apply it on the merge step.
+        // input: this.stringify(trace.body.input),
+        // output: this.stringify(trace.body.output), // convert even json to string
+        session_id: trace.body.sessionId,
+        created_at: Date.now(),
+        updated_at: Date.now(),
+        event_ts: new Date(trace.timestamp).getTime(),
+        is_deleted: 0,
+      };
+
+      return traceRecord;
+    });
+  }
+
+  private getObservationType(
+    observation: ObservationEvent,
+  ):
+    | "EVENT"
+    | "SPAN"
+    | "GENERATION"
+    | "AGENT"
+    | "TOOL"
+    | "CHAIN"
+    | "RETRIEVER"
+    | "EVALUATOR"
+    | "GUARDRAIL"
+    | "EMBEDDING" {
+    switch (observation.type) {
+      case eventTypes.OBSERVATION_CREATE:
+      case eventTypes.OBSERVATION_UPDATE:
+        return observation.body.type;
+      case eventTypes.EVENT_CREATE:
+        return "EVENT" as const;
+      case eventTypes.SPAN_CREATE:
+      case eventTypes.SPAN_UPDATE:
+        return "SPAN" as const;
+      case eventTypes.GENERATION_CREATE:
+      case eventTypes.GENERATION_UPDATE:
+        return "GENERATION" as const;
+      case eventTypes.AGENT_CREATE:
+        return "AGENT" as const;
+      case eventTypes.TOOL_CREATE:
+        return "TOOL" as const;
+      case eventTypes.CHAIN_CREATE:
+        return "CHAIN" as const;
+      case eventTypes.RETRIEVER_CREATE:
+        return "RETRIEVER" as const;
+      case eventTypes.EVALUATOR_CREATE:
+        return "EVALUATOR" as const;
+      case eventTypes.EMBEDDING_CREATE:
+        return "EMBEDDING" as const;
+      case eventTypes.GUARDRAIL_CREATE:
+        return "GUARDRAIL" as const;
+    }
+  }
+
+  private mapObservationEventsToRecords(params: {
+    projectId: string;
+    entityId: string;
+    observationEventList: ObservationEvent[];
+    prompt: ObservationPrompt | null;
+  }) {
+    const { projectId, entityId, observationEventList, prompt } = params;
+
+    return observationEventList.map((obs) => {
+      const observationType = this.getObservationType(obs);
+
+      const newInputCount =
+        "usage" in obs.body ? obs.body.usage?.input : undefined;
+
+      const newOutputCount =
+        "usage" in obs.body ? obs.body.usage?.output : undefined;
+
+      const newTotalCount =
+        ("usage" in obs.body ? obs.body.usage?.total : undefined) ||
+        (Object.keys(
+          "usageDetails" in obs.body ? (obs.body.usageDetails ?? {}) : {},
+        ).length === 0
+          ? newInputCount && newOutputCount
+            ? newInputCount + newOutputCount
+            : (newInputCount ?? newOutputCount)
+          : undefined);
+
+      let provided_usage_details: Record<string, number> = {};
+
+      if (newInputCount != null) provided_usage_details.input = newInputCount;
+      if (newOutputCount != null)
+        provided_usage_details.output = newOutputCount;
+      if (newTotalCount != null) provided_usage_details.total = newTotalCount;
+
+      provided_usage_details = {
+        ...provided_usage_details,
+        ...("usageDetails" in obs.body
+          ? (Object.fromEntries(
+              Object.entries(obs.body.usageDetails ?? {}).filter(
+                ([_, val]) => val != null,
+              ),
+            ) as Record<string, number>)
+          : {}),
+      };
+
+      let provided_cost_details: Record<string, number> = {};
+
+      if ("usage" in obs.body) {
+        const { inputCost, outputCost, totalCost } = obs.body.usage ?? {};
+
+        if (inputCost != null) provided_cost_details.input = inputCost;
+        if (outputCost != null) provided_cost_details.output = outputCost;
+        if (totalCost != null) provided_cost_details.total = totalCost;
+      }
+
+      provided_cost_details = {
+        ...provided_cost_details,
+        ...("costDetails" in obs.body
+          ? (Object.fromEntries(
+              Object.entries(obs.body.costDetails ?? {}).filter(
+                ([_, val]) => val != null,
+              ),
+            ) as Record<string, number>)
+          : {}),
+      };
+
+      const observationRecord: ObservationRecordInsertType = {
+        id: entityId,
+        trace_id: obs.body.traceId ?? v4(),
+        type: observationType,
+        name: obs.body.name,
+        environment:
+          "environment" in obs.body ? obs.body.environment : "default",
+        start_time: this.getMillisecondTimestamp(
+          obs.body.startTime ?? obs.timestamp,
+        ),
+        // start_time: ("startTime" in obs.body && obs.body.startTime
+        //   ? this.getMillisecondTimestamp(obs.body.startTime)
+        //   : undefined) as number, // Casting here is dirty, but our requirement is to have a start_time _after_ the merge
+        end_time:
+          "endTime" in obs.body && obs.body.endTime
+            ? this.getMillisecondTimestamp(obs.body.endTime)
+            : undefined,
+        completion_start_time:
+          "completionStartTime" in obs.body && obs.body.completionStartTime
+            ? this.getMillisecondTimestamp(obs.body.completionStartTime)
+            : undefined,
+        metadata: obs.body.metadata
+          ? convertJsonSchemaToRecord(obs.body.metadata)
+          : {},
+        provided_model_name: "model" in obs.body ? obs.body.model : undefined,
+        model_parameters:
+          "modelParameters" in obs.body
+            ? obs.body.modelParameters
+              ? JSON.stringify(obs.body.modelParameters)
+              : undefined
+            : undefined,
+        // We skip the processing here as stringifying is an expensive operation on large objects.
+        // Instead, we only take the last truthy value and apply it on the merge step.
+        // input: this.stringify(obs.body.input),
+        // output: this.stringify(obs.body.output),
+        provided_usage_details,
+        provided_cost_details,
+        usage_details: provided_usage_details,
+        cost_details: provided_cost_details,
+        level: obs.body.level,
+        status_message: obs.body.statusMessage ?? undefined,
+        parent_observation_id: obs.body.parentObservationId ?? undefined,
+        version: obs.body.version ?? undefined,
+        project_id: projectId,
+        prompt_id: prompt?.id,
+        prompt_name: prompt?.name,
+        prompt_version: prompt?.version,
+        created_at: Date.now(),
+        updated_at: Date.now(),
+        event_ts: new Date(obs.timestamp).getTime(),
+        is_deleted: 0,
+      };
+
+      return observationRecord;
+    });
+  }
+
+  private stringify(
+    obj: string | object | number | boolean | undefined | null,
+  ): string | undefined {
+    if (obj == null) return; // return undefined on undefined or null
+
+    return typeof obj === "string" ? obj : JSON.stringify(obj);
+  }
+
+  private getMicrosecondTimestamp(timestamp?: string | null): number {
+    return timestamp ? new Date(timestamp).getTime() * 1000 : Date.now() * 1000;
+  }
+
+  private getMillisecondTimestamp(timestamp?: string | null): number {
+    return timestamp ? new Date(timestamp).getTime() : Date.now();
+  }
+
+  /**
+   * Returns a partition-aware timestamp for staging table writes.
+   * If the createdAtTimestamp is within the last 2 minutes, returns it as-is.
+   * Otherwise, returns the current timestamp to prevent updates to old partitions.
+   *
+   * This implements the partition locking strategy where partitions are "locked"
+   * 4 minutes after creation (2 min + 2 min buffer for writes).
+   *
+   * Going down from 3.5min to 2min here, as we see gaps in the data that may come from deletions.
+   * This reduces that chance that updates are handled in the same batch, but should increase the chance
+   * that data is processed correctly. Worst case is slightly more duplication in the events table
+   * which should resolve automatically using the ReplacingMergeTree.
+   */
+  private getPartitionAwareTimestamp(createdAtTimestamp: Date): number {
+    const now = Date.now();
+    const createdAt = createdAtTimestamp.getTime();
+    const ageInMs = now - createdAt;
+    const twoMinutesInMs = 2 * 60 * 1000;
+
+    // If the createdAtTimestamp is within the last 2 minutes, use it
+    // Otherwise, use the current timestamp to avoid updating old partitions
+    return ageInMs < twoMinutesInMs ? createdAt : now;
+  }
+}
+
+type ObservationPrompt = Pick<Prompt, "id" | "name" | "version">;
