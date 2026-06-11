@@ -1,0 +1,12 @@
+-- Create the project_environments 
+-- todo : query this table in packages/shared/src/server/repositories/environments.ts 
+-- should rewrite the SQL
+CREATE TABLE IF NOT EXISTS project_environments (
+    `project_id` varchar(65533),
+    `environments` Array<String>
+) ENGINE=OLAP
+DUPLICATE KEY(project_id)
+DISTRIBUTED BY HASH(project_id) BUCKETS AUTO
+PROPERTIES (
+"replication_allocation" = "tag.location.default: 1"
+);

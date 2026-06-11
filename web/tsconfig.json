@@ -1,0 +1,41 @@
+{
+  "extends": "@repo/typescript-config/nextjs.json",
+  "compilerOptions": {
+    "declaration": false,
+    "declarationMap": false,
+    "outDir": "dist",
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"],
+      "store/*": ["./src/features/discover/store/*"],
+      "services/*": ["./src/features/discover/services/*"],
+      "components/*": ["./src/features/discover/components/*"],
+      "types/*": ["./src/features/discover/types/*"],
+      "utils/*": ["./src/features/discover/utils/*"],
+      "@grafana/data": ["./src/lib/discover-shims/grafana-data"],
+      "@grafana/runtime": ["./src/lib/discover-shims/grafana-runtime"],
+      "jotai-location": ["./src/lib/discover-shims/jotai-location"],
+      "antd": ["./src/lib/discover-shims/antd"],
+      "react-i18next": ["./src/lib/discover-shims/react-i18next"]
+    },
+    "strictNullChecks": true
+  },
+  "exclude": ["node_modules", "sdk"],
+  "include": [
+    "**/*.cjs",
+    "**/*.mjs",
+    "**/*.ts",
+    "**/*.tsx",
+    ".eslintrc.js",
+    ".next/types/**/*.ts",
+    "next-env.d.ts",
+    "next-env.d.ts",
+    "src",
+    "types/global.d.ts",
+    ".next-check/types/**/*.ts"
+  ]
+}
