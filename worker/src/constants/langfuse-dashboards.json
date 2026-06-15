@@ -1,0 +1,2947 @@
+{
+  "widgets": [
+    {
+      "id": "cmawk617300iiad07zaes6h3l",
+      "createdAt": "2025-05-20T13:37:04.912Z",
+      "updatedAt": "2025-05-20T15:56:46.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "P 95 Latency by Use Case",
+      "description": "P95 latency metrics segmented by trace name",
+      "view": "TRACES",
+      "dimensions": [
+        {
+          "field": "name"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "p95",
+          "measure": "latency"
+        }
+      ],
+      "filters": [],
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmawk6isp00kbad07t66dohjn",
+      "createdAt": "2025-05-20T13:37:27.721Z",
+      "updatedAt": "2025-05-20T15:56:46.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "P 95 Latency by Level (Observations)",
+      "description": "P95 latency metrics for observations segmented by level",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "level"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "p95",
+          "measure": "latency"
+        }
+      ],
+      "filters": [],
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cma2f2ioc001had07f7810kg1",
+      "createdAt": "2025-04-29T11:21:17.580Z",
+      "updatedAt": "2025-04-30T20:39:57.724Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Total costs",
+      "description": "Total cost across all use cases",
+      "view": "OBSERVATIONS",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "sum",
+          "measure": "totalCost"
+        }
+      ],
+      "filters": [],
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmawk9xbu00lfad07s9j1bxnx",
+      "createdAt": "2025-05-20T13:40:06.522Z",
+      "updatedAt": "2025-05-20T13:59:18.552Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Top 20 Users by Cost",
+      "description": "Aggregated model cost (observation.totalCost) by trace.userId",
+      "view": "TRACES",
+      "dimensions": [
+        {
+          "field": "userId"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "sum",
+          "measure": "totalCost"
+        }
+      ],
+      "filters": [],
+      "chartType": "HORIZONTAL_BAR",
+      "chartConfig": {
+        "type": "HORIZONTAL_BAR",
+        "row_limit": 20
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmawkfg0m00kzad07jyofrnq2",
+      "createdAt": "2025-05-20T13:44:24.022Z",
+      "updatedAt": "2025-05-20T15:47:04.725Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Top 20 Use Cases (Observation) by Cost",
+      "description": "Aggregated model cost (observation.totalCost) by observation.name",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "name"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "sum",
+          "measure": "totalCost"
+        }
+      ],
+      "filters": [],
+      "chartType": "VERTICAL_BAR",
+      "chartConfig": {
+        "type": "VERTICAL_BAR",
+        "row_limit": 20
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmawk6nqs00jwad07hwpsj3z2",
+      "createdAt": "2025-05-20T13:37:34.132Z",
+      "updatedAt": "2025-05-20T16:10:20.352Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Top 20 Use Cases (Trace) by Cost",
+      "description": "Aggregated model cost (observation.totalCost) by trace.name",
+      "view": "TRACES",
+      "dimensions": [
+        {
+          "field": "name"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "sum",
+          "measure": "totalCost"
+        }
+      ],
+      "filters": [],
+      "chartType": "VERTICAL_BAR",
+      "chartConfig": {
+        "type": "VERTICAL_BAR",
+        "row_limit": 20
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmawk7btd00khad07g625cqmp",
+      "createdAt": "2025-05-20T13:38:05.329Z",
+      "updatedAt": "2025-05-20T14:02:20.657Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Cost by Environment",
+      "description": "Total cost broken down by trace.environment",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "environment"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "sum",
+          "measure": "totalCost"
+        }
+      ],
+      "filters": [],
+      "chartType": "PIE",
+      "chartConfig": {
+        "type": "PIE",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmawk94z800ldad07jjox8ugd",
+      "createdAt": "2025-05-20T13:39:29.781Z",
+      "updatedAt": "2025-05-20T15:56:46.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Max Latency by User Id (Traces)",
+      "description": "Maximum latency for the top 50 users by trace userId",
+      "view": "TRACES",
+      "dimensions": [
+        {
+          "field": "userId"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "max",
+          "measure": "latency"
+        }
+      ],
+      "filters": [],
+      "chartType": "HORIZONTAL_BAR",
+      "chartConfig": {
+        "type": "HORIZONTAL_BAR",
+        "row_limit": 50
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmawka1fk00kdad07vdipgz04",
+      "createdAt": "2025-05-20T13:40:11.840Z",
+      "updatedAt": "2025-05-20T15:56:46.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Avg Time To First Token by Prompt Name (Observations)",
+      "description": "Average time to first token segmented by prompt name",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "promptName"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "avg",
+          "measure": "timeToFirstToken"
+        }
+      ],
+      "filters": [],
+      "chartType": "VERTICAL_BAR",
+      "chartConfig": {
+        "type": "VERTICAL_BAR",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmawksk8h00phad07s9c7v6d7",
+      "createdAt": "2025-05-20T13:54:36.017Z",
+      "updatedAt": "2025-05-20T15:56:46.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "P 95 Time To First Token by Model",
+      "description": "P95 time to first token metrics segmented by model",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "providedModelName"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "p95",
+          "measure": "timeToFirstToken"
+        }
+      ],
+      "filters": [],
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmawktot400pkad07m8gy30vq",
+      "createdAt": "2025-05-20T13:55:28.601Z",
+      "updatedAt": "2025-05-20T15:56:46.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "P 95 Latency by Model",
+      "description": "P95 latency metrics for observations segmented by model",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "providedModelName"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "p95",
+          "measure": "latency"
+        }
+      ],
+      "filters": [],
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmawl83ks001ead076pk2wcex",
+      "createdAt": "2025-05-20T14:06:40.924Z",
+      "updatedAt": "2025-05-20T15:56:46.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Avg Output Tokens Per Second by Model",
+      "description": "Average output tokens per second segmented by model",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "providedModelName"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "avg",
+          "measure": "outputTokensPerSecond"
+        }
+      ],
+      "filters": [],
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmawle4zj0096ad0650rzeh0z",
+      "createdAt": "2025-05-20T14:11:22.687Z",
+      "updatedAt": "2025-05-20T14:11:49.932Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "P 95 Cost per Trace",
+      "description": "95th percentile of cost for each trace",
+      "view": "TRACES",
+      "dimensions": [
+        {
+          "field": "name"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "p95",
+          "measure": "totalCost"
+        }
+      ],
+      "filters": [],
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmawljmu100v7ad07pd3apnwe",
+      "createdAt": "2025-05-20T14:15:39.097Z",
+      "updatedAt": "2025-05-20T14:17:01.991Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "P 95 Output Cost per Observation",
+      "description": "95th percentile of output cost for each observation (llm call)",
+      "view": "OBSERVATIONS",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "p95",
+          "measure": "outputCost"
+        }
+      ],
+      "filters": [],
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmawlkgt300vsad06g69vqqej",
+      "createdAt": "2025-05-20T14:16:17.943Z",
+      "updatedAt": "2025-05-20T14:17:23.409Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "P 95 Input Cost per Observation",
+      "description": "95th percentile of input cost for each observation (llm call)",
+      "view": "OBSERVATIONS",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "p95",
+          "measure": "inputCost"
+        }
+      ],
+      "filters": [],
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmawloc0k010uad06e4git5kz",
+      "createdAt": "2025-05-20T14:19:18.356Z",
+      "updatedAt": "2025-05-20T15:56:46.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Total Trace Count",
+      "description": "Total count of traces across all environments",
+      "view": "TRACES",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [],
+      "chartType": "NUMBER",
+      "chartConfig": {
+        "type": "NUMBER",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmawlaqoa004kad07e2q0za6k",
+      "createdAt": "2025-05-20T14:08:44.170Z",
+      "updatedAt": "2025-05-20T14:08:44.170Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Total Count Traces",
+      "description": "Shows the count of Traces",
+      "view": "TRACES",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [],
+      "chartType": "NUMBER",
+      "chartConfig": {
+        "type": "NUMBER",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmawlbdu2004nad07lks0j8lw",
+      "createdAt": "2025-05-20T14:09:14.186Z",
+      "updatedAt": "2025-05-20T16:07:18.825Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Total Count Observations",
+      "description": "Shows the count of Observations",
+      "view": "OBSERVATIONS",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [],
+      "chartType": "NUMBER",
+      "chartConfig": {
+        "type": "NUMBER",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmawk5sik00igad07kjetg17j",
+      "createdAt": "2025-05-20T13:36:53.661Z",
+      "updatedAt": "2025-05-20T13:57:43.772Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Cost by Model Name",
+      "description": "Total cost broken down by model name",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "providedModelName"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "sum",
+          "measure": "totalCost"
+        }
+      ],
+      "filters": [],
+      "chartType": "VERTICAL_BAR",
+      "chartConfig": {
+        "type": "VERTICAL_BAR",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmawlotp500zcad076b8u704s",
+      "createdAt": "2025-05-20T14:19:41.273Z",
+      "updatedAt": "2025-05-20T15:56:46.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Total Observation Count",
+      "description": "Total count of observations across all environments",
+      "view": "OBSERVATIONS",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [],
+      "chartType": "NUMBER",
+      "chartConfig": {
+        "type": "NUMBER",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmawlpv4600y0ad0770qyrix9",
+      "createdAt": "2025-05-20T14:20:29.766Z",
+      "updatedAt": "2025-05-20T15:56:46.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Total Score Count (numeric)",
+      "description": "Total count of numeric scores across all environments",
+      "view": "SCORES_NUMERIC",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [],
+      "chartType": "NUMBER",
+      "chartConfig": {
+        "type": "NUMBER",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmawlqkxk00xfad07r8zoc4ag",
+      "createdAt": "2025-05-20T14:21:03.224Z",
+      "updatedAt": "2025-05-20T15:56:46.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Total Score Count (categorical)",
+      "description": "Total count of categorical scores across all environments",
+      "view": "SCORES_CATEGORICAL",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [],
+      "chartType": "NUMBER",
+      "chartConfig": {
+        "type": "NUMBER",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmawlrhom00xhad07phtqc81k",
+      "createdAt": "2025-05-20T14:21:45.670Z",
+      "updatedAt": "2025-05-20T15:56:46.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Total Trace Count (over time)",
+      "description": "Trend of trace count over time",
+      "view": "TRACES",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [],
+      "chartType": "BAR_TIME_SERIES",
+      "chartConfig": {
+        "type": "BAR_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmawlt6wi00zmad07cvxeeepq",
+      "createdAt": "2025-05-20T14:23:05.011Z",
+      "updatedAt": "2025-05-20T15:56:46.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Total Observation Count (over time)",
+      "description": "Trend of observation count over time",
+      "view": "OBSERVATIONS",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [],
+      "chartType": "BAR_TIME_SERIES",
+      "chartConfig": {
+        "type": "BAR_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmawltpsx00yaad07f51yvkwg",
+      "createdAt": "2025-05-20T14:23:29.505Z",
+      "updatedAt": "2025-05-20T15:56:46.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Total Score Count (numeric)",
+      "description": "Trend of numeric score count over time",
+      "view": "SCORES_NUMERIC",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [],
+      "chartType": "BAR_TIME_SERIES",
+      "chartConfig": {
+        "type": "BAR_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmawlu5bs00zsad07maibk7ef",
+      "createdAt": "2025-05-20T14:23:49.624Z",
+      "updatedAt": "2025-05-20T15:56:46.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Total Score Count (categorical)",
+      "description": "Trend of categorical score count over time",
+      "view": "SCORES_CATEGORICAL",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [],
+      "chartType": "BAR_TIME_SERIES",
+      "chartConfig": {
+        "type": "BAR_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmawlw4s700zvad07qq4qi0gp",
+      "createdAt": "2025-05-20T14:25:22.231Z",
+      "updatedAt": "2025-05-20T15:56:46.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Total Trace Count (by env)",
+      "description": "Distribution of trace count across different environments",
+      "view": "TRACES",
+      "dimensions": [
+        {
+          "field": "environment"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [],
+      "chartType": "BAR_TIME_SERIES",
+      "chartConfig": {
+        "type": "BAR_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmawlxdo00106ad07crpey1if",
+      "createdAt": "2025-05-20T14:26:20.400Z",
+      "updatedAt": "2025-05-20T15:56:46.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Total Observation Count (by env)",
+      "description": "Distribution of observation count across different environments",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "environment"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [],
+      "chartType": "BAR_TIME_SERIES",
+      "chartConfig": {
+        "type": "BAR_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmn8jp4k40013z407sg5nacbb",
+      "createdAt": "2026-03-27T06:53:38.26Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "User messages",
+      "description": "Total count of user messages (traces)",
+      "view": "TRACES",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [],
+      "rawSqlFilter": null,
+      "chartType": "NUMBER",
+      "chartConfig": {
+        "type": "NUMBER",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmn8jsmpu0015z407iiv71dqk",
+      "createdAt": "2026-03-27T06:56:21.762Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Total Output Tokens",
+      "description": "Sum of output tokens across all observations",
+      "view": "OBSERVATIONS",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "sum",
+          "measure": "outputTokens"
+        }
+      ],
+      "filters": [],
+      "rawSqlFilter": null,
+      "chartType": "NUMBER",
+      "chartConfig": {
+        "type": "NUMBER",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmn8jxase0019z407144k7w4u",
+      "createdAt": "2026-03-27T06:59:59.582Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Total Cost (USD)",
+      "description": "Total cost (USD) across all traces",
+      "view": "TRACES",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "sum",
+          "measure": "totalCost"
+        }
+      ],
+      "filters": [],
+      "rawSqlFilter": null,
+      "chartType": "NUMBER",
+      "chartConfig": {
+        "type": "NUMBER",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmn8k571i001bz407o206xkqk",
+      "createdAt": "2026-03-27T07:06:07.975Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Tokens Over Time By Model",
+      "description": "Token usage trend over time segmented by model name",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "providedModelName"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "sum",
+          "measure": "totalTokens"
+        }
+      ],
+      "filters": [],
+      "rawSqlFilter": null,
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmn8nvf9g001hz407f072svam",
+      "createdAt": "2026-03-27T08:50:30.533Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Total Tokens by Model Name ",
+      "description": "Total token distribution by model name",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "providedModelName"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "sum",
+          "measure": "totalTokens"
+        }
+      ],
+      "filters": [],
+      "rawSqlFilter": null,
+      "chartType": "PIE",
+      "chartConfig": {
+        "type": "PIE",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmn8w5v8l0005z407i7ui02q8",
+      "createdAt": "2026-03-27T12:42:34.725Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Total Input Token",
+      "description": "Sum of input tokens across all observations",
+      "view": "OBSERVATIONS",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "sum",
+          "measure": "inputTokens"
+        }
+      ],
+      "filters": [],
+      "rawSqlFilter": null,
+      "chartType": "NUMBER",
+      "chartConfig": {
+        "type": "NUMBER",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmnallxrx0009z407iix1ai16",
+      "createdAt": "2026-03-28T17:22:41.085Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Sum Input Tokens (Observations)",
+      "description": "Input token usage over time segmented by model name",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "providedModelName"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "sum",
+          "measure": "inputTokens"
+        }
+      ],
+      "filters": [],
+      "rawSqlFilter": null,
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmnaln4k3000bz407u16oiicl",
+      "createdAt": "2026-03-28T17:23:36.531Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Total Cost by Provided Model Name",
+      "description": "Cost trend over time segmented by model name",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "providedModelName"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "sum",
+          "measure": "totalCost"
+        }
+      ],
+      "filters": [],
+      "rawSqlFilter": null,
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmnalouf7000dz407dgkt1cdw",
+      "createdAt": "2026-03-28T17:24:56.707Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Sum Input Tokens by Provided Model Name (Observations)",
+      "description": "Input token distribution by model name",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "providedModelName"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "sum",
+          "measure": "inputTokens"
+        }
+      ],
+      "filters": [],
+      "rawSqlFilter": null,
+      "chartType": "PIE",
+      "chartConfig": {
+        "type": "PIE",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmnalqpia000fz4074pji3fl6",
+      "createdAt": "2026-03-28T17:26:23.651Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Sum Total Cost ",
+      "description": "Total cost distribution by model name",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "providedModelName"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "sum",
+          "measure": "totalCost"
+        }
+      ],
+      "filters": [],
+      "rawSqlFilter": null,
+      "chartType": "PIE",
+      "chartConfig": {
+        "type": "PIE",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmn8dwca8000dz407jerpff6m",
+      "createdAt": "2026-03-27T04:11:17.168Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "LLM Avg Durations (milliseconds)",
+      "description": "Average LLM generation latency in milliseconds",
+      "view": "OBSERVATIONS",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "avg",
+          "measure": "latency"
+        }
+      ],
+      "filters": [
+        {
+          "type": "stringOptions",
+          "value": [
+            "GENERATION"
+          ],
+          "column": "type",
+          "operator": "any of"
+        }
+      ],
+      "rawSqlFilter": null,
+      "chartType": "NUMBER",
+      "chartConfig": {
+        "type": "NUMBER",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmn8dxwvu000fz4072596661x",
+      "createdAt": "2026-03-27T04:12:30.522Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Total Traces",
+      "description": "Total count of traces",
+      "view": "TRACES",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [],
+      "rawSqlFilter": null,
+      "chartType": "NUMBER",
+      "chartConfig": {
+        "type": "NUMBER",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmn8efjyo000hz4073pzid6y7",
+      "createdAt": "2026-03-27T04:26:13.585Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Avg Agent Duration ",
+      "description": "Average agent (span) duration in milliseconds",
+      "view": "OBSERVATIONS",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "avg",
+          "measure": "latency"
+        }
+      ],
+      "filters": [
+        {
+          "type": "stringOptions",
+          "value": [
+            "SPAN"
+          ],
+          "column": "type",
+          "operator": "any of"
+        }
+      ],
+      "rawSqlFilter": null,
+      "chartType": "NUMBER",
+      "chartConfig": {
+        "type": "NUMBER",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmn8ek621000jz407fnpuvajo",
+      "createdAt": "2026-03-27T04:29:48.841Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Avg Tool Durations",
+      "description": "Average tool call duration in milliseconds",
+      "view": "OBSERVATIONS",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "avg",
+          "measure": "latency"
+        }
+      ],
+      "filters": [
+        {
+          "type": "stringOptions",
+          "value": [
+            "TOOL"
+          ],
+          "column": "type",
+          "operator": "any of"
+        }
+      ],
+      "rawSqlFilter": null,
+      "chartType": "NUMBER",
+      "chartConfig": {
+        "type": "NUMBER",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmn8eq12a000lz4079n47s86k",
+      "createdAt": "2026-03-27T04:34:22.306Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Count by Name (Observations)",
+      "description": "Tool call count distribution by observation name",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "name"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [
+        {
+          "type": "stringOptions",
+          "value": [
+            "TOOL"
+          ],
+          "column": "type",
+          "operator": "any of"
+        }
+      ],
+      "rawSqlFilter": null,
+      "chartType": "PIE",
+      "chartConfig": {
+        "type": "PIE",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmn8ibaiv000nz4078tp2bicg",
+      "createdAt": "2026-03-27T06:14:53.191Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Avg LLM Duration Over Time",
+      "description": "LLM generation latency trend over time",
+      "view": "OBSERVATIONS",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "avg",
+          "measure": "latency"
+        }
+      ],
+      "filters": [
+        {
+          "type": "stringOptions",
+          "value": [
+            "GENERATION"
+          ],
+          "column": "type",
+          "operator": "any of"
+        }
+      ],
+      "rawSqlFilter": null,
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmn8idjif000rz4079l976f68",
+      "createdAt": "2026-03-27T06:16:38.151Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Tool Calls Over Time",
+      "description": "Tool call count trend over time by name",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "name"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [
+        {
+          "type": "stringOptions",
+          "value": [
+            "TOOL"
+          ],
+          "column": "type",
+          "operator": "any of"
+        }
+      ],
+      "rawSqlFilter": null,
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmn8ij7hm000tz407k6wrkjzq",
+      "createdAt": "2026-03-27T06:21:02.507Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Tool Call Summary",
+      "description": "Tool call count summary by name",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "name"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [
+        {
+          "type": "stringOptions",
+          "value": [
+            "TOOL"
+          ],
+          "column": "type",
+          "operator": "any of"
+        }
+      ],
+      "rawSqlFilter": null,
+      "chartType": "PIVOT_TABLE",
+      "chartConfig": {
+        "type": "PIVOT_TABLE",
+        "row_limit": 100,
+        "defaultSort": {
+          "order": "DESC",
+          "column": "count_count"
+        }
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmn8ipgjl000vz407j1f7x1kw",
+      "createdAt": "2026-03-27T06:25:54.177Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Tool Performance Summary",
+      "description": "Tool performance metrics: count, avg/max/min/p95 latency by name",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "name"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        },
+        {
+          "agg": "avg",
+          "measure": "latency"
+        },
+        {
+          "agg": "max",
+          "measure": "latency"
+        },
+        {
+          "agg": "min",
+          "measure": "latency"
+        },
+        {
+          "agg": "p95",
+          "measure": "latency"
+        }
+      ],
+      "filters": [
+        {
+          "type": "stringOptions",
+          "value": [
+            "TOOL"
+          ],
+          "column": "type",
+          "operator": "any of"
+        }
+      ],
+      "rawSqlFilter": null,
+      "chartType": "PIVOT_TABLE",
+      "chartConfig": {
+        "type": "PIVOT_TABLE",
+        "row_limit": 100,
+        "defaultSort": {
+          "order": "DESC",
+          "column": "count_count"
+        }
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmn8ju1ve0017z407bp39ic88",
+      "createdAt": "2026-03-27T06:57:28.058Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Total Tool Calls",
+      "description": "Total count of tool calls",
+      "view": "OBSERVATIONS",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [
+        {
+          "type": "stringOptions",
+          "value": [
+            "TOOL"
+          ],
+          "column": "type",
+          "operator": "any of"
+        }
+      ],
+      "rawSqlFilter": null,
+      "chartType": "NUMBER",
+      "chartConfig": {
+        "type": "NUMBER",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmn8xvha90007z40715nr2npf",
+      "createdAt": "2026-03-27T13:30:29.313Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Skill Call Count",
+      "description": "Skill (tool) call count trend over time",
+      "view": "OBSERVATIONS",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [
+        {
+          "type": "stringOptions",
+          "value": [
+            "TOOL"
+          ],
+          "column": "type",
+          "operator": "any of"
+        }
+      ],
+      "rawSqlFilter": "input like '%skill%'",
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmncyo36i000hz407wc9hkv0e",
+      "createdAt": "2026-03-30T09:03:48.762Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Tool Execute error",
+      "description": "Count of tool execution errors",
+      "view": "OBSERVATIONS",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [
+        {
+          "type": "stringOptions",
+          "value": [
+            "TOOL"
+          ],
+          "column": "type",
+          "operator": "any of"
+        }
+      ],
+      "rawSqlFilter": "metadata['error.type'] is not null",
+      "chartType": "NUMBER",
+      "chartConfig": {
+        "type": "NUMBER",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmn8vfkm20003z4074p5m7908",
+      "createdAt": "2026-03-27T12:22:07.899Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "High-Risk Command Execution",
+      "description": "Count of high-risk command executions detected in tool calls",
+      "view": "OBSERVATIONS",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [
+        {
+          "type": "stringOptions",
+          "value": [
+            "TOOL"
+          ],
+          "column": "type",
+          "operator": "any of"
+        }
+      ],
+      "rawSqlFilter": "name = 'execute_tool exec' AND (input LIKE '%rm %' OR input LIKE '%sudo %' OR input LIKE '%chmod %' OR input LIKE '%chown %' OR\n  input LIKE '%kill %' OR input LIKE '%killall %' OR input LIKE '%dd %' OR input LIKE '%| sh%' OR input LIKE '%| bash%' OR input\n  LIKE '%scp %' OR input LIKE '%nc %' OR input LIKE '%.ssh/%')",
+      "chartType": "NUMBER",
+      "chartConfig": {
+        "type": "NUMBER",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmn8x9m810001z407lr3u684f",
+      "createdAt": "2026-03-27T13:13:29.281Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Web Data Exfiltration",
+      "description": "Count of web data exfiltration attempts detected in tool calls",
+      "view": "OBSERVATIONS",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [
+        {
+          "type": "stringOptions",
+          "value": [
+            "TOOL"
+          ],
+          "column": "type",
+          "operator": "any of"
+        }
+      ],
+      "rawSqlFilter": "name IN ('execute_tool web_fetch', 'execute_tool browser')",
+      "chartType": "NUMBER",
+      "chartConfig": {
+        "type": "NUMBER",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmn8xd42b0003z4071jlnuthz",
+      "createdAt": "2026-03-27T13:16:12.372Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Command Exfiltration",
+      "description": "Count of command exfiltration attempts detected in tool calls",
+      "view": "OBSERVATIONS",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [
+        {
+          "type": "stringOptions",
+          "value": [
+            "TOOL"
+          ],
+          "column": "type",
+          "operator": "any of"
+        }
+      ],
+      "rawSqlFilter": "name = 'execute_tool exec' AND (input LIKE '%curl %' OR input LIKE '%wget %')",
+      "chartType": "NUMBER",
+      "chartConfig": {
+        "type": "NUMBER",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmn8xth7n0005z407w45qht6a",
+      "createdAt": "2026-03-27T13:28:55.908Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Sensitive File Access Trend",
+      "description": "Sensitive file access count trend over time",
+      "view": "OBSERVATIONS",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [
+        {
+          "type": "stringOptions",
+          "value": [
+            "TOOL"
+          ],
+          "column": "type",
+          "operator": "any of"
+        }
+      ],
+      "rawSqlFilter": "name NOT IN ('execute_tool web_search', 'execute_tool web_fetch', 'execute_tool browser') AND (input LIKE '%.ssh/id_%' OR input \n  LIKE '%.ssh/authorized_keys%' OR input LIKE '%/.env%' OR input LIKE '%credentials.json%' OR input LIKE '%aws_access_key%' OR   \n  input LIKE '%service_account%' OR input LIKE '%.bash_history%' OR input LIKE '%.zsh_history%' OR (input LIKE '%config%' AND     \n  (input LIKE '%password%' OR input LIKE '%secret%')))",
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmnd4snny000jz40711i85wxp",
+      "createdAt": "2026-03-30T11:55:19.631Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Prompt Injection Detection",
+      "description": "Prompt injection detection count trend over time by trace",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "traceId"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [
+        {
+          "type": "stringOptions",
+          "value": [
+            "TOOL"
+          ],
+          "column": "type",
+          "operator": "any of"
+        }
+      ],
+      "rawSqlFilter": "output LIKE '%ignore previous instructions%' OR output LIKE '%ignore all previous%' OR output LIKE '%disregard%instructions%' OR\n   output LIKE '%forget your instructions%' OR output LIKE '%you are now%' OR output LIKE '%pretend you are%' OR output LIKE '%act\n   as if%' OR output LIKE '%system prompt%' OR output LIKE '%new instructions:%' OR output LIKE '%execute the following%' OR      \n  output LIKE '%run this command%' OR output LIKE '%DAN mode%' OR output LIKE '%jailbreak%' OR output LIKE '%bypass%filter%'",
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmnd56rw9000lz407uzi7hfr3",
+      "createdAt": "2026-03-30T12:06:18.297Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "High-Risk Sessions",
+      "description": "Session distribution by observation count for high-risk activity",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "sessionId"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [],
+      "rawSqlFilter": "observations.name = 'execute_tool exec' OR observations.name IN ('execute_tool web_fetch', 'execute_tool browser', 'execute_tool\n   web_search') OR observations.name IN ('execute_tool feishu_update_doc', 'execute_tool feishu_fetch_doc') OR observations.level \n  = 'ERROR' OR observations.output LIKE '%.ssh/id_%' OR observations.output LIKE '%/.env%' OR observations.output LIKE            \n  '%credentials.json%' OR observations.output LIKE '%aws_access_key%' OR observations.output LIKE '%service_account%'",
+      "chartType": "HORIZONTAL_BAR",
+      "chartConfig": {
+        "type": "HORIZONTAL_BAR",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmnd5bdce000nz407udxrwcrq",
+      "createdAt": "2026-03-30T12:09:52.718Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Skill Usage Distribution (Tool)",
+      "description": "Skill (tool) usage distribution by name",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "name"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [
+        {
+          "type": "stringOptions",
+          "value": [
+            "TOOL"
+          ],
+          "column": "type",
+          "operator": "any of"
+        }
+      ],
+      "rawSqlFilter": "observations.name = 'execute_tool read' AND observations.input LIKE '%/skills/%' AND observations.input LIKE '%SKILL.md%'",
+      "chartType": "HORIZONTAL_BAR",
+      "chartConfig": {
+        "type": "HORIZONTAL_BAR",
+        "row_limit": 100
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmnd5ha2d000pz407ltymhqc5",
+      "createdAt": "2026-03-30T12:14:28.406Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "High-Risk Commands - CREDENTIAL_ACCESS",
+      "description": "Credential access command count trend over time by trace",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "traceId"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [],
+      "rawSqlFilter": "observations.name = 'execute_tool exec' AND (observations.input LIKE '%.ssh/id_%' OR observations.input LIKE                    \n  '%.ssh/authorized_keys%' OR observations.input LIKE '%/.env%' OR observations.input LIKE '%credentials.json%' OR\n  observations.input LIKE '%aws_access_key%')",
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmnd5i1ql000rz407gbc4y8vu",
+      "createdAt": "2026-03-30T12:15:04.27Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "High-Risk Commands - DATA_EXFIL",
+      "description": "Data exfiltration command count trend over time by trace",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "traceId"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [],
+      "rawSqlFilter": "observations.name = 'execute_tool exec' AND (observations.input LIKE '%| sh%' OR observations.input LIKE '%| bash%' OR\n  observations.input LIKE '%\"command\":\"scp %' OR observations.input LIKE '%\"command\":\"nc %')",
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmnd5k2xt000tz407bvr3f13z",
+      "createdAt": "2026-03-30T12:16:39.137Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "High-Risk Commands - PRIVILEGE_ESCALATION",
+      "description": "Privilege escalation command count trend over time by trace",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "traceId"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [],
+      "rawSqlFilter": "observations.name = 'execute_tool exec' \nAND (observations.input LIKE '%\"command\":\"sudo %' OR observations.input LIKE '%\"command\":\"chmod %' \nOR observations.input LIKE '%\"command\":\"chown %')",
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmnd5l8fx000vz4078bfu0aj8",
+      "createdAt": "2026-03-30T12:17:32.925Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "High-Risk Commands - DESTRUCTIVE",
+      "description": "Destructive command count trend over time by trace",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "traceId"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [],
+      "rawSqlFilter": "observations.name = 'execute_tool exec' AND (observations.input LIKE '%\"command\":\"rm %' OR observations.input LIKE\n  '%\"command\":\"rmdir %' OR observations.input LIKE '%&& rm %' OR observations.input LIKE '%; rm %' OR observations.input LIKE\n  '%\"command\":\"kill %' OR observations.input LIKE '%\"command\":\"killall %' OR observations.input LIKE '%\"command\":\"dd %')",
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmnd5p8lh000xz407bkolf461",
+      "createdAt": "2026-03-30T12:20:39.749Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Prompt Injection - INJECTION_PATTERN",
+      "description": "Injection pattern detection count trend over time by trace",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "traceId"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [
+        {
+          "type": "stringOptions",
+          "value": [
+            "TOOL"
+          ],
+          "column": "type",
+          "operator": "any of"
+        }
+      ],
+      "rawSqlFilter": "observations.output LIKE '%ignore previous instructions%' OR observations.output LIKE '%ignore all previous%' OR\n  observations.output LIKE '%disregard%instructions%' OR observations.output LIKE '%forget your instructions%'",
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmnd5q0mn000zz4075bypm685",
+      "createdAt": "2026-03-30T12:21:16.08Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Prompt Injection - ROLE_HIJACK",
+      "description": "Role hijack attempt count trend over time by trace",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "traceId"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [
+        {
+          "type": "stringOptions",
+          "value": [
+            "TOOL"
+          ],
+          "column": "type",
+          "operator": "any of"
+        }
+      ],
+      "rawSqlFilter": "observations.output LIKE '%you are now%' OR observations.output LIKE '%pretend you are%' OR observations.output LIKE '%act as   \n  if%' OR observations.output LIKE '%system prompt%'",
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmnd5qyet0011z407u0tdlyke",
+      "createdAt": "2026-03-30T12:21:59.862Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Prompt Injection - HIDDEN_INSTRUCTION",
+      "description": "Hidden instruction detection count trend over time by trace",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "traceId"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [
+        {
+          "type": "stringOptions",
+          "value": [
+            "TOOL"
+          ],
+          "column": "type",
+          "operator": "any of"
+        }
+      ],
+      "rawSqlFilter": "observations.output LIKE '%new instructions:%' OR observations.output LIKE '%execute the following%' OR observations.output LIKE\n   '%run this command%'",
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmnd5tpzl0013z407w4syflgk",
+      "createdAt": "2026-03-30T12:24:08.914Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Prompt Injection - JAILBREAK",
+      "description": "Jailbreak attempt count trend over time",
+      "view": "OBSERVATIONS",
+      "dimensions": [],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [
+        {
+          "type": "stringOptions",
+          "value": [
+            "TOOL"
+          ],
+          "column": "type",
+          "operator": "any of"
+        }
+      ],
+      "rawSqlFilter": "observations.output LIKE '%DAN mode%' OR observations.output LIKE '%jailbreak%' OR observations.output LIKE '%bypass%filter%'",
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmnd5zczm0015z407ve8nb5hs",
+      "createdAt": "2026-03-30T12:28:32.002Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Sensitive File Access Audit - SSH_KEY",
+      "description": "SSH key file access count trend over time by trace",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "traceId"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [
+        {
+          "type": "stringOptions",
+          "value": [
+            "TOOL"
+          ],
+          "column": "type",
+          "operator": "any of"
+        }
+      ],
+      "rawSqlFilter": "observations.name NOT IN ('execute_tool web_search', 'execute_tool web_fetch', 'execute_tool browser') AND (observations.input\n  LIKE '%.ssh/id_%' OR observations.input LIKE '%.ssh/authorized_keys%' OR observations.output LIKE '%.ssh/id_%' OR             \n  observations.output LIKE '%.ssh/authorized_keys%')",
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmnd60mrf0017z407acgndx58",
+      "createdAt": "2026-03-30T12:29:31.323Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Sensitive File Access Audit - ENV_FILE",
+      "description": "Environment file access count trend over time by trace",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "traceId"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [
+        {
+          "type": "stringOptions",
+          "value": [
+            "TOOL"
+          ],
+          "column": "type",
+          "operator": "any of"
+        }
+      ],
+      "rawSqlFilter": "observations.name NOT IN ('execute_tool web_search', 'execute_tool web_fetch', 'execute_tool browser') AND (observations.input  \n  LIKE '%/.env%' OR observations.output LIKE '%/.env%')",
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmnd61nzq0019z4079ha2vmnn",
+      "createdAt": "2026-03-30T12:30:19.575Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Sensitive File Access Audit - CREDENTIALS",
+      "description": "Credentials file access count trend over time by trace",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "traceId"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [
+        {
+          "type": "stringOptions",
+          "value": [
+            "TOOL"
+          ],
+          "column": "type",
+          "operator": "any of"
+        }
+      ],
+      "rawSqlFilter": "observations.name NOT IN ('execute_tool web_search', 'execute_tool web_fetch', 'execute_tool browser') AND (observations.input  \n  LIKE '%credentials.json%' OR observations.input LIKE '%aws_access_key%' OR observations.input LIKE '%service_account%' OR     \n  observations.output LIKE '%credentials.json%' OR observations.output LIKE '%aws_access_key%' OR observations.output LIKE        \n  '%service_account%')",
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmnd63ay3001bz407196mcv82",
+      "createdAt": "2026-03-30T12:31:35.98Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Sensitive File Access Audit - CONFIG_SECRET",
+      "description": "Config/secret file access count trend over time by trace",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "traceId"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [
+        {
+          "type": "stringOptions",
+          "value": [
+            "TOOL"
+          ],
+          "column": "type",
+          "operator": "any of"
+        }
+      ],
+      "rawSqlFilter": "observations.name NOT IN ('execute_tool web_search', 'execute_tool web_fetch', 'execute_tool browser') AND ((observations.input \n  LIKE '%config%' AND (observations.input LIKE '%password%' OR observations.input LIKE '%secret%')) OR (observations.output LIKE\n  '%config%' AND (observations.output LIKE '%password%' OR observations.output LIKE '%secret%')))",
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmnd6hb2o001dz407tpz2vynm",
+      "createdAt": "2026-03-30T12:42:29.328Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Sensitive File Access Audit - HISTORY",
+      "description": "History file access count trend over time by trace",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "traceId"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [
+        {
+          "type": "stringOptions",
+          "value": [
+            "TOOL"
+          ],
+          "column": "type",
+          "operator": "any of"
+        }
+      ],
+      "rawSqlFilter": "observations.name NOT IN ('execute_tool web_search', 'execute_tool web_fetch', 'execute_tool browser') AND (observations.input\n  LIKE '%.bash_history%' OR observations.input LIKE '%.zsh_history%' OR observations.output LIKE '%.bash_history%' OR           \n  observations.output LIKE '%.zsh_history%')",
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    },
+    {
+      "id": "cmnd6m0bw001fz407h5c827fn",
+      "createdAt": "2026-03-30T12:46:08.684Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Communication Exfiltration Trend",
+      "description": "Communication exfiltration count trend over time by trace",
+      "view": "OBSERVATIONS",
+      "dimensions": [
+        {
+          "field": "traceId"
+        }
+      ],
+      "metrics": [
+        {
+          "agg": "count",
+          "measure": "count"
+        }
+      ],
+      "filters": [
+        {
+          "type": "stringOptions",
+          "value": [
+            "TOOL"
+          ],
+          "column": "type",
+          "operator": "any of"
+        }
+      ],
+      "rawSqlFilter": "observations.name IN ('execute_tool gateway', 'execute_tool send_message', 'execute_tool send_email', 'execute_tool reply')",
+      "chartType": "LINE_TIME_SERIES",
+      "chartConfig": {
+        "type": "LINE_TIME_SERIES"
+      },
+      "owner": "LANGFUSE"
+    }
+  ],
+  "dashboards": [
+    {
+      "id": "cmawk4ywj00jmad072jn7s0ru",
+      "createdAt": "2025-05-20T13:36:15.283Z",
+      "updatedAt": "2026-05-15T00:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Litefuse Latency Dashboard",
+      "description": "Monitor latency metrics across traces and generations for performance optimization.",
+      "owner": "LANGFUSE",
+      "definition": {
+        "widgets": [
+          {
+            "x": 0,
+            "y": 0,
+            "id": "87a95184-aea5-4418-9447-2fe381c69414",
+            "type": "widget",
+            "x_size": 6,
+            "y_size": 5,
+            "widgetId": "cmawk617300iiad07zaes6h3l"
+          },
+          {
+            "x": 6,
+            "y": 0,
+            "id": "62055994-0ae0-47c9-bef8-25dfbbe3dcb3",
+            "type": "widget",
+            "x_size": 6,
+            "y_size": 5,
+            "widgetId": "cmawk6isp00kbad07t66dohjn"
+          },
+          {
+            "x": 0,
+            "y": 5,
+            "id": "7eb6d831-3e11-49e1-9855-7f28ea16f865",
+            "type": "widget",
+            "x_size": 6,
+            "y_size": 5,
+            "widgetId": "cmawk94z800ldad07jjox8ugd"
+          },
+          {
+            "x": 6,
+            "y": 5,
+            "id": "b17fb429-41b5-4681-8271-cc8674608341",
+            "type": "widget",
+            "x_size": 6,
+            "y_size": 5,
+            "widgetId": "cmawka1fk00kdad07vdipgz04"
+          },
+          {
+            "x": 0,
+            "y": 10,
+            "id": "61bf13ae-2e63-482b-97d6-168ce2097d15",
+            "type": "widget",
+            "x_size": 4,
+            "y_size": 5,
+            "widgetId": "cmawksk8h00phad07s9c7v6d7"
+          },
+          {
+            "x": 4,
+            "y": 10,
+            "id": "b985686a-c509-4f25-9cc5-709efeecd80e",
+            "type": "widget",
+            "x_size": 4,
+            "y_size": 5,
+            "widgetId": "cmawktot400pkad07m8gy30vq"
+          },
+          {
+            "x": 8,
+            "y": 10,
+            "id": "1a7667fe-29e4-4a4b-918d-cba6fdd5c016",
+            "type": "widget",
+            "x_size": 4,
+            "y_size": 5,
+            "widgetId": "cmawl83ks001ead076pk2wcex"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cmawln8k700xqad07000k1q8b",
+      "createdAt": "2025-05-20T14:18:27.223Z",
+      "updatedAt": "2026-05-15T00:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Litefuse Usage Management",
+      "description": "Track usage metrics across traces, observations, and scores to manage resource allocation.",
+      "owner": "LANGFUSE",
+      "definition": {
+        "widgets": [
+          {
+            "x": 0,
+            "y": 0,
+            "id": "9a71cb52-0abe-4d2b-a4b0-0ff06cce814e",
+            "type": "widget",
+            "x_size": 3,
+            "y_size": 3,
+            "widgetId": "cmawloc0k010uad06e4git5kz"
+          },
+          {
+            "x": 3,
+            "y": 0,
+            "id": "1e263686-8809-4917-b54e-818b81bd84cd",
+            "type": "widget",
+            "x_size": 3,
+            "y_size": 3,
+            "widgetId": "cmawlotp500zcad076b8u704s"
+          },
+          {
+            "x": 6,
+            "y": 0,
+            "id": "d874b19f-431d-4ec1-abe4-44b1c6b26959",
+            "type": "widget",
+            "x_size": 3,
+            "y_size": 3,
+            "widgetId": "cmawlpv4600y0ad0770qyrix9"
+          },
+          {
+            "x": 9,
+            "y": 0,
+            "id": "3616afbd-61a4-4f93-889e-b4a2132b7698",
+            "type": "widget",
+            "x_size": 3,
+            "y_size": 3,
+            "widgetId": "cmawlqkxk00xfad07r8zoc4ag"
+          },
+          {
+            "x": 0,
+            "y": 3,
+            "id": "aedaf41e-67b9-4801-8bf6-1f84285e80d4",
+            "type": "widget",
+            "x_size": 3,
+            "y_size": 5,
+            "widgetId": "cmawlrhom00xhad07phtqc81k"
+          },
+          {
+            "x": 3,
+            "y": 3,
+            "id": "f4946244-2568-460e-b13a-3109a4b7876d",
+            "type": "widget",
+            "x_size": 3,
+            "y_size": 5,
+            "widgetId": "cmawlt6wi00zmad07cvxeeepq"
+          },
+          {
+            "x": 6,
+            "y": 3,
+            "id": "bca6fb2d-94c6-4c32-9861-88828313eb3b",
+            "type": "widget",
+            "x_size": 3,
+            "y_size": 5,
+            "widgetId": "cmawltpsx00yaad07f51yvkwg"
+          },
+          {
+            "x": 9,
+            "y": 3,
+            "id": "67e0de43-032e-4ae2-99e0-264fcb4a47a9",
+            "type": "widget",
+            "x_size": 3,
+            "y_size": 5,
+            "widgetId": "cmawlu5bs00zsad07maibk7ef"
+          },
+          {
+            "x": 0,
+            "y": 8,
+            "id": "4ce5a8f2-aee2-418e-85a1-edee9e2b2915",
+            "type": "widget",
+            "x_size": 6,
+            "y_size": 5,
+            "widgetId": "cmawlw4s700zvad07qq4qi0gp"
+          },
+          {
+            "x": 6,
+            "y": 8,
+            "id": "b24681fc-0664-45a6-985f-6022e7c6eab7",
+            "type": "widget",
+            "x_size": 6,
+            "y_size": 5,
+            "widgetId": "cmawlxdo00106ad07crpey1if"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cmawoi7yd00aqad07f3why08w",
+      "createdAt": "2025-05-20T15:38:32.005Z",
+      "updatedAt": "2026-05-15T00:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "Litefuse Cost Dashboard",
+      "description": "Review your LLM costs.",
+      "owner": "LANGFUSE",
+      "definition": {
+        "widgets": [
+          {
+            "x": 0,
+            "y": 2,
+            "id": "c1e456c3-9e4a-4693-99de-ea3996e15003",
+            "type": "widget",
+            "x_size": 4,
+            "y_size": 3,
+            "widgetId": "cma2f2ioc001had07f7810kg1"
+          },
+          {
+            "x": 0,
+            "y": 5,
+            "id": "6d03b598-7950-423b-8e22-25ab4ac98b75",
+            "type": "widget",
+            "x_size": 4,
+            "y_size": 6,
+            "widgetId": "cmawk9xbu00lfad07s9j1bxnx"
+          },
+          {
+            "x": 8,
+            "y": 5,
+            "id": "2f018002-f922-4d3f-8495-43cc3a951dc8",
+            "type": "widget",
+            "x_size": 4,
+            "y_size": 6,
+            "widgetId": "cmawkfg0m00kzad07jyofrnq2"
+          },
+          {
+            "x": 4,
+            "y": 5,
+            "id": "c630af4d-b2e8-48d2-bb03-5f20e6b16e8f",
+            "type": "widget",
+            "x_size": 4,
+            "y_size": 6,
+            "widgetId": "cmawk6nqs00jwad07hwpsj3z2"
+          },
+          {
+            "x": 8,
+            "y": 0,
+            "id": "1e322175-b1c6-467c-a743-28c47255874b",
+            "type": "widget",
+            "x_size": 4,
+            "y_size": 5,
+            "widgetId": "cmawk7btd00khad07g625cqmp"
+          },
+          {
+            "x": 0,
+            "y": 11,
+            "id": "3587b86a-1dcc-4f51-b686-65e155615e76",
+            "type": "widget",
+            "x_size": 4,
+            "y_size": 5,
+            "widgetId": "cmawle4zj0096ad0650rzeh0z"
+          },
+          {
+            "x": 8,
+            "y": 11,
+            "id": "0ec8d95a-cb7b-4cd1-99e0-223e26a67964",
+            "type": "widget",
+            "x_size": 4,
+            "y_size": 5,
+            "widgetId": "cmawljmu100v7ad07pd3apnwe"
+          },
+          {
+            "x": 4,
+            "y": 11,
+            "id": "4754f821-7099-450c-89bc-db5e6ab2189e",
+            "type": "widget",
+            "x_size": 4,
+            "y_size": 5,
+            "widgetId": "cmawlkgt300vsad06g69vqqej"
+          },
+          {
+            "x": 0,
+            "y": 0,
+            "id": "e91465b7-63fd-4e77-babc-8e64abdb5672",
+            "type": "widget",
+            "x_size": 2,
+            "y_size": 2,
+            "widgetId": "cmawlaqoa004kad07e2q0za6k"
+          },
+          {
+            "x": 2,
+            "y": 0,
+            "id": "2ad4931e-b91d-4ca1-9178-5ac8c3edd0a8",
+            "type": "widget",
+            "x_size": 2,
+            "y_size": 2,
+            "widgetId": "cmawlbdu2004nad07lks0j8lw"
+          },
+          {
+            "x": 4,
+            "y": 0,
+            "id": "f7d74d8d-09a5-4a5e-a8de-f48dc6ba6a4b",
+            "type": "widget",
+            "x_size": 4,
+            "y_size": 5,
+            "widgetId": "cmawk5sik00igad07kjetg17j"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cmn8jlu090011z407hyo7987b",
+      "createdAt": "2026-03-27T06:51:04.617Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "OpenClaw - Cost & Efficiency",
+      "description": "Monitor token usage, costs, and model efficiency across your OpenClaw deployment.",
+      "owner": "LANGFUSE",
+      "definition": {
+        "widgets": [
+          {
+            "x": 0,
+            "y": 0,
+            "id": "19ef6ce5-0afd-4bf2-a3b0-38943ed1ed52",
+            "type": "widget",
+            "x_size": 3,
+            "y_size": 3,
+            "widgetId": "cmn8jp4k40013z407sg5nacbb"
+          },
+          {
+            "x": 6,
+            "y": 0,
+            "id": "a1b44011-cd36-48f9-93fd-44dc71123ba6",
+            "type": "widget",
+            "x_size": 3,
+            "y_size": 3,
+            "widgetId": "cmn8jsmpu0015z407iiv71dqk"
+          },
+          {
+            "x": 9,
+            "y": 0,
+            "id": "8d29c35a-2bee-4a2a-b0f1-e6415e8a4875",
+            "type": "widget",
+            "x_size": 3,
+            "y_size": 3,
+            "widgetId": "cmn8jxase0019z407144k7w4u"
+          },
+          {
+            "x": 0,
+            "y": 3,
+            "id": "c9e1f433-1084-4cb0-9e63-1a492cbdd61b",
+            "type": "widget",
+            "x_size": 8,
+            "y_size": 5,
+            "widgetId": "cmn8k571i001bz407o206xkqk"
+          },
+          {
+            "x": 8,
+            "y": 3,
+            "id": "c5abc5b1-f6cd-4dc3-9794-018ad361f8dd",
+            "type": "widget",
+            "x_size": 4,
+            "y_size": 5,
+            "widgetId": "cmn8nvf9g001hz407f072svam"
+          },
+          {
+            "x": 3,
+            "y": 0,
+            "id": "d3bc3999-ad9f-4d8e-9abd-c75392ad50dc",
+            "type": "widget",
+            "x_size": 3,
+            "y_size": 3,
+            "widgetId": "cmn8w5v8l0005z407i7ui02q8"
+          },
+          {
+            "x": 0,
+            "y": 8,
+            "id": "01e08b19-2527-4286-be1f-1396fcf11833",
+            "type": "widget",
+            "x_size": 8,
+            "y_size": 5,
+            "widgetId": "cmnallxrx0009z407iix1ai16"
+          },
+          {
+            "x": 0,
+            "y": 13,
+            "id": "19cf4466-dbf9-4d5c-a243-8f6cbee6ab96",
+            "type": "widget",
+            "x_size": 8,
+            "y_size": 5,
+            "widgetId": "cmnaln4k3000bz407u16oiicl"
+          },
+          {
+            "x": 8,
+            "y": 8,
+            "id": "323ea7e6-dd28-47d3-bbaa-904820d7cc60",
+            "type": "widget",
+            "x_size": 4,
+            "y_size": 5,
+            "widgetId": "cmnalouf7000dz407dgkt1cdw"
+          },
+          {
+            "x": 8,
+            "y": 13,
+            "id": "921ebe59-3a9f-41c3-aa4d-b45291bc6384",
+            "type": "widget",
+            "x_size": 4,
+            "y_size": 5,
+            "widgetId": "cmnalqpia000fz4074pji3fl6"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cmn8dthu3000bz407b1mrcxdy",
+      "createdAt": "2026-03-27T04:09:04.395Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "OpenClaw - Agent Behavior",
+      "description": "Track agent, LLM, and tool behavior including latency, call counts, and performance metrics.",
+      "owner": "LANGFUSE",
+      "definition": {
+        "widgets": [
+          {
+            "x": 4,
+            "y": 0,
+            "id": "750fe504-9e9a-4bfa-89ab-9223a6096549",
+            "type": "widget",
+            "x_size": 2,
+            "y_size": 2,
+            "widgetId": "cmn8dwca8000dz407jerpff6m"
+          },
+          {
+            "x": 0,
+            "y": 0,
+            "id": "3b78abd0-8185-455e-8767-6f6b9357571b",
+            "type": "widget",
+            "x_size": 2,
+            "y_size": 2,
+            "widgetId": "cmn8dxwvu000fz4072596661x"
+          },
+          {
+            "x": 2,
+            "y": 0,
+            "id": "7a6e5d70-3e68-491d-bdd0-a20aa02d1f7d",
+            "type": "widget",
+            "x_size": 2,
+            "y_size": 2,
+            "widgetId": "cmn8efjyo000hz4073pzid6y7"
+          },
+          {
+            "x": 6,
+            "y": 0,
+            "id": "2b2727ac-5c41-4135-88b6-de7182c5b5cb",
+            "type": "widget",
+            "x_size": 2,
+            "y_size": 2,
+            "widgetId": "cmn8ek621000jz407fnpuvajo"
+          },
+          {
+            "x": 9,
+            "y": 2,
+            "id": "6c67d521-b121-4022-af17-e9313a23cc7b",
+            "type": "widget",
+            "x_size": 3,
+            "y_size": 5,
+            "widgetId": "cmn8eq12a000lz4079n47s86k"
+          },
+          {
+            "x": 0,
+            "y": 2,
+            "id": "adaea775-aceb-4da9-89fb-3524b9caf1cb",
+            "type": "widget",
+            "x_size": 5,
+            "y_size": 5,
+            "widgetId": "cmn8ibaiv000nz4078tp2bicg"
+          },
+          {
+            "x": 0,
+            "y": 7,
+            "id": "50b6505d-a359-48c0-ac2c-98b5c91c9b55",
+            "type": "widget",
+            "x_size": 6,
+            "y_size": 5,
+            "widgetId": "cmn8idjif000rz4079l976f68"
+          },
+          {
+            "x": 6,
+            "y": 7,
+            "id": "9cbf5be3-62a3-4508-9f1f-2ea150777b45",
+            "type": "widget",
+            "x_size": 6,
+            "y_size": 5,
+            "widgetId": "cmn8ij7hm000tz407k6wrkjzq"
+          },
+          {
+            "x": 0,
+            "y": 12,
+            "id": "d3633a0b-82c6-4630-8f6f-407aca17b740",
+            "type": "widget",
+            "x_size": 12,
+            "y_size": 6,
+            "widgetId": "cmn8ipgjl000vz407j1f7x1kw"
+          },
+          {
+            "x": 8,
+            "y": 0,
+            "id": "2ec70701-7b37-4f03-8a3e-489b596a3cd7",
+            "type": "widget",
+            "x_size": 2,
+            "y_size": 2,
+            "widgetId": "cmn8ju1ve0017z407bp39ic88"
+          },
+          {
+            "x": 5,
+            "y": 2,
+            "id": "1cf95fbf-2f2b-4a70-aa31-39e3d2c5c31c",
+            "type": "widget",
+            "x_size": 4,
+            "y_size": 5,
+            "widgetId": "cmn8xvha90007z40715nr2npf"
+          },
+          {
+            "x": 10,
+            "y": 0,
+            "id": "e9e3737c-1844-4016-8f9e-88c511404ac0",
+            "type": "widget",
+            "x_size": 2,
+            "y_size": 2,
+            "widgetId": "cmncyo36i000hz407wc9hkv0e"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cmn8v08nr0001z407uhvjqfmd",
+      "createdAt": "2026-03-27T12:10:12.567Z",
+      "updatedAt": "2026-04-08T15:00:00.000Z",
+      "createdBy": null,
+      "updatedBy": null,
+      "projectId": null,
+      "name": "OpenClaw - Security & Audit",
+      "description": "Monitor security events including high-risk commands, prompt injections, data exfiltration, and sensitive file access.",
+      "owner": "LANGFUSE",
+      "definition": {
+        "widgets": [
+          {
+            "x": 0,
+            "y": 0,
+            "id": "37a24145-9b41-403c-98a6-8649d25fa7bb",
+            "type": "widget",
+            "x_size": 3,
+            "y_size": 3,
+            "widgetId": "cmn8vfkm20003z4074p5m7908"
+          },
+          {
+            "x": 3,
+            "y": 0,
+            "id": "12fc9f4d-a1fc-47c2-941a-27a98bfef575",
+            "type": "widget",
+            "x_size": 2,
+            "y_size": 3,
+            "widgetId": "cmn8x9m810001z407lr3u684f"
+          },
+          {
+            "x": 5,
+            "y": 0,
+            "id": "db451a7c-a706-4060-b402-de79894f3594",
+            "type": "widget",
+            "x_size": 3,
+            "y_size": 3,
+            "widgetId": "cmn8xd42b0003z4071jlnuthz"
+          },
+          {
+            "x": 0,
+            "y": 7,
+            "id": "975ce8c9-9a2c-49b2-a6d6-3b531513b600",
+            "type": "widget",
+            "x_size": 8,
+            "y_size": 5,
+            "widgetId": "cmn8xth7n0005z407w45qht6a"
+          },
+          {
+            "x": 0,
+            "y": 12,
+            "id": "4373bcfd-4bd6-403e-b741-148ced70f1c2",
+            "type": "widget",
+            "x_size": 12,
+            "y_size": 6,
+            "widgetId": "cmnd4snny000jz40711i85wxp"
+          },
+          {
+            "x": 8,
+            "y": 0,
+            "id": "c21b4630-c2e2-4cf2-bbd8-d86548e1b9d4",
+            "type": "widget",
+            "x_size": 4,
+            "y_size": 5,
+            "widgetId": "cmnd56rw9000lz407uzi7hfr3"
+          },
+          {
+            "x": 8,
+            "y": 5,
+            "id": "0ffaa8e0-4bfb-40dc-9a65-87a91350caad",
+            "type": "widget",
+            "x_size": 4,
+            "y_size": 7,
+            "widgetId": "cmnd5bdce000nz407udxrwcrq"
+          },
+          {
+            "x": 0,
+            "y": 18,
+            "id": "81f3b8d0-e7fb-476f-86db-39325dbfc63b",
+            "type": "widget",
+            "x_size": 6,
+            "y_size": 6,
+            "widgetId": "cmnd5ha2d000pz407ltymhqc5"
+          },
+          {
+            "x": 0,
+            "y": 24,
+            "id": "82a1a95c-d017-4505-9ea7-65e811375a58",
+            "type": "widget",
+            "x_size": 6,
+            "y_size": 6,
+            "widgetId": "cmnd5i1ql000rz407gbc4y8vu"
+          },
+          {
+            "x": 6,
+            "y": 18,
+            "id": "806acd4c-52f3-40d8-8ea9-88382f67b850",
+            "type": "widget",
+            "x_size": 6,
+            "y_size": 6,
+            "widgetId": "cmnd5k2xt000tz407bvr3f13z"
+          },
+          {
+            "x": 6,
+            "y": 24,
+            "id": "d37277d8-6833-44e5-83e3-a6e1a7b99098",
+            "type": "widget",
+            "x_size": 6,
+            "y_size": 6,
+            "widgetId": "cmnd5l8fx000vz4078bfu0aj8"
+          },
+          {
+            "x": 0,
+            "y": 30,
+            "id": "c9cb47f6-618d-4fad-9bc9-5dd1654917d3",
+            "type": "widget",
+            "x_size": 6,
+            "y_size": 6,
+            "widgetId": "cmnd5p8lh000xz407bkolf461"
+          },
+          {
+            "x": 6,
+            "y": 30,
+            "id": "eb8744f5-4427-4a12-8345-639a6bcfe43c",
+            "type": "widget",
+            "x_size": 6,
+            "y_size": 6,
+            "widgetId": "cmnd5q0mn000zz4075bypm685"
+          },
+          {
+            "x": 0,
+            "y": 36,
+            "id": "ed2adf6d-cb00-43ca-b614-44cd7d8f3799",
+            "type": "widget",
+            "x_size": 6,
+            "y_size": 6,
+            "widgetId": "cmnd5qyet0011z407u0tdlyke"
+          },
+          {
+            "x": 6,
+            "y": 36,
+            "id": "63229d8f-0086-45f3-bdc5-458f1e1a10ff",
+            "type": "widget",
+            "x_size": 6,
+            "y_size": 6,
+            "widgetId": "cmnd5tpzl0013z407w4syflgk"
+          },
+          {
+            "x": 0,
+            "y": 42,
+            "id": "65b54acb-425b-4cf4-8094-b96ccf5ab25c",
+            "type": "widget",
+            "x_size": 6,
+            "y_size": 6,
+            "widgetId": "cmnd5zczm0015z407ve8nb5hs"
+          },
+          {
+            "x": 6,
+            "y": 42,
+            "id": "47f43507-6ccc-4fc4-9135-0a3a69ee9e93",
+            "type": "widget",
+            "x_size": 6,
+            "y_size": 6,
+            "widgetId": "cmnd60mrf0017z407acgndx58"
+          },
+          {
+            "x": 0,
+            "y": 48,
+            "id": "23b3c864-67b1-4238-b4ea-7b705912e349",
+            "type": "widget",
+            "x_size": 6,
+            "y_size": 6,
+            "widgetId": "cmnd61nzq0019z4079ha2vmnn"
+          },
+          {
+            "x": 6,
+            "y": 48,
+            "id": "e2cec7fd-f6a2-4419-8f45-0f1b0172f6d9",
+            "type": "widget",
+            "x_size": 6,
+            "y_size": 6,
+            "widgetId": "cmnd63ay3001bz407196mcv82"
+          },
+          {
+            "x": 0,
+            "y": 54,
+            "id": "3ed8195e-87c8-49a1-981c-3d6f8404c2ba",
+            "type": "widget",
+            "x_size": 6,
+            "y_size": 6,
+            "widgetId": "cmnd6hb2o001dz407tpz2vynm"
+          },
+          {
+            "x": 0,
+            "y": 3,
+            "id": "9a7e9839-479e-4279-850f-00e486fb00eb",
+            "type": "widget",
+            "x_size": 8,
+            "y_size": 4,
+            "widgetId": "cmnd6m0bw001fz407h5c827fn"
+          }
+        ]
+      }
+    }
+  ]
+}

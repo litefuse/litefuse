@@ -1,0 +1,540 @@
+import { Job, Processor } from "bullmq";
+import {
+  createIngestionEventSchema,
+  getDorisEntityType,
+  getCurrentSpan,
+  getS3EventStorageClient,
+  type IngestionEventType,
+  logger,
+  OtelIngestionProcessor,
+  processEventBatch,
+  QueueName,
+  recordDistribution,
+  recordHistogram,
+  recordIncrement,
+  redis,
+  TQueueJobTypes,
+  traceException,
+  compareVersions,
+  ResourceSpan,
+  dorisClient,
+} from "@langfuse/shared/src/server";
+import { env } from "../env";
+import { IngestionService } from "../services/IngestionService";
+import { prisma } from "@langfuse/shared/src/db";
+import { DorisWriter } from "../services/DorisWriter";
+import {
+  ForbiddenError,
+  convertEventRecordToObservationForEval,
+} from "@langfuse/shared";
+import {
+  fetchObservationEvalConfigs,
+  scheduleObservationEvals,
+  createObservationEvalSchedulerDeps,
+} from "../features/evaluation/observationEval";
+
+/**
+ * Check if HTTP headers from the SDK request indicate the batch is eligible
+ * for direct event writes.
+ *
+ * Requirements:
+ * - x-langfuse-sdk-name "python" with x-langfuse-sdk-version >= 4.0.0
+ * - x-langfuse-sdk-name "javascript" with x-langfuse-sdk-version >= 5.0.0
+ * - x-langfuse-ingestion-version === "4" (custom OTel exporter opt-in)
+ */
+export function checkHeaderBasedDirectWrite(params: {
+  sdkName?: string;
+  sdkVersion?: string;
+  ingestionVersion?: string;
+}): boolean {
+  const { sdkName, sdkVersion, ingestionVersion } = params;
+
+  // Check x-langfuse-ingestion-version (>= 4 means direct write eligible).
+  // Values > 4 are rejected at the API route, so anything reaching here is valid.
+  const parsed = ingestionVersion ? parseInt(ingestionVersion, 10) : NaN;
+  if (!isNaN(parsed) && parsed >= 4) {
+    return true;
+  }
+
+  // Check Langfuse SDK name + version
+  if (!sdkName || !sdkVersion) {
+    return false;
+  }
+
+  try {
+    // compareVersions returns null when current >= minimum (no update needed).
+    // Strip pre-release/build metadata so that e.g. 4.0.0-rc.1 qualifies as 4.0.0.
+    // Also normalize Python PEP440 shorthand (e.g. 4.0.0b1, 4.0.0rc1) to the core version.
+    const baseVersion = extractBaseSdkVersion(sdkVersion);
+
+    if (sdkName === "python") {
+      return compareVersions(baseVersion, "v4.0.0") === null;
+    }
+
+    if (sdkName === "javascript") {
+      return compareVersions(baseVersion, "v5.0.0") === null;
+    }
+  } catch {
+    logger.warn(
+      `Failed to parse SDK version from headers: ${sdkName}@${sdkVersion}`,
+    );
+  }
+
+  return false;
+}
+
+/**
+ * Master events_full migration: the legacy dual-write path (mergeAndWrite
+ * to traces / observation_source) is gated off by this sentinel. Defined
+ * as a function call so TypeScript does not constant-fold the value and
+ * mark the legacy branch as unreachable — keeping the preserved-for-
+ * reference code type-checked. Flip to `true` to restore the dual-write
+ * path in an emergency (not expected on master).
+ */
+function legacyDualWrite(): boolean {
+  return false;
+}
+
+function extractBaseSdkVersion(sdkVersion: string): string {
+  const version = sdkVersion.trim();
+
+  // Standard semver / semver pre-release / build metadata
+  if (/^v?\d+\.\d+\.\d+(?:[-+].+)?$/i.test(version)) {
+    return version.split(/[-+]/)[0];
+  }
+
+  // Python PEP 440 pre-release shorthand: 4.0.0a1, 4.0.0b1, 4.0.0rc1
+  const pep440Match = version.match(/^(v?\d+\.\d+\.\d+)(?:a|b|rc)\d+$/i);
+  if (pep440Match?.[1]) {
+    return pep440Match[1];
+  }
+
+  return version;
+}
+
+/**
+ * SDK information extracted from OTEL resourceSpans.
+ */
+export type SdkInfo = {
+  scopeName: string | null;
+  scopeVersion: string | null;
+  telemetrySdkLanguage: string | null;
+};
+
+/**
+ * Extract SDK information from resourceSpans.
+ * Gets scope name/version and telemetry SDK language from the OTEL structure.
+ */
+export function getSdkInfoFromResourceSpans(
+  resourceSpans: ResourceSpan,
+): SdkInfo {
+  try {
+    // Get the first scopeSpan (all spans in a batch share the same scope)
+    const firstScopeSpan = resourceSpans?.scopeSpans?.[0];
+    const scopeName = firstScopeSpan?.scope?.name ?? null;
+    const scopeVersion = firstScopeSpan?.scope?.version ?? null;
+
+    // Extract telemetry SDK language from resource attributes
+    const resourceAttributes = resourceSpans?.resource?.attributes ?? [];
+    const telemetrySdkLanguage =
+      resourceAttributes.find((attr) => attr.key === "telemetry.sdk.language")
+        ?.value?.stringValue ?? null;
+
+    return { scopeName, scopeVersion, telemetrySdkLanguage };
+  } catch (error) {
+    logger.warn("Failed to extract SDK info from resourceSpans", error);
+    return { scopeName: null, scopeVersion: null, telemetrySdkLanguage: null };
+  }
+}
+
+/**
+ * Check if SDK meets version requirements for direct event writes.
+ *
+ * Requirements:
+ * - Scope name must contain 'langfuse' (case-insensitive)
+ * - Python SDK: scope_version >= 3.9.0
+ * - JS/JavaScript SDK: scope_version >= 4.4.0
+ */
+export function checkSdkVersionRequirements(
+  sdkInfo: SdkInfo,
+  isSdkExperimentBatch: boolean,
+): boolean {
+  const { scopeName, scopeVersion, telemetrySdkLanguage } = sdkInfo;
+
+  // Must be a Langfuse SDK
+  if (!scopeName || !String(scopeName).toLowerCase().includes("langfuse")) {
+    return false;
+  }
+
+  if (!scopeVersion || !telemetrySdkLanguage) {
+    return false;
+  }
+
+  try {
+    // Python SDK >= 3.9.0
+    if (telemetrySdkLanguage === "python" && isSdkExperimentBatch) {
+      const comparison = compareVersions(scopeVersion, "v3.9.0");
+      return comparison === null; // null means current >= latest
+    }
+
+    // JS/JavaScript SDK >= 4.4.0
+    if (
+      (telemetrySdkLanguage === "js" ||
+        telemetrySdkLanguage === "javascript") &&
+      isSdkExperimentBatch
+    ) {
+      const comparison = compareVersions(scopeVersion, "v4.4.0");
+      return comparison === null; // null means current >= latest
+    }
+
+    return false;
+  } catch (error) {
+    logger.warn(
+      `Failed to parse SDK version ${scopeVersion} for language ${telemetrySdkLanguage}`,
+      error,
+    );
+    return false;
+  }
+}
+
+export const otelIngestionQueueProcessor: Processor = async (
+  job: Job<TQueueJobTypes[QueueName.OtelIngestionQueue]>,
+): Promise<void> => {
+  try {
+    const projectId = job.data.payload.authCheck.scope.projectId;
+    const publicKey = job.data.payload.data.publicKey;
+    const fileKey = job.data.payload.data.fileKey;
+    const auth = job.data.payload.authCheck;
+
+    const span = getCurrentSpan();
+    if (span) {
+      span.setAttribute("messaging.bullmq.job.input.id", job.data.id);
+      span.setAttribute(
+        "messaging.bullmq.job.input.projectId",
+        job.data.payload.authCheck.scope.projectId,
+      );
+      span.setAttribute(
+        "messaging.bullmq.job.input.fileKey",
+        job.data.payload.data.fileKey,
+      );
+    }
+    logger.debug(`Processing ${fileKey} for project ${projectId}`);
+
+    // TODO: Do we need to add these files into the blob_storage_file_log?
+    // We could recommend lifecycle rules due to the immutability properties.
+    // Otherwise, we'd probably have to upsert one row per generated event further below.
+    // Easy change, but needs alignment.
+
+    // Download file from blob storage
+    const resourceSpans = await getS3EventStorageClient(
+      env.LITEFUSE_S3_EVENT_UPLOAD_BUCKET,
+    ).download(fileKey);
+
+    recordHistogram(
+      "langfuse.ingestion.s3_file_size_bytes",
+      resourceSpans.length, // At this point it's still a string.
+      {
+        skippedS3List: "true",
+        otel: "true",
+      },
+    );
+
+    // Parse spans from S3 download
+    const parsedSpans = JSON.parse(resourceSpans);
+
+    // Generate events via OtelIngestionProcessor
+    const processor = new OtelIngestionProcessor({
+      projectId,
+      publicKey,
+    });
+    const events: IngestionEventType[] =
+      await processor.processToIngestionEvents(parsedSpans);
+    // Here, we split the events into observations and non-observations.
+    // Observations go into the IngestionService directly whereas the non-observations make another run through the processEventBatch method.
+    const traces = events.filter(
+      (e) => getDorisEntityType(e.type) !== "observation",
+    );
+    // We need to parse each incoming observation through our ingestion schema to make use of its included transformations.
+    const ingestionSchema = createIngestionEventSchema();
+    const observations = events
+      .filter((e) => getDorisEntityType(e.type) === "observation")
+      .map((o) => ingestionSchema.safeParse(o))
+      .flatMap((o) => {
+        if (!o.success) {
+          logger.warn(
+            `Failed to parse otel observation for project ${projectId} in ${fileKey}: ${o.error}`,
+            o.error,
+          );
+          return [];
+        }
+        return [o.data];
+      });
+
+    // In the next row, we only consider observations. The traces will be recorded in processEventBatch.
+    recordIncrement("langfuse.ingestion.event", observations.length, {
+      source: "otel",
+    });
+    // Record more stats specific to the Otel processing
+    recordDistribution("langfuse.ingestion.otel.trace_count", traces.length);
+    recordDistribution(
+      "langfuse.ingestion.otel.observation_count",
+      observations.length,
+    );
+    span?.setAttribute("langfuse.ingestion.otel.trace_count", traces.length);
+    span?.setAttribute(
+      "langfuse.ingestion.otel.observation_count",
+      observations.length,
+    );
+
+    // Ensure required infra config is present
+    if (!redis) throw new Error("Redis not available");
+    if (!prisma) throw new Error("Prisma not available");
+
+    // Initialize Doris writer only
+    const dorisWriter = DorisWriter.getInstance();
+
+    const ingestionService = new IngestionService(
+      redis,
+      prisma,
+      dorisWriter,
+      dorisClient(),
+    );
+
+    // Decide whether observations should be processed via new flow (directly to events table)
+    // or via the dual write (staging table and batch job to events).
+    //
+    // Priority 1: HTTP headers from the SDK request (batch-level decision).
+    //   - x-langfuse-sdk-name/version: Python >= 4.0.0 or JS >= 5.0.0
+    //   - x-langfuse-ingestion-version: "4" (custom OTel exporter opt-in)
+    //   When headers qualify, ALL spans in the batch (including third-party scoped) use direct write.
+    //
+    // Priority 2 (fallback): Per-span OTEL scope inspection (legacy).
+    //   - scope.name contains "langfuse", sdk-experiment environment, Python >= 3.9.0 or JS >= 4.4.0
+    const headerBasedDirectWrite = checkHeaderBasedDirectWrite({
+      sdkName: job.data.payload.sdkName,
+      sdkVersion: job.data.payload.sdkVersion,
+      ingestionVersion: job.data.payload.ingestionVersion,
+    });
+
+    let useDirectEventWrite = headerBasedDirectWrite;
+
+    if (!useDirectEventWrite) {
+      const hasExperimentEnvironment = observations.some((o) => {
+        const body = o.body as { environment?: string };
+        return body.environment === "sdk-experiment";
+      });
+      const sdkInfo =
+        parsedSpans.length > 0
+          ? getSdkInfoFromResourceSpans(parsedSpans[0])
+          : {
+              scopeName: null,
+              scopeVersion: null,
+              telemetrySdkLanguage: null,
+            };
+      useDirectEventWrite = checkSdkVersionRequirements(
+        sdkInfo,
+        hasExperimentEnvironment,
+      );
+    }
+
+    const writePath = useDirectEventWrite
+      ? headerBasedDirectWrite
+        ? "direct_header"
+        : "direct_scope"
+      : "dual";
+    span?.setAttribute("langfuse.ingestion.otel.write_path", writePath);
+    recordIncrement("langfuse.ingestion.otel.write_path", 1, {
+      path: writePath,
+    });
+
+    const shouldForwardToEventsTable =
+      !useDirectEventWrite &&
+      env.LITEFUSE_EXPERIMENT_INSERT_INTO_EVENTS_TABLE === "true";
+
+    // OTel-only contract (master events_full migration): events_full is the
+    // single write target. The legacy mergeAndWrite-to-traces /
+    // processEventBatch-to-traces dual write block below is preserved as
+    // reference but never executes. The events_full row is written further
+    // down via createEventRecord + writeEventRecord (unconditionally — the
+    // shouldWriteToEventsTable gate below is also kept for reference but
+    // forced true).
+    //
+    // We keep the indirection via legacyDualWrite() so TypeScript does not
+    // constant-fold and mark the legacy branch unreachable; the original
+    // 30-odd lines below stay type-checked and visible.
+    if (legacyDualWrite()) {
+      // Running everything concurrently might be detrimental to the event loop, but has probably
+      // the highest possible throughput. Therefore, we start with a Promise.all.
+      // If necessary, we may use a for each instead.
+
+      // Process observations via mergeAndWrite
+      const observationWritePromise = Promise.all(
+        observations.map((observation) =>
+          ingestionService.mergeAndWrite(
+            getDorisEntityType(observation.type),
+            auth.scope.projectId,
+            observation.body.id || "", // id is always defined for observations
+            new Date(), // Use the current timestamp as event time
+            [observation],
+            shouldForwardToEventsTable,
+          ),
+        ),
+      );
+
+      // Process traces and observations concurrently
+      await Promise.all([
+        observationWritePromise,
+        processEventBatch(traces, auth, {
+          delay: 0,
+          source: "otel",
+          forwardToEventsTable: shouldForwardToEventsTable,
+        }),
+      ]);
+    }
+
+    // Process events for observation evals and direct event writes
+    // This phase handles two independent concerns:
+    // 1. Scheduling observation-level evals (if eval configs exist)
+    // 2. Writing directly to events table (if SDK version requirements are met)
+    //
+    // Both require enriched event records with trace-level attributes
+    // (userId, sessionId, tags, release) that processToEvent provides.
+    const eventInputs = processor.processToEvent(parsedSpans);
+
+    if (eventInputs.length === 0) {
+      return;
+    }
+
+    // Determine what processing is needed.
+    // Master events_full migration: events_full IS the production write
+    // target for trace/observation, so we no longer gate writes on the
+    // legacy LITEFUSE_EXPERIMENT_INSERT_INTO_EVENTS_TABLE flag. The
+    // useDirectEventWrite check stays as a safety net — the OTel route
+    // already SDK-gates v3 clients, so this is effectively always true.
+    const shouldWriteToEventsTable = useDirectEventWrite;
+
+    const evalConfigs = await fetchObservationEvalConfigs(projectId).catch(
+      (error) => {
+        traceException(error);
+        logger.warn(
+          `Failed to fetch observation eval configs for project ${projectId}`,
+          error,
+        );
+
+        return [];
+      },
+    );
+    const hasEvalConfigs = evalConfigs.length > 0;
+
+    // Early exit if no processing needed
+    if (!hasEvalConfigs && !shouldWriteToEventsTable) {
+      return;
+    }
+
+    // Create scheduler deps only if we have eval configs
+    const evalSchedulerDeps = hasEvalConfigs
+      ? createObservationEvalSchedulerDeps()
+      : null;
+
+    // Upsert distinct session_ids into PG trace_sessions. The legacy V3
+    // ingestion path (mergeAndWriteTraceRecord) was the only writer of this
+    // table; OTel-only ingestion bypasses it. Without this, the
+    // protectedGetSessionProcedure middleware in trpc.ts can't find the row
+    // and returns 404 on session detail pages.
+    const sessionEnvByid = new Map<string, string>();
+    for (const ev of eventInputs) {
+      if (ev.sessionId) {
+        sessionEnvByid.set(ev.sessionId, ev.environment ?? "default");
+      }
+    }
+    if (sessionEnvByid.size > 0) {
+      try {
+        await prisma.traceSession.createMany({
+          data: Array.from(sessionEnvByid.entries()).map(([id, environment]) => ({
+            id,
+            projectId,
+            environment,
+          })),
+          skipDuplicates: true,
+        });
+      } catch (e) {
+        traceException(e);
+        logger.error(
+          `Failed to upsert trace_sessions for project ${projectId}`,
+          e,
+        );
+      }
+    }
+
+    await Promise.all(
+      // Process each event independently
+      eventInputs.map(async (eventInput) => {
+        // Step 1: Create enriched event record (required for both evals and writes)
+        let eventRecord;
+        try {
+          eventRecord = await ingestionService.createEventRecord(
+            eventInput,
+            fileKey,
+          );
+        } catch (error) {
+          traceException(error);
+          logger.error(
+            `Failed to create event record for project ${eventInput.projectId} and observation ${eventInput.spanId}`,
+            error,
+          );
+
+          return;
+        }
+
+        // Step 2: Schedule observation evals (independent of event writes)
+        if (hasEvalConfigs && evalSchedulerDeps) {
+          try {
+            const observation = convertEventRecordToObservationForEval({
+              ...eventRecord,
+              input: eventInput.input ?? eventRecord.input,
+            });
+
+            await scheduleObservationEvals({
+              observation,
+              configs: evalConfigs,
+              schedulerDeps: evalSchedulerDeps,
+            });
+          } catch (error) {
+            traceException(error);
+
+            logger.error(
+              `Failed to schedule observation evals for project ${eventInput.projectId} and observation ${eventInput.spanId}`,
+              error,
+            );
+          }
+        }
+
+        // Step 3: Write to events table (independent of eval scheduling)
+        if (shouldWriteToEventsTable) {
+          try {
+            ingestionService.writeEventRecord(eventRecord);
+          } catch (error) {
+            traceException(error);
+            logger.error(
+              `Failed to write event record for ${eventInput.spanId}`,
+              error,
+            );
+          }
+        }
+      }),
+    );
+  } catch (e) {
+    if (e instanceof ForbiddenError) {
+      traceException(e);
+      logger.warn(`Failed to parse otel observation: ${e.message}`, e);
+      return;
+    }
+
+    logger.error(
+      `Failed job otel ingestion processing for ${job.data.payload.authCheck.scope.projectId}`,
+      e,
+    );
+    traceException(e);
+    throw e;
+  }
+};
