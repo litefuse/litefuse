@@ -1,0 +1,118 @@
+import { createTRPCRouter } from "@/src/server/api/trpc";
+import { traceRouter } from "./routers/traces";
+import { generationsRouter } from "./routers/generations";
+import { eventsRouter } from "@/src/features/events/server/eventsRouter";
+import { scoresRouter } from "./routers/scores";
+import { scoreAnalyticsRouter } from "@/src/features/score-analytics/server/scoreAnalyticsRouter";
+import { dashboardRouter } from "@/src/features/dashboard/server/dashboard-router";
+import { projectsRouter } from "@/src/features/projects/server/projectsRouter";
+import { projectApiKeysRouter } from "@/src/features/public-api/server/projectApiKeyRouter";
+import { membersRouter } from "@/src/features/rbac/server/membersRouter";
+import { userRouter } from "@/src/server/api/routers/users";
+import { userAccountRouter } from "@/src/server/api/routers/userAccount";
+import { datasetRouter } from "@/src/features/datasets/server/dataset-router";
+// Cloud billing, spend alerts, and UI customization tRPC routers lived in the
+// EE module and have been removed from the OSS build.
+import { observationsRouter } from "@/src/server/api/routers/observations";
+import { sessionRouter } from "@/src/server/api/routers/sessions";
+import { promptRouter } from "@/src/features/prompts/server/routers/promptRouter";
+import { modelRouter } from "@/src/server/api/routers/models";
+import { evalRouter } from "@/src/features/evals/server/router";
+import { posthogIntegrationRouter } from "@/src/features/posthog-integration/posthog-integration-router";
+import { mixpanelIntegrationRouter } from "@/src/features/mixpanel-integration/mixpanel-integration-router";
+import { blobStorageIntegrationRouter } from "@/src/features/blobstorage-integration/blobstorage-integration-router";
+import { llmApiKeyRouter } from "@/src/features/llm-api-key/server/router";
+import { llmSchemaRouter } from "@/src/features/llm-schemas/server/router";
+import { llmToolRouter } from "@/src/features/llm-tools/server/router";
+import { organizationsRouter } from "@/src/features/organizations/server/organizationRouter";
+import { organizationApiKeysRouter } from "@/src/features/public-api/server/organizationApiKeyRouter";
+import { scoreConfigsRouter } from "@/src/server/api/routers/scoreConfigs";
+import { publicRouter } from "@/src/server/api/routers/public";
+import { credentialsRouter } from "@/src/features/auth-credentials/server/credentialsRouter";
+import { batchExportRouter } from "@/src/features/batch-exports/server/batchExport";
+import { utilsRouter } from "@/src/server/api/routers/utilities";
+import { commentsRouter } from "@/src/server/api/routers/comments";
+import { commentReactionsRouter } from "@/src/server/api/routers/commentReactions";
+import { queueRouter } from "@/src/features/annotation-queues/server/annotationQueuesRouter";
+import { queueItemRouter } from "@/src/features/annotation-queues/server/annotationQueueItemsRouter";
+import { experimentsRouter } from "@/src/features/experiments/server/router";
+import { mediaRouter } from "@/src/server/api/routers/media";
+import { backgroundMigrationsRouter } from "@/src/features/background-migrations/server/background-migrations-router";
+import { auditLogsRouter } from "./routers/auditLogs";
+import { tableRouter } from "@/src/features/table/server/tableRouter";
+import { batchActionRouter } from "@/src/features/batch-actions/server/batchActionRouter";
+import { cloudStatusRouter } from "@/src/features/cloud-status-notification/server/cloud-status-router";
+import { dashboardWidgetRouter } from "./routers/dashboardWidgets";
+import { TableViewPresetsRouter } from "@/src/server/api/routers/tableViewPresets";
+import { automationsRouter } from "@/src/features/automations/server/router";
+import { defaultEvalModelRouter } from "@/src/features/evals/server/defaultEvalModelRouter";
+import { slackRouter } from "@/src/features/slack/server/router";
+import { plainRouter } from "@/src/features/support-chat/trpc/plainRouter";
+import { queueAssignmentRouter } from "@/src/features/annotation-queues/server/annotationQueueAssignmentsRouter";
+import { surveysRouter } from "@/src/server/api/routers/surveys";
+import { naturalLanguageFilterRouter } from "@/src/features/natural-language-filters/server/router";
+import { notificationPreferencesRouter } from "@/src/server/api/routers/notificationPreferences";
+import { discoverRouter } from "@/src/features/discover/server/discoverRouter";
+
+/**
+ * This is the primary router for your server.
+ *
+ * All routers added in /api/routers should be manually added here.
+ */
+export const appRouter = createTRPCRouter({
+  annotationQueues: queueRouter,
+  annotationQueueItems: queueItemRouter,
+  annotationQueueAssignments: queueAssignmentRouter,
+  batchExport: batchExportRouter,
+  traces: traceRouter,
+  sessions: sessionRouter,
+  generations: generationsRouter,
+  events: eventsRouter,
+  scores: scoresRouter,
+  scoreAnalytics: scoreAnalyticsRouter,
+  scoreConfigs: scoreConfigsRouter,
+  dashboard: dashboardRouter,
+  organizations: organizationsRouter,
+  organizationApiKeys: organizationApiKeysRouter,
+  projects: projectsRouter,
+  users: userRouter,
+  userAccount: userAccountRouter,
+  projectApiKeys: projectApiKeysRouter,
+  members: membersRouter,
+  datasets: datasetRouter,
+  observations: observationsRouter,
+  prompts: promptRouter,
+  models: modelRouter,
+  evals: evalRouter,
+  defaultLlmModel: defaultEvalModelRouter,
+  experiments: experimentsRouter,
+  posthogIntegration: posthogIntegrationRouter,
+  mixpanelIntegration: mixpanelIntegrationRouter,
+  blobStorageIntegration: blobStorageIntegrationRouter,
+  llmApiKey: llmApiKeyRouter,
+  llmSchemas: llmSchemaRouter,
+  llmTools: llmToolRouter,
+  public: publicRouter,
+  credentials: credentialsRouter,
+  utilities: utilsRouter,
+  comments: commentsRouter,
+  commentReactions: commentReactionsRouter,
+  media: mediaRouter,
+  backgroundMigrations: backgroundMigrationsRouter,
+  auditLogs: auditLogsRouter,
+  table: tableRouter,
+  batchAction: batchActionRouter,
+  cloudStatus: cloudStatusRouter,
+  dashboardWidgets: dashboardWidgetRouter,
+  TableViewPresets: TableViewPresetsRouter,
+  automations: automationsRouter,
+  slack: slackRouter,
+  plainRouter: plainRouter,
+  surveys: surveysRouter,
+  naturalLanguageFilters: naturalLanguageFilterRouter,
+  notificationPreferences: notificationPreferencesRouter,
+  discover: discoverRouter,
+});
+
+// export type definition of API
+export type AppRouter = typeof appRouter;

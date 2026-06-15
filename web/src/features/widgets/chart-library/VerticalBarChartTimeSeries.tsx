@@ -1,0 +1,88 @@
+import React, { useMemo } from "react";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/src/components/ui/chart";
+import { Bar, BarChart, XAxis, YAxis } from "recharts";
+import { type ChartProps } from "@/src/features/widgets/chart-library/chart-props";
+import {
+  getUniqueDimensions,
+  groupDataByTimeDimension,
+} from "@/src/features/widgets/chart-library/utils";
+import { compactNumberFormatter } from "@/src/utils/numbers";
+
+/**
+ * VerticalBarChartTimeSeries component
+ * @param data - Data to be displayed. Expects an array of objects with time_dimension, dimension, and metric properties.
+ * @param config - Configuration object for the chart. Can include theme settings for light and dark modes.
+ * @param accessibilityLayer - Boolean to enable or disable the accessibility layer. Default is true.
+ */
+export const VerticalBarChartTimeSeries: React.FC<ChartProps> = ({
+  data,
+  config = {
+    metric: {
+      theme: {
+        light: "hsl(var(--chart-1))",
+        dark: "hsl(var(--chart-1))",
+      },
+    },
+  },
+  accessibilityLayer = true,
+  valueFormatter = compactNumberFormatter,
+  subtleFill = false,
+}) => {
+  const groupedData = useMemo(() => groupDataByTimeDimension(data), [data]);
+  const dimensions = useMemo(() => getUniqueDimensions(data), [data]);
+
+  return (
+    <ChartContainer
+      config={config}
+      className="[&_.recharts-bar-rectangle:hover]:opacity-30 dark:[&_.recharts-bar-rectangle:hover]:opacity-100 dark:[&_.recharts-bar-rectangle:hover]:brightness-[3]"
+    >
+      <BarChart accessibilityLayer={accessibilityLayer} data={groupedData}>
+        <XAxis
+          dataKey="time_dimension"
+          stroke="hsl(var(--chart-grid))"
+          fontSize={12}
+          tickLine={false}
+          axisLine={false}
+          interval="preserveStartEnd"
+          minTickGap={24}
+        />
+        <YAxis
+          type="number"
+          stroke="hsl(var(--chart-grid))"
+          fontSize={12}
+          tickLine={false}
+          axisLine={false}
+        />
+        {dimensions.map((dimension, index) => (
+          <Bar
+            key={dimension}
+            dataKey={dimension}
+            stroke={`hsl(var(--chart-${(index % 8) + 1}))`}
+            fill={`hsl(var(--chart-${(index % 8) + 1}))`}
+            fillOpacity={subtleFill ? 0.3 : 1}
+            stackId={dimensions.length > 1 ? "stack" : undefined}
+          />
+        ))}
+        <ChartTooltip
+          cursor={false}
+          contentStyle={{ backgroundColor: "hsl(var(--background))" }}
+          content={({ active, payload, label }) => (
+            <ChartTooltipContent
+              active={active}
+              payload={payload}
+              label={label}
+              valueFormatter={valueFormatter}
+              sortPayloadByValue="desc"
+            />
+          )}
+        />
+      </BarChart>
+    </ChartContainer>
+  );
+};
+
+export default VerticalBarChartTimeSeries;
