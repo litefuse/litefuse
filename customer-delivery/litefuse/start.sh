@@ -47,7 +47,6 @@ if [ ! -f "$ENV_FILE" ]; then
     echo "REDIS_AUTH=$(random_hex 16)"
     echo "MINIO_ROOT_PASSWORD=$(random_hex 16)"
     echo "TELEMETRY_ENABLED=false"
-    echo "LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES=false"
     echo "LITEFUSE_ENABLE_EXPERIMENTAL_FEATURES=false"
   } > "$ENV_FILE"
 fi
