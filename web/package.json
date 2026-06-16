@@ -155,7 +155,7 @@
     "rate-limiter-flexible": "^5.0.3",
     "react": "19.2.3",
     "react-day-picker": "^9.9.0",
-    "react-dom": "19.2.3",
+    "react-dom": "19.2.7",
     "react-dropzone": "^14.3.8",
     "react-grid-layout": "^1.5.2",
     "react-hook-form": "^7.62.0",
