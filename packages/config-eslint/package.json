@@ -24,7 +24,7 @@
     "eslint-plugin-only-warn": "^1.1.0",
     "eslint-plugin-prettier": "^5.5.4",
     "globals": "^16.0.0",
-    "typescript-eslint": "^8.50.1"
+    "typescript-eslint": "^8.61.1"
   },
   "peerDependencies": {
     "eslint": "^9.39.0",
