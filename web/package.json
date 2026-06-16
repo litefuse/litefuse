@@ -115,7 +115,7 @@
     "chroma-js": "^3.1.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
-    "cmdk": "^1.0.4",
+    "cmdk": "^1.1.1",
     "core-js": "^3.38.1",
     "cors": "^2.8.5",
     "csv-parse": "^5.6.0",
