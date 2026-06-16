@@ -1,0 +1,241 @@
+services:
+  litefuse-web:
+    image: litefuse/litefuse-web:26.0.1
+    container_name: litefuse-web
+    hostname: litefuse-web
+    depends_on: &litefuse-depends-on
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      doris_fe:
+        condition: service_healthy
+      doris_be:
+        condition: service_healthy
+    ports:
+      - "13000:3000"
+    environment: &litefuse-web-env
+      DATABASE_URL: postgresql://postgres:postgres@litefuse-postgres:5432/postgres
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-your-debug-secret-key-here-must-be-long-enough}
+      SALT: ${SALT:-your-super-secret-salt-with-at-least-32-characters-for-encryption}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      TELEMETRY_ENABLED: ${TELEMETRY_ENABLED:-false}
+      LITEFUSE_ENABLE_EXPERIMENTAL_FEATURES: ${LITEFUSE_ENABLE_EXPERIMENTAL_FEATURES:-false}
+      LITEFUSE_INIT_ORG_ID: ${LITEFUSE_INIT_ORG_ID:-}
+      LITEFUSE_INIT_ORG_NAME: ${LITEFUSE_INIT_ORG_NAME:-}
+      LITEFUSE_INIT_PROJECT_ID: ${LITEFUSE_INIT_PROJECT_ID:-}
+      LITEFUSE_INIT_PROJECT_NAME: ${LITEFUSE_INIT_PROJECT_NAME:-}
+      LITEFUSE_INIT_PROJECT_PUBLIC_KEY: ${LITEFUSE_INIT_PROJECT_PUBLIC_KEY:-}
+      LITEFUSE_INIT_PROJECT_SECRET_KEY: ${LITEFUSE_INIT_PROJECT_SECRET_KEY:-}
+      LITEFUSE_INIT_USER_EMAIL: ${LITEFUSE_INIT_USER_EMAIL:-}
+      LITEFUSE_INIT_USER_NAME: ${LITEFUSE_INIT_USER_NAME:-}
+      LITEFUSE_INIT_USER_PASSWORD: ${LITEFUSE_INIT_USER_PASSWORD:-}
+      LITEFUSE_S3_EVENT_UPLOAD_BUCKET: ${LITEFUSE_S3_EVENT_UPLOAD_BUCKET:-litefuse}
+      LITEFUSE_S3_EVENT_UPLOAD_REGION: ${LITEFUSE_S3_EVENT_UPLOAD_REGION:-us-east-1}
+      LITEFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: ${LITEFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID:-minio}
+      LITEFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${LITEFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY:-miniosecret}
+      LITEFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://litefuse-minio:9000
+      LITEFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: ${LITEFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE:-true}
+      LITEFUSE_S3_EVENT_UPLOAD_PREFIX: ${LITEFUSE_S3_EVENT_UPLOAD_PREFIX:-events/}
+      REDIS_HOST: litefuse-redis
+      REDIS_PORT: 6379
+      REDIS_AUTH: ${REDIS_AUTH:-myredissecret}
+      REDIS_TLS_ENABLED: ${REDIS_TLS_ENABLED:-false}
+      REDIS_TLS_CA: ${REDIS_TLS_CA:-}
+      REDIS_TLS_CERT: ${REDIS_TLS_CERT:-}
+      REDIS_TLS_KEY: ${REDIS_TLS_KEY:-}
+
+      # 时区设置
+      TZ: Asia/Shanghai
+
+
+      LITEFUSE_ENABLE_BACKGROUND_MIGRATIONS: false
+
+      # 临时禁用 Doris 迁移，直到修复脚本语法错误
+      LITEFUSE_AUTO_DORIS_MIGRATION_DISABLED: false
+
+      # Doris 配置
+      # Note: Doris is enabled automatically when LITEFUSE_ANALYTICS_BACKEND="doris"
+      LITEFUSE_ANALYTICS_BACKEND: ${LITEFUSE_ANALYTICS_BACKEND:-doris}
+      DORIS_URL: ${DORIS_FE_HTTP_URL:-}
+      DORIS_FE_HTTP_URL: ${DORIS_FE_HTTP_URL:-http://172.30.0.2:8030}
+      DORIS_FE_QUERY_PORT: ${DORIS_FE_QUERY_PORT:-9030}
+      DORIS_DB: ${DORIS_DB:-litefuse}
+      DORIS_USER: ${DORIS_USER:-root}
+      DORIS_PASSWORD: ${DORIS_PASSWORD:-}
+      DORIS_MAX_OPEN_CONNECTIONS: ${DORIS_MAX_OPEN_CONNECTIONS:-100}
+      DORIS_REQUEST_TIMEOUT_MS: ${DORIS_REQUEST_TIMEOUT_MS:-30000}
+      HOSTNAME: "0.0.0.0"
+      PORT: "3000"
+    restart: always
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "--timeout=10", "http://127.0.0.1:3000/api/public/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - default
+      - doris_internal
+
+  litefuse-worker:
+    image: litefuse/litefuse-worker:26.0.1
+    container_name: litefuse-worker
+    hostname: litefuse-worker
+    depends_on: *litefuse-depends-on
+    ports:
+      - "3030:3030"
+    environment:
+      <<: *litefuse-web-env
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep 'node worker/dist/index.js' | grep -v grep || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - default
+      - doris_internal
+
+  minio:
+    image: minio/minio
+    container_name: litefuse-minio
+    hostname: litefuse-minio
+    restart: always
+    entrypoint: sh
+    # create the 'litefuse' bucket before starting the service
+    command: -c 'mkdir -p /data/litefuse && minio server --address ":9000" --console-address ":9001" /data'
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: miniosecret # CHANGEME
+    ports:
+      - 19090:9000
+      - 127.0.0.1:19091:9001
+    volumes:
+      - litefuse_minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 1s
+      timeout: 5s
+      retries: 5
+      start_period: 1s
+
+  redis:
+    image: redis:7
+    container_name: litefuse-redis
+    hostname: litefuse-redis
+    restart: always
+    # CHANGEME: row below to secure redis password
+    command: >
+      --requirepass ${REDIS_AUTH:-myredissecret}
+    ports:
+      - 127.0.0.1:16379:6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 10s
+      retries: 10
+
+  postgres:
+    image: postgres:${POSTGRES_VERSION:-latest}
+    container_name: litefuse-postgres
+    hostname: litefuse-postgres
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres # CHANGEME
+      POSTGRES_DB: postgres
+    ports:
+      - 127.0.0.1:5432:5432
+    volumes:
+      - litefuse_postgres_data:/var/lib/postgresql
+
+  doris_fe:
+    image: apache/doris:fe-4.0.4
+    hostname: doris_fe
+    container_name: doris_fe
+    environment:
+      - FE_SERVERS=fe1:172.30.0.2:9010
+      - FE_ID=1
+    ports:
+      - "8030:8030"
+      - "9030:9030"
+      - "9010:9010"
+    networks:
+      doris_internal:
+        ipv4_address: 172.30.0.2
+    volumes:
+      # 持久化 FE 元数据
+      - doris_fe_meta:/opt/apache-doris/fe/doris-meta
+      # 挂载自定义配置（disable_backend_black_list 等）
+      - ./doris-config/fe_custom.conf:/opt/apache-doris/fe/conf/fe_custom.conf:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -sf http://127.0.0.1:8030/api/bootstrap 2>/dev/null || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 120s
+
+  doris_be:
+    image: apache/doris:be-4.0.4
+    hostname: doris_be
+    container_name: doris_be
+    environment:
+      - FE_SERVERS=fe1:172.30.0.2:9010
+      - BE_ADDR=172.30.0.3:9050
+    depends_on:
+      doris_fe:
+        condition: service_healthy
+    ports:
+      - "8040:8040"
+      - "8060:8060"
+      - "9050:9050"
+      - "9060:9060"
+    networks:
+      doris_internal:
+        ipv4_address: 172.30.0.3
+    volumes:
+      # 持久化 BE 数据存储
+      - doris_be_storage:/opt/apache-doris/be/storage
+      # 可选：挂载自定义配置
+      # - ./be_custom.conf:/opt/apache-doris/be/conf/be_custom.conf:ro
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "mysql -h 172.30.0.2 -P 9030 -uroot -e 'SHOW BACKENDS\\G' | grep -A 20 'Host: 172.30.0.3' | grep -q 'Alive: true'" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 150s
+
+volumes:
+  litefuse_postgres_data:
+    driver: local
+  litefuse_minio_data:
+    driver: local
+  doris_fe_meta:
+    driver: local
+  doris_be_storage:
+    driver: local
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.200.0.0/24
+          gateway: 10.200.0.1
+  doris_internal:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24

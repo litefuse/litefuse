@@ -1,0 +1,139 @@
+# Local dev infrastructure for Litefuse (Doris).
+# Brings up postgres / redis / minio / doris (FE + BE split) on standard ports
+# that match .env. Run web + worker yourself via `pnpm run dev` — NOT in here.
+#
+#   docker compose -f docker-compose.dev.yml up -d
+#
+# NOTE on Doris stream load from the host:
+#   web/worker run on the host (pnpm), so point DORIS_FE_HTTP_URL at the BE
+#   HTTP port (http://localhost:8040). Sending stream load to the FE (8030)
+#   would 307-redirect to the BE's container-internal IP, which the host
+#   cannot reach. MySQL reads still use DORIS_FE_QUERY_PORT=9030 (FE).
+name: litefuse-doris-dev
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: litefuse-postgres
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - 127.0.0.1:5432:5432
+    volumes:
+      - litefuse_postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7.2.4
+    container_name: litefuse-redis
+    restart: always
+    command: >
+      --requirepass ${REDIS_AUTH:-myredissecret}
+      --maxmemory-policy noeviction
+    ports:
+      - 127.0.0.1:6379:6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 10s
+      retries: 10
+
+  minio:
+    image: cgr.dev/chainguard/minio
+    container_name: litefuse-minio
+    restart: always
+    entrypoint: sh
+    # create the bucket (matches LITEFUSE_S3_*_BUCKET in .env) before serving
+    command: -c 'mkdir -p /data/litefuse && minio server --address ":9000" --console-address ":9001" /data'
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: miniosecret
+    ports:
+      - 127.0.0.1:9090:9000
+      - 127.0.0.1:9091:9001
+    volumes:
+      - litefuse_minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 1s
+      timeout: 5s
+      retries: 5
+      start_period: 1s
+
+  doris_fe:
+    image: apache/doris:fe-4.0.4
+    hostname: doris_fe
+    container_name: litefuse-doris-fe
+    environment:
+      - FE_SERVERS=fe1:172.29.0.2:9010
+      - FE_ID=1
+    ports:
+      - 127.0.0.1:8030:8030 # FE HTTP (Web UI)
+      - 127.0.0.1:9030:9030 # FE MySQL protocol
+      - 127.0.0.1:9010:9010 # FE edit-log/thrift
+    networks:
+      doris_internal:
+        ipv4_address: 172.29.0.2
+    volumes:
+      - litefuse_doris_fe_meta:/opt/apache-doris/fe/doris-meta
+      - ./doris-config/fe_custom.conf:/opt/apache-doris/fe/conf/fe_custom.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8030/api/bootstrap 2>/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 120s
+
+  doris_be:
+    image: apache/doris:be-4.0.4
+    hostname: doris_be
+    container_name: litefuse-doris-be
+    environment:
+      - FE_SERVERS=fe1:172.29.0.2:9010
+      - BE_ADDR=172.29.0.3:9050
+    depends_on:
+      doris_fe:
+        condition: service_healthy
+    ports:
+      - 127.0.0.1:8040:8040 # BE HTTP (stream load target from host)
+      - 127.0.0.1:8060:8060
+      - 127.0.0.1:9050:9050
+      - 127.0.0.1:9060:9060
+    networks:
+      doris_internal:
+        ipv4_address: 172.29.0.3
+    volumes:
+      - litefuse_doris_be_storage:/opt/apache-doris/be/storage
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "mysql -h 172.29.0.2 -P 9030 -uroot -e 'SHOW BACKENDS\\G' | grep -A 20 'Host: 172.29.0.3' | grep -q 'Alive: true'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 150s
+
+volumes:
+  litefuse_postgres_data:
+    driver: local
+  litefuse_minio_data:
+    driver: local
+  litefuse_doris_fe_meta:
+    driver: local
+  litefuse_doris_be_storage:
+    driver: local
+
+networks:
+  doris_internal:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.29.0.0/24
