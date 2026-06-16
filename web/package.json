@@ -174,7 +174,7 @@
     "rxjs": "^7.8.2",
     "sonner": "^2.0.7",
     "superjson": "2.2.2",
-    "tailwind-merge": "^3.5.0",
+    "tailwind-merge": "^3.6.0",
     "tailwindcss-animate": "^1.0.7",
     "unified": "^11.0.5",
     "use-query-params": "^2.2.2",
