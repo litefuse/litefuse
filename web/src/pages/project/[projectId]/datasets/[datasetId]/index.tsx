@@ -11,7 +11,7 @@ import {
 } from "@/src/components/ui/dropdown-menu";
 import { DeleteDatasetButton } from "@/src/components/deleteButton";
 import { DuplicateDatasetButton } from "@/src/features/datasets/components/DuplicateDatasetButton";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Bot, FlaskConical, MoreVertical } from "lucide-react";
 import { useHasProjectAccess } from "@/src/features/rbac/utils/checkProjectAccess";
 import {
@@ -59,6 +59,33 @@ export default function Dataset() {
       value: string;
     }[]
   >([]);
+
+  useEffect(() => {
+    if (
+      !projectId ||
+      !datasetId ||
+      !scoreOptions.length ||
+      typeof window === "undefined"
+    )
+      return;
+
+    const defaultScoreMetricsAppliedKey = `${projectId}-${datasetId}-chart-metrics-default-scores-applied`;
+    if (window.localStorage.getItem(defaultScoreMetricsAppliedKey)) return;
+
+    const defaultResourceMetricKeys = RESOURCE_METRICS.map(
+      (metric) => metric.key,
+    );
+    const hasLegacyDefaultSelection =
+      selectedMetrics.length === defaultResourceMetricKeys.length &&
+      defaultResourceMetricKeys.every((key) => selectedMetrics.includes(key));
+    const hasNoSelection = selectedMetrics.length === 0;
+
+    if (hasLegacyDefaultSelection || hasNoSelection) {
+      setSelectedMetrics(scoreOptions.map((option) => option.key));
+    }
+
+    window.localStorage.setItem(defaultScoreMetricsAppliedKey, "true");
+  }, [datasetId, projectId, scoreOptions, selectedMetrics, setSelectedMetrics]);
 
   const dataset = api.datasets.byId.useQuery({
     datasetId,
