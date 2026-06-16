@@ -140,7 +140,7 @@
     "prisma-kysely": "^1.8.0",
     "ts-node": "^10.9.2",
     "tsc-watch": "^6.2.0",
-    "typescript": "^5.7.2",
+    "typescript": "^6.0.3",
     "vitest": "^3.2.4"
   },
   "peerDependencies": {
