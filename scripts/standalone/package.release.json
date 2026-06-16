@@ -1,0 +1,9 @@
+{
+  "name": "litefuse-standalone",
+  "private": true,
+  "scripts": {
+    "doris:up": "./bin/node ./bin/doris-migrations.cjs up",
+    "doris:down": "./bin/node ./bin/doris-migrations.cjs down",
+    "doris:drop": "./bin/node ./bin/doris-migrations.cjs drop"
+  }
+}
