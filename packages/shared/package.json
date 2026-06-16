@@ -106,7 +106,7 @@
     "jsonpath-plus": "10.3.0",
     "kysely": "^0.27.4",
     "langchain": "^1.2.15",
-    "langfuse-langchain": "3.38.6",
+    "langfuse-langchain": "3.38.20",
     "lodash": "^4.17.23",
     "lossless-json": "^4.1.1",
     "mysql2": "^3.14.1",
