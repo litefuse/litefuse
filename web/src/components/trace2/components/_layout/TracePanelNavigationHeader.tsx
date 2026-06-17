@@ -22,6 +22,8 @@ import { useCallback } from "react";
 import { TraceSettingsDropdown } from "../TraceSettingsDropdown";
 import { downloadTraceAsJson } from "../../lib/download-trace";
 import { TracePanelNavigationButton } from "./TracePanelNavigationButton";
+import { TraceFullscreenDialog } from "./TraceFullscreenDialog";
+import { TraceTimeline } from "../TraceTimeline";
 
 interface TracePanelNavigationHeaderProps {
   isPanelCollapsed: boolean;
@@ -168,6 +170,15 @@ function TracePanelNavigationHeaderExpanded({
           >
             <span className="text-xs">Timeline</span>
           </Button>
+
+          {isTimelineView && (
+            <TraceFullscreenDialog
+              title="Timeline"
+              triggerTitle="Open Timeline fullscreen"
+            >
+              <TraceTimeline />
+            </TraceFullscreenDialog>
+          )}
         </div>
       </div>
     </Command>
