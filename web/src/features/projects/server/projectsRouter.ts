@@ -10,6 +10,7 @@ import { projectNameSchema } from "@/src/features/auth/lib/projectNameSchema";
 import { auditLog } from "@/src/features/audit-logs/auditLog";
 import { throwIfNoOrganizationAccess } from "@/src/features/rbac/utils/checkOrganizationAccess";
 import { ApiAuthService } from "@/src/features/public-api/server/apiAuth";
+import { seedProjectAnnotationDefaults } from "@/src/features/projects/server/seedProjectAnnotationDefaults";
 import {
   QueueJobs,
   redis,
@@ -21,6 +22,7 @@ import {
   getDefaultScoreConfigsForProject,
   StringNoHTMLNonEmpty,
 } from "@langfuse/shared";
+import { Prisma } from "@langfuse/shared/src/db";
 
 export const projectsRouter = createTRPCRouter({
   create: protectedOrganizationProcedure
@@ -60,13 +62,16 @@ export const projectsRouter = createTRPCRouter({
             orgId: input.orgId,
           },
         });
-
         await tx.scoreConfig.createMany({
           data: getDefaultScoreConfigsForProject(project.id),
         });
-
+        await seedProjectAnnotationDefaults(tx, project.id);
         return project;
-      });
+        },
+        {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        },
+      );
       await auditLog({
         session: ctx.session,
         resourceType: "project",

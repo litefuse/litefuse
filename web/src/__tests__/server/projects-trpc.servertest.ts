@@ -1,116 +1,95 @@
 /** @jest-environment node */
 
-import { appRouter } from "@/src/server/api/root";
-import { createInnerTRPCContext } from "@/src/server/api/trpc";
-import { prisma } from "@langfuse/shared/src/db";
-import { ScoreConfigDataType } from "@langfuse/shared";
-import type { Session } from "next-auth";
-import { randomUUID } from "crypto";
+import {
+  BUILTIN_CORRECTNESS_DESCRIPTION,
+  BUILTIN_CORRECTNESS_QUEUE_DESCRIPTION,
+  BUILTIN_CORRECTNESS_QUEUE_NAME,
+  BUILTIN_CORRECTNESS_SCORE_NAME,
+  seedProjectAnnotationDefaults,
+} from "@/src/features/projects/server/seedProjectAnnotationDefaults";
 
-describe("projects tRPC", () => {
-  const orgIds: string[] = [];
-
-  afterAll(async () => {
-    await prisma.organization.deleteMany({
-      where: {
-        id: { in: orgIds },
-      },
+describe("seedProjectAnnotationDefaults", () => {
+  it("creates the built-in correctness score config and queue when missing", async () => {
+    const scoreConfigFindFirst = jest.fn().mockResolvedValue(null);
+    const scoreConfigCreate = jest.fn().mockResolvedValue({
+      id: "score-config-1",
     });
-  });
-
-  it("creates default score configs for new projects", async () => {
-    const org = await prisma.organization.create({
-      data: {
-        id: randomUUID(),
-        name: `Test Org ${randomUUID().slice(0, 8)}`,
-      },
+    const annotationQueueFindFirst = jest.fn().mockResolvedValue(null);
+    const annotationQueueCreate = jest.fn().mockResolvedValue({
+      id: "queue-1",
     });
-    orgIds.push(org.id);
+    const annotationQueueUpdate = jest.fn();
 
-    const session: Session = {
-      expires: "1",
-      user: {
-        id: randomUUID(),
-        name: "Test Owner",
-        email: "owner@example.com",
-        canCreateOrganizations: true,
-        organizations: [
-          {
-            id: org.id,
-            name: org.name,
-            role: "OWNER",
-            plan: "cloud:hobby",
-            cloudConfig: undefined,
-            metadata: {},
-            projects: [],
-          },
-        ],
-        featureFlags: {
-          excludeClickhouseRead: false,
-          templateFlag: true,
+    await seedProjectAnnotationDefaults(
+      {
+        scoreConfig: {
+          findFirst: scoreConfigFindFirst,
+          create: scoreConfigCreate,
         },
-        admin: false,
-      },
-      environment: {
-        enableExperimentalFeatures: false,
-        selfHostedInstancePlan: "cloud:hobby",
-      },
-    };
-
-    const ctx = createInnerTRPCContext({ session, headers: {} });
-    const caller = appRouter.createCaller({ ...ctx, prisma });
-
-    const project = await caller.projects.create({
-      orgId: org.id,
-      name: `Test Project ${randomUUID().slice(0, 8)}`,
-    });
-
-    const scoreConfigs = await prisma.scoreConfig.findMany({
-      where: {
-        projectId: project.id,
-        name: {
-          in: [
-            "is_correct",
-            "accuracy",
-            "relevance",
-            "helpfulness",
-            "toxicity",
-          ],
+        annotationQueue: {
+          findFirst: annotationQueueFindFirst,
+          create: annotationQueueCreate,
+          update: annotationQueueUpdate,
         },
-      },
-    });
-
-    expect(scoreConfigs).toHaveLength(5);
-
-    const isCorrect = scoreConfigs.find(
-      (config) => config.name === "is_correct",
+      } as Parameters<typeof seedProjectAnnotationDefaults>[0],
+      "project-1",
     );
-    expect(isCorrect).toMatchObject({
-      dataType: ScoreConfigDataType.BOOLEAN,
-      minValue: null,
-      maxValue: null,
-    });
-    expect(isCorrect?.categories).toEqual([
-      { label: "True", value: 1 },
-      { label: "False", value: 0 },
-    ]);
 
-    const accuracy = scoreConfigs.find((config) => config.name === "accuracy");
-    expect(accuracy).toMatchObject({
-      dataType: ScoreConfigDataType.NUMERIC,
-      minValue: 0,
-      maxValue: 1,
-      categories: null,
+    expect(scoreConfigFindFirst).toHaveBeenCalledWith({
+      where: {
+        projectId: "project-1",
+        name: BUILTIN_CORRECTNESS_SCORE_NAME,
+      },
     });
-
-    for (const name of ["relevance", "helpfulness", "toxicity"]) {
-      const config = scoreConfigs.find((config) => config.name === name);
-      expect(config).toMatchObject({
-        dataType: ScoreConfigDataType.NUMERIC,
+    expect(scoreConfigCreate).toHaveBeenCalledWith({
+      data: {
+        projectId: "project-1",
+        name: BUILTIN_CORRECTNESS_SCORE_NAME,
+        dataType: "NUMERIC",
         minValue: 0,
         maxValue: 1,
-        categories: null,
-      });
-    }
+        description: BUILTIN_CORRECTNESS_DESCRIPTION,
+      },
+    });
+    expect(annotationQueueCreate).toHaveBeenCalledWith({
+      data: {
+        projectId: "project-1",
+        name: BUILTIN_CORRECTNESS_QUEUE_NAME,
+        description: BUILTIN_CORRECTNESS_QUEUE_DESCRIPTION,
+        scoreConfigIds: ["score-config-1"],
+      },
+    });
+    expect(annotationQueueUpdate).not.toHaveBeenCalled();
+  });
+
+  it("reuses existing built-ins without creating duplicates", async () => {
+    const scoreConfigCreate = jest.fn();
+    const annotationQueueCreate = jest.fn();
+    const annotationQueueUpdate = jest.fn();
+
+    await seedProjectAnnotationDefaults(
+      {
+        scoreConfig: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: "score-config-1",
+          }),
+          create: scoreConfigCreate,
+        },
+        annotationQueue: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: "queue-1",
+            description: BUILTIN_CORRECTNESS_QUEUE_DESCRIPTION,
+            scoreConfigIds: ["score-config-1"],
+          }),
+          create: annotationQueueCreate,
+          update: annotationQueueUpdate,
+        },
+      } as Parameters<typeof seedProjectAnnotationDefaults>[0],
+      "project-1",
+    );
+
+    expect(scoreConfigCreate).not.toHaveBeenCalled();
+    expect(annotationQueueCreate).not.toHaveBeenCalled();
+    expect(annotationQueueUpdate).not.toHaveBeenCalled();
   });
 });
