@@ -126,7 +126,22 @@ CREATE TABLE if not exists events_full (
     INDEX idx_environment (`environment`) USING INVERTED COMMENT 'inverted index for environment',
     INDEX idx_prompt_name (`prompt_name`) USING INVERTED COMMENT 'inverted index for prompt_name',
     INDEX idx_provided_model_name (`provided_model_name`) USING INVERTED COMMENT 'inverted index for provided_model_name',
-    INDEX idx_source (`source`) USING INVERTED COMMENT 'inverted index for source (otel/ingestion-api-dual-write)'
+    INDEX idx_source (`source`) USING INVERTED COMMENT 'inverted index for source (otel/ingestion-api-dual-write)',
+    -- Un-tokenized indexes for full-text ID search on the UI tables. These
+    -- columns are searched via LIKE '%x%' (search.ts); an un-tokenized
+    -- inverted index accelerates that substring match, matching the pattern
+    -- of idx_user_id / idx_span_id above.
+    INDEX idx_name (`name`) USING INVERTED COMMENT 'inverted index for name (trace/observation name search)',
+    INDEX idx_trace_name (`trace_name`) USING INVERTED COMMENT 'inverted index for trace_name (trace name search)',
+    -- Tokenized full-text indexes for content (input/output) search. parser=unicode
+    -- tokenizes CJK by character and Latin by word; support_phrase enables
+    -- MATCH_PHRASE. Content search (search.ts) is full-text retrieval: it queries
+    -- these columns with `col MATCH_PHRASE 'q'` directly (phrase/token match), not
+    -- LIKE substring. As a consequence token matching does not find embedded-word
+    -- substrings (search "open" won't find "openai"); this is the intended
+    -- text-retrieval behavior.
+    INDEX idx_input (`input`) USING INVERTED PROPERTIES("parser" = "unicode", "support_phrase" = "true") COMMENT 'full-text index for input content search',
+    INDEX idx_output (`output`) USING INVERTED PROPERTIES("parser" = "unicode", "support_phrase" = "true") COMMENT 'full-text index for output content search'
 ) ENGINE=OLAP
 UNIQUE KEY(`project_id`, `start_time_date`, `span_id`)
 AUTO PARTITION BY RANGE (date_trunc(`start_time_date`, 'day')) ()
