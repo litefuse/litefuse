@@ -12,6 +12,7 @@ import { Eye, Plus, X } from "lucide-react";
 
 type Evaluator = RouterOutputs["evals"]["jobConfigsByTarget"][number];
 type ObservationPreview = RouterOutputs["observations"]["byId"];
+type EventPreview = RouterOutputs["events"]["batchIO"][number];
 
 type EvaluatorSelectionStepProps = {
   eligibleEvaluators: Evaluator[];
@@ -19,8 +20,9 @@ type EvaluatorSelectionStepProps = {
   isQueryLoading: boolean;
   isQueryError: boolean;
   queryErrorMessage: string | undefined;
-  previewObservation: ObservationPreview | undefined;
+  previewObservation: ObservationPreview | EventPreview | undefined;
   isPreviewLoading: boolean;
+  evaluatorScopeLabel: "observation" | "trace";
   selectedEvaluatorIds: string[];
   evaluatorSearchQuery: string;
   onSearchQueryChange: (query: string) => void;
@@ -37,6 +39,7 @@ export function EvaluatorSelectionStep(props: EvaluatorSelectionStepProps) {
     queryErrorMessage,
     previewObservation,
     isPreviewLoading,
+    evaluatorScopeLabel,
     selectedEvaluatorIds,
     evaluatorSearchQuery,
     onSearchQueryChange,
@@ -65,6 +68,10 @@ export function EvaluatorSelectionStep(props: EvaluatorSelectionStepProps) {
   }, [eligibleEvaluators, evaluatorSearchQuery]);
 
   const getPromptPreview = (evaluator: Evaluator) => {
+    if (evaluatorScopeLabel === "trace") {
+      return "Prompt preview is unavailable for trace-scoped evaluators in this dialog.";
+    }
+
     if (isPreviewLoading) {
       return "Loading preview...";
     }
@@ -102,8 +109,8 @@ export function EvaluatorSelectionStep(props: EvaluatorSelectionStepProps) {
         ) : eligibleEvaluators.length === 0 ? (
           <Card>
             <CardContent className="text-muted-foreground p-4 text-sm">
-              No observation-scoped evaluators found. Create a new
-              observation-scoped evaluator and it will appear here.
+              No {evaluatorScopeLabel}-scoped evaluators found. Create a new{" "}
+              {evaluatorScopeLabel}-scoped evaluator and it will appear here.
             </CardContent>
           </Card>
         ) : (

@@ -1,6 +1,7 @@
 import {
   BatchActionProcessingEventType,
   CreateEvalQueue,
+  EvalExecutionQueue,
   getCurrentSpan,
   logger,
   QueueJobs,
@@ -12,7 +13,8 @@ import {
   BatchActionType,
   BatchActionStatus,
   BatchTableNames,
-  FilterCondition,
+  ActionId,
+  type FilterCondition,
   EvalTargetObject,
 } from "@langfuse/shared";
 import Decimal from "decimal.js";
@@ -40,6 +42,7 @@ import { ObservationAddToDatasetConfigSchema } from "@langfuse/shared";
 import { processBatchedObservationEval } from "./processBatchedObservationEval";
 
 const CHUNK_SIZE = 1000;
+const MAX_BATCH_ACTION_LOG_LINES = 20;
 const convertDatesInFiltersFromStrings = (filters: FilterCondition[]) => {
   return filters.map((f: FilterCondition) =>
     f.type === "datetime" ? { ...f, value: new Date(f.value) } : f,
@@ -447,6 +450,206 @@ export const handleBatchActionJob = async (
       batchActionId,
       evaluators,
       observationStream: dbReadStream,
+    });
+  } else if (actionId === ActionId.TraceBatchEvaluation) {
+    const { projectId, query, cutoffCreatedAt, evaluatorIds, batchActionId } =
+      batchActionEvent;
+
+    if (!batchActionId) {
+      throw new Error(
+        "batchActionId is required for trace-run-batched-evaluation action",
+      );
+    }
+
+    const selectedEvaluatorIds = Array.from(new Set(evaluatorIds));
+
+    await prisma.batchAction.update({
+      where: { id: batchActionId, projectId },
+      data: {
+        status: BatchActionStatus.Processing,
+        totalCount: 0,
+        processedCount: 0,
+        failedCount: 0,
+        log: null,
+      },
+    });
+
+    let rawEvaluators;
+    try {
+      rawEvaluators = await prisma.jobConfiguration.findMany({
+        where: {
+          id: { in: selectedEvaluatorIds },
+          projectId,
+          targetObject: EvalTargetObject.TRACE,
+        },
+        select: {
+          id: true,
+          projectId: true,
+          evalTemplateId: true,
+          scoreName: true,
+          targetObject: true,
+          variableMapping: true,
+          status: true,
+          blockedAt: true,
+          delay: true,
+        },
+      });
+    } catch (error) {
+      await prisma.batchAction.update({
+        where: { id: batchActionId },
+        data: {
+          status: BatchActionStatus.Failed,
+          finishedAt: new Date(),
+          totalCount: 0,
+          processedCount: 0,
+          failedCount: 0,
+          log:
+            error instanceof Error
+              ? error.message
+              : "Selected evaluators are missing or not trace-scoped for historical trace evaluation.",
+        },
+      });
+
+      return;
+    }
+
+    const evaluatorsById = new Map(rawEvaluators.map((e) => [e.id, e]));
+    const missingEvaluatorIds = selectedEvaluatorIds.filter(
+      (id) => !evaluatorsById.has(id),
+    );
+
+    if (missingEvaluatorIds.length > 0) {
+      await prisma.batchAction.update({
+        where: { id: batchActionId },
+        data: {
+          status: BatchActionStatus.Failed,
+          finishedAt: new Date(),
+          totalCount: 0,
+          processedCount: 0,
+          failedCount: 0,
+          log: `Evaluators [${missingEvaluatorIds.join(", ")}] are missing or not trace-scoped.`,
+        },
+      });
+
+      return;
+    }
+
+    const dbReadStream = await getTraceIdentifierStream({
+      projectId,
+      cutoffCreatedAt: new Date(cutoffCreatedAt),
+      filter: convertDatesInFiltersFromStrings(query.filter ?? []),
+      orderBy: query.orderBy,
+      searchQuery: query.searchQuery ?? undefined,
+      searchType: query.searchType ?? ["id"],
+      rowLimit: env.LITEFUSE_MAX_HISTORIC_EVAL_CREATION_LIMIT,
+    });
+
+    const evalQueue = EvalExecutionQueue.getInstance();
+    if (!evalQueue) {
+      throw new Error("EvalExecutionQueue is not initialized");
+    }
+
+    let totalCount = 0;
+    let processedCount = 0;
+    let failedCount = 0;
+    const errors: string[] = [];
+
+    for await (const record of dbReadStream) {
+      totalCount++;
+
+      if (!assertIsTracesTableRecord(record)) {
+        failedCount++;
+        if (errors.length < MAX_BATCH_ACTION_LOG_LINES) {
+          errors.push(`Row ${totalCount}: Invalid trace record.`);
+        }
+        continue;
+      }
+
+      for (const evaluatorId of selectedEvaluatorIds) {
+        const evaluator = evaluatorsById.get(evaluatorId);
+        if (!evaluator) continue;
+
+        try {
+          const jobExecutionId = `${evaluator.id}:${record.id}`;
+          const jobExecution = await prisma.jobExecution.upsert({
+            where: {
+              id: jobExecutionId,
+              projectId,
+            },
+            create: {
+              id: jobExecutionId,
+              projectId,
+              jobConfigurationId: evaluator.id,
+              jobInputTraceId: record.id,
+              jobInputTraceTimestamp: new Date(record.timestamp),
+              jobTemplateId: evaluator.evalTemplateId,
+              status: "PENDING",
+              startTime: new Date(),
+            },
+            update: {
+              status: "PENDING",
+              jobInputTraceTimestamp: new Date(record.timestamp),
+            },
+          });
+
+          await evalQueue.add(
+            QueueName.EvaluationExecution,
+            {
+              name: QueueJobs.EvaluationExecution,
+              id: randomUUID(),
+              timestamp: new Date(),
+              payload: {
+                projectId,
+                jobExecutionId: jobExecution.id,
+                delay: evaluator.delay,
+              },
+              retryBaggage: {
+                originalJobTimestamp: new Date(),
+                attempt: 0,
+              },
+            },
+            {
+              delay: evaluator.delay ?? undefined,
+            },
+          );
+          processedCount++;
+        } catch (error) {
+          failedCount++;
+          if (errors.length < MAX_BATCH_ACTION_LOG_LINES) {
+            errors.push(
+              `Trace ${record.id}, evaluator ${evaluator.scoreName}: ${error instanceof Error ? error.message : "Unknown error"}`,
+            );
+          }
+        }
+      }
+
+      await prisma.batchAction.update({
+        where: { id: batchActionId, projectId },
+        data: {
+          totalCount,
+          processedCount,
+          failedCount,
+        },
+      });
+    }
+
+    const finalStatus =
+      failedCount === 0
+        ? BatchActionStatus.Completed
+        : processedCount === 0
+          ? BatchActionStatus.Failed
+          : BatchActionStatus.Partial;
+
+    await prisma.batchAction.update({
+      where: { id: batchActionId, projectId },
+      data: {
+        status: finalStatus,
+        finishedAt: new Date(),
+        totalCount,
+        processedCount,
+        failedCount,
+        log: errors.length > 0 ? errors.join("\n") : null,
+      },
     });
   }
 

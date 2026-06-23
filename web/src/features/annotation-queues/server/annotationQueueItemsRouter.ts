@@ -39,7 +39,9 @@ const MAP_OBJECT_TYPE_TO_ACTION_PROPS: Record<
   {
     actionId: Exclude<
       ActionId,
-      ActionId.ObservationAddToDataset | ActionId.ObservationBatchEvaluation
+      | ActionId.ObservationAddToDataset
+      | ActionId.ObservationBatchEvaluation
+      | ActionId.TraceBatchEvaluation
     >;
     tableName: BatchTableNames;
   }

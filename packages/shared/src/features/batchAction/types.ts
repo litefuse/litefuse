@@ -3,6 +3,7 @@ import { singleFilter } from "../../interfaces/filters";
 import { orderBy } from "../../interfaces/orderBy";
 import { BatchTableNames } from "../../interfaces/tableNames";
 import { TracingSearchType } from "../../interfaces/search";
+import { EvalTargetObject } from "../evals/types";
 
 export enum BatchActionType {
   Create = "create",
@@ -25,9 +26,29 @@ export enum ActionId {
   ObservationAddToAnnotationQueue = "observation-add-to-annotation-queue",
   ObservationAddToDataset = "observation-add-to-dataset",
   ObservationBatchEvaluation = "observation-run-batched-evaluation",
+  TraceBatchEvaluation = "trace-run-batched-evaluation",
 }
 
 const ActionIdSchema = z.nativeEnum(ActionId);
+
+export const BatchEvalSourceTable = {
+  EVENTS: "events",
+  TRACES: "traces",
+} as const;
+
+export type BatchEvalSourceTable =
+  (typeof BatchEvalSourceTable)[keyof typeof BatchEvalSourceTable];
+
+export const BatchEvalSourceTableSchema = z.enum(
+  Object.values(BatchEvalSourceTable),
+);
+
+export const getEvalTargetObjectFromSourceTable = (
+  sourceTable: BatchEvalSourceTable,
+) =>
+  sourceTable === BatchEvalSourceTable.TRACES
+    ? EvalTargetObject.TRACE
+    : EvalTargetObject.EVENT;
 
 export const BatchActionQuerySchema = z.object({
   filter: z.array(singleFilter).nullable(),

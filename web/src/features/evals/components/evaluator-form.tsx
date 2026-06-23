@@ -3,6 +3,7 @@ import { InnerEvaluatorForm } from "@/src/features/evals/components/inner-evalua
 import { type PartialConfig } from "@/src/features/evals/types";
 import { useEvalCapabilities } from "@/src/features/evals/hooks/useEvalCapabilities";
 import { Skeleton } from "@/src/components/ui/skeleton";
+import { type EvalTargetObject } from "@langfuse/shared";
 
 export const EvaluatorForm = (props: {
   projectId: string;
@@ -20,6 +21,7 @@ export const EvaluatorForm = (props: {
   preprocessFormValues?: (values: any) => any;
   defaultRunOnLive?: boolean;
   hidePreviewTable?: boolean;
+  defaultTarget?: EvalTargetObject;
 }) => {
   const evalCapabilities = useEvalCapabilities(props.projectId);
 
@@ -54,6 +56,7 @@ export const EvaluatorForm = (props: {
           evalCapabilities={evalCapabilities}
           defaultRunOnLive={props.defaultRunOnLive}
           hidePreviewTable={props.hidePreviewTable}
+          defaultTarget={props.defaultTarget}
         />
       )}
     </>

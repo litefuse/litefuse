@@ -89,6 +89,16 @@ const testColumnMappings: UiColumnMappings = [
   },
 ] as const;
 
+const eventsFullColumnMappings: UiColumnMappings = [
+  {
+    uiTableName: "Start Time",
+    uiTableId: "startTime",
+    tableName: "observations",
+    select: "o.start_time",
+    queryPrefix: "o",
+  },
+] as const;
+
 describe("createDorisFilterFromFilterState", () => {
   describe("filter type mapping", () => {
     it("should map string filter to StringFilter", () => {
@@ -282,6 +292,23 @@ describe("createDorisFilterFromFilterState", () => {
         testColumnMappings,
       );
       expect(result).toHaveLength(1);
+    });
+
+    it("should allow observations mappings backed by events_full queries", () => {
+      const filters: FilterCondition[] = [
+        {
+          column: "startTime",
+          operator: "<",
+          value: new Date("2026-06-23T00:00:00.000Z"),
+          type: "datetime",
+        },
+      ];
+      const result = createDorisFilterFromFilterState(
+        filters,
+        eventsFullColumnMappings,
+      );
+      expect(result).toHaveLength(1);
+      expect(result[0]).toBeInstanceOf(DateTimeFilter);
     });
   });
 

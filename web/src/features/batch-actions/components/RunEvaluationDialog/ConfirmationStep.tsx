@@ -1,3 +1,7 @@
+import {
+  BatchEvalSourceTable,
+  type BatchEvalSourceTable as BatchEvalSourceTableType,
+} from "@langfuse/shared";
 import { Card, CardContent } from "@/src/components/ui/card";
 import { Badge } from "@/src/components/ui/badge";
 import { Separator } from "@/src/components/ui/separator";
@@ -7,17 +11,25 @@ type ConfirmationStepProps = {
   projectId: string;
   displayCount: number;
   evaluators: Array<{ id: string; name: string }>;
+  sourceTable?: BatchEvalSourceTableType;
 };
 
 export function ConfirmationStep(props: ConfirmationStepProps) {
-  const { projectId, displayCount, evaluators } = props;
+  const {
+    projectId,
+    displayCount,
+    evaluators,
+    sourceTable = BatchEvalSourceTable.EVENTS,
+  } = props;
+  const targetLabel =
+    sourceTable === BatchEvalSourceTable.TRACES ? "Traces" : "Observations";
 
   return (
     <div className="space-y-4">
       <Card>
         <CardContent className="space-y-3 p-4 text-sm">
           <div className="flex gap-2">
-            <span className="text-muted-foreground">Observations:</span>
+            <span className="text-muted-foreground">{targetLabel}:</span>
             <span className="font-medium">{displayCount}</span>
           </div>
 

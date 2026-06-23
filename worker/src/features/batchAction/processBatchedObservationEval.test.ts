@@ -50,6 +50,7 @@ describe("processBatchedObservationEval", () => {
       span_id: "obs-1",
       trace_id: "trace-1",
       project_id: projectId,
+      start_time: new Date("2026-06-23T00:00:00.000Z"),
       parent_span_id: null,
       type: "GENERATION",
       name: "test",

@@ -76,6 +76,7 @@ import {
 import { useScoreColumns } from "@/src/features/scores/hooks/useScoreColumns";
 import { scoreFilters } from "@/src/features/scores/lib/scoreColumns";
 import { AddObservationsToDatasetDialog } from "@/src/features/batch-actions/components/AddObservationsToDatasetDialog/index";
+import { RunEvaluationDialog } from "@/src/features/batch-actions/components/RunEvaluationDialog/index";
 import useSessionStorage from "@/src/components/useSessionStorage";
 import { buildTraceDetailPath } from "@/src/utils/navigation";
 import { getSafeRedirectPath } from "@/src/utils/redirect";
@@ -204,6 +205,7 @@ export default function ObservationsTable({
     useFullTextSearch();
 
   const { selectAll, setSelectAll } = useSelectAll(projectId, "observations");
+  const [showRunEvaluationDialog, setShowRunEvaluationDialog] = useState(false);
   const [showAddToDatasetDialog, setShowAddToDatasetDialog] = useState(false);
 
   const [paginationState, setPaginationState] = usePaginationState(0, 50, {
@@ -578,6 +580,16 @@ export default function ObservationsTable({
       execute: handleAddToAnnotationQueue,
       accessCheck: {
         scope: "annotationQueues:CUD",
+      },
+    },
+    {
+      id: ActionId.ObservationBatchEvaluation,
+      type: BatchActionType.Create,
+      label: "Evaluate",
+      description: "Run evaluations on selected observations.",
+      customDialog: true,
+      accessCheck: {
+        scope: "evalJob:CUD",
       },
     },
     {
@@ -1372,6 +1384,9 @@ export default function ObservationsTable({
                   actions={tableActions}
                   tableName={BatchExportTableName.Observations}
                   onCustomAction={(actionType) => {
+                    if (actionType === ActionId.ObservationBatchEvaluation) {
+                      setShowRunEvaluationDialog(true);
+                    }
                     if (actionType === ActionId.ObservationAddToDataset) {
                       setShowAddToDatasetDialog(true);
                     }
@@ -1471,6 +1486,42 @@ export default function ObservationsTable({
       </div>
 
       {/* Add to Dataset Dialog */}
+      {showRunEvaluationDialog && (
+        <RunEvaluationDialog
+          projectId={projectId}
+          selectedObservationIds={Object.keys(selectedRows).filter((id) =>
+            generations.data?.generations.map((g) => g.id).includes(id),
+          )}
+          query={{
+            filter: backendFilterState,
+            orderBy: orderByState,
+            searchQuery: searchQuery ?? undefined,
+            searchType,
+          }}
+          selectAll={selectAll}
+          totalCount={totalCount ?? 0}
+          onClose={() => {
+            setShowRunEvaluationDialog(false);
+            setSelectedRows({});
+            setSelectAll(false);
+          }}
+          exampleObservation={(() => {
+            const selectedIds = Object.keys(selectedRows).filter((id) =>
+              generations.data?.generations.map((g) => g.id).includes(id),
+            );
+            const firstId = selectedIds[0];
+            const firstGen = generations.data?.generations.find(
+              (g) => g.id === firstId,
+            );
+            return {
+              id: firstGen?.id ?? "",
+              traceId: firstGen?.traceId ?? "",
+              startTime: firstGen?.startTime ?? undefined,
+            };
+          })()}
+        />
+      )}
+
       {showAddToDatasetDialog && (
         <AddObservationsToDatasetDialog
           projectId={projectId}

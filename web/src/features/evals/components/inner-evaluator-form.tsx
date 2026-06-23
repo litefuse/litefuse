@@ -275,6 +275,7 @@ export const InnerEvaluatorForm = (props: {
     formError: string | null;
   }) => React.ReactNode;
   oldConfigId?: string;
+  defaultTarget?: EvalTargetObject;
 }) => {
   const [formError, setFormError] = useState<string | null>(null);
   const capture = usePostHogClientCapture();
@@ -307,14 +308,19 @@ export const InnerEvaluatorForm = (props: {
     defaultValues: {
       scoreName:
         props.existingEvaluator?.scoreName ?? `${props.evalTemplate.name}`,
-      target: props.existingEvaluator?.targetObject ?? EvalTargetObject.EVENT,
+      target:
+        props.existingEvaluator?.targetObject ??
+        props.defaultTarget ??
+        EvalTargetObject.EVENT,
       filter: props.existingEvaluator?.filter
         ? z.array(singleFilter).parse(props.existingEvaluator.filter)
-        : (props.existingEvaluator?.targetObject ?? EvalTargetObject.EVENT) ===
-            EvalTargetObject.TRACE
+        : (props.existingEvaluator?.targetObject ??
+              props.defaultTarget ??
+              EvalTargetObject.EVENT) === EvalTargetObject.TRACE
           ? // For new trace evaluators, exclude internal environments by default
             DEFAULT_TRACE_FILTER
           : (props.existingEvaluator?.targetObject ??
+                props.defaultTarget ??
                 EvalTargetObject.EVENT) === EvalTargetObject.EVENT
             ? // For new observation evaluators, default to GENERATION type
               DEFAULT_OBSERVATION_FILTER

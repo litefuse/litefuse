@@ -191,6 +191,14 @@ export const BatchActionProcessingEventSchema = z.discriminatedUnion(
       batchActionId: z.string(),
       evaluatorIds: z.array(z.string()),
     }),
+    z.object({
+      actionId: z.literal(ActionId.TraceBatchEvaluation),
+      projectId: z.string(),
+      query: BatchActionQuerySchema,
+      cutoffCreatedAt: z.date(),
+      batchActionId: z.string(),
+      evaluatorIds: z.array(z.string()),
+    }),
   ],
 );
 

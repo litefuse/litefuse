@@ -1,5 +1,10 @@
 import { useMemo, useState } from "react";
-import { EvalTargetObject, type BatchActionQuery } from "@langfuse/shared";
+import {
+  BatchEvalSourceTable,
+  type BatchEvalSourceTable as BatchEvalSourceTableType,
+  getEvalTargetObjectFromSourceTable,
+  type BatchActionQuery,
+} from "@langfuse/shared";
 import { api } from "@/src/utils/api";
 import {
   Dialog,
@@ -18,6 +23,7 @@ import { EvaluatorSelectionStep } from "./EvaluatorSelectionStep";
 import { ConfirmationStep } from "./ConfirmationStep";
 import { CreateEvaluatorDialog } from "./CreateEvaluatorDialog";
 import { buildQueryWithSelectedIds } from "./utils";
+import { useV4Beta } from "@/src/features/events/hooks/useV4Beta";
 
 type RunEvaluationDialogProps = {
   projectId: string;
@@ -31,13 +37,16 @@ type RunEvaluationDialogProps = {
     traceId: string;
     startTime?: Date;
   };
+  sourceTable?: BatchEvalSourceTableType;
 };
 
 type DialogStep = "select-evaluator" | "confirm";
 
 export function RunEvaluationDialog(props: RunEvaluationDialogProps) {
+  const { isBetaEnabled } = useV4Beta();
   const { projectId, selectedObservationIds, query, selectAll, totalCount } =
     props;
+  const sourceTable = props.sourceTable ?? BatchEvalSourceTable.EVENTS;
 
   const [step, setStep] = useState<DialogStep>("select-evaluator");
   const [selectedEvaluatorIds, setSelectedEvaluatorIds] = useState<string[]>(
@@ -45,10 +54,11 @@ export function RunEvaluationDialog(props: RunEvaluationDialogProps) {
   );
   const [evaluatorSearchQuery, setEvaluatorSearchQuery] = useState("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const targetObject = getEvalTargetObjectFromSourceTable(sourceTable);
 
   const evaluatorsQuery = api.evals.jobConfigsByTarget.useQuery({
     projectId,
-    targetObject: EvalTargetObject.EVENT,
+    targetObject,
   });
 
   const runEvaluationMutation =
@@ -59,6 +69,8 @@ export function RunEvaluationDialog(props: RunEvaluationDialogProps) {
     });
 
   const displayCount = selectAll ? totalCount : selectedObservationIds.length;
+  const scopeLabel =
+    sourceTable === BatchEvalSourceTable.TRACES ? "trace" : "observation";
 
   const previewObservationQuery = api.observations.byId.useQuery(
     {
@@ -69,16 +81,41 @@ export function RunEvaluationDialog(props: RunEvaluationDialogProps) {
     },
     {
       enabled: Boolean(
-        props.exampleObservation.id && props.exampleObservation.traceId,
+        !isBetaEnabled &&
+          props.exampleObservation.id &&
+          props.exampleObservation.traceId,
+      ),
+    },
+  );
+
+  const previewEventQuery = api.events.batchIO.useQuery(
+    {
+      projectId,
+      observations: [
+        {
+          id: props.exampleObservation.id,
+          traceId: props.exampleObservation.traceId,
+        },
+      ],
+      minStartTime: props.exampleObservation.startTime as Date,
+      maxStartTime: props.exampleObservation.startTime as Date,
+      truncated: false,
+    },
+    {
+      enabled: Boolean(
+        isBetaEnabled &&
+          props.exampleObservation.id &&
+          props.exampleObservation.traceId &&
+          props.exampleObservation.startTime,
       ),
     },
   );
 
   const eligibleEvaluators = useMemo(() => {
     return (evaluatorsQuery.data ?? []).filter(
-      (evaluator) => evaluator.targetObject === EvalTargetObject.EVENT,
+      (evaluator) => evaluator.targetObject === targetObject,
     );
-  }, [evaluatorsQuery.data]);
+  }, [evaluatorsQuery.data, targetObject]);
 
   const selectedEvaluators = useMemo(
     () =>
@@ -112,6 +149,7 @@ export function RunEvaluationDialog(props: RunEvaluationDialogProps) {
         projectId,
         query: finalQuery,
         evaluatorIds: selectedEvaluators.map((evaluator) => evaluator.id),
+        sourceTable,
       });
     } catch {
       return;
@@ -119,7 +157,7 @@ export function RunEvaluationDialog(props: RunEvaluationDialogProps) {
 
     showSuccessToast({
       title: "Evaluation queued",
-      description: `Scheduled evaluation for ${displayCount} selected ${displayCount === 1 ? "observation" : "observations"} and ${selectedEvaluators.length} ${selectedEvaluators.length === 1 ? "evaluator" : "evaluators"}.`,
+      description: `Scheduled evaluation for ${displayCount} selected ${displayCount === 1 ? scopeLabel : `${scopeLabel}s`} and ${selectedEvaluators.length} ${selectedEvaluators.length === 1 ? "evaluator" : "evaluators"}.`,
       link: {
         href: `/project/${projectId}/settings/batch-actions`,
         text: "View batch actions",
@@ -135,13 +173,13 @@ export function RunEvaluationDialog(props: RunEvaluationDialogProps) {
         <DialogContent className="flex max-h-[62vh] min-h-[38vh] max-w-2xl flex-col">
           <DialogHeader>
             <DialogTitle>
-              Evaluate {displayCount} observation
+              Evaluate {displayCount} {scopeLabel}
               {displayCount === 1 ? "" : "s"}
             </DialogTitle>
             <DialogDescription>
               {step === "confirm"
                 ? "Review your evaluation configuration before running."
-                : "Select one or more observation-scoped evaluators."}
+                : `Select one or more ${scopeLabel}-scoped evaluators.`}
             </DialogDescription>
           </DialogHeader>
 
@@ -153,8 +191,16 @@ export function RunEvaluationDialog(props: RunEvaluationDialogProps) {
                 isQueryLoading={evaluatorsQuery.isLoading}
                 isQueryError={evaluatorsQuery.isError}
                 queryErrorMessage={evaluatorsQuery.error?.message}
-                previewObservation={previewObservationQuery.data}
-                isPreviewLoading={previewObservationQuery.isLoading}
+                previewObservation={
+                  isBetaEnabled
+                    ? previewEventQuery.data?.[0]
+                    : previewObservationQuery.data
+                }
+                isPreviewLoading={
+                  previewObservationQuery.isLoading ||
+                  previewEventQuery.isLoading
+                }
+                evaluatorScopeLabel={scopeLabel}
                 selectedEvaluatorIds={selectedEvaluatorIds}
                 evaluatorSearchQuery={evaluatorSearchQuery}
                 onSearchQueryChange={setEvaluatorSearchQuery}
@@ -169,6 +215,7 @@ export function RunEvaluationDialog(props: RunEvaluationDialogProps) {
                   id: e.id,
                   name: e.scoreName,
                 }))}
+                sourceTable={sourceTable}
               />
             )}
           </DialogBody>
@@ -213,6 +260,7 @@ export function RunEvaluationDialog(props: RunEvaluationDialogProps) {
         projectId={projectId}
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
+        targetObject={targetObject}
       />
     </>
   );

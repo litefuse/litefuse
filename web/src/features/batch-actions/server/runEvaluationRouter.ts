@@ -9,13 +9,15 @@ import {
   logger,
   QueueJobs,
   getObservationsCountFromEventsTable,
+  getTracesTableCount,
 } from "@langfuse/shared/src/server";
 import { TRPCError } from "@trpc/server";
 import {
   BatchTableNames,
   BatchActionStatus,
   ActionId,
-  EvalTargetObject,
+  BatchEvalSourceTable,
+  getEvalTargetObjectFromSourceTable,
 } from "@langfuse/shared";
 import { env } from "@/src/env.mjs";
 import { CreateObservationBatchEvaluationActionSchema } from "../validation";
@@ -32,13 +34,29 @@ export const runEvaluationRouter = createTRPCRouter({
         });
 
         const { projectId, query, evaluatorIds: rawEvaluatorIds } = input;
+        const sourceTable = input.sourceTable ?? BatchEvalSourceTable.EVENTS;
 
-        if (env.LITEFUSE_ENABLE_EVENTS_TABLE_FLAGS !== "true") {
+        if (
+          sourceTable !== BatchEvalSourceTable.TRACES &&
+          env.LITEFUSE_ENABLE_EVENTS_TABLE_FLAGS !== "true"
+        ) {
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: "Events table is not enabled for this instance.",
           });
         }
+
+        const targetObject = getEvalTargetObjectFromSourceTable(sourceTable);
+        const actionId =
+          sourceTable === BatchEvalSourceTable.TRACES
+            ? ActionId.TraceBatchEvaluation
+            : ActionId.ObservationBatchEvaluation;
+        const batchTableName =
+          sourceTable === BatchEvalSourceTable.TRACES
+            ? BatchTableNames.Traces
+            : BatchTableNames.Events;
+        const scopeLabel =
+          sourceTable === BatchEvalSourceTable.TRACES ? "trace" : "observation";
 
         const requestedEvaluatorIds = Array.from(new Set(rawEvaluatorIds));
 
@@ -49,7 +67,7 @@ export const runEvaluationRouter = createTRPCRouter({
                 in: requestedEvaluatorIds,
               },
               projectId,
-              targetObject: EvalTargetObject.EVENT,
+              targetObject,
             },
             select: {
               id: true,
@@ -67,47 +85,52 @@ export const runEvaluationRouter = createTRPCRouter({
             code: "BAD_REQUEST",
             message:
               missingEvaluatorIds.length > 0
-                ? `Evaluators [${missingEvaluatorIds.join(", ")}] are missing or not observation-scoped.`
-                : "Selected evaluators are missing or not observation-scoped.",
+                ? `Evaluators [${missingEvaluatorIds.join(", ")}] are missing or not ${scopeLabel}-scoped.`
+                : `Selected evaluators are missing or not ${scopeLabel}-scoped.`,
           });
         }
 
-        const countQueryOpts = {
-          projectId,
-          filter: query.filter ?? [],
-          searchQuery: query.searchQuery,
-          searchType: query.searchType,
-          selectIOAndMetadata: false,
-        };
+        const matchedCount =
+          sourceTable === BatchEvalSourceTable.TRACES
+            ? await getTracesTableCount({
+                projectId,
+                filter: query.filter ?? [],
+                searchQuery: query.searchQuery,
+                searchType: query.searchType ?? ["id"],
+                orderBy: query.orderBy,
+              })
+            : await getObservationsCountFromEventsTable({
+                projectId,
+                filter: query.filter ?? [],
+                searchQuery: query.searchQuery,
+                searchType: query.searchType,
+                selectIOAndMetadata: false,
+              });
 
-        const observationCount =
-          await getObservationsCountFromEventsTable(countQueryOpts);
-
-        if (observationCount > env.LITEFUSE_MAX_HISTORIC_EVAL_CREATION_LIMIT) {
+        if (matchedCount > env.LITEFUSE_MAX_HISTORIC_EVAL_CREATION_LIMIT) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: `Too many observations selected. Maximum allowed is ${env.LITEFUSE_MAX_HISTORIC_EVAL_CREATION_LIMIT}, but ${observationCount} observations match your filters. Please refine your filters to reduce the count.`,
+            message: `Too many ${scopeLabel}s selected. Maximum allowed is ${env.LITEFUSE_MAX_HISTORIC_EVAL_CREATION_LIMIT}, but ${matchedCount} ${scopeLabel}s match your filters. Please refine your filters to reduce the count.`,
           });
         }
 
         const userId = ctx.session.user.id;
         const batchConfig = { evaluatorIds };
 
-        logger.info(
-          "[TRPC] Creating observation-run-batched-evaluation action",
-          {
-            projectId,
-            evaluatorCount: evaluatorIds.length,
-            evaluatorIds,
-          },
-        );
+        logger.info("[TRPC] Creating batched evaluation action", {
+          projectId,
+          sourceTable,
+          targetObject,
+          evaluatorCount: evaluatorIds.length,
+          evaluatorIds,
+        });
 
         const batchAction = await ctx.prisma.batchAction.create({
           data: {
             projectId,
             userId,
-            actionType: ActionId.ObservationBatchEvaluation,
-            tableName: BatchTableNames.Events,
+            actionType: actionId,
+            tableName: batchTableName,
             status: BatchActionStatus.Queued,
             query,
             config: batchConfig,
@@ -119,7 +142,7 @@ export const runEvaluationRouter = createTRPCRouter({
           resourceType: "batchAction",
           resourceId: batchAction.id,
           projectId,
-          action: ActionId.ObservationBatchEvaluation,
+          action: actionId,
           after: batchAction,
         });
 
@@ -130,7 +153,7 @@ export const runEvaluationRouter = createTRPCRouter({
             name: QueueJobs.BatchActionProcessingJob,
             timestamp: new Date(),
             payload: {
-              actionId: ActionId.ObservationBatchEvaluation,
+              actionId,
               batchActionId: batchAction.id,
               projectId,
               cutoffCreatedAt: new Date(),

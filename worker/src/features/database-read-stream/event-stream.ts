@@ -8,11 +8,10 @@
  */
 
 import {
-  FilterCondition,
+  type FilterCondition,
   ScoreDataTypeEnum,
-  type ScoreDataTypeType,
-  TimeFilter,
-  TracingSearchType,
+  type TimeFilter,
+  type TracingSearchType,
 } from "@langfuse/shared";
 import {
   getDistinctScoreNames,
@@ -20,9 +19,11 @@ import {
   logger,
   FilterList,
   createFilterFromFilterState,
-  eventsTableUiColumnDefinitions,
+  eventsTableUiColumnDefinitionsForDoris,
   dorisSearchCondition,
+  parseDorisStringArray,
   parseDorisUTCDateTimeFormat,
+  zipDorisMetadataArrays,
 } from "@langfuse/shared/src/server";
 import { Readable } from "stream";
 import { env } from "../../env";
@@ -31,9 +32,77 @@ import {
   prepareScoresForOutput,
 } from "./getDatabaseReadStream";
 import { fetchCommentsForExport } from "./fetchCommentsForExport";
-import { BatchExportEventsRow } from "./types";
+import { type BatchExportEventsRow } from "./types";
 
 const BATCH_SIZE = 1000; // Fetch comments in batches for efficiency
+
+const getEventOnlyFilters = (filter?: FilterCondition[] | null) =>
+  (filter ?? []).filter((item) => {
+    const columnDef = eventsTableUiColumnDefinitionsForDoris.find(
+      (col) => col.uiTableName === item.column || col.uiTableId === item.column,
+    );
+
+    return (
+      columnDef?.tableName !== "scores" && columnDef?.tableName !== "comments"
+    );
+  });
+
+const getAppliedEventsFilter = (
+  filter: FilterCondition[],
+  cutoffCreatedAt: Date,
+) =>
+  new FilterList(
+    createFilterFromFilterState(
+      [
+        ...filter,
+        {
+          column: "startTime",
+          operator: "<" as const,
+          value: cutoffCreatedAt,
+          type: "datetime" as const,
+        },
+      ],
+      eventsTableUiColumnDefinitionsForDoris,
+    ),
+  ).apply();
+
+const parseRecord = (value: unknown): Record<string, unknown> => {
+  if (!value) return {};
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? (parsed as Record<string, unknown>)
+        : {};
+    } catch {
+      return {};
+    }
+  }
+  return typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+};
+
+const parseNumericRecord = (value: unknown): Record<string, number> => {
+  const raw = parseRecord(value);
+  const result: Record<string, number> = {};
+
+  for (const [key, rawValue] of Object.entries(raw)) {
+    if (rawValue === null || rawValue === undefined) continue;
+    const num = Number(rawValue);
+    if (!Number.isNaN(num)) {
+      result[key] = num;
+    }
+  }
+
+  return result;
+};
+
+const parseDate = (value: Date | string): Date =>
+  value instanceof Date ? value : parseDorisUTCDateTimeFormat(value);
+
+const parseNullableDate = (value: Date | string | null): Date | null =>
+  value ? parseDate(value) : null;
 
 /**
  * Creates a stream of events from Doris for batch export.
@@ -59,16 +128,7 @@ export const getEventsStream = async (props: {
     rowLimit = env.BATCH_EXPORT_ROW_LIMIT,
   } = props;
 
-  // Filter out score and comment filters since they require special handling
-  const eventOnlyFilters = (filter ?? []).filter((f) => {
-    const columnDef = eventsTableUiColumnDefinitions.find(
-      (col) => col.uiTableName === f.column || col.uiTableId === f.column,
-    );
-    // Keep the filter if it's not a scores or comments filter
-    return (
-      columnDef?.tableName !== "scores" && columnDef?.tableName !== "comments"
-    );
-  });
+  const eventOnlyFilters = getEventOnlyFilters(filter);
 
   // Get distinct score names for empty columns
   const distinctScoreNames = await getDistinctScoreNames({
@@ -87,22 +147,10 @@ export const getEventsStream = async (props: {
   );
 
   // Build filters for events (project_id is handled by the query builder)
-  const eventsFilter = new FilterList(
-    createFilterFromFilterState(
-      [
-        ...eventOnlyFilters,
-        {
-          column: "startTime",
-          operator: "<" as const,
-          value: cutoffCreatedAt,
-          type: "datetime" as const,
-        },
-      ],
-      eventsTableUiColumnDefinitions,
-    ),
+  const appliedEventsFilter = getAppliedEventsFilter(
+    eventOnlyFilters,
+    cutoffCreatedAt,
   );
-
-  const appliedEventsFilter = eventsFilter.apply();
 
   const search = dorisSearchCondition(searchQuery, searchType, {
     type: "observations",
@@ -117,9 +165,7 @@ export const getEventsStream = async (props: {
         trace_id,
         observation_id,
         CONCAT('[', GROUP_CONCAT(DISTINCT JSON_OBJECT('name', name, 'value', avg_val, 'dataType', data_type, 'stringValue', COALESCE(string_value, ''))), ']') AS scores_avg,
-        GROUP_CONCAT(
-          DISTINCT CONCAT(name, ':', COALESCE(string_value, ''))
-        ) AS score_categories
+        CONCAT('[', GROUP_CONCAT(DISTINCT JSON_OBJECT('name', name, 'stringValue', string_value)), ']') AS score_categories_tuples
       FROM (
         SELECT
           trace_id,
@@ -140,48 +186,49 @@ export const getEventsStream = async (props: {
       GROUP BY trace_id, observation_id
     )
     SELECT
-      e.id,
-      e.trace_id,
-      e.project_id,
-      e.start_time,
-      e.end_time,
-      e.name,
-      e.type,
-      e.environment,
-      e.version,
-      e.user_id,
-      e.session_id,
-      e.level,
-      e.status_message,
-      e.prompt_name,
-      e.prompt_id,
-      e.prompt_version,
-      e.model_id,
-      e.provided_model_name,
-      e.model_parameters,
-      e.usage_details,
-      e.cost_details,
-      e.total_cost,
-      e.input,
-      e.output,
-      e.metadata,
-      e.completion_start_time,
-      e.latency,
-      e.time_to_first_token,
-      e.tags,
-      e.release,
-      e.trace_name,
-      e.parent_observation_id,
-      e.is_deleted,
+      o.span_id AS id,
+      o.trace_id,
+      o.project_id,
+      o.start_time,
+      o.end_time,
+      o.name,
+      o.type,
+      o.environment,
+      o.version,
+      o.user_id,
+      o.session_id,
+      o.level,
+      o.status_message,
+      o.prompt_name,
+      o.prompt_id,
+      o.prompt_version,
+      o.model_id,
+      o.provided_model_name,
+      o.model_parameters,
+      o.usage_details,
+      o.cost_details,
+      o.total_cost,
+      o.input,
+      o.output,
+      o.metadata_names,
+      o.metadata_values,
+      o.completion_start_time,
+      if(o.end_time is null, null, milliseconds_diff(o.end_time, o.start_time)) AS latency,
+      if(o.completion_start_time is null, null, milliseconds_diff(o.completion_start_time, o.start_time)) AS time_to_first_token,
+      o.tags,
+      o.\`release\`,
+      o.trace_name,
+      o.parent_span_id AS parent_observation_id,
+      o.is_deleted,
       s.scores_avg,
-      s.score_categories
-    FROM events e
-    LEFT JOIN scores_agg s ON s.trace_id = e.trace_id AND s.observation_id = e.id
-    WHERE e.project_id = {projectId: String}
+      s.score_categories_tuples
+    FROM events_full o
+    LEFT JOIN scores_agg s ON s.trace_id = o.trace_id AND s.observation_id = o.span_id
+    WHERE o.project_id = {projectId: String}
       ${appliedEventsFilter.query ? `AND ${appliedEventsFilter.query}` : ""}
       ${search.query}
-      AND e.is_deleted = 0
-    ORDER BY e.start_time DESC
+      AND o.is_deleted = 0
+    ORDER BY o.start_time DESC
     LIMIT {rowLimit: Int64}
   `;
 
@@ -196,8 +243,8 @@ export const getEventsStream = async (props: {
     id: string;
     trace_id: string;
     project_id: string;
-    start_time: Date;
-    end_time: Date | null;
+    start_time: Date | string;
+    end_time: Date | string | null;
     name: string | null;
     type: string;
     environment: string | null;
@@ -217,16 +264,16 @@ export const getEventsStream = async (props: {
     total_cost: number | null;
     input: unknown;
     output: unknown;
-    metadata: Record<string, unknown>;
-    completion_start_time: Date | null;
+    metadata_names: unknown;
+    metadata_values: unknown;
+    completion_start_time: Date | string | null;
     latency: number | null;
     time_to_first_token: number | null;
-    tags: string[];
+    tags: unknown;
     release: string | null;
     trace_name: string | null;
     parent_observation_id: string | null;
     scores_avg: string | undefined;
-    score_categories: string | undefined;
     score_categories_tuples: string | undefined;
   };
 
@@ -280,9 +327,9 @@ export const getEventsStream = async (props: {
       traceName: bufferedRow.trace_name,
       type: bufferedRow.type,
       name: bufferedRow.name ?? "",
-      startTime: bufferedRow.start_time,
-      endTime: bufferedRow.end_time,
-      completionStartTime: bufferedRow.completion_start_time,
+      startTime: parseDate(bufferedRow.start_time),
+      endTime: parseNullableDate(bufferedRow.end_time),
+      completionStartTime: parseNullableDate(bufferedRow.completion_start_time),
       environment: bufferedRow.environment,
       version: bufferedRow.version,
       userId: bufferedRow.user_id,
@@ -300,10 +347,13 @@ export const getEventsStream = async (props: {
       totalCost: bufferedRow.total_cost,
       input: bufferedRow.input,
       output: bufferedRow.output,
-      metadata: bufferedRow.metadata,
+      metadata: zipDorisMetadataArrays(
+        bufferedRow.metadata_names,
+        bufferedRow.metadata_values,
+      ),
       latencyMs: bufferedRow.latency,
       timeToFirstTokenMs: bufferedRow.time_to_first_token,
-      tags: bufferedRow.tags,
+      tags: parseDorisStringArray(bufferedRow.tags),
       release: bufferedRow.release,
       parentObservationId: bufferedRow.parent_observation_id,
       scores: outputScores,
@@ -400,33 +450,11 @@ export const getEventsStreamForEval = async (props: {
     rowLimit = env.LITEFUSE_MAX_HISTORIC_EVAL_CREATION_LIMIT,
   } = props;
 
-  // Filter out score and comment filters since they're not relevant for eval
-  const eventOnlyFilters = (filter ?? []).filter((f) => {
-    const columnDef = eventsTableUiColumnDefinitions.find(
-      (col) => col.uiTableName === f.column || col.uiTableId === f.column,
-    );
-
-    return (
-      columnDef?.tableName !== "scores" && columnDef?.tableName !== "comments"
-    );
-  });
-
-  const eventsFilter = new FilterList(
-    createFilterFromFilterState(
-      [
-        ...eventOnlyFilters,
-        {
-          column: "startTime",
-          operator: "<" as const,
-          value: cutoffCreatedAt,
-          type: "datetime" as const,
-        },
-      ],
-      eventsTableUiColumnDefinitions,
-    ),
+  const eventOnlyFilters = getEventOnlyFilters(filter);
+  const appliedEventsFilter = getAppliedEventsFilter(
+    eventOnlyFilters,
+    cutoffCreatedAt,
   );
-
-  const appliedEventsFilter = eventsFilter.apply();
 
   const search = dorisSearchCondition(searchQuery, searchType, {
     type: "observations",
@@ -436,42 +464,51 @@ export const getEventsStreamForEval = async (props: {
   // Build the query for Doris - lightweight eval version
   const query = `
     SELECT
-      e.id,
-      e.trace_id,
-      e.project_id,
-      e.parent_observation_id,
-      e.type,
-      e.name,
-      e.environment,
-      e.version,
-      e.level,
-      e.status_message,
-      e.trace_name,
-      e.user_id,
-      e.session_id,
-      e.tags,
-      e.release,
-      e.provided_model_name,
-      e.model_parameters,
-      e.prompt_id,
-      e.prompt_name,
-      e.prompt_version,
-      e.provided_usage_details,
-      e.usage_details,
-      e.provided_cost_details,
-      e.cost_details,
-      e.tool_definitions,
-      e.tool_calls,
-      e.tool_call_names,
-      e.input,
-      e.output,
-      e.metadata
-    FROM events e
-    WHERE e.project_id = {projectId: String}
+      o.span_id,
+      o.trace_id,
+      o.project_id,
+      o.start_time,
+      o.parent_span_id,
+      o.type,
+      o.name,
+      o.environment,
+      o.version,
+      o.level,
+      o.status_message,
+      o.trace_name,
+      o.user_id,
+      o.session_id,
+      o.tags,
+      o.\`release\`,
+      o.provided_model_name,
+      o.model_parameters,
+      o.prompt_id,
+      o.prompt_name,
+      o.prompt_version,
+      o.provided_usage_details,
+      o.usage_details,
+      o.provided_cost_details,
+      o.cost_details,
+      o.tool_definitions,
+      o.tool_calls,
+      o.tool_call_names,
+      o.experiment_id,
+      o.experiment_name,
+      o.experiment_description,
+      o.experiment_dataset_id,
+      o.experiment_item_id,
+      o.experiment_item_expected_output,
+      o.experiment_item_root_span_id,
+      o.input,
+      o.output,
+      o.metadata_names,
+      o.metadata_values
+    FROM events_full o
+    WHERE o.project_id = {projectId: String}
       ${appliedEventsFilter.query ? `AND ${appliedEventsFilter.query}` : ""}
       ${search.query}
-      AND e.is_deleted = 0
-    ORDER BY e.start_time DESC
+      AND o.is_deleted = 0
+    ORDER BY o.start_time DESC
     LIMIT {rowLimit: Int64}
   `;
 
@@ -484,10 +521,11 @@ export const getEventsStreamForEval = async (props: {
 
   // Matches the aliased columns from the "eval" field set + selectIO + selectFieldSet("metadata")
   type EvalEventRow = {
-    id: string; // aliased from span_id
+    span_id: string;
     trace_id: string;
     project_id: string;
-    parent_observation_id: string | null; // aliased from parent_span_id
+    start_time: Date | string;
+    parent_span_id: string | null;
     type: string;
     name: string | null;
     environment: string | null;
@@ -497,7 +535,7 @@ export const getEventsStreamForEval = async (props: {
     trace_name: string | null;
     user_id: string | null;
     session_id: string | null;
-    tags: string[];
+    tags: unknown;
     release: string | null;
     provided_model_name: string | null;
     model_parameters: unknown;
@@ -508,12 +546,20 @@ export const getEventsStreamForEval = async (props: {
     usage_details: Record<string, number>;
     provided_cost_details: Record<string, number>;
     cost_details: Record<string, number>;
-    tool_definitions: Record<string, unknown>;
+    tool_definitions: Record<string, unknown> | string | null;
     tool_calls: unknown[];
     tool_call_names: string[];
+    experiment_id: string | null;
+    experiment_name: string | null;
+    experiment_description: string | null;
+    experiment_dataset_id: string | null;
+    experiment_item_id: string | null;
+    experiment_item_expected_output: string | null;
+    experiment_item_root_span_id: string | null;
     input: unknown;
     output: unknown;
-    metadata: Record<string, unknown> | null;
+    metadata_names: unknown;
+    metadata_values: unknown;
   };
 
   const asyncGenerator = queryDorisStream<EvalEventRow>({
@@ -534,8 +580,21 @@ export const getEventsStreamForEval = async (props: {
       for await (const row of asyncGenerator) {
         yield {
           ...row,
-          span_id: row.id,
-          parent_span_id: row.parent_observation_id,
+          start_time: parseDate(row.start_time),
+          tags: parseDorisStringArray(row.tags),
+          tool_calls: parseDorisStringArray(row.tool_calls),
+          tool_call_names: parseDorisStringArray(row.tool_call_names),
+          provided_usage_details: parseNumericRecord(
+            row.provided_usage_details,
+          ),
+          usage_details: parseNumericRecord(row.usage_details),
+          provided_cost_details: parseNumericRecord(row.provided_cost_details),
+          cost_details: parseNumericRecord(row.cost_details),
+          tool_definitions: parseRecord(row.tool_definitions),
+          metadata: zipDorisMetadataArrays(
+            row.metadata_names,
+            row.metadata_values,
+          ),
         };
       }
     })(),
@@ -564,32 +623,11 @@ export const getEventsStreamForDataset = async (props: {
     rowLimit = env.BATCH_EXPORT_ROW_LIMIT,
   } = props;
 
-  const eventOnlyFilters = (filter ?? []).filter((f) => {
-    const columnDef = eventsTableUiColumnDefinitions.find(
-      (col) => col.uiTableName === f.column || col.uiTableId === f.column,
-    );
-
-    return (
-      columnDef?.tableName !== "scores" && columnDef?.tableName !== "comments"
-    );
-  });
-
-  const eventsFilter = new FilterList(
-    createFilterFromFilterState(
-      [
-        ...eventOnlyFilters,
-        {
-          column: "startTime",
-          operator: "<" as const,
-          value: cutoffCreatedAt,
-          type: "datetime" as const,
-        },
-      ],
-      eventsTableUiColumnDefinitions,
-    ),
+  const eventOnlyFilters = getEventOnlyFilters(filter);
+  const appliedEventsFilter = getAppliedEventsFilter(
+    eventOnlyFilters,
+    cutoffCreatedAt,
   );
-
-  const appliedEventsFilter = eventsFilter.apply();
 
   const search = dorisSearchCondition(searchQuery, searchType, {
     type: "observations",
@@ -599,17 +637,18 @@ export const getEventsStreamForDataset = async (props: {
   // Build the query for Doris - lightweight dataset version
   const query = `
     SELECT
-      e.id,
-      e.trace_id,
-      e.input,
-      e.output,
-      e.metadata
-    FROM events e
-    WHERE e.project_id = {projectId: String}
+      o.span_id AS id,
+      o.trace_id,
+      o.input,
+      o.output,
+      o.metadata_names,
+      o.metadata_values
+    FROM events_full o
+    WHERE o.project_id = {projectId: String}
       ${appliedEventsFilter.query ? `AND ${appliedEventsFilter.query}` : ""}
       ${search.query}
-      AND e.is_deleted = 0
-    ORDER BY e.start_time DESC
+      AND o.is_deleted = 0
+    ORDER BY o.start_time DESC
     LIMIT {rowLimit: Int64}
   `;
 
@@ -625,7 +664,8 @@ export const getEventsStreamForDataset = async (props: {
     trace_id: string;
     input: unknown;
     output: unknown;
-    metadata: Record<string, unknown> | null;
+    metadata_names: unknown;
+    metadata_values: unknown;
   };
 
   const asyncGenerator = queryDorisStream<DatasetEventRow>({
@@ -647,7 +687,10 @@ export const getEventsStreamForDataset = async (props: {
           traceId: row.trace_id,
           input: row.input,
           output: row.output,
-          metadata: row.metadata,
+          metadata: zipDorisMetadataArrays(
+            row.metadata_names,
+            row.metadata_values,
+          ),
         };
       }
     })(),

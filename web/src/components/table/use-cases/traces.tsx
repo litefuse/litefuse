@@ -38,6 +38,7 @@ import {
   AnnotationQueueObjectType,
   BatchActionType,
   ActionId,
+  BatchEvalSourceTable,
   TableViewPresetTableName,
   type TimeFilter,
 } from "@langfuse/shared";
@@ -89,6 +90,7 @@ import {
 import { useScoreColumns } from "@/src/features/scores/hooks/useScoreColumns";
 import { scoreFilters } from "@/src/features/scores/lib/scoreColumns";
 import TagList from "@/src/features/tag/components/TagList";
+import { RunEvaluationDialog } from "@/src/features/batch-actions/components/RunEvaluationDialog/index";
 
 export type TracesTableRow = {
   // Shown by default
@@ -153,6 +155,7 @@ export default function TracesTable({
 }: TracesTableProps) {
   const utils = api.useUtils();
   const [selectedRows, setSelectedRows] = useState<RowSelectionState>({});
+  const [showRunEvaluationDialog, setShowRunEvaluationDialog] = useState(false);
   const [rawRefreshInterval, setRawRefreshInterval] =
     useSessionStorage<RefreshInterval>(
       `tableRefreshInterval-${projectId}`,
@@ -542,6 +545,16 @@ export default function TracesTable({
           } as TableAction,
         ]
       : []),
+    {
+      id: ActionId.TraceBatchEvaluation,
+      type: BatchActionType.Create,
+      label: "Evaluate",
+      description: "Run evaluations on selected traces.",
+      customDialog: true,
+      accessCheck: {
+        scope: "evalJob:CUD",
+      },
+    },
     {
       id: ActionId.TraceAddToAnnotationQueue,
       type: BatchActionType.Create,
@@ -1330,6 +1343,11 @@ export default function TracesTable({
                   projectId={projectId}
                   actions={tableActions}
                   tableName={BatchExportTableName.Traces}
+                  onCustomAction={(actionType) => {
+                    if (actionType === ActionId.TraceBatchEvaluation) {
+                      setShowRunEvaluationDialog(true);
+                    }
+                  }}
                 />
               ) : null,
               <BatchExportTableButton
@@ -1425,6 +1443,34 @@ export default function TracesTable({
         </ResizableFilterLayout>
         {peekConfig && <TablePeekView peekView={peekConfig} />}
       </div>
+
+      {showRunEvaluationDialog && (
+        <RunEvaluationDialog
+          projectId={projectId}
+          selectedObservationIds={Object.keys(selectedRows).filter((traceId) =>
+            traces.data?.traces.map((t) => t.id).includes(traceId),
+          )}
+          query={{
+            filter: filterState,
+            orderBy: orderByState,
+            searchQuery: searchQuery ?? undefined,
+            searchType,
+          }}
+          selectAll={selectAll}
+          totalCount={totalCount ?? 0}
+          onClose={() => {
+            setShowRunEvaluationDialog(false);
+            setSelectedRows({});
+            setSelectAll(false);
+          }}
+          exampleObservation={{
+            id: "",
+            traceId: "",
+            startTime: undefined,
+          }}
+          sourceTable={BatchEvalSourceTable.TRACES}
+        />
+      )}
     </DataTableControlsProvider>
   );
 }
