@@ -1,5 +1,10 @@
 import { prisma } from "../../db";
-import { Observation, EventsObservation, ObservationType } from "../../domain";
+import {
+  Observation,
+  EventsObservation,
+  ObservationType,
+  type ObservationFieldGroup,
+} from "../../domain";
 import { env } from "../../env";
 import { InternalServerError, LangfuseNotFoundError } from "../../errors";
 import { recordDistribution } from "../instrumentation";
@@ -2748,6 +2753,7 @@ export const getEventsForBlobStorageExport = function (
     SELECT
       o.span_id AS id,
       o.trace_id,
+      o.project_id,
       o.name,
       o.type,
       o.level,
@@ -2757,6 +2763,8 @@ export const getEventsForBlobStorageExport = function (
       o.session_id,
       o.tags,
       o.${dq("release")},
+      o.${dq("public")},
+      o.bookmarked,
       o.trace_name,
       o.total_cost,
       if(o.end_time is null, null, milliseconds_diff(o.end_time, o.start_time)) as latency,
@@ -2767,8 +2775,16 @@ export const getEventsForBlobStorageExport = function (
       o.start_time,
       o.end_time,
       o.provided_model_name as model,
+      o.model_parameters,
+      o.usage_details,
+      o.cost_details,
+      o.completion_start_time,
+      o.created_at,
+      o.updated_at,
+      o.prompt_id,
       o.prompt_name,
       o.prompt_version,
+      if(o.completion_start_time is null, null, milliseconds_diff(o.completion_start_time, o.start_time)) as time_to_first_token,
       o.status_message,
       o.parent_span_id AS parent_observation_id,
       o.version as event_version

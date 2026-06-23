@@ -54,6 +54,24 @@ types:
       - FROM_TODAY
       - FROM_CUSTOM_DATE
 
+  BlobStorageExportSource:
+    enum:
+      - TRACES_OBSERVATIONS
+      - TRACES_OBSERVATIONS_EVENTS
+      - EVENTS
+
+  BlobStorageObservationFieldGroup:
+    enum:
+      - core
+      - basic
+      - time
+      - io
+      - metadata
+      - model
+      - usage
+      - prompt
+      - metrics
+
   BlobStorageExportFrequency:
     enum:
       - hourly
@@ -96,6 +114,15 @@ types:
       exportStartDate:
         type: optional<datetime>
         docs: Custom start date for exports (required when exportMode is FROM_CUSTOM_DATE)
+      exportSource:
+        type: optional<BlobStorageExportSource>
+        docs: Which observation source should be exported. Scores are always included.
+      exportFieldGroups:
+        type: optional<list<BlobStorageObservationFieldGroup>>
+        docs: Which observation field groups should be exported for observation-based exports.
+      compressed:
+        type: optional<boolean>
+        docs: Whether exported files should be gzip-compressed before upload.
 
   BlobStorageIntegrationResponse:
     properties:
@@ -113,6 +140,9 @@ types:
       fileType: BlobStorageIntegrationFileType
       exportMode: BlobStorageExportMode
       exportStartDate: nullable<datetime>
+      exportSource: BlobStorageExportSource
+      exportFieldGroups: nullable<list<BlobStorageObservationFieldGroup>>
+      compressed: boolean
       nextSyncAt: nullable<datetime>
       lastSyncAt: nullable<datetime>
       lastError: nullable<string>

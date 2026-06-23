@@ -1655,15 +1655,32 @@ export const getObservationsForBlobStorageExport = function (
         level,
         status_message,
         version,
+        user_id,
+        session_id,
+        tags,
+        ${dq("release")},
+        ${dq("public")},
+        bookmarked,
+        trace_name,
         input,
         output,
-        provided_model_name,
+        provided_model_name as model,
         model_parameters,
         usage_details,
         cost_details,
+        total_cost,
         completion_start_time,
+        created_at,
+        updated_at,
+        prompt_id,
         prompt_name,
-        prompt_version
+        prompt_version,
+        CASE WHEN end_time IS NULL THEN NULL
+             ELSE milliseconds_diff(end_time, start_time)
+        END as latency,
+        CASE WHEN completion_start_time IS NULL THEN NULL
+             ELSE milliseconds_diff(completion_start_time, start_time)
+        END as time_to_first_token
       FROM events_full
       WHERE project_id = {projectId: String}
       AND start_time >= {minTimestamp: DateTime}

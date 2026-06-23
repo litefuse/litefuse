@@ -2,18 +2,18 @@ import {
   type Observation,
   type EventsObservation,
   ObservationLevel,
+  OBSERVATION_FIELD_GROUPS,
   paginationMetaResponseZod,
   publicApiPaginationZod,
   singleFilter,
   InvalidRequestError,
+  type ObservationFieldGroup,
 } from "@langfuse/shared";
 
 import {
   reduceUsageOrCostDetails,
   stringDateTime,
   type ObservationPriceFields,
-  OBSERVATION_FIELD_GROUPS,
-  type ObservationFieldGroup,
 } from "@langfuse/shared/src/server";
 import { z } from "zod/v4";
 import { useEventsTableSchema } from "../../query/types";

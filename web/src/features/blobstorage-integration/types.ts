@@ -4,9 +4,12 @@ import {
   BlobStorageIntegrationFileType,
   BlobStorageExportMode,
   AnalyticsIntegrationExportSource,
+  OBSERVATION_FIELD_GROUPS,
+  DEFAULT_OBSERVATION_FIELD_GROUPS,
 } from "@langfuse/shared";
+import { validateBlobStorageIntegrationConfig } from "@/src/features/blobstorage-integration/validation";
 
-export const blobStorageIntegrationFormSchema = z.object({
+export const blobStorageIntegrationFormSchemaBase = z.object({
   type: z.enum(BlobStorageIntegrationType),
   bucketName: z.string().min(1, { message: "Bucket name is required" }),
   endpoint: z.string().url().optional().nullable(),
@@ -33,7 +36,23 @@ export const blobStorageIntegrationFormSchema = z.object({
   exportSource: z
     .enum(AnalyticsIntegrationExportSource)
     .default(AnalyticsIntegrationExportSource.TRACES_OBSERVATIONS),
+  exportFieldGroups: z
+    .array(z.enum(OBSERVATION_FIELD_GROUPS))
+    .default(DEFAULT_OBSERVATION_FIELD_GROUPS),
+  compressed: z.boolean().default(true),
 });
+
+export const blobStorageIntegrationFormSchema =
+  blobStorageIntegrationFormSchemaBase.superRefine((data, ctx) => {
+    if (data.exportMode === "FROM_CUSTOM_DATE" && !data.exportStartDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Export start date is required for custom date exports",
+        path: ["exportStartDate"],
+      });
+    }
+    validateBlobStorageIntegrationConfig(data, ctx);
+  });
 
 export type BlobStorageIntegrationFormSchema = z.infer<
   typeof blobStorageIntegrationFormSchema

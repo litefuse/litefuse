@@ -1,4 +1,10 @@
 import { z } from "zod/v4";
+import {
+  AnalyticsIntegrationExportSource,
+  DEFAULT_OBSERVATION_FIELD_GROUPS,
+  OBSERVATION_FIELD_GROUPS,
+} from "@langfuse/shared";
+import { validateBlobStorageIntegrationConfig } from "@/src/features/blobstorage-integration/validation";
 
 /**
  * Enums
@@ -45,18 +51,26 @@ export const CreateBlobStorageIntegrationRequest = z
     fileType: BlobStorageIntegrationFileType,
     exportMode: BlobStorageExportMode,
     exportStartDate: z.coerce.date().nullable().optional(),
+    exportSource: z
+      .enum(AnalyticsIntegrationExportSource)
+      .default(AnalyticsIntegrationExportSource.TRACES_OBSERVATIONS),
+    exportFieldGroups: z
+      .array(z.enum(OBSERVATION_FIELD_GROUPS))
+      .default(DEFAULT_OBSERVATION_FIELD_GROUPS),
+    compressed: z.boolean().default(true),
   })
   .strict()
-  .refine(
-    (data) => {
-      return !(data.exportMode === "FROM_CUSTOM_DATE" && !data.exportStartDate);
-    },
-    {
-      message:
-        "exportStartDate is required when exportMode is FROM_CUSTOM_DATE",
-      path: ["exportStartDate"],
-    },
-  );
+  .superRefine((data, ctx) => {
+    if (data.exportMode === "FROM_CUSTOM_DATE" && !data.exportStartDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "exportStartDate is required when exportMode is FROM_CUSTOM_DATE",
+        path: ["exportStartDate"],
+      });
+    }
+    validateBlobStorageIntegrationConfig(data, ctx);
+  });
 
 export const BlobStorageIntegrationResponse = z
   .object({
@@ -74,6 +88,9 @@ export const BlobStorageIntegrationResponse = z
     fileType: BlobStorageIntegrationFileType,
     exportMode: BlobStorageExportMode,
     exportStartDate: z.coerce.date().nullable(),
+    exportSource: z.enum(AnalyticsIntegrationExportSource),
+    exportFieldGroups: z.array(z.enum(OBSERVATION_FIELD_GROUPS)).nullable(),
+    compressed: z.boolean(),
     nextSyncAt: z.coerce.date().nullable(),
     lastSyncAt: z.coerce.date().nullable(),
     lastError: z.string().nullable(),

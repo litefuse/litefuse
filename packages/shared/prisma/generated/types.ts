@@ -379,6 +379,8 @@ export type BlobStorageIntegration = {
   export_mode: Generated<BlobStorageExportMode>;
   export_start_date: Timestamp | null;
   export_source: Generated<AnalyticsIntegrationExportSource>;
+  export_field_groups: Generated<string[]>;
+  compressed: Generated<boolean>;
   last_error: string | null;
   last_error_at: Timestamp | null;
   created_at: Generated<Timestamp>;

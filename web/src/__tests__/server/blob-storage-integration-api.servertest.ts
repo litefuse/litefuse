@@ -43,6 +43,21 @@ const BlobStorageIntegrationDeletionResponseSchema = z.object({
   message: z.string(),
 });
 
+const BlobStorageIntegrationExtendedResponseSchema =
+  BlobStorageIntegrationResponseSchema.extend({
+    exportSource: z.enum([
+      "TRACES_OBSERVATIONS",
+      "TRACES_OBSERVATIONS_EVENTS",
+      "EVENTS",
+    ]),
+    exportFieldGroups: z.array(z.string()).nullable(),
+    compressed: z.boolean(),
+  });
+
+const BlobStorageIntegrationsExtendedResponseSchema = z.object({
+  data: z.array(BlobStorageIntegrationExtendedResponseSchema),
+});
+
 // Valid blob storage integration request payload
 const validBlobStorageConfig = {
   projectId: "",
@@ -276,6 +291,52 @@ describe("Blob Storage Integrations API", () => {
       });
       expect(savedIntegration).toBeDefined();
       expect(savedIntegration?.bucketName).toBe("test-bucket");
+    });
+
+    it("should round-trip exportSource, exportFieldGroups, and compressed settings", async () => {
+      const requestBody = {
+        ...validBlobStorageConfig,
+        projectId: testProject1Id,
+        exportSource: "EVENTS" as const,
+        exportFieldGroups: ["core", "io"],
+        compressed: false,
+      };
+
+      const putResponse = await makeZodVerifiedAPICall(
+        BlobStorageIntegrationExtendedResponseSchema,
+        "PUT",
+        "/api/public/integrations/blob-storage",
+        requestBody,
+        createBasicAuthHeader(testApiKey, testApiSecretKey),
+        200,
+      );
+
+      expect(putResponse.body.exportSource).toBe("EVENTS");
+      expect(putResponse.body.exportFieldGroups).toStrictEqual(["core", "io"]);
+      expect(putResponse.body.compressed).toBe(false);
+
+      const getResponse = await makeZodVerifiedAPICall(
+        BlobStorageIntegrationsExtendedResponseSchema,
+        "GET",
+        "/api/public/integrations/blob-storage",
+        undefined,
+        createBasicAuthHeader(testApiKey, testApiSecretKey),
+        200,
+      );
+
+      const integration = getResponse.body.data.find(
+        (item) => item.projectId === testProject1Id,
+      );
+      expect(integration?.exportSource).toBe("EVENTS");
+      expect(integration?.exportFieldGroups).toStrictEqual(["core", "io"]);
+      expect(integration?.compressed).toBe(false);
+
+      const savedIntegration = (await prisma.blobStorageIntegration.findUnique({
+        where: { projectId: testProject1Id },
+      })) as any;
+      expect(savedIntegration?.exportSource).toBe("EVENTS");
+      expect(savedIntegration?.exportFieldGroups).toStrictEqual(["core", "io"]);
+      expect(savedIntegration?.compressed).toBe(false);
     });
 
     it("should update an existing blob storage integration", async () => {

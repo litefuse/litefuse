@@ -1,5 +1,6 @@
 import { pipeline } from "stream";
 import { Job } from "bullmq";
+import { createGzip } from "node:zlib";
 import { prisma } from "@langfuse/shared/src/db";
 import {
   QueueName,
@@ -21,6 +22,8 @@ import {
   BlobStorageIntegrationType,
   BlobStorageIntegrationFileType,
   BlobStorageExportMode,
+  DEFAULT_OBSERVATION_FIELD_GROUPS,
+  type ObservationFieldGroup,
 } from "@langfuse/shared";
 import { decrypt } from "@langfuse/shared/encryption";
 import { randomUUID } from "crypto";
@@ -117,29 +120,122 @@ const getFrequencyIntervalMs = (frequency: string): number => {
   }
 };
 
-const getFileTypeProperties = (fileType: BlobStorageIntegrationFileType) => {
+const OBSERVATION_FIELD_GROUP_COLUMNS: Record<
+  ObservationFieldGroup,
+  readonly string[]
+> = {
+  core: [
+    "id",
+    "trace_id",
+    "project_id",
+    "type",
+    "parent_observation_id",
+    "start_time",
+    "end_time",
+  ],
+  basic: [
+    "name",
+    "level",
+    "status_message",
+    "version",
+    "environment",
+    "user_id",
+    "session_id",
+    "trace_name",
+    "tags",
+    "release",
+    "event_version",
+    "bookmarked",
+    "public",
+  ],
+  time: ["completion_start_time", "created_at", "updated_at"],
+  io: ["input", "output"],
+  metadata: ["metadata", "metadata_names", "metadata_values"],
+  model: ["model", "provided_model_name", "model_parameters"],
+  usage: ["usage_details", "cost_details", "total_cost"],
+  prompt: ["prompt_id", "prompt_name", "prompt_version"],
+  metrics: ["latency", "time_to_first_token"],
+};
+
+const getFileTypeProperties = (
+  fileType: BlobStorageIntegrationFileType,
+  compressed: boolean,
+) => {
+  let baseProperties: { contentType: string; extension: string };
+
   switch (fileType) {
     case BlobStorageIntegrationFileType.JSON:
-      return {
+      baseProperties = {
         contentType: "application/json; charset=utf-8",
         extension: "json",
       };
+      break;
     case BlobStorageIntegrationFileType.CSV:
-      return {
+      baseProperties = {
         contentType: "text/csv; charset=utf-8",
         extension: "csv",
       };
+      break;
     case BlobStorageIntegrationFileType.JSONL:
-      return {
+      baseProperties = {
         contentType: "application/x-ndjson; charset=utf-8",
         extension: "jsonl",
       };
+      break;
     default:
       // eslint-disable-next-line no-case-declarations
       const _exhaustiveCheck: never = fileType;
       throw new Error(`Unsupported file type: ${fileType}`);
   }
+
+  return compressed
+    ? {
+        contentType: "application/gzip",
+        extension: `${baseProperties.extension}.gz`,
+      }
+    : baseProperties;
 };
+
+const isObservationExportTable = (
+  table: "traces" | "observations" | "scores" | "observations_v2",
+): table is "observations" | "observations_v2" =>
+  table === "observations" || table === "observations_v2";
+
+const filterObservationBlobExportRow = (
+  row: Record<string, unknown>,
+  exportFieldGroups: ObservationFieldGroup[],
+) => {
+  const allowedColumns = new Set<string>();
+
+  for (const group of exportFieldGroups) {
+    for (const column of OBSERVATION_FIELD_GROUP_COLUMNS[group]) {
+      allowedColumns.add(column);
+    }
+  }
+
+  return Object.fromEntries(
+    Object.entries(row).filter(
+      ([key, value]) => allowedColumns.has(key) && value !== undefined,
+    ),
+  );
+};
+
+async function* applyObservationFieldSelection(params: {
+  rows: AsyncGenerator<Record<string, unknown>>;
+  table: "traces" | "observations" | "scores" | "observations_v2";
+  exportFieldGroups: ObservationFieldGroup[];
+}) {
+  const exportFieldGroups =
+    params.exportFieldGroups.length > 0
+      ? params.exportFieldGroups
+      : DEFAULT_OBSERVATION_FIELD_GROUPS;
+
+  for await (const row of params.rows) {
+    yield isObservationExportTable(params.table)
+      ? filterObservationBlobExportRow(row, exportFieldGroups)
+      : row;
+  }
+}
 
 const processBlobStorageExport = async (config: {
   projectId: string;
@@ -155,6 +251,8 @@ const processBlobStorageExport = async (config: {
   type: BlobStorageIntegrationType;
   table: "traces" | "observations" | "scores" | "observations_v2"; // observations_v2 is the events table
   fileType: BlobStorageIntegrationFileType;
+  compressed: boolean;
+  exportFieldGroups: ObservationFieldGroup[];
 }) => {
   logger.info(
     `[BLOB INTEGRATION] Processing ${config.table} export for project ${config.projectId}`,
@@ -175,7 +273,10 @@ const processBlobStorageExport = async (config: {
   });
 
   try {
-    const blobStorageProps = getFileTypeProperties(config.fileType);
+    const blobStorageProps = getFileTypeProperties(
+      config.fileType,
+      config.compressed,
+    );
 
     // Create the file path with prefix if available
     const timestamp = config.maxTimestamp
@@ -220,18 +321,38 @@ const processBlobStorageExport = async (config: {
         throw new Error(`Unsupported table type: ${config.table}`);
     }
 
-    const fileStream = pipeline(
-      dataStream,
-      streamTransformations[config.fileType](),
-      (err) => {
-        if (err) {
-          logger.error(
-            "[BLOB INTEGRATION] Getting data from DB for blob storage integration failed: ",
-            err,
-          );
-        }
-      },
-    );
+    const filteredDataStream = applyObservationFieldSelection({
+      rows: dataStream,
+      table: config.table,
+      exportFieldGroups: config.exportFieldGroups,
+    });
+
+    const fileStream = config.compressed
+      ? pipeline(
+          filteredDataStream,
+          streamTransformations[config.fileType](),
+          createGzip(),
+          (err) => {
+            if (err) {
+              logger.error(
+                "[BLOB INTEGRATION] Getting data from DB for blob storage integration failed: ",
+                err,
+              );
+            }
+          },
+        )
+      : pipeline(
+          filteredDataStream,
+          streamTransformations[config.fileType](),
+          (err) => {
+            if (err) {
+              logger.error(
+                "[BLOB INTEGRATION] Getting data from DB for blob storage integration failed: ",
+                err,
+              );
+            }
+          },
+        );
 
     // Upload the file to cloud storage
     // For CSV exports, use larger part size to handle big files
@@ -359,6 +480,12 @@ export const handleBlobStorageIntegrationProjectJob = async (
       forcePathStyle: blobStorageIntegration.forcePathStyle || undefined,
       type: blobStorageIntegration.type,
       fileType: blobStorageIntegration.fileType,
+      compressed: blobStorageIntegration.compressed,
+      exportFieldGroups:
+        (blobStorageIntegration.exportFieldGroups as
+          | ObservationFieldGroup[]
+          | null
+          | undefined) ?? DEFAULT_OBSERVATION_FIELD_GROUPS,
     };
 
     // Check if this project should only export traces (legacy behavior via env var)

@@ -14,6 +14,7 @@ import {
 import { Input } from "@/src/components/ui/input";
 import { PasswordInput } from "@/src/components/ui/password-input";
 import { Switch } from "@/src/components/ui/switch";
+import { Checkbox } from "@/src/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -35,7 +36,7 @@ import {
 import { deriveSyncStatus } from "@/src/features/blobstorage-integration/deriveSyncStatus";
 import { Alert, AlertTitle, AlertDescription } from "@/src/components/ui/alert";
 import { useHasProjectAccess } from "@/src/features/rbac/utils/checkProjectAccess";
-import { api } from "@/src/utils/api";
+import { api, type RouterOutputs } from "@/src/utils/api";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card } from "@/src/components/ui/card";
 import Link from "next/link";
@@ -49,12 +50,23 @@ import {
   BlobStorageIntegrationFileType,
   BlobStorageExportMode,
   AnalyticsIntegrationExportSource,
-  type BlobStorageIntegration,
+  DEFAULT_OBSERVATION_FIELD_GROUPS,
+  OBSERVATION_FIELD_GROUPS,
+  OBSERVATION_FIELD_GROUP_OPTIONS,
+  type ObservationFieldGroup,
   EXPORT_SOURCE_OPTIONS,
 } from "@langfuse/shared";
 import { useLangfuseCloudRegion } from "@/src/features/organizations/hooks";
-import { useV4Beta } from "@/src/features/events/hooks/useV4Beta";
 import { Info, ExternalLink } from "lucide-react";
+
+type BlobStorageIntegrationSettingsState = Omit<
+  NonNullable<RouterOutputs["blobStorageIntegration"]["get"]>,
+  "exportFieldGroups" | "compressed"
+> & {
+  exportFieldGroups: ObservationFieldGroup[] | null;
+  compressed: boolean;
+  secretAccessKey?: string | null;
+};
 
 export default function BlobStorageIntegrationSettings() {
   const router = useRouter();
@@ -206,7 +218,10 @@ export default function BlobStorageIntegrationSettings() {
           <Header title="Configuration" className="mt-8" />
           <Card className="p-3">
             <BlobStorageIntegrationSettingsForm
-              state={state.data || undefined}
+              state={
+                (state.data as BlobStorageIntegrationSettingsState | null) ??
+                undefined
+              }
               projectId={projectId}
               isLoading={state.isLoading}
             />
@@ -222,18 +237,19 @@ const BlobStorageIntegrationSettingsForm = ({
   projectId,
   isLoading,
 }: {
-  state?: Partial<BlobStorageIntegration>;
+  state?: Partial<BlobStorageIntegrationSettingsState>;
   projectId: string;
   isLoading: boolean;
 }) => {
   const capture = usePostHogClientCapture();
   const { isLangfuseCloud } = useLangfuseCloudRegion();
-  const { isBetaEnabled } = useV4Beta();
   const [integrationType, setIntegrationType] =
     useState<BlobStorageIntegrationType>(BlobStorageIntegrationType.S3);
 
   // Check if this is a self-hosted instance (no cloud region set)
   const isSelfHosted = !isLangfuseCloud;
+  const defaultExportFieldGroups =
+    state?.exportFieldGroups ?? DEFAULT_OBSERVATION_FIELD_GROUPS;
 
   const blobStorageForm = useForm({
     resolver: zodResolver(blobStorageIntegrationFormSchema),
@@ -256,9 +272,9 @@ const BlobStorageIntegrationSettingsForm = ({
       exportStartDate: state?.exportStartDate || null,
       exportSource:
         state?.exportSource ||
-        (isBetaEnabled
-          ? AnalyticsIntegrationExportSource.EVENTS
-          : AnalyticsIntegrationExportSource.TRACES_OBSERVATIONS),
+        AnalyticsIntegrationExportSource.TRACES_OBSERVATIONS,
+      exportFieldGroups: defaultExportFieldGroups,
+      compressed: state?.compressed ?? true,
     },
     disabled: isLoading,
   });
@@ -284,9 +300,9 @@ const BlobStorageIntegrationSettingsForm = ({
       exportStartDate: state?.exportStartDate || null,
       exportSource:
         state?.exportSource ||
-        (isBetaEnabled
-          ? AnalyticsIntegrationExportSource.EVENTS
-          : AnalyticsIntegrationExportSource.TRACES_OBSERVATIONS),
+        AnalyticsIntegrationExportSource.TRACES_OBSERVATIONS,
+      exportFieldGroups: defaultExportFieldGroups,
+      compressed: state?.compressed ?? true,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
@@ -654,67 +670,147 @@ const BlobStorageIntegrationSettingsForm = ({
           )}
         />
 
-        {isBetaEnabled && (
-          <FormField
-            control={blobStorageForm.control}
-            name="exportSource"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="flex items-center gap-1.5 pt-2">
-                  Export Source
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Info className="text-muted-foreground h-3.5 w-3.5" />
-                    </TooltipTrigger>
-                    <TooltipContent
-                      side="bottom"
-                      className="max-w-[350px] space-y-2 p-3"
-                    >
-                      {EXPORT_SOURCE_OPTIONS.map((option) => (
-                        <div key={option.value} className="space-y-0.5">
-                          <div className="font-medium">{option.label}</div>
-                          <div className="text-muted-foreground text-xs">
-                            {option.description}
-                          </div>
-                        </div>
-                      ))}
-                      <div className="border-t pt-2">
-                        <a
-                          href="https://litefuse.ai/docs/integrations/export-sources"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-muted-foreground hover:text-primary inline-flex items-center gap-1 text-xs hover:underline"
-                        >
-                          For further information see
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                </FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select data to export" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
+        <FormField
+          control={blobStorageForm.control}
+          name="exportSource"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-1.5 pt-2">
+                Export Source
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Info className="text-muted-foreground h-3.5 w-3.5" />
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="bottom"
+                    className="max-w-[350px] space-y-2 p-3"
+                  >
                     {EXPORT_SOURCE_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
+                      <div key={option.value} className="space-y-0.5">
+                        <div className="font-medium">{option.label}</div>
+                        <div className="text-muted-foreground text-xs">
+                          {option.description}
+                        </div>
+                      </div>
                     ))}
-                  </SelectContent>
-                </Select>
-                <FormDescription>
-                  Choose which data sources to export to blob storage. Scores
-                  are always included.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
+                    <div className="border-t pt-2">
+                      <a
+                        href="https://litefuse.ai/docs/integrations/export-sources"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-muted-foreground hover:text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                      >
+                        For further information see
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select data to export" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {EXPORT_SOURCE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormDescription>
+                Choose which data sources to export to blob storage. Scores are
+                always included.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={blobStorageForm.control}
+          name="exportFieldGroups"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Observation Field Groups</FormLabel>
+              <FormDescription>
+                Choose which observation fields to include in observation
+                exports. The core group is always required.
+              </FormDescription>
+              <div className="grid gap-3 pt-2 sm:grid-cols-2">
+                {OBSERVATION_FIELD_GROUP_OPTIONS.map((option) => {
+                  const selectedFieldGroups =
+                    (field.value as ObservationFieldGroup[] | undefined) ??
+                    DEFAULT_OBSERVATION_FIELD_GROUPS;
+                  const checked = selectedFieldGroups.includes(option.value);
+                  const isRequired = option.value === "core";
+
+                  return (
+                    <label
+                      key={option.value}
+                      className="flex items-start gap-3 rounded-md border p-3"
+                    >
+                      <Checkbox
+                        checked={checked}
+                        disabled={isRequired}
+                        onCheckedChange={(nextChecked) => {
+                          if (isRequired) return;
+
+                          const nextValues = nextChecked
+                            ? OBSERVATION_FIELD_GROUPS.filter((group) =>
+                                [...selectedFieldGroups, option.value].includes(
+                                  group,
+                                ),
+                              )
+                            : selectedFieldGroups.filter(
+                                (value) => value !== option.value,
+                              );
+
+                          field.onChange(nextValues);
+                        }}
+                      />
+                      <div className="space-y-1">
+                        <div className="text-sm leading-none font-medium">
+                          {option.label}
+                          {isRequired ? " (required)" : ""}
+                        </div>
+                        <div className="text-muted-foreground text-xs">
+                          {option.description}
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={blobStorageForm.control}
+          name="compressed"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Gzip Compression</FormLabel>
+              <FormControl>
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  className="mt-1 ml-4"
+                />
+              </FormControl>
+              <FormDescription>
+                Compress exported files with gzip before uploading them to blob
+                storage.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         {blobStorageForm.watch("exportMode") ===
           BlobStorageExportMode.FROM_CUSTOM_DATE && (
