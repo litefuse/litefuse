@@ -1,4 +1,4 @@
-CREATE TABLE if not exists observation_source (
+CREATE TABLE if not exists observations (
     `project_id` varchar(64) not null,
     `start_time_date` Date not null,
     `id` varchar(64),
