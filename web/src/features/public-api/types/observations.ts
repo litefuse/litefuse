@@ -407,6 +407,7 @@ const APIObservationV2 = z
     usageDetails: z.record(z.string(), z.number().nonnegative()).optional(),
     costDetails: z.record(z.string(), z.number().nonnegative()).optional(),
     totalCost: z.number().nullable().optional(),
+    usagePricingTierName: z.string().nullable().optional(),
 
     // Prompt fields (field group: prompt)
     promptId: z.string().nullable().optional(),
@@ -419,6 +420,14 @@ const APIObservationV2 = z
 
     // Enrichment fields
     modelId: z.string().nullable().optional(),
+    inputPrice: z.string().nullable().optional(),
+    outputPrice: z.string().nullable().optional(),
+    totalPrice: z.string().nullable().optional(),
+
+    // Trace context fields (field group: trace_context)
+    traceName: z.string().nullable().optional(),
+    tags: z.array(z.string()).optional(),
+    release: z.string().nullable().optional(),
   })
   .passthrough();
 

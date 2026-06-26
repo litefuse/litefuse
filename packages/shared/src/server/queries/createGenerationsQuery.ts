@@ -38,6 +38,9 @@ export type FullEventsObservations = Array<FullEventsObservation>;
 // Public API version of EventsObservation, some fields are omitted because
 // V2 allows clients to specify fields
 export type EventsObservationPublic = Partial<
-  EventsObservation & ObservationPriceFields
+  EventsObservation &
+    ObservationPriceFields & {
+      modelId: string | null;
+    }
 > &
   ObservationCoreFields;

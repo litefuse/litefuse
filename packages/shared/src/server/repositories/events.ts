@@ -102,11 +102,16 @@ async function enrichObservationsWithModelData(
 > {
   // Determine if this is V1 (complete) or V2 (partial) API
   const isV2 = Array.isArray(requestedFields);
+  const effectiveRequestedFields: ObservationFieldGroup[] = isV2
+    ? requestedFields.length === 0
+      ? [...OBSERVATION_FIELD_GROUPS]
+      : requestedFields
+    : [];
 
   // Determine if model enrichment is needed
   // V1 API: always enrich
   // V2 API: only enrich if "model" field group is requested
-  const shouldEnrichModel = !isV2 || requestedFields.includes("model");
+  const shouldEnrichModel = !isV2 || effectiveRequestedFields.includes("model");
 
   // Fetch model data if needed
   const models = shouldEnrichModel
@@ -175,7 +180,9 @@ async function enrichObservationsWithModelData(
         model?.Price?.find((m) => m.usageType === "total")?.price ?? null,
     };
 
-    return enriched;
+    return isV2
+      ? filterObservationFieldsForPublicApi(enriched, effectiveRequestedFields)
+      : enriched;
   });
 }
 
@@ -757,7 +764,7 @@ export const getTraceByIdFromEventsTable = async ({
  * Field groups for selective field fetching in v2 observations API
  *
  * - core: Always included (cursor-required fields)
- * - basic, time, io, metadata, model, usage, prompt, metrics: Optional groups
+ * - basic, time, io, metadata, model, usage, prompt, metrics, trace_context: Optional groups
  */
 export const OBSERVATION_FIELD_GROUPS = [
   "core", // Always included: id, traceId, startTime, endTime, projectId, parentObservationId, type
@@ -766,12 +773,88 @@ export const OBSERVATION_FIELD_GROUPS = [
   "io", // input, output
   "metadata", // metadata
   "model", // providedModelName, internalModelId, modelParameters
-  "usage", // usageDetails, costDetails, totalCost
+  "usage", // usageDetails, costDetails, totalCost, usagePricingTierName
   "prompt", // promptId, promptName, promptVersion
   "metrics", // latency, timeToFirstToken
+  "trace_context", // tags, release, traceName
 ] as const;
 
 export type ObservationFieldGroup = (typeof OBSERVATION_FIELD_GROUPS)[number];
+
+const OBSERVATION_CORE_FIELDS = [
+  "id",
+  "traceId",
+  "startTime",
+  "endTime",
+  "projectId",
+  "parentObservationId",
+  "type",
+] as const;
+
+const OBSERVATION_FIELDS_BY_GROUP: Record<
+  ObservationFieldGroup,
+  readonly string[]
+> = {
+  core: OBSERVATION_CORE_FIELDS,
+  basic: [
+    "name",
+    "level",
+    "statusMessage",
+    "version",
+    "environment",
+    "bookmarked",
+    "public",
+    "userId",
+    "sessionId",
+  ],
+  time: ["completionStartTime", "createdAt", "updatedAt"],
+  io: ["input", "output"],
+  metadata: ["metadata"],
+  model: [
+    "model",
+    "internalModelId",
+    "modelParameters",
+    "modelId",
+    "inputPrice",
+    "outputPrice",
+    "totalPrice",
+  ],
+  usage: [
+    "usageDetails",
+    "costDetails",
+    "providedCostDetails",
+    "inputUsage",
+    "outputUsage",
+    "totalUsage",
+    "inputCost",
+    "outputCost",
+    "totalCost",
+    "usagePricingTierId",
+    "usagePricingTierName",
+  ],
+  prompt: ["promptId", "promptName", "promptVersion"],
+  metrics: ["latency", "timeToFirstToken"],
+  trace_context: ["traceName", "tags", "release"],
+};
+
+export function filterObservationFieldsForPublicApi(
+  observation: EventsObservationPublic,
+  requestedFields: ObservationFieldGroup[],
+): EventsObservationPublic {
+  const effectiveFields =
+    requestedFields.length > 0 ? requestedFields : OBSERVATION_FIELD_GROUPS;
+
+  const allowedFields = new Set<string>(OBSERVATION_CORE_FIELDS);
+  for (const group of effectiveFields) {
+    for (const field of OBSERVATION_FIELDS_BY_GROUP[group]) {
+      allowedFields.add(field);
+    }
+  }
+
+  return Object.fromEntries(
+    Object.entries(observation).filter(([key]) => allowedFields.has(key)),
+  ) as EventsObservationPublic;
+}
 
 export type PublicApiObservationsQuery = {
   projectId: string;
@@ -868,9 +951,17 @@ export function buildObservationsQueryDoris(opts: PublicApiObservationsQuery): {
       o.usage_details,
       o.cost_details,
       o.total_cost,
+      o.usage_pricing_tier_name,
       o.completion_start_time,
       o.created_at,
       o.updated_at,
+      o.trace_name,
+      o.tags,
+      o.${dq("release")} AS \`release\`,
+      o.bookmarked,
+      o.${dq("public")} AS \`public\`,
+      o.user_id,
+      o.session_id,
       o.event_ts
     FROM events_full o
     ${hasTraceFilter ? `JOIN events_full t ON o.trace_id = t.trace_id AND t.project_id = o.project_id AND t.parent_span_id = ''` : ""}

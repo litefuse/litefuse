@@ -6,6 +6,7 @@ import {
   getObservationByIdFromEventsTable,
   getObservationsFromEventsTableForPublicApi,
   getObservationsCountFromEventsTableForPublicApi,
+  getObservationsV2FromEventsTableForPublicApi,
   updateEvents,
   getTraceByIdFromEventsTable,
   getObservationsBatchIOFromEventsTable,
@@ -299,6 +300,76 @@ describe("Clickhouse Events Repository Test", () => {
       expect(resultWithoutIO.length).toBeGreaterThanOrEqual(1);
       expect(resultWithIO[0]?.input).toBeDefined();
       expect(resultWithoutIO[0]?.output).toBeDefined();
+    });
+  });
+
+  maybe("getObservationsV2FromEventsTableForPublicApi", () => {
+    it("returns usage pricing tier and trace context field groups", async () => {
+      const traceId = randomUUID();
+      const rootSpanId = randomUUID();
+      const childSpanId = randomUUID();
+      const nowMicro = Date.now() * 1000;
+
+      const rootEvent = createEvent({
+        id: rootSpanId,
+        span_id: rootSpanId,
+        project_id: projectId,
+        trace_id: traceId,
+        parent_span_id: "",
+        type: "GENERATION",
+        name: `root-${traceId}`,
+        trace_name: `trace-${traceId}`,
+        release: "2026.05.15",
+        tags: ["prod", "sdk-js"],
+        public: true,
+        bookmarked: true,
+        user_id: "user-trace-context",
+        session_id: "session-trace-context",
+        usage_pricing_tier_name: "Standard",
+        start_time: nowMicro,
+        end_time: nowMicro + 2_000_000,
+        completion_start_time: nowMicro + 1_000_000,
+      });
+
+      const childEvent = createEvent({
+        id: childSpanId,
+        span_id: childSpanId,
+        project_id: projectId,
+        trace_id: traceId,
+        parent_span_id: rootSpanId,
+        type: "GENERATION",
+        name: `child-${traceId}`,
+        trace_name: `trace-${traceId}`,
+        release: "2026.05.15",
+        tags: ["prod", "sdk-js"],
+        public: true,
+        bookmarked: false,
+        user_id: "user-trace-context",
+        session_id: "session-trace-context",
+        usage_pricing_tier_name: "Standard",
+        start_time: nowMicro + 10_000,
+        end_time: nowMicro + 3_000_000,
+        completion_start_time: nowMicro + 1_500_000,
+      });
+
+      await createEventsCh([rootEvent, childEvent]);
+
+      await waitForExpect(async () => {
+        const result = await getObservationsV2FromEventsTableForPublicApi({
+          projectId,
+          page: 0,
+          limit: 10,
+          traceId,
+          fields: ["core", "usage", "trace_context", "basic"],
+        });
+
+        const observation = result.find((o) => o.id === childSpanId);
+        expect(observation).toBeDefined();
+        expect(observation?.usagePricingTierName).toBe("Standard");
+        expect(observation?.traceName).toBe(`trace-${traceId}`);
+        expect(observation?.release).toBe("2026.05.15");
+        expect(observation?.tags).toEqual(["prod", "sdk-js"]);
+      });
     });
   });
 

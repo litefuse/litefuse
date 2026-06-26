@@ -21,14 +21,49 @@ import { logger } from "../logger";
 import type { Model, Price } from "@prisma/client";
 import { parseDorisUTCDateTimeFormat } from "./doris";
 
+/**
+ * Normalize single-object arrays on read. Some stored inputs arrive as
+ * `[{ ... }]` even though ChatML parsing expects `{ ... }`.
+ */
+function unwrapSingleObjectArray(input: unknown): unknown {
+  if (input == null) return input;
+
+  if (
+    Array.isArray(input) &&
+    input.length === 1 &&
+    typeof input[0] === "object" &&
+    input[0] !== null
+  ) {
+    return input[0];
+  }
+
+  if (typeof input === "string") {
+    const trimmed = input.trim();
+    if (!trimmed.startsWith("[{") || !trimmed.endsWith("}]")) return input;
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (
+        Array.isArray(parsed) &&
+        parsed.length === 1 &&
+        typeof parsed[0] === "object" &&
+        parsed[0] !== null
+      ) {
+        return JSON.stringify(parsed[0]);
+      }
+    } catch {
+      // Not valid JSON — return as-is
+    }
+  }
+
+  return input;
+}
+
 // Helper function to parse timestamps from different backends
 const parseTimestamp = (timestamp: string | Date): Date => {
-  // Only apply special handling for Doris backend
   if (timestamp instanceof Date) {
     return timestamp;
   }
 
-  // Default ClickHouse behavior - always expect string
   if (typeof timestamp === "string") {
     return parseDorisUTCDateTimeFormat(timestamp);
   }
@@ -44,10 +79,24 @@ type ModelWithPrice = Model & { Price: Price[] };
  * @param record - The record to convert (can be null/undefined)
  * @returns A new object with all values converted to numbers, or empty object if input is null/undefined
  */
-function convertNumericRecord(
-  record: Record<string, number> | null | undefined,
+function parseNumericRecord(
+  record: Record<string, number> | string | null | undefined,
 ): Record<string, number> {
   if (!record) return {};
+
+  if (typeof record === "string") {
+    try {
+      const parsed = JSON.parse(record);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parseNumericRecord(parsed as Record<string, number>);
+      }
+    } catch {
+      return {};
+    }
+
+    return {};
+  }
+
   const result: Record<string, number> = {};
   for (const key in record) {
     if (Object.prototype.hasOwnProperty.call(record, key)) {
@@ -57,11 +106,19 @@ function convertNumericRecord(
   return result;
 }
 
+function normalizeBoolean(
+  value: boolean | number | null | undefined,
+): boolean | undefined {
+  if (value === null || value === undefined) return undefined;
+  if (typeof value === "boolean") return value;
+  return value !== 0;
+}
+
 /**
- * Validates that all ObservationCoreFields are present and not undefined in a ClickHouse record.
+ * Validates that all ObservationCoreFields are present and not undefined in a Doris record.
  * Throws an error if any required core field is missing.
  *
- * @param record - The partial observation record from ClickHouse to validate
+ * @param record - The partial observation record from Doris to validate
  * @throws Error if any core field is undefined
  * @returns The validated core fields in domain format
  */
@@ -113,10 +170,10 @@ export const enrichObservationWithModelData = (
 };
 
 /**
- * Convert observation record from ClickHouse to domain model
- * Return type depends on input parameters: either complete Observation or Partial<Observation>
+ * Convert observation record from Doris to domain model.
+ * Return type depends on input parameters: either complete Observation or Partial<Observation>.
  *
- * @param record - Raw observation record from ClickHouse
+ * @param record - Raw observation record from Doris
  * @param renderingProps - Rendering options for input/output
  * @param complete - If true, fills missing fields with defaults (V1 API). If false/undefined, returns only present fields (V2 API)
  *
@@ -152,14 +209,17 @@ export function convertObservationPartial(
     );
   }
 
+  const parsedCostDetails = parseNumericRecord(record.cost_details);
+  const parsedUsageDetails = parseNumericRecord(record.usage_details);
+
   const reducedCostDetails =
     record.cost_details !== undefined
-      ? reduceUsageOrCostDetails(record.cost_details)
+      ? reduceUsageOrCostDetails(parsedCostDetails)
       : { input: null, output: null, total: null };
 
   const reducedUsageDetails =
     record.usage_details !== undefined
-      ? reduceUsageOrCostDetails(record.usage_details)
+      ? reduceUsageOrCostDetails(parsedUsageDetails)
       : { input: null, output: null, total: null };
 
   // Core fields are not optional
@@ -200,7 +260,12 @@ export function convertObservationPartial(
 
     // IO fields
     ...(record.input !== undefined && {
-      input: applyInputOutputRendering(record.input, renderingProps),
+      input: applyInputOutputRendering(
+        renderingProps.shouldJsonParse
+          ? unwrapSingleObjectArray(record.input)
+          : record.input,
+        renderingProps,
+      ),
     }),
     ...(record.output !== undefined && {
       output: applyInputOutputRendering(record.output, renderingProps),
@@ -228,19 +293,19 @@ export function convertObservationPartial(
 
     // Usage fields
     ...(record.usage_details !== undefined && {
-      usageDetails: convertNumericRecord(record.usage_details),
+      usageDetails: parsedUsageDetails,
       inputUsage: reducedUsageDetails.input ?? 0,
       outputUsage: reducedUsageDetails.output ?? 0,
       totalUsage: reducedUsageDetails.total ?? 0,
     }),
     ...(record.cost_details !== undefined && {
-      costDetails: convertNumericRecord(record.cost_details),
+      costDetails: parsedCostDetails,
       inputCost: reducedCostDetails.input,
       outputCost: reducedCostDetails.output,
       totalCost: reducedCostDetails.total,
     }),
     ...(record.provided_cost_details !== undefined && {
-      providedCostDetails: convertNumericRecord(record.provided_cost_details),
+      providedCostDetails: parseNumericRecord(record.provided_cost_details),
     }),
 
     // Prompt fields
@@ -370,45 +435,69 @@ export function convertEventsObservation(
   renderingProps: RenderingProps = DEFAULT_RENDERING_PROPS,
   complete: boolean,
 ): EventsObservation | PartialEventsObservation {
-  // Branch based on complete flag to use correct overload
-  const baseObservation = complete
-    ? convertObservationPartial(
-        record as ObservationRecordReadType,
-        renderingProps,
-        true,
-      )
-    : convertObservationPartial(record, renderingProps, false);
+  if (complete) {
+    const baseObservation = convertObservationPartial(
+      record as ObservationRecordReadType,
+      renderingProps,
+      true,
+    );
+
+    return {
+      ...baseObservation,
+      userId: record.user_id ?? null,
+      sessionId: record.session_id ?? null,
+      traceName: record.trace_name ?? null,
+      release: record.release ?? null,
+      tags: record.tags ?? null,
+      bookmarked: normalizeBoolean(record.bookmarked),
+      public: normalizeBoolean(record.public),
+    };
+  }
+
+  const baseObservation = convertObservationPartial(
+    record,
+    renderingProps,
+    false,
+  );
 
   return {
     ...baseObservation,
-    userId: record.user_id ?? null,
-    sessionId: record.session_id ?? null,
-    traceName: record.trace_name ?? null,
-    bookmarked: record.bookmarked,
-    public: record.public,
+    ...(record.user_id !== undefined && { userId: record.user_id }),
+    ...(record.session_id !== undefined && { sessionId: record.session_id }),
+    ...(record.trace_name !== undefined && { traceName: record.trace_name }),
+    ...(record.release !== undefined && { release: record.release }),
+    ...(record.tags !== undefined && { tags: record.tags }),
+    ...(record.bookmarked !== undefined && {
+      bookmarked: normalizeBoolean(record.bookmarked),
+    }),
+    ...(record.public !== undefined && {
+      public: normalizeBoolean(record.public),
+    }),
   };
 }
 
 export const reduceUsageOrCostDetails = (
-  details: Record<string, number> | null | undefined,
+  details: Record<string, number> | string | null | undefined,
 ): {
   input: number | null;
   output: number | null;
   total: number | null;
 } => {
+  const parsedDetails = parseNumericRecord(details);
+
   return {
-    input: Object.entries(details ?? {})
+    input: Object.entries(parsedDetails)
       .filter(([usageType]) => usageType.startsWith("input"))
       .reduce(
         (acc, [, value]) => (acc ?? 0) + Number(value),
         null as number | null, // default to null if no input usage is found
       ),
-    output: Object.entries(details ?? {})
+    output: Object.entries(parsedDetails)
       .filter(([usageType]) => usageType.startsWith("output"))
       .reduce(
         (acc, [, value]) => (acc ?? 0) + Number(value),
         null as number | null, // default to null if no output usage is found
       ),
-    total: Number(details?.total ?? 0),
+    total: Number(parsedDetails.total ?? 0),
   };
 };

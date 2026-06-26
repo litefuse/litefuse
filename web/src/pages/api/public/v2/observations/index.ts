@@ -8,8 +8,28 @@ import { env } from "@/src/env.mjs";
 import {
   GetObservationsV2Query,
   GetObservationsV2Response,
+  OBSERVATION_FIELD_GROUPS,
   encodeCursor,
 } from "@/src/features/public-api/types/observations";
+
+const normalizeOptionalString = (value: string | null | undefined) => {
+  if (typeof value !== "string") {
+    return value ?? undefined;
+  }
+
+  return value.trim() === "" ? undefined : value;
+};
+
+const normalizeOptionalStringOrArray = (
+  value: string | string[] | null | undefined,
+) => {
+  if (Array.isArray(value)) {
+    const filtered = value.filter((item) => item.trim() !== "");
+    return filtered.length > 0 ? filtered : undefined;
+  }
+
+  return normalizeOptionalString(value);
+};
 
 export default withMiddlewares({
   GET: createAuthedProjectAPIRoute({
@@ -31,16 +51,16 @@ export default withMiddlewares({
         projectId: auth.scope.projectId,
         page: 0, // v2 doesn't use page-based pagination
         limit: query.limit,
-        traceId: query.traceId ?? undefined,
-        userId: query.userId ?? undefined,
+        traceId: normalizeOptionalString(query.traceId),
+        userId: normalizeOptionalString(query.userId),
         level: query.level ?? undefined,
-        name: query.name ?? undefined,
+        name: normalizeOptionalString(query.name),
         type: query.type ?? undefined,
-        environment: query.environment ?? undefined,
-        parentObservationId: query.parentObservationId ?? undefined,
+        environment: normalizeOptionalStringOrArray(query.environment),
+        parentObservationId: normalizeOptionalString(query.parentObservationId),
         fromStartTime: query.fromStartTime ?? undefined,
         toStartTime: query.toStartTime ?? undefined,
-        version: query.version ?? undefined,
+        version: normalizeOptionalString(query.version),
         advancedFilters: query.filter,
         cursor: query.cursor ?? undefined,
         fields: fieldGroups,
@@ -50,19 +70,37 @@ export default withMiddlewares({
       // Fetch observations from events table with field groups applied at query time
       const items = await getObservationsV2FromEventsTableForPublicApi({
         ...filterProps,
-        fields: filterProps.fields ?? [], // V2 requires fields array
+        fields: filterProps.fields ?? [...OBSERVATION_FIELD_GROUPS],
       });
 
       // Determine if there are more results (we fetched limit+1)
       const hasMore = items.length > query.limit;
       const dataToReturn = hasMore ? items.slice(0, query.limit) : items;
 
-      // Convert empty parent_observation_id to null for consistency with v1
+      // Normalize wire format for v2:
+      // - empty parent_observation_id -> null (v1 parity)
+      // - Decimal price fields -> string (stable serialized contract)
       const transformedItems = dataToReturn.map((item) => {
-        if (item.parentObservationId === "") {
-          return { ...item, parentObservationId: null };
-        }
-        return item;
+        const { inputPrice, outputPrice, totalPrice, modelId, ...rest } = item;
+
+        return {
+          ...rest,
+          parentObservationId:
+            item.parentObservationId === "" ? null : item.parentObservationId,
+          tags: item.tags ?? undefined,
+          ...(Object.prototype.hasOwnProperty.call(item, "modelId") && {
+            modelId: modelId ?? null,
+          }),
+          ...(Object.prototype.hasOwnProperty.call(item, "inputPrice") && {
+            inputPrice: inputPrice?.toString() ?? null,
+          }),
+          ...(Object.prototype.hasOwnProperty.call(item, "outputPrice") && {
+            outputPrice: outputPrice?.toString() ?? null,
+          }),
+          ...(Object.prototype.hasOwnProperty.call(item, "totalPrice") && {
+            totalPrice: totalPrice?.toString() ?? null,
+          }),
+        };
       });
 
       // Generate cursor if there are more results
