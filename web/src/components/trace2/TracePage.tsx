@@ -7,7 +7,7 @@ import { StarTraceDetailsToggle } from "@/src/components/star-toggle";
 import { ErrorPage } from "@/src/components/error-page";
 import { DeleteTraceButton } from "@/src/components/deleteButton";
 import Page from "@/src/components/layouts/page";
-import { Trace } from "@/src/components/trace2/Trace";
+import { Trace, type TraceProps } from "@/src/components/trace2/Trace";
 import { useSession } from "next-auth/react";
 import { useIsAuthenticatedAndProjectMember } from "@/src/features/auth/hooks";
 import { Button } from "@/src/components/ui/button";
@@ -72,7 +72,13 @@ export function TracePage({
 
   if (!trace.data) return <div className="p-3">Loading...</div>;
 
-  const isSharedTrace = trace.data.public;
+  const traceData = trace.data as TraceProps["trace"] & {
+    scores: TraceProps["scores"];
+    corrections: TraceProps["corrections"];
+    observations: TraceProps["observations"];
+  };
+
+  const isSharedTrace = traceData.public;
   const showPublicIndicators = isSharedTrace && !hasProjectAccess;
   const encodedTargetPath = encodeURIComponent(
     stripBasePath(router.asPath || "/"),
@@ -111,9 +117,9 @@ export function TracePage({
   return (
     <Page
       headerProps={{
-        title: trace.data.name
-          ? `${trace.data.name}: ${trace.data.id}`
-          : trace.data.id,
+        title: traceData.name
+          ? `${traceData.name}: ${traceData.id}`
+          : traceData.id,
         itemType: "TRACE",
         breadcrumb: [
           {
@@ -128,16 +134,16 @@ export function TracePage({
           <div className="ml-1 flex items-center gap-1">
             <div className="flex items-center gap-0">
               <StarTraceDetailsToggle
-                traceId={trace.data.id}
-                projectId={trace.data.projectId}
-                value={trace.data.bookmarked}
+                traceId={traceData.id}
+                projectId={traceData.projectId}
+                value={traceData.bookmarked}
                 size="icon-xs"
               />
               <PublishTraceSwitch
-                traceId={trace.data.id}
-                projectId={trace.data.projectId}
+                traceId={traceData.id}
+                projectId={traceData.projectId}
                 timestamp={timestamp}
-                isPublic={trace.data.public}
+                isPublic={traceData.public}
                 size="icon-xs"
               />
             </div>
@@ -172,9 +178,9 @@ export function TracePage({
             />
             <DeleteTraceButton
               itemId={traceId}
-              projectId={trace.data.projectId}
+              projectId={traceData.projectId}
               redirectUrl={`/project/${router.query.projectId as string}/traces`}
-              deleteConfirmation={trace.data.name ?? ""}
+              deleteConfirmation={traceData.name ?? ""}
               icon
             />
           </>
@@ -183,11 +189,11 @@ export function TracePage({
     >
       <div className="flex max-h-full min-h-0 flex-1 overflow-hidden">
         <Trace
-          trace={trace.data}
-          scores={trace.data.scores}
-          corrections={trace.data.corrections}
-          projectId={trace.data.projectId}
-          observations={trace.data.observations}
+          trace={traceData}
+          scores={traceData.scores}
+          corrections={traceData.corrections}
+          projectId={traceData.projectId}
+          observations={traceData.observations}
           selectedTab={selectedTab}
           setSelectedTab={setSelectedTab}
           context={router.query.peek !== undefined ? "peek" : "fullscreen"}
