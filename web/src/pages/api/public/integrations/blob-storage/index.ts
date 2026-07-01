@@ -20,6 +20,7 @@ type BlobStorageIntegrationResponseInput = Omit<
   BlobStorageIntegrationResponseType,
   "id" | "exportFieldGroups" | "compressed"
 > & {
+  secretAccessKey?: string | null;
   exportFieldGroups?: string[] | null;
   compressed?: boolean | null;
 };
@@ -27,17 +28,19 @@ type BlobStorageIntegrationResponseInput = Omit<
 function toBlobStorageIntegrationResponse(
   integration: BlobStorageIntegrationResponseInput,
 ): BlobStorageIntegrationResponseType {
+  const { secretAccessKey: _secretAccessKey, ...safeIntegration } = integration;
+
   return {
-    id: integration.projectId,
-    ...integration,
+    id: safeIntegration.projectId,
+    ...safeIntegration,
     exportFieldGroups:
-      integration.exportFieldGroups?.filter(
+      safeIntegration.exportFieldGroups?.filter(
         (group): group is (typeof OBSERVATION_FIELD_GROUPS)[number] =>
           OBSERVATION_FIELD_GROUPS.includes(
             group as (typeof OBSERVATION_FIELD_GROUPS)[number],
           ),
       ) ?? null,
-    compressed: integration.compressed ?? true,
+    compressed: safeIntegration.compressed ?? true,
   };
 }
 

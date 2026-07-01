@@ -3,16 +3,18 @@ import { env } from "../env";
 import { randomUUID } from "crypto";
 import {
   createObservation,
-  createObservationsCh,
   createOrgProjectAndApiKey,
   createTraceScore,
-  createScoresCh,
   createTrace,
-  createTracesCh,
   createEvent,
-  createEventsCh,
+  dorisClient,
+  formatDataForDoris,
   StorageService,
   StorageServiceFactory,
+  type EventRecordInsertType,
+  type ObservationRecordInsertType,
+  type ScoreRecordInsertType,
+  type TraceRecordInsertType,
 } from "@langfuse/shared/src/server";
 import { prisma } from "@langfuse/shared/src/db";
 import { Job } from "bullmq";
@@ -32,6 +34,133 @@ const maybeDescribe =
   process.env.LITEFUSE_ENABLE_EVENTS_TABLE_V2_APIS === "true"
     ? describe
     : describe.skip;
+
+const dorisStreamLoadClient = dorisClient({
+  feHttpUrl: process.env.TEST_DORIS_STREAM_LOAD_URL ?? env.DORIS_FE_HTTP_URL,
+  feQueryPort: env.DORIS_FE_QUERY_PORT,
+  database: env.DORIS_DB,
+  username: env.DORIS_USER,
+  password: env.DORIS_PASSWORD,
+});
+
+const normalizeDorisTimestamp = (timestamp: unknown) =>
+  typeof timestamp === "number" && timestamp > 10_000_000_000_000
+    ? Math.trunc(timestamp / 1000)
+    : timestamp;
+
+const normalizeEventRecordTimestamps = (event: Record<string, unknown>) => ({
+  ...event,
+  start_time: normalizeDorisTimestamp(event.start_time),
+  end_time: normalizeDorisTimestamp(event.end_time),
+  completion_start_time: normalizeDorisTimestamp(event.completion_start_time),
+  created_at: normalizeDorisTimestamp(event.created_at),
+  updated_at: normalizeDorisTimestamp(event.updated_at),
+  event_ts: normalizeDorisTimestamp(event.event_ts),
+});
+
+const streamLoad = async (
+  table: "events_full" | "scores",
+  values: Record<string, unknown>[],
+) =>
+  await dorisStreamLoadClient.streamLoad(
+    table,
+    formatDataForDoris(values, table),
+    {
+      format: "json",
+      strip_outer_array: true,
+      read_json_by_line: false,
+      max_filter_ratio: 0.1,
+      timeout: 600,
+    },
+  );
+
+const createTracesCh = async (traces: TraceRecordInsertType[]) => {
+  const values = traces.map((trace) =>
+    createEvent({
+      project_id: trace.project_id,
+      trace_id: trace.id,
+      id: trace.id,
+      span_id: trace.id,
+      parent_span_id: "",
+      name: trace.name ?? "test-trace",
+      trace_name: trace.name ?? null,
+      type: "SPAN",
+      environment: trace.environment,
+      metadata: trace.metadata,
+      user_id: trace.user_id,
+      session_id: trace.session_id,
+      release: trace.release,
+      version: trace.version,
+      tags: trace.tags,
+      bookmarked: trace.bookmarked,
+      public: trace.public,
+      input: trace.input,
+      output: trace.output,
+      start_time: trace.timestamp,
+      created_at: trace.created_at,
+      updated_at: trace.updated_at,
+      event_ts: trace.event_ts,
+    }),
+  );
+
+  return await streamLoad("events_full", values);
+};
+
+const createObservationsCh = async (
+  observations: ObservationRecordInsertType[],
+) => {
+  const values = observations.map((observation) =>
+    createEvent({
+      project_id: observation.project_id,
+      trace_id: observation.trace_id ?? randomUUID(),
+      id: observation.id,
+      span_id: observation.id,
+      parent_span_id:
+        observation.parent_observation_id ??
+        `trace-root-${observation.trace_id}`,
+      name: observation.name ?? "sample_name",
+      type: observation.type,
+      environment: observation.environment,
+      metadata: observation.metadata,
+      level: observation.level ?? "DEFAULT",
+      status_message: observation.status_message,
+      version: observation.version,
+      input: observation.input,
+      output: observation.output,
+      provided_model_name: observation.provided_model_name,
+      model_id: observation.internal_model_id,
+      model_parameters: observation.model_parameters,
+      total_cost: observation.total_cost,
+      prompt_id: observation.prompt_id,
+      prompt_name: observation.prompt_name,
+      prompt_version: observation.prompt_version,
+      provided_usage_details: observation.provided_usage_details,
+      provided_cost_details: observation.provided_cost_details,
+      usage_details: observation.usage_details,
+      cost_details: observation.cost_details,
+      tool_definitions: observation.tool_definitions,
+      tool_calls: observation.tool_calls,
+      tool_call_names: observation.tool_call_names,
+      start_time: observation.start_time,
+      end_time: observation.end_time,
+      completion_start_time: observation.completion_start_time,
+      created_at: observation.created_at,
+      updated_at: observation.updated_at,
+      event_ts: observation.event_ts,
+    }),
+  );
+
+  return await streamLoad("events_full", values);
+};
+
+const createScoresCh = async (scores: ScoreRecordInsertType[]) =>
+  await streamLoad("scores", scores);
+
+const createEventsCh = async (events: EventRecordInsertType[]) =>
+  await streamLoad(
+    "events_full",
+    events.map((event) => normalizeEventRecordTimestamps(event)),
+  );
 
 describe("BlobStorageIntegrationProcessingJob", () => {
   let storageService: StorageService;
@@ -97,6 +226,7 @@ describe("BlobStorageIntegrationProcessingJob", () => {
           env.LITEFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE === "true",
         enabled: false,
         exportFrequency: "hourly",
+        compressed: false,
       },
     });
 
@@ -137,6 +267,7 @@ describe("BlobStorageIntegrationProcessingJob", () => {
           exportSource: "TRACES_OBSERVATIONS_EVENTS",
           nextSyncAt: twoHoursAgo,
           lastSyncAt: twoHoursAgo,
+          compressed: false,
         },
       });
 
@@ -282,6 +413,7 @@ describe("BlobStorageIntegrationProcessingJob", () => {
           enabled: true,
           exportFrequency: "weekly",
           lastSyncAt: oneHourAgo,
+          compressed: false,
         },
       });
 
@@ -348,6 +480,7 @@ describe("BlobStorageIntegrationProcessingJob", () => {
           enabled: true,
           exportFrequency: "daily",
           lastSyncAt: oneHourAgo,
+          compressed: false,
         },
       });
 
@@ -442,6 +575,7 @@ describe("BlobStorageIntegrationProcessingJob", () => {
             prefix,
             fileType,
             lastSyncAt: oneHourAgo,
+            compressed: false,
           },
           create: {
             projectId,
@@ -459,6 +593,7 @@ describe("BlobStorageIntegrationProcessingJob", () => {
             exportSource: "TRACES_OBSERVATIONS_EVENTS",
             fileType,
             lastSyncAt: oneHourAgo,
+            compressed: false,
           },
         });
 
@@ -563,6 +698,7 @@ describe("BlobStorageIntegrationProcessingJob", () => {
             exportMode: "FULL_HISTORY",
             exportStartDate: null,
             lastSyncAt: null, // First export
+            compressed: false,
           },
         });
 
@@ -639,6 +775,7 @@ describe("BlobStorageIntegrationProcessingJob", () => {
           exportMode: "FROM_TODAY" as any,
           exportStartDate: new Date(), // Use current date
           lastSyncAt: null, // First export
+          compressed: false,
         },
       });
 
@@ -702,6 +839,7 @@ describe("BlobStorageIntegrationProcessingJob", () => {
           exportMode: "FROM_CUSTOM_DATE" as any,
           exportStartDate: customDate,
           lastSyncAt: null, // First export
+          compressed: false,
         },
       });
 
@@ -761,6 +899,7 @@ describe("BlobStorageIntegrationProcessingJob", () => {
             exportMode: "FULL_HISTORY",
             exportStartDate: null,
             lastSyncAt: null,
+            compressed: false,
           },
         });
 
@@ -837,6 +976,7 @@ describe("BlobStorageIntegrationProcessingJob", () => {
           enabled: true,
           exportFrequency: "hourly",
           lastSyncAt: twoDaysAgo, // Start from 2 days ago
+          compressed: false,
         },
       });
 
@@ -894,6 +1034,7 @@ describe("BlobStorageIntegrationProcessingJob", () => {
           enabled: true,
           exportFrequency: "hourly",
           lastSyncAt: oneHourAgo,
+          compressed: false,
         },
       });
 
