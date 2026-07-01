@@ -80,6 +80,106 @@ describe("Experiments with Dataset Versioning", () => {
     });
   });
 
+  describe("experiments project-level runs", () => {
+    it("should fetch project experiment runs across datasets ordered by creation time", async () => {
+      const { project, caller } = await prepare();
+      const datasetIds = [v4(), v4()];
+      const [olderRunId, newerRunId, emptyRunId] = [v4(), v4(), v4()];
+      const now = new Date();
+      const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
+      const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
+
+      await prisma.dataset.createMany({
+        data: datasetIds.map((datasetId, index) => ({
+          id: datasetId,
+          name: `experiment-dataset-${index}`,
+          projectId: project.id,
+        })),
+      });
+
+      await prisma.datasetRuns.createMany({
+        data: [
+          {
+            id: olderRunId,
+            name: "older run",
+            datasetId: datasetIds[0],
+            metadata: {},
+            projectId: project.id,
+            createdAt: oneMinuteAgo,
+          },
+          {
+            id: newerRunId,
+            name: "newer run",
+            datasetId: datasetIds[1],
+            metadata: {},
+            projectId: project.id,
+            createdAt: now,
+          },
+          {
+            id: emptyRunId,
+            name: "empty run without doris items",
+            datasetId: datasetIds[0],
+            metadata: {},
+            projectId: project.id,
+            createdAt: twoMinutesAgo,
+          },
+        ],
+      });
+
+      const result = await caller.experiments.runs({
+        projectId: project.id,
+        page: 0,
+        limit: 10,
+        filter: [],
+      });
+
+      expect(result.totalRuns).toBe(3);
+      expect(result.runs.map((run) => run.id)).toEqual([
+        newerRunId,
+        olderRunId,
+        emptyRunId,
+      ]);
+      expect(result.runs[0].dataset).toEqual({
+        id: datasetIds[1],
+        name: "experiment-dataset-1",
+      });
+    });
+
+    it("should fetch a project experiment run by id with dataset context", async () => {
+      const { project, caller } = await prepare();
+      const datasetId = v4();
+      const runId = v4();
+
+      await prisma.dataset.create({
+        data: {
+          id: datasetId,
+          name: "detail dataset",
+          projectId: project.id,
+        },
+      });
+      await prisma.datasetRuns.create({
+        data: {
+          id: runId,
+          name: "detail run",
+          datasetId,
+          metadata: { source: "test" },
+          projectId: project.id,
+        },
+      });
+
+      const result = await caller.experiments.runById({
+        projectId: project.id,
+        runId,
+      });
+
+      expect(result?.id).toBe(runId);
+      expect(result?.dataset).toEqual({
+        id: datasetId,
+        name: "detail dataset",
+      });
+    });
+  });
+
   describe("experiments.validateConfig with datasetVersion", () => {
     it("should validate successfully with version that has items", async () => {
       const { project, caller } = await prepare();

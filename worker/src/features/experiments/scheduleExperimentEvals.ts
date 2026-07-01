@@ -65,11 +65,16 @@ export async function scheduleExperimentObservationEvals(
       // Experiment fields - critical for matching
       experiment_id: config.runId,
       experiment_name: config.experimentName,
+      experiment_metadata_names: [],
+      experiment_metadata_values: [],
       experiment_dataset_id: datasetItem.datasetId,
       experiment_item_id: datasetItem.id,
+      experiment_item_version: null,
       experiment_item_expected_output: datasetItem.expectedOutput
         ? JSON.stringify(datasetItem.expectedOutput)
         : null,
+      experiment_item_metadata_names: [],
+      experiment_item_metadata_values: [],
       experiment_item_root_span_id: generationDetails.observationId, // Same as span_id for root
 
       // Data fields

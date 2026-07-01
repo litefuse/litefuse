@@ -19,6 +19,8 @@ export default function TableLink({
   title,
 }: TableLinkProps) {
   const handleClick = (event: React.MouseEvent) => {
+    event.stopPropagation();
+
     if (onClick) {
       event.preventDefault();
       onClick(event);

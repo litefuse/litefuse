@@ -5,6 +5,8 @@ import {
   createTracesCh,
   getDatasetRunItemsByDatasetIdCh,
   getDatasetRunsTableMetricsCh,
+  getDatasetRunsTableRowsCh,
+  getDatasetRunsTableCountCh,
   getScoresForDatasetRuns,
   getTraceScoresForDatasetRuns,
   getDatasetRunItemsWithoutIOByItemIds,
@@ -240,6 +242,33 @@ describe("Fetch datasets for UI presentation", () => {
       runIds: [datasetRunId, datasetRun2Id],
       filter: [],
     });
+
+    const projectLevelRows = await getDatasetRunsTableRowsCh({
+      projectId,
+      runIds: [datasetRunId, datasetRun2Id],
+      filter: [],
+    });
+    const projectLevelCount = await getDatasetRunsTableCountCh({
+      projectId,
+      runIds: [datasetRunId, datasetRun2Id],
+      filter: [],
+    });
+    const projectLevelMetrics = await getDatasetRunsTableMetricsCh({
+      projectId,
+      runIds: [datasetRunId, datasetRun2Id],
+      filter: [],
+    });
+
+    expect(projectLevelRows.map((run) => run.id).sort()).toEqual(
+      [datasetRunId, datasetRun2Id].sort(),
+    );
+    expect(projectLevelRows.every((run) => run.datasetId === datasetId)).toBe(
+      true,
+    );
+    expect(projectLevelCount).toBe(2);
+    expect(projectLevelMetrics.map((run) => run.id).sort()).toEqual(
+      [datasetRunId, datasetRun2Id].sort(),
+    );
 
     // Only fetch scores for runs that have metrics (runs without dataset_run_items_rmt won't have trace scores)
     const runsWithMetricsIds = runsWithMetrics.map((run) => run.id);

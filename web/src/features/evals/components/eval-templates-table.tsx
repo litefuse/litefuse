@@ -35,6 +35,8 @@ import { MaintainerTooltip } from "@/src/features/evals/components/maintainer-to
 import { ActionButton } from "@/src/components/ActionButton";
 import { useEntitlementLimit } from "@/src/features/entitlements/hooks";
 import { useHasProjectAccess } from "@/src/features/rbac/utils/checkProjectAccess";
+import { type PersistedEvalOutputDefinition } from "@langfuse/shared";
+import { getTemplateResultType } from "@/src/features/evals/utils/template-output";
 
 export type EvalsTemplateRow = {
   name: string;
@@ -46,6 +48,7 @@ export type EvalsTemplateRow = {
   actions?: string;
   provider?: string;
   model?: string;
+  resultType?: string;
 };
 
 export default function EvalsTemplateTable({
@@ -175,6 +178,12 @@ export default function EvalsTemplateTable({
           </div>
         );
       },
+    }),
+    columnHelper.accessor("resultType", {
+      header: "Result Type",
+      id: "resultType",
+      enableHiding: true,
+      cell: (row) => row.getValue(),
     }),
     columnHelper.accessor("latestCreatedAt", {
       header: "Last Edit",
@@ -320,6 +329,7 @@ export default function EvalsTemplateTable({
       usageCount: template.usageCount,
       provider: template.provider,
       model: template.model,
+      resultType: getTemplateResultType(template.outputSchema),
     };
   };
 
@@ -419,10 +429,8 @@ export default function EvalsTemplateTable({
                     name: `${cloneTemplate.data.name} (project-level)`,
                     prompt: cloneTemplate.data.prompt,
                     vars: cloneTemplate.data.vars,
-                    outputSchema: cloneTemplate.data.outputSchema as {
-                      score: string;
-                      reasoning: string;
-                    },
+                    outputSchema: cloneTemplate.data
+                      .outputSchema as PersistedEvalOutputDefinition,
                     provider: cloneTemplate.data.provider,
                     model: cloneTemplate.data.model,
                     modelParams: cloneTemplate.data.modelParams as any,

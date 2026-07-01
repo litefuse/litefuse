@@ -11,6 +11,7 @@ import {
 } from "@langfuse/shared/src/server";
 import { prisma } from "@langfuse/shared/src/db";
 import { randomUUID } from "crypto";
+import { ScoreConfigDataType } from "@langfuse/shared";
 
 // Schema for project response
 const ProjectResponseSchema = z.object({
@@ -80,6 +81,48 @@ const ApiKeyCreationResponseSchema = z.object({
 const ApiKeyDeletionResponseSchema = z.object({
   success: z.boolean(),
 });
+
+async function expectDefaultScoreConfigs(projectId: string) {
+  const scoreConfigs = await prisma.scoreConfig.findMany({
+    where: {
+      projectId,
+      name: {
+        in: ["is_correct", "accuracy", "relevance", "helpfulness", "toxicity"],
+      },
+    },
+  });
+
+  expect(scoreConfigs).toHaveLength(5);
+
+  const isCorrect = scoreConfigs.find((config) => config.name === "is_correct");
+  expect(isCorrect).toMatchObject({
+    dataType: ScoreConfigDataType.BOOLEAN,
+    minValue: null,
+    maxValue: null,
+  });
+  expect(isCorrect?.categories).toEqual([
+    { label: "True", value: 1 },
+    { label: "False", value: 0 },
+  ]);
+
+  const accuracy = scoreConfigs.find((config) => config.name === "accuracy");
+  expect(accuracy).toMatchObject({
+    dataType: ScoreConfigDataType.NUMERIC,
+    minValue: 0,
+    maxValue: 1,
+    categories: null,
+  });
+
+  for (const name of ["relevance", "helpfulness", "toxicity"]) {
+    const config = scoreConfigs.find((config) => config.name === name);
+    expect(config).toMatchObject({
+      dataType: ScoreConfigDataType.NUMERIC,
+      minValue: 0,
+      maxValue: 1,
+      categories: null,
+    });
+  }
+}
 
 describe("Projects API", () => {
   // Test variables
@@ -214,6 +257,7 @@ describe("Projects API", () => {
       expect(project).not.toBeNull();
       expect(project?.name).toBe(uniqueProjectName);
       expect(project?.metadata).toEqual(metadata);
+      await expectDefaultScoreConfigs(response.body.id);
     });
 
     it("should create a new project with retention days", async () => {

@@ -24,8 +24,24 @@ import {
   type PromptMessage,
   isPresent,
   type DatasetItemDomain,
+  singleFilter,
+  optionalPaginationZod,
+  type FilterState,
+  isDorisFilterColumn,
+  timeFilter,
 } from "@langfuse/shared";
 import { throwIfNoProjectAccess } from "@/src/features/rbac/utils/checkProjectAccess";
+import {
+  getDatasetRunsTableCountCh,
+  getDatasetRunsTableMetricsCh,
+  getDatasetRunsTableRowsCh,
+  getDatasetVersionForRun,
+  getCategoricalScoresGroupedByName,
+  getNumericScoresGroupedByName,
+  getScoresForDatasetRuns,
+  getTraceScoresForDatasetRuns,
+} from "@langfuse/shared/src/server";
+import { aggregateScores } from "@/src/features/scores/lib/aggregateScores";
 
 const ValidConfigResponse = z.object({
   isValid: z.literal(true),
@@ -42,6 +58,37 @@ const ConfigResponse = z.discriminatedUnion("isValid", [
   ValidConfigResponse,
   InvalidConfigResponse,
 ]);
+
+const experimentRunsTableSchema = z.object({
+  projectId: z.string(),
+  filter: z.array(singleFilter),
+  ...optionalPaginationZod,
+});
+
+const experimentRunTableMetricsSchema = z.object({
+  projectId: z.string(),
+  runIds: z.array(z.string()),
+  filter: z.array(singleFilter),
+});
+
+const requiresDorisLookups = (filters: FilterState): boolean => {
+  if (filters.length === 0) {
+    return false;
+  }
+
+  return filters.some((filter) => isDorisFilterColumn(filter.column));
+};
+
+const resolveMetadata = (metadata: unknown) => {
+  if (metadata === "") return undefined;
+  if (typeof metadata !== "string") return metadata;
+
+  try {
+    return JSON.parse(metadata);
+  } catch {
+    return metadata;
+  }
+};
 
 const countValidDatasetItems = (
   datasetItems: Omit<DatasetItemDomain, "status">[],
@@ -77,6 +124,223 @@ const countValidDatasetItems = (
 };
 
 export const experimentsRouter = createTRPCRouter({
+  runs: protectedProjectProcedure
+    .input(experimentRunsTableSchema)
+    .query(async ({ input, ctx }) => {
+      throwIfNoProjectAccess({
+        session: ctx.session,
+        projectId: input.projectId,
+        scope: "promptExperiments:read",
+      });
+
+      if (!requiresDorisLookups(input.filter ?? [])) {
+        const [runs, totalRuns] = await Promise.all([
+          ctx.prisma.datasetRuns.findMany({
+            where: {
+              projectId: input.projectId,
+            },
+            include: {
+              dataset: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+            orderBy: {
+              createdAt: "desc",
+            },
+            take: input.limit,
+            skip:
+              isPresent(input.page) && isPresent(input.limit)
+                ? input.page * input.limit
+                : undefined,
+          }),
+          ctx.prisma.datasetRuns.count({
+            where: {
+              projectId: input.projectId,
+            },
+          }),
+        ]);
+
+        return {
+          totalRuns,
+          runs,
+        };
+      }
+
+      const [runs, totalRuns] = await Promise.all([
+        getDatasetRunsTableRowsCh({
+          projectId: input.projectId,
+          filter: input.filter ?? [],
+          limit: isPresent(input.limit) ? input.limit : undefined,
+          offset:
+            isPresent(input.page) && isPresent(input.limit)
+              ? input.page * input.limit
+              : undefined,
+        }),
+        getDatasetRunsTableCountCh({
+          projectId: input.projectId,
+          filter: input.filter ?? [],
+        }),
+      ]);
+
+      const datasets = await ctx.prisma.dataset.findMany({
+        where: {
+          projectId: input.projectId,
+          id: { in: Array.from(new Set(runs.map((run) => run.datasetId))) },
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+      });
+      const datasetById = new Map(
+        datasets.map((dataset) => [dataset.id, dataset]),
+      );
+
+      return {
+        totalRuns,
+        runs: runs.map((run) => ({
+          ...run,
+          metadata: resolveMetadata(run.metadata),
+          dataset: datasetById.get(run.datasetId) ?? {
+            id: run.datasetId,
+            name: run.datasetId,
+          },
+        })),
+      };
+    }),
+
+  runsMetrics: protectedProjectProcedure
+    .input(experimentRunTableMetricsSchema)
+    .query(async ({ input, ctx }) => {
+      throwIfNoProjectAccess({
+        session: ctx.session,
+        projectId: input.projectId,
+        scope: "promptExperiments:read",
+      });
+
+      if (input.runIds.length === 0) {
+        return { runs: [] };
+      }
+
+      const runsWithMetrics = await getDatasetRunsTableMetricsCh({
+        projectId: input.projectId,
+        runIds: input.runIds ?? [],
+        filter: input.filter ?? [],
+      });
+
+      const runsWithMetricsIds = runsWithMetrics.map((run) => run.id);
+      const [traceScores, runScores] = await Promise.all([
+        runsWithMetricsIds.length > 0
+          ? getTraceScoresForDatasetRuns(input.projectId, runsWithMetricsIds)
+          : [],
+        getScoresForDatasetRuns({
+          projectId: input.projectId,
+          runIds: runsWithMetrics.map((run) => run.id),
+          includeHasMetadata: true,
+          excludeMetadata: true,
+        }),
+      ]);
+
+      return {
+        runs: runsWithMetrics.map((run) => ({
+          id: run.id,
+          name: run.name,
+          datasetId: run.datasetId,
+          countRunItems: run.countRunItems ?? 0,
+          avgTotalCost: run.avgTotalCost ?? null,
+          totalCost: run.totalCost ?? null,
+          avgLatency: run.avgLatency ?? null,
+          scores: aggregateScores(
+            traceScores.filter((score) => score.datasetRunId === run.id),
+          ),
+          runScores: aggregateScores(
+            runScores.filter((score) => score.datasetRunId === run.id),
+          ),
+        })),
+      };
+    }),
+
+  runById: protectedProjectProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        runId: z.string(),
+      }),
+    )
+    .query(async ({ input, ctx }) => {
+      throwIfNoProjectAccess({
+        session: ctx.session,
+        projectId: input.projectId,
+        scope: "promptExperiments:read",
+      });
+
+      const run = await ctx.prisma.datasetRuns.findUnique({
+        where: {
+          id_projectId: {
+            id: input.runId,
+            projectId: input.projectId,
+          },
+        },
+        include: {
+          dataset: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      });
+
+      if (!run) return null;
+
+      const datasetVersion = await getDatasetVersionForRun({
+        projectId: input.projectId,
+        datasetId: run.datasetId,
+        runId: input.runId,
+      });
+
+      return {
+        ...run,
+        datasetVersion,
+      };
+    }),
+
+  runFilterOptions: protectedProjectProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        timestampFilter: timeFilter.optional(),
+      }),
+    )
+    .query(async ({ input, ctx }) => {
+      throwIfNoProjectAccess({
+        session: ctx.session,
+        projectId: input.projectId,
+        scope: "promptExperiments:read",
+      });
+
+      const { timestampFilter } = input;
+
+      const [numericScoreNames, categoricalScoreNames] = await Promise.all([
+        getNumericScoresGroupedByName(
+          input.projectId,
+          timestampFilter ? [timestampFilter] : [],
+        ),
+        getCategoricalScoresGroupedByName(
+          input.projectId,
+          timestampFilter ? [timestampFilter] : [],
+        ),
+      ]);
+
+      return {
+        agg_scores_avg: numericScoreNames.map((score) => score.name),
+        agg_score_categories: categoricalScoreNames,
+      };
+    }),
+
   validateConfig: protectedProjectProcedure
     .input(
       z.object({

@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { JobExecutionStatus } from "@prisma/client";
+import { type ZodSchema } from "zod/v4";
 import { prisma } from "@langfuse/shared/src/db";
 import {
   DefaultEvalModelService,
@@ -8,9 +9,10 @@ import {
   LLMAdapter,
   QueueJobs,
   ScoreEventType,
+  blockEvaluatorConfigs as blockEvaluatorConfigsService,
 } from "@langfuse/shared/src/server";
 import { env } from "../../env";
-import { buildEvalScoreSchema, buildEvalMessages } from "./evalExecutionUtils";
+import { buildEvalMessages } from "./evalExecutionUtils";
 import { getEvalS3StorageClient } from "./s3StorageClient";
 
 /**
@@ -41,7 +43,7 @@ export type ModelConfigResult =
 export interface LLMCallParams {
   messages: ReturnType<typeof buildEvalMessages>;
   modelConfig: Extract<ModelConfigResult, { valid: true }>["config"];
-  structuredOutputSchema: ReturnType<typeof buildEvalScoreSchema>;
+  structuredOutputSchema: ZodSchema;
   traceSinkParams: {
     targetProjectId: string;
     traceId: string;
@@ -123,6 +125,7 @@ export interface EvalExecutionDeps {
   fetchModelConfig: (
     params: FetchModelConfigParams,
   ) => Promise<ModelConfigResult>;
+  blockEvaluatorConfigs: typeof blockEvaluatorConfigsService;
 }
 
 /**
@@ -218,6 +221,8 @@ export function createProductionEvalExecutionDeps(): EvalExecutionDeps {
       // Cast to our simplified ModelConfigResult type for the interface
       return result as ModelConfigResult;
     },
+
+    blockEvaluatorConfigs: blockEvaluatorConfigsService,
   };
 }
 
@@ -238,6 +243,7 @@ export function createMockEvalExecutionDeps(
       valid: false,
       error: "Mock - no config",
     }),
+    blockEvaluatorConfigs: async () => ({ blockedJobConfigIds: [] }),
   };
 
   return { ...defaultMock, ...overrides };

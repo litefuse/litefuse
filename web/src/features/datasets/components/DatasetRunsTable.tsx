@@ -67,6 +67,8 @@ import { NoDataOrLoading } from "@/src/components/NoDataOrLoading";
 export type DatasetRunRowData = {
   id: string;
   name: string;
+  datasetId: string;
+  datasetName?: string;
   createdAt: Date;
   countRunItems: string;
   avgLatency: number | undefined;
@@ -81,18 +83,27 @@ export type DatasetRunRowData = {
 
 const DatasetRunTableMultiSelectAction = ({
   selectedRunIds,
+  selectedRuns,
   projectId,
   datasetId,
   setRowSelection,
 }: {
   selectedRunIds: string[];
+  selectedRuns: Array<{ id: string; datasetId: string }>;
   projectId: string;
-  datasetId: string;
+  datasetId?: string;
   setRowSelection: (value: Record<string, boolean>) => void;
 }) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const capture = usePostHogClientCapture();
   const utils = api.useUtils();
+  const comparableDatasetId =
+    datasetId ??
+    (selectedRuns.length > 0 &&
+    selectedRuns.every((run) => run.datasetId === selectedRuns[0]?.datasetId)
+      ? selectedRuns[0]?.datasetId
+      : undefined);
+  const canCompare = Boolean(comparableDatasetId);
   const mutDelete = api.datasets.deleteDatasetRuns.useMutation({
     onSuccess: () => {
       utils.datasets.invalidate();
@@ -113,25 +124,37 @@ const DatasetRunTableMultiSelectAction = ({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent key="dropdown-menu-content">
-          <Link
-            key="compare"
-            href={{
-              pathname: `/project/${projectId}/datasets/${datasetId}/compare`,
-              query: { runs: selectedRunIds },
-            }}
-          >
-            <DropdownMenuItem>
+          {canCompare && comparableDatasetId ? (
+            <Link
+              key="compare"
+              href={{
+                pathname: `/project/${projectId}/datasets/${comparableDatasetId}/compare`,
+                query: { runs: selectedRunIds },
+              }}
+            >
+              <DropdownMenuItem>
+                <Columns3 className="mr-2 h-4 w-4" />
+                <span>Compare</span>
+              </DropdownMenuItem>
+            </Link>
+          ) : (
+            <DropdownMenuItem
+              disabled
+              title="Select runs from one dataset to compare item-level results."
+            >
               <Columns3 className="mr-2 h-4 w-4" />
               <span>Compare</span>
             </DropdownMenuItem>
-          </Link>
-          <DropdownMenuItem
-            key="delete"
-            onClick={() => setIsDeleteDialogOpen(true)}
-          >
-            <Trash className="mr-2 h-4 w-4" />
-            <span>Delete</span>
-          </DropdownMenuItem>
+          )}
+          {datasetId ? (
+            <DropdownMenuItem
+              key="delete"
+              onClick={() => setIsDeleteDialogOpen(true)}
+            >
+              <Trash className="mr-2 h-4 w-4" />
+              <span>Delete</span>
+            </DropdownMenuItem>
+          ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -180,10 +203,12 @@ const DatasetRunTableMultiSelectAction = ({
 
 export function DatasetRunsTable(props: {
   projectId: string;
-  datasetId: string;
+  datasetId?: string;
   selectedMetrics: string[];
   setScoreOptions: (options: { key: string; value: string }[]) => void;
 }) {
+  const isProjectLevel = !props.datasetId;
+  const tableName = isProjectLevel ? "experiments" : "datasetRuns";
   const [paginationState, setPaginationState] = useQueryParams({
     pageIndex: withDefault(NumberParam, 0),
     pageSize: withDefault(NumberParam, 50),
@@ -196,10 +221,7 @@ export function DatasetRunsTable(props: {
     props.projectId,
   );
 
-  const [rowHeight, setRowHeight] = useRowHeightLocalStorage(
-    "datasetRuns",
-    "s",
-  );
+  const [rowHeight, setRowHeight] = useRowHeightLocalStorage(tableName, "s");
 
   // Add panel size state with default size of 30%
   const [chartsPanelSize, setChartsPanelSize] = useSessionStorage<number>(
@@ -212,8 +234,20 @@ export function DatasetRunsTable(props: {
   // Filter options for the table
   const datasetRunsFilterOptionsResponse =
     api.datasets.runFilterOptions.useQuery(
-      { projectId: props.projectId, datasetId: props.datasetId },
+      { projectId: props.projectId, datasetId: props.datasetId ?? "" },
       {
+        enabled: Boolean(props.datasetId),
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+        staleTime: Infinity,
+      },
+    );
+  const experimentRunsFilterOptionsResponse =
+    api.experiments.runFilterOptions.useQuery(
+      { projectId: props.projectId },
+      {
+        enabled: isProjectLevel,
         refetchOnMount: false,
         refetchOnWindowFocus: false,
         refetchOnReconnect: false,
@@ -221,7 +255,9 @@ export function DatasetRunsTable(props: {
       },
     );
 
-  const datasetRunsFilterOptions = datasetRunsFilterOptionsResponse.data;
+  const datasetRunsFilterOptions = isProjectLevel
+    ? experimentRunsFilterOptionsResponse.data
+    : datasetRunsFilterOptionsResponse.data;
 
   const transformedFilterOptions = useMemo(() => {
     return datasetRunsTableColsWithOptions(datasetRunsFilterOptions);
@@ -229,55 +265,92 @@ export function DatasetRunsTable(props: {
 
   const setFilterState = useDebounce(setUserFilterState);
 
-  const runs = api.datasets.runsByDatasetId.useQuery({
-    projectId: props.projectId,
-    datasetId: props.datasetId,
-    page: paginationState.pageIndex,
-    limit: paginationState.pageSize,
-    filter: userFilterState,
-  });
-
-  const runsMetrics = api.datasets.runsByDatasetIdMetrics.useQuery(
+  const datasetRuns = api.datasets.runsByDatasetId.useQuery(
     {
       projectId: props.projectId,
-      datasetId: props.datasetId,
-      runIds: runs.data?.runs.map((r) => r.id) ?? [],
+      datasetId: props.datasetId ?? "",
+      page: paginationState.pageIndex,
+      limit: paginationState.pageSize,
       filter: userFilterState,
     },
     {
-      enabled: runs.isSuccess,
+      enabled: Boolean(props.datasetId),
     },
   );
+  const experimentRuns = api.experiments.runs.useQuery(
+    {
+      projectId: props.projectId,
+      page: paginationState.pageIndex,
+      limit: paginationState.pageSize,
+      filter: userFilterState,
+    },
+    {
+      enabled: isProjectLevel,
+    },
+  );
+
+  const runs = isProjectLevel ? experimentRuns : datasetRuns;
+  const runRows = runs.data?.runs ?? [];
+
+  const datasetRunsMetrics = api.datasets.runsByDatasetIdMetrics.useQuery(
+    {
+      projectId: props.projectId,
+      datasetId: props.datasetId ?? "",
+      runIds: runRows.map((r) => r.id),
+      filter: userFilterState,
+    },
+    {
+      enabled: Boolean(props.datasetId) && runs.isSuccess && runRows.length > 0,
+    },
+  );
+  const experimentRunsMetrics = api.experiments.runsMetrics.useQuery(
+    {
+      projectId: props.projectId,
+      runIds: runRows.map((r) => r.id),
+      filter: userFilterState,
+    },
+    {
+      enabled: isProjectLevel && runs.isSuccess && runRows.length > 0,
+    },
+  );
+
+  const runsMetrics = isProjectLevel
+    ? experimentRunsMetrics
+    : datasetRunsMetrics;
 
   type DatasetsCoreOutput =
     RouterOutput["datasets"]["runsByDatasetId"]["runs"][number];
   type DatasetsMetricOutput =
     RouterOutput["datasets"]["runsByDatasetIdMetrics"]["runs"][number];
+  type ExperimentsCoreOutput =
+    RouterOutput["experiments"]["runs"]["runs"][number];
+  type ExperimentsMetricOutput =
+    RouterOutput["experiments"]["runsMetrics"]["runs"][number];
 
   const runsWithMetrics = joinTableCoreAndMetrics<
-    DatasetsCoreOutput,
-    DatasetsMetricOutput
-  >(runs.data?.runs, runsMetrics.data?.runs);
+    DatasetsCoreOutput | ExperimentsCoreOutput,
+    DatasetsMetricOutput | ExperimentsMetricOutput
+  >(runRows, runsMetrics.data?.runs);
 
   const { setDetailPageList } = useDetailPageLists();
   useEffect(() => {
     if (runs.isSuccess) {
       setDetailPageList(
-        "datasetRuns",
-        runs.data.runs.map((t) => ({ id: t.id })),
+        isProjectLevel ? "experiments" : "datasetRuns",
+        runRows.map((t) => ({ id: t.id })),
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runs.isSuccess, runs.data]);
+  }, [runs.isSuccess, runRows]);
 
   const { scoreColumns, isLoading: isColumnLoading } =
     useScoreColumns<DatasetRunRowData>({
       displayFormat: "aggregate",
       scoreColumnKey: "runItemScores",
       projectId: props.projectId,
-      filter: runs.data?.runs?.length
+      filter: runRows.length
         ? scoreFilters.forDatasetRunItems({
-            datasetRunIds: runs.data.runs.map((r) => r.id),
+            datasetRunIds: runRows.map((r) => r.id),
             datasetId: props.datasetId,
           })
         : [],
@@ -288,9 +361,9 @@ export function DatasetRunsTable(props: {
     useScoreColumns<DatasetRunRowData>({
       scoreColumnKey: "runScores",
       projectId: props.projectId,
-      filter: runs.data?.runs?.length
+      filter: runRows.length
         ? scoreFilters.forDatasetRuns({
-            datasetRunIds: runs.data?.runs.map((r) => r.id),
+            datasetRunIds: runRows.map((r) => r.id),
           })
         : [],
       prefix: "Run-level",
@@ -300,9 +373,9 @@ export function DatasetRunsTable(props: {
   const scoreKeysAndProps = api.scores.getScoreColumns.useQuery(
     {
       projectId: props.projectId,
-      filter: runs.data?.runs?.length
+      filter: runRows.length
         ? scoreFilters.forDatasetRunItems({
-            datasetRunIds: runs.data?.runs.map((r) => r.id),
+            datasetRunIds: runRows.map((r) => r.id),
             datasetId: props.datasetId,
           })
         : [],
@@ -387,9 +460,14 @@ export function DatasetRunsTable(props: {
       cell: ({ row }) => {
         const name: DatasetRunRowData["name"] = row.getValue("name");
         const id: DatasetRunRowData["id"] = row.getValue("id");
+        const datasetId = row.original.datasetId;
         return (
           <TableLink
-            path={`/project/${props.projectId}/datasets/${props.datasetId}/runs/${id}`}
+            path={
+              isProjectLevel
+                ? `/project/${props.projectId}/experiments/${id}`
+                : `/project/${props.projectId}/datasets/${datasetId}/runs/${id}`
+            }
             value={name}
           />
         );
@@ -404,14 +482,41 @@ export function DatasetRunsTable(props: {
       defaultHidden: true,
       cell: ({ row }) => {
         const id: DatasetRunRowData["id"] = row.getValue("id");
+        const datasetId = row.original.datasetId;
         return (
           <TableLink
-            path={`/project/${props.projectId}/datasets/${props.datasetId}/runs/${id}`}
+            path={
+              isProjectLevel
+                ? `/project/${props.projectId}/experiments/${id}`
+                : `/project/${props.projectId}/datasets/${datasetId}/runs/${id}`
+            }
             value={id}
           />
         );
       },
     },
+    ...(isProjectLevel
+      ? [
+          {
+            accessorKey: "datasetName",
+            header: "Dataset",
+            id: "datasetName",
+            size: 180,
+            enableHiding: true,
+            cell: ({ row }) => {
+              const datasetId = row.original.datasetId;
+              const datasetName: DatasetRunRowData["datasetName"] =
+                row.getValue("datasetName");
+              return (
+                <TableLink
+                  path={`/project/${props.projectId}/datasets/${datasetId}`}
+                  value={datasetName ?? datasetId}
+                />
+              );
+            },
+          } satisfies LangfuseColumnDef<DatasetRunRowData>,
+        ]
+      : []),
     {
       accessorKey: "description",
       header: "Description",
@@ -536,6 +641,7 @@ export function DatasetRunsTable(props: {
       size: 70,
       cell: ({ row }) => {
         const id: DatasetRunRowData["id"] = row.getValue("id");
+        const datasetId = row.original.datasetId;
 
         return (
           <DropdownMenu>
@@ -550,7 +656,7 @@ export function DatasetRunsTable(props: {
               <DeleteDatasetRunButton
                 projectId={props.projectId}
                 datasetRunId={id}
-                datasetId={props.datasetId}
+                datasetId={datasetId}
               />
             </DropdownMenuContent>
           </DropdownMenu>
@@ -560,11 +666,15 @@ export function DatasetRunsTable(props: {
   ];
 
   const convertToTableRow = (
-    item: DatasetsCoreOutput & Partial<DatasetsMetricOutput>,
+    item: (DatasetsCoreOutput | ExperimentsCoreOutput) &
+      Partial<DatasetsMetricOutput | ExperimentsMetricOutput>,
   ): DatasetRunRowData => {
+    const dataset = "dataset" in item ? item.dataset : undefined;
     return {
       id: item.id,
       name: item.name,
+      datasetId: item.datasetId,
+      datasetName: dataset?.name,
       createdAt: item.createdAt,
       countRunItems: item.countRunItems?.toString() ?? "0",
       avgLatency: item.avgLatency ?? 0,
@@ -585,17 +695,30 @@ export function DatasetRunsTable(props: {
 
   const [columnVisibility, setColumnVisibility] =
     useColumnVisibility<DatasetRunRowData>(
-      `datasetRunColumnVisibility-${props.projectId}`,
+      isProjectLevel
+        ? `experimentsColumnVisibility-${props.projectId}`
+        : `datasetRunColumnVisibility-${props.projectId}`,
       columns,
     );
 
   const [columnOrder, setColumnOrder] = useColumnOrder<DatasetRunRowData>(
-    `datasetRunColumnOrder-${props.projectId}`,
+    isProjectLevel
+      ? `experimentsColumnOrder-${props.projectId}`
+      : `datasetRunColumnOrder-${props.projectId}`,
     columns,
   );
 
   // Check if we have charts to display
   const hasCharts = Boolean(props.selectedMetrics.length);
+  const tableRows = (runsWithMetrics.rows ?? []).map((run) =>
+    convertToTableRow(run),
+  );
+  const selectedRunIds = Object.keys(selectedRows).filter((runId) =>
+    runRows.some((run) => run.id === runId),
+  );
+  const selectedRuns = selectedRunIds
+    .map((runId) => tableRows.find((run) => run.id === runId))
+    .filter((run): run is DatasetRunRowData => Boolean(run));
 
   return (
     <>
@@ -729,15 +852,11 @@ export function DatasetRunsTable(props: {
               rowHeight={rowHeight}
               setRowHeight={setRowHeight}
               actionButtons={[
-                Object.keys(selectedRows).filter((runId) =>
-                  runs.data?.runs.map((run) => run.id).includes(runId),
-                ).length > 0 ? (
+                selectedRunIds.length > 0 ? (
                   <DatasetRunTableMultiSelectAction
                     key="multi-select-action"
-                    // Exclude items that are not in the current page
-                    selectedRunIds={Object.keys(selectedRows).filter((runId) =>
-                      runs.data?.runs.map((run) => run.id).includes(runId),
-                    )}
+                    selectedRunIds={selectedRunIds}
+                    selectedRuns={selectedRuns}
                     projectId={props.projectId}
                     datasetId={props.datasetId}
                     setRowSelection={setSelectedRows}
@@ -746,7 +865,7 @@ export function DatasetRunsTable(props: {
               ]}
             />
             <DataTable
-              tableName={"datasetRuns"}
+              tableName={tableName}
               columns={columns}
               data={
                 runs.isPending
@@ -760,9 +879,7 @@ export function DatasetRunsTable(props: {
                     : {
                         isLoading: false,
                         isError: false,
-                        data: (runsWithMetrics.rows ?? []).map((t) =>
-                          convertToTableRow(t),
-                        ),
+                        data: tableRows,
                       }
               }
               pagination={{
@@ -794,14 +911,10 @@ export function DatasetRunsTable(props: {
             rowHeight={rowHeight}
             setRowHeight={setRowHeight}
             actionButtons={[
-              Object.keys(selectedRows).filter((runId) =>
-                runs.data?.runs.map((run) => run.id).includes(runId),
-              ).length > 0 ? (
+              selectedRunIds.length > 0 ? (
                 <DatasetRunTableMultiSelectAction
-                  // Exclude items that are not in the current page
-                  selectedRunIds={Object.keys(selectedRows).filter((runId) =>
-                    runs.data?.runs.map((run) => run.id).includes(runId),
-                  )}
+                  selectedRunIds={selectedRunIds}
+                  selectedRuns={selectedRuns}
                   projectId={props.projectId}
                   datasetId={props.datasetId}
                   setRowSelection={setSelectedRows}
@@ -810,7 +923,7 @@ export function DatasetRunsTable(props: {
             ]}
           />
           <DataTable
-            tableName={"datasetRuns"}
+            tableName={tableName}
             columns={columns}
             data={
               runs.isPending
@@ -824,9 +937,7 @@ export function DatasetRunsTable(props: {
                   : {
                       isLoading: false,
                       isError: false,
-                      data: (runsWithMetrics.rows ?? []).map((t) =>
-                        convertToTableRow(t),
-                      ),
+                      data: tableRows,
                     }
             }
             pagination={{

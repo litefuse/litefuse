@@ -243,6 +243,44 @@ describe("evalExecutionUtils", () => {
 
       expect(result.body.observationId).toBe("obs-abc");
     });
+
+    it("should build categorical score event", () => {
+      const result = buildScoreEvent({
+        eventId: "event-123",
+        scoreId: "score-456",
+        traceId: "trace-789",
+        observationId: null,
+        scoreName: "quality",
+        value: "high",
+        dataType: "CATEGORICAL",
+        reasoning: "High quality",
+        environment: "production",
+        executionTraceId: "exec-trace-abc",
+        metadata: {},
+      });
+
+      expect(result.body.value).toBe("high");
+      expect(result.body.dataType).toBe("CATEGORICAL");
+    });
+
+    it("should build boolean score event", () => {
+      const result = buildScoreEvent({
+        eventId: "event-123",
+        scoreId: "score-456",
+        traceId: "trace-789",
+        observationId: null,
+        scoreName: "passes",
+        value: 1,
+        dataType: "BOOLEAN",
+        reasoning: "Passes",
+        environment: "production",
+        executionTraceId: "exec-trace-abc",
+        metadata: {},
+      });
+
+      expect(result.body.value).toBe(1);
+      expect(result.body.dataType).toBe("BOOLEAN");
+    });
   });
 
   describe("getEnvironmentFromVariables", () => {

@@ -959,6 +959,36 @@ describe("Filter Evaluation for Observation Evals", () => {
       // Child spans should not match, only the root span
       expect(matched).toBe(false);
     });
+
+    it("should only schedule official action-style experiment root observations", async () => {
+      const experimentFields = {
+        project_id: projectId,
+        experiment_id: "exp-ci-001",
+        experiment_name: "CI gate experiment",
+        experiment_dataset_id: "dataset-ci-001",
+        experiment_item_id: "dataset-item-001",
+        experiment_item_version: "2026-05-25T10:30:00.000Z",
+        experiment_item_expected_output: '{"answer":"Paris"}',
+      };
+
+      const rootObservation = createTestObservation({
+        ...experimentFields,
+        span_id: "root-span-123",
+        experiment_item_root_span_id: "root-span-123",
+      });
+      const childObservation = createTestObservation({
+        ...experimentFields,
+        span_id: "child-span-456",
+        experiment_item_root_span_id: "root-span-123",
+      });
+
+      await expect(testExperimentFilterMatch(rootObservation)).resolves.toBe(
+        true,
+      );
+      await expect(testExperimentFilterMatch(childObservation)).resolves.toBe(
+        false,
+      );
+    });
   });
 
   describe("null filters (parentObservationId)", () => {

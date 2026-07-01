@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod/v4";
 import { Input } from "@/src/components/ui/input";
 import { Button } from "@/src/components/ui/button";
@@ -14,15 +14,22 @@ import {
 } from "@/src/components/ui/form";
 import { api } from "@/src/utils/api";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { extractVariables, getIsCharOrUnderscore } from "@langfuse/shared";
+import {
+  createBooleanEvalOutputDefinition,
+  createCategoricalEvalOutputDefinition,
+  createNumericEvalOutputDefinition,
+  extractVariables,
+  getIsCharOrUnderscore,
+  MinimumCategoricalCategoryCount,
+  type PersistedEvalOutputDefinition,
+  PersistedEvalOutputDefinitionSchema,
+  resolvePersistedEvalOutputDefinition,
+  ScoreDataTypeEnum,
+} from "@langfuse/shared";
 import router from "next/router";
 import { type EvalTemplate } from "@langfuse/shared";
 import { ModelParameters } from "@/src/components/ModelParameters";
-import {
-  OutputSchema,
-  type ModelParams,
-  ZodModelConfig,
-} from "@langfuse/shared";
+import { type ModelParams, ZodModelConfig } from "@langfuse/shared";
 import { PromptVariableListPreview } from "@/src/features/prompts/components/PromptVariableListPreview";
 import { usePostHogClientCapture } from "@/src/features/posthog-analytics/usePostHogClientCapture";
 import { getFinalModelParams } from "@/src/utils/getFinalModelParams";
@@ -38,6 +45,14 @@ import { ManageDefaultEvalModel } from "@/src/features/evals/components/manage-d
 import { DialogFooter, DialogBody } from "@/src/components/ui/dialog";
 import { AlertCircle } from "lucide-react";
 import { useValidateCustomModel } from "@/src/features/evals/hooks/useValidateCustomModel";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/src/components/ui/select";
 
 type PartialEvalTemplate = Omit<
   EvalTemplate,
@@ -74,10 +89,8 @@ export const EvalTemplateForm = (props: {
                 name: props.existingEvalTemplate.name,
                 prompt: props.existingEvalTemplate.prompt,
                 vars: props.existingEvalTemplate.vars,
-                outputSchema: props.existingEvalTemplate.outputSchema as {
-                  score: string;
-                  reasoning: string;
-                },
+                outputSchema: props.existingEvalTemplate
+                  .outputSchema as PersistedEvalOutputDefinition,
                 selectedModel: props.existingEvalTemplate.provider
                   ? {
                       provider: props.existingEvalTemplate.provider as string,
@@ -102,49 +115,157 @@ const selectedModelSchema = z.object({
   modelParams: ZodModelConfig,
 });
 
-const formSchema = z.object({
-  name: z.string().min(1, "Enter a name"),
-  prompt: z
-    .string()
-    .min(1, "Enter a prompt")
-    .refine((val) => {
-      const variables = extractVariables(val);
-      const matches = variables.map((variable) => {
-        // check regex here
-        if (variable.match(/^[A-Za-z_]+$/)) {
-          return true;
-        }
-        return false;
-      });
-      return !matches.includes(false);
-    }, "Variables must only contain letters and underscores (_)"),
+const formSchema = z
+  .object({
+    name: z.string().min(1, "Enter a name"),
+    prompt: z
+      .string()
+      .min(1, "Enter a prompt")
+      .refine((val) => {
+        const variables = extractVariables(val);
+        const matches = variables.map((variable) => {
+          // check regex here
+          if (variable.match(/^[A-Za-z_]+$/)) {
+            return true;
+          }
+          return false;
+        });
+        return !matches.includes(false);
+      }, "Variables must only contain letters and underscores (_)"),
 
-  variables: z.array(
-    z.string().min(1, "Variables must have at least one character"),
-  ),
-  outputScore: z.string().min(1, "Enter a score function"),
-  outputReasoning: z.string().min(1, "Enter a reasoning function"),
-  referencedEvaluators: z
-    .enum(EvalReferencedEvaluators)
-    .optional()
-    .default(EvalReferencedEvaluators.PERSIST),
-  shouldUseDefaultModel: z.boolean().default(true),
-});
+    variables: z.array(
+      z.string().min(1, "Variables must have at least one character"),
+    ),
+    scoreDataType: z
+      .enum([
+        ScoreDataTypeEnum.NUMERIC,
+        ScoreDataTypeEnum.BOOLEAN,
+        ScoreDataTypeEnum.CATEGORICAL,
+      ])
+      .default(ScoreDataTypeEnum.NUMERIC),
+    outputScore: z.string().min(1, "Enter a score function"),
+    outputReasoning: z.string().min(1, "Enter a reasoning function"),
+    categories: z.array(z.object({ value: z.string() })).default([]),
+    shouldAllowMultipleMatches: z.boolean().default(false),
+    referencedEvaluators: z
+      .enum(EvalReferencedEvaluators)
+      .optional()
+      .default(EvalReferencedEvaluators.PERSIST),
+    shouldUseDefaultModel: z.boolean().default(true),
+  })
+  .superRefine((values, ctx) => {
+    if (values.scoreDataType !== ScoreDataTypeEnum.CATEGORICAL) {
+      return;
+    }
+
+    const trimmedCategories = values.categories.map((category) =>
+      category.value.trim(),
+    );
+
+    if (trimmedCategories.length < MinimumCategoricalCategoryCount) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["categories"],
+        message: `Add at least ${MinimumCategoricalCategoryCount} categories`,
+      });
+      return;
+    }
+
+    trimmedCategories.forEach((category, index) => {
+      if (!category) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["categories", index, "value"],
+          message: "Enter a category",
+        });
+      }
+    });
+
+    const seenCategories = new Set<string>();
+    trimmedCategories.forEach((category, index) => {
+      if (!category) {
+        return;
+      }
+      if (seenCategories.has(category)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["categories", index, "value"],
+          message: "Categories must be unique",
+        });
+        return;
+      }
+      seenCategories.add(category);
+    });
+  });
 
 export type EvalTemplateFormPreFill = {
   name: string;
   prompt: string;
   vars: string[];
-  outputSchema: {
-    score: string;
-    reasoning: string;
-  };
+  outputSchema: PersistedEvalOutputDefinition;
   selectedModel?: {
     provider: string;
     model: string;
     modelParams: ModelParams & {
       maxTemperature: number;
     };
+  };
+};
+
+const getDefaultOutputDefinitionFormValues = (params?: {
+  scoreDataType?: "NUMERIC" | "BOOLEAN" | "CATEGORICAL";
+  shouldAllowMultipleMatches?: boolean;
+}) => {
+  const scoreDataType = params?.scoreDataType ?? ScoreDataTypeEnum.NUMERIC;
+  const shouldAllowMultipleMatches =
+    params?.shouldAllowMultipleMatches ?? false;
+
+  return {
+    scoreDataType,
+    outputReasoning: "One sentence reasoning for the score",
+    outputScore:
+      scoreDataType === ScoreDataTypeEnum.CATEGORICAL
+        ? shouldAllowMultipleMatches
+          ? "Choose all categories that apply."
+          : "Choose exactly one category."
+        : scoreDataType === ScoreDataTypeEnum.BOOLEAN
+          ? "Return true if the evaluation passes and false otherwise."
+          : "Score between 0 and 1. Score 0 if false or negative and 1 if true or positive.",
+    categories: [] as { value: string }[],
+    shouldAllowMultipleMatches,
+  };
+};
+
+const toOutputDefinitionFormValues = (
+  outputSchema?: PersistedEvalOutputDefinition | null,
+) => {
+  if (!outputSchema) return getDefaultOutputDefinitionFormValues();
+
+  const parsedOutputDefinition =
+    PersistedEvalOutputDefinitionSchema.safeParse(outputSchema);
+
+  if (!parsedOutputDefinition.success) {
+    return getDefaultOutputDefinitionFormValues();
+  }
+
+  const resolvedOutputDefinition = resolvePersistedEvalOutputDefinition(
+    parsedOutputDefinition.data,
+  );
+
+  return {
+    scoreDataType: resolvedOutputDefinition.dataType,
+    outputReasoning: resolvedOutputDefinition.reasoningDescription,
+    outputScore: resolvedOutputDefinition.scoreDescription,
+    categories:
+      resolvedOutputDefinition.dataType === ScoreDataTypeEnum.CATEGORICAL
+        ? resolvedOutputDefinition.categories.map((category) => ({
+            value: category,
+          }))
+        : [],
+    shouldAllowMultipleMatches:
+      resolvedOutputDefinition.dataType === ScoreDataTypeEnum.CATEGORICAL
+        ? resolvedOutputDefinition.shouldAllowMultipleMatches
+        : false,
   };
 };
 
@@ -200,6 +321,10 @@ export const InnerEvalTemplateForm = (props: {
     props.preFilledFormValues?.selectedModel,
   );
 
+  const outputDefinitionFormValues = toOutputDefinitionFormValues(
+    props.preFilledFormValues?.outputSchema,
+  );
+
   // updates the form based on the pre-filled data
   // either form update or from langfuse-generated template
   const form = useForm({
@@ -210,17 +335,31 @@ export const InnerEvalTemplateForm = (props: {
         props.existingEvalTemplateName ?? props.preFilledFormValues?.name ?? "",
       prompt: props.preFilledFormValues?.prompt ?? undefined,
       variables: props.preFilledFormValues?.vars ?? [],
-      outputReasoning: props.preFilledFormValues
-        ? OutputSchema.parse(props.preFilledFormValues?.outputSchema).reasoning
-        : "One sentence reasoning for the score",
-      outputScore: props.preFilledFormValues
-        ? OutputSchema.parse(props.preFilledFormValues?.outputSchema).score
-        : "Score between 0 and 1. Score 0 if false or negative and 1 if true or positive.",
+      scoreDataType: outputDefinitionFormValues.scoreDataType,
+      outputReasoning: outputDefinitionFormValues.outputReasoning,
+      outputScore: outputDefinitionFormValues.outputScore,
+      categories: outputDefinitionFormValues.categories,
+      shouldAllowMultipleMatches:
+        outputDefinitionFormValues.shouldAllowMultipleMatches,
       shouldUseDefaultModel: isExistingUsingDefault,
     },
   });
 
+  const {
+    fields: categoryFields,
+    append,
+    remove,
+    replace,
+  } = useFieldArray({
+    control: form.control,
+    name: "categories",
+  });
+
   const useDefaultModel = form.watch("shouldUseDefaultModel");
+  const scoreDataType = form.watch("scoreDataType");
+  const shouldAllowMultipleMatches = form.watch("shouldAllowMultipleMatches");
+  const isCategoricalOutput = scoreDataType === ScoreDataTypeEnum.CATEGORICAL;
+  const isBooleanOutput = scoreDataType === ScoreDataTypeEnum.BOOLEAN;
 
   const extractedVariables = form.watch("prompt")
     ? extractVariables(form.watch("prompt")).filter(getIsCharOrUnderscore)
@@ -274,6 +413,26 @@ export const InnerEvalTemplateForm = (props: {
         : "eval_templates:new_form_submit",
     );
 
+    const outputSchema =
+      values.scoreDataType === ScoreDataTypeEnum.CATEGORICAL
+        ? createCategoricalEvalOutputDefinition({
+            scoreDescription: values.outputScore,
+            reasoningDescription: values.outputReasoning,
+            categories: values.categories.map((category) =>
+              category.value.trim(),
+            ),
+            shouldAllowMultipleMatches: values.shouldAllowMultipleMatches,
+          })
+        : values.scoreDataType === ScoreDataTypeEnum.BOOLEAN
+          ? createBooleanEvalOutputDefinition({
+              scoreDescription: values.outputScore,
+              reasoningDescription: values.outputReasoning,
+            })
+          : createNumericEvalOutputDefinition({
+              scoreDescription: values.outputScore,
+              reasoningDescription: values.outputReasoning,
+            });
+
     const evalTemplate = {
       name: values.name,
       projectId: props.projectId,
@@ -287,10 +446,7 @@ export const InnerEvalTemplateForm = (props: {
         ? undefined
         : getFinalModelParams(modelParams),
       vars: extractedVariables ?? [],
-      outputSchema: {
-        score: values.outputScore,
-        reasoning: values.outputReasoning,
-      },
+      outputSchema,
       referencedEvaluators: values.referencedEvaluators,
       sourceTemplateId: props.cloneSourceId ?? undefined,
     };
@@ -493,13 +649,189 @@ export const InnerEvalTemplateForm = (props: {
 
           <FormField
             control={form.control}
+            name="scoreDataType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Score type</FormLabel>
+                <FormDescription>
+                  Choose whether the evaluator should return a numeric score, a
+                  boolean verdict, or one of a fixed set of categories.
+                </FormDescription>
+                <Select
+                  value={field.value}
+                  disabled={!props.isEditing}
+                  onValueChange={(value) => {
+                    const nextScoreDataType = value as
+                      | typeof ScoreDataTypeEnum.NUMERIC
+                      | typeof ScoreDataTypeEnum.BOOLEAN
+                      | typeof ScoreDataTypeEnum.CATEGORICAL;
+                    const nextShouldAllowMultipleMatches =
+                      nextScoreDataType === ScoreDataTypeEnum.CATEGORICAL
+                        ? form.getValues("shouldAllowMultipleMatches")
+                        : false;
+                    const defaults = getDefaultOutputDefinitionFormValues({
+                      scoreDataType: nextScoreDataType,
+                      shouldAllowMultipleMatches:
+                        nextShouldAllowMultipleMatches,
+                    });
+
+                    field.onChange(nextScoreDataType);
+                    form.setValue("outputScore", defaults.outputScore);
+
+                    if (nextScoreDataType === ScoreDataTypeEnum.CATEGORICAL) {
+                      if ((form.getValues("categories") ?? []).length === 0) {
+                        replace(
+                          Array.from(
+                            { length: MinimumCategoricalCategoryCount },
+                            () => ({ value: "" }),
+                          ),
+                        );
+                      }
+                    } else {
+                      form.setValue("shouldAllowMultipleMatches", false);
+                    }
+                  }}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value={ScoreDataTypeEnum.NUMERIC}>
+                        Numeric
+                      </SelectItem>
+                      <SelectItem value={ScoreDataTypeEnum.BOOLEAN}>
+                        Boolean
+                      </SelectItem>
+                      <SelectItem value={ScoreDataTypeEnum.CATEGORICAL}>
+                        Categorical
+                      </SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {isCategoricalOutput ? (
+            <FormField
+              control={form.control}
+              name="categories"
+              render={() => (
+                <FormItem>
+                  <FormLabel>Categories</FormLabel>
+                  <FormDescription>
+                    Add the allowed category values the model may return.
+                    Categories must be exhaustive.
+                  </FormDescription>
+                  <div className="flex flex-col gap-3">
+                    {categoryFields.map((categoryField, index) => (
+                      <div
+                        key={categoryField.id}
+                        className="flex items-start gap-2"
+                      >
+                        <FormField
+                          control={form.control}
+                          name={`categories.${index}.value`}
+                          render={({ field }) => (
+                            <FormItem className="flex-1">
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  placeholder={`Category ${index + 1}`}
+                                  disabled={!props.isEditing}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={
+                            !props.isEditing ||
+                            categoryFields.length <=
+                              MinimumCategoricalCategoryCount
+                          }
+                          onClick={() => remove(index)}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="w-fit"
+                      disabled={!props.isEditing}
+                      onClick={() => append({ value: "" })}
+                    >
+                      Add category
+                    </Button>
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="shouldAllowMultipleMatches"
+                    render={({ field }) => (
+                      <FormItem className="mt-3 flex flex-row items-center gap-3 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={(checked) => {
+                              field.onChange(Boolean(checked));
+                              form.setValue(
+                                "outputScore",
+                                getDefaultOutputDefinitionFormValues({
+                                  scoreDataType: ScoreDataTypeEnum.CATEGORICAL,
+                                  shouldAllowMultipleMatches: Boolean(checked),
+                                }).outputScore,
+                              );
+                            }}
+                            disabled={!props.isEditing}
+                          />
+                        </FormControl>
+                        <div className="leading-none">
+                          <FormLabel>Allow multiple category matches</FormLabel>
+                          <FormDescription className="text-xs">
+                            Create one categorical score for each selected
+                            category.
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ) : null}
+
+          <FormField
+            control={form.control}
             name="outputScore"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Score range prompt</FormLabel>
+                <FormLabel>
+                  {isCategoricalOutput
+                    ? "Category selection prompt"
+                    : isBooleanOutput
+                      ? "Boolean verdict prompt"
+                      : "Score range prompt"}
+                </FormLabel>
                 <FormDescription>
-                  Define how the LLM should return the evaluation score in
-                  natural language. Needs to yield a numeric value.
+                  {isCategoricalOutput
+                    ? shouldAllowMultipleMatches
+                      ? "Define how the LLM should choose one or more categories from the list above."
+                      : "Define how the LLM should choose exactly one category from the list above."
+                    : isBooleanOutput
+                      ? "Define how the LLM should return either true or false based on the evaluation criteria."
+                      : "Define how the LLM should return the evaluation score in natural language. Needs to yield a numeric value."}
                 </FormDescription>
                 <FormControl>
                   <Input {...field} />

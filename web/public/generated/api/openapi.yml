@@ -8333,6 +8333,16 @@ components:
             at or before this timestamp.
 
             If not provided, uses the latest version of dataset items.
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >-
+            Optional client-supplied creation timestamp for the dataset run
+            item.
+
+            If provided, the run item keeps this timestamp; otherwise, the
+            server sets it when the request is processed.
       required:
         - runName
         - datasetItemId

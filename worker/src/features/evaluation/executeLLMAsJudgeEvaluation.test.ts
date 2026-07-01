@@ -4,7 +4,11 @@ import { executeLLMAsJudgeEvaluation } from "./evalService";
 import { createMockEvalExecutionDeps } from "./evalExecutionDeps";
 import { UnrecoverableError } from "../../errors/UnrecoverableError";
 import { ExtractedVariable } from "./observationEval/extractObservationVariables";
-import { EvalTargetObject } from "@langfuse/shared";
+import {
+  createBooleanEvalOutputDefinition,
+  createCategoricalEvalOutputDefinition,
+  EvalTargetObject,
+} from "@langfuse/shared";
 
 /**
  * Unit tests for executeLLMAsJudgeEvaluation with mocked dependencies.
@@ -108,7 +112,7 @@ describe("executeLLMAsJudgeEvaluation", () => {
     });
 
   /** Creates a mock for callLLM with a successful response */
-  const mockSuccessfulLLMCall = (score: number, reasoning: string) =>
+  const mockSuccessfulLLMCall = (score: unknown, reasoning: string) =>
     vi.fn().mockResolvedValue({ score, reasoning });
 
   /** Creates standard deps with all mocks for a successful execution flow */
@@ -132,7 +136,7 @@ describe("executeLLMAsJudgeEvaluation", () => {
   const createExecutionParams = (
     overrides: {
       job?: typeof mockJobExecution;
-      template?: typeof mockEvalTemplate;
+      template?: any;
       variables?: ExtractedVariable[];
       environment?: string;
       deps?: ReturnType<typeof createMockEvalExecutionDeps>;
@@ -266,6 +270,117 @@ describe("executeLLMAsJudgeEvaluation", () => {
         }),
       );
     });
+
+    it("should persist boolean evaluator output as BOOLEAN score", async () => {
+      const uploadScore = vi.fn();
+      const deps = createSuccessfulDeps({
+        callLLM: mockSuccessfulLLMCall(true, "Passes criteria"),
+        uploadScore,
+      });
+
+      await executeLLMAsJudgeEvaluation(
+        createExecutionParams({
+          template: {
+            ...mockEvalTemplate,
+            outputSchema: createBooleanEvalOutputDefinition({
+              scoreDescription: "Return true if the answer is correct",
+              reasoningDescription: "Explain the verdict",
+            }),
+          },
+          deps,
+        }),
+      );
+
+      expect(uploadScore).toHaveBeenCalledTimes(1);
+      expect(uploadScore).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: expect.objectContaining({
+            body: expect.objectContaining({
+              value: 1,
+              dataType: "BOOLEAN",
+              comment: "Passes criteria",
+            }),
+          }),
+        }),
+      );
+    });
+
+    it("should persist single categorical evaluator output as CATEGORICAL score", async () => {
+      const uploadScore = vi.fn();
+      const deps = createSuccessfulDeps({
+        callLLM: mockSuccessfulLLMCall("high", "High quality"),
+        uploadScore,
+      });
+
+      await executeLLMAsJudgeEvaluation(
+        createExecutionParams({
+          template: {
+            ...mockEvalTemplate,
+            outputSchema: createCategoricalEvalOutputDefinition({
+              scoreDescription: "Choose quality category",
+              reasoningDescription: "Explain category",
+              categories: ["low", "medium", "high"],
+            }),
+          },
+          deps,
+        }),
+      );
+
+      expect(uploadScore).toHaveBeenCalledTimes(1);
+      expect(uploadScore).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: expect.objectContaining({
+            body: expect.objectContaining({
+              value: "high",
+              dataType: "CATEGORICAL",
+              comment: "High quality",
+            }),
+          }),
+        }),
+      );
+    });
+
+    it("should persist multiple categorical evaluator matches as separate scores", async () => {
+      const uploadScore = vi.fn();
+      const enqueueScoreIngestion = vi.fn();
+      const updateJobExecution = vi.fn();
+      const deps = createSuccessfulDeps({
+        callLLM: mockSuccessfulLLMCall(["helpful", "safe"], "Two matches"),
+        uploadScore,
+        enqueueScoreIngestion,
+        updateJobExecution,
+      });
+
+      await executeLLMAsJudgeEvaluation(
+        createExecutionParams({
+          template: {
+            ...mockEvalTemplate,
+            outputSchema: createCategoricalEvalOutputDefinition({
+              scoreDescription: "Choose matching categories",
+              reasoningDescription: "Explain matches",
+              categories: ["helpful", "safe", "concise"],
+              shouldAllowMultipleMatches: true,
+            }),
+          },
+          deps,
+        }),
+      );
+
+      expect(uploadScore).toHaveBeenCalledTimes(2);
+      expect(enqueueScoreIngestion).toHaveBeenCalledTimes(2);
+      expect(
+        uploadScore.mock.calls.map((call) => call[0].event.body.value),
+      ).toEqual(["helpful", "safe"]);
+
+      const firstScoreId = uploadScore.mock.calls[0][0].scoreId;
+      expect(updateJobExecution).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            jobOutputScoreId: firstScoreId,
+          }),
+        }),
+      );
+    });
   });
 
   describe("configuration errors", () => {
@@ -325,6 +440,32 @@ describe("executeLLMAsJudgeEvaluation", () => {
 
       await expect(
         executeLLMAsJudgeEvaluation(createExecutionParams({ deps })),
+      ).rejects.toThrow(UnrecoverableError);
+    });
+
+    it("should throw UnrecoverableError for categorical response outside allowed categories", async () => {
+      const deps = createMockEvalExecutionDeps({
+        fetchModelConfig: mockValidFetchModelConfig(),
+        callLLM: vi.fn().mockResolvedValue({
+          score: "unknown",
+          reasoning: "Not in category list",
+        }),
+      });
+
+      await expect(
+        executeLLMAsJudgeEvaluation(
+          createExecutionParams({
+            template: {
+              ...mockEvalTemplate,
+              outputSchema: createCategoricalEvalOutputDefinition({
+                scoreDescription: "Choose quality category",
+                reasoningDescription: "Explain category",
+                categories: ["low", "medium", "high"],
+              }),
+            },
+            deps,
+          }),
+        ),
       ).rejects.toThrow(UnrecoverableError);
     });
   });

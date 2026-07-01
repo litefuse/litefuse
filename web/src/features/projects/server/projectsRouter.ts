@@ -17,7 +17,10 @@ import {
   getEnvironmentsForProject,
 } from "@langfuse/shared/src/server";
 import { randomUUID } from "crypto";
-import { StringNoHTMLNonEmpty } from "@langfuse/shared";
+import {
+  getDefaultScoreConfigsForProject,
+  StringNoHTMLNonEmpty,
+} from "@langfuse/shared";
 
 export const projectsRouter = createTRPCRouter({
   create: protectedOrganizationProcedure
@@ -50,11 +53,19 @@ export const projectsRouter = createTRPCRouter({
         });
       }
 
-      const project = await ctx.prisma.project.create({
-        data: {
-          name: input.name,
-          orgId: input.orgId,
-        },
+      const project = await ctx.prisma.$transaction(async (tx) => {
+        const project = await tx.project.create({
+          data: {
+            name: input.name,
+            orgId: input.orgId,
+          },
+        });
+
+        await tx.scoreConfig.createMany({
+          data: getDefaultScoreConfigsForProject(project.id),
+        });
+
+        return project;
       });
       await auditLog({
         session: ctx.session,

@@ -1,6 +1,11 @@
 import { z } from "zod/v4";
 import { z as zodV3 } from "zod/v3";
-import { ScoreSourceEnum, ChatMessageRole } from "@langfuse/shared";
+import {
+  ScoreSourceEnum,
+  ChatMessageRole,
+  ScoreDataTypeEnum,
+  type ScoreDataTypeType,
+} from "@langfuse/shared";
 import {
   ChatMessageType,
   eventTypes,
@@ -104,7 +109,8 @@ export interface BuildScoreEventParams {
   traceId: string | null;
   observationId: string | null;
   scoreName: string;
-  value: number;
+  value: number | string;
+  dataType?: Extract<ScoreDataTypeType, "NUMERIC" | "BOOLEAN" | "CATEGORICAL">;
   reasoning: string;
   environment: string;
   executionTraceId: string;
@@ -133,8 +139,8 @@ export function buildScoreEvent(params: BuildScoreEventParams): ScoreEventType {
       environment: params.environment,
       executionTraceId: params.executionTraceId,
       metadata: params.metadata,
-      dataType: "NUMERIC",
-    },
+      dataType: params.dataType ?? ScoreDataTypeEnum.NUMERIC,
+    } as ScoreEventType["body"],
   };
 }
 

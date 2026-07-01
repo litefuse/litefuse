@@ -68,7 +68,7 @@ export const scoreFilters = {
     datasetId,
   }: {
     datasetRunIds: string[];
-    datasetId: string;
+    datasetId?: string;
   }): FilterCondition[] => [
     {
       type: "stringOptions",
@@ -76,12 +76,16 @@ export const scoreFilters = {
       operator: "any of",
       value: datasetRunIds,
     },
-    {
-      type: "string",
-      column: "datasetId",
-      operator: "=",
-      value: datasetId,
-    },
+    ...(datasetId
+      ? [
+          {
+            type: "string" as const,
+            column: "datasetId",
+            operator: "=" as const,
+            value: datasetId,
+          },
+        ]
+      : []),
   ],
 
   // Filter for dataset item scores via dataset_run_items_rmt

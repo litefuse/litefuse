@@ -9,23 +9,18 @@ import {
   getTracingTabs,
   TRACING_TABS,
 } from "@/src/features/navigation/utils/tracing-tabs";
-import { useV4Beta } from "@/src/features/events/hooks/useV4Beta";
-import ObservationsEventsTable from "@/src/features/events/components/EventsTable";
 import { useQueryProject } from "@/src/features/projects/hooks";
 
 export default function Traces() {
   const router = useRouter();
   const projectId = router.query.projectId as string;
-  const { isBetaEnabled } = useV4Beta();
   const [, setQueryParams] = useQueryParams({ viewMode: StringParam });
   const { project } = useQueryProject();
 
-  // Clear viewMode query when beta is turned off (e.g. from sidebar)
+  // Clear the beta-only trace table view mode while the faster trace UI is hidden.
   useEffect(() => {
-    if (!isBetaEnabled) {
-      setQueryParams({ viewMode: undefined });
-    }
-  }, [isBetaEnabled, setQueryParams]);
+    setQueryParams({ viewMode: undefined });
+  }, [setQueryParams]);
 
   // Check if the user has tracing configured
   // Skip polling entirely if the project flag is already set in the session
@@ -88,19 +83,13 @@ export default function Traces() {
           ),
           href: "https://litefuse.ai/docs/observability/data-model",
         },
-        tabsProps: isBetaEnabled
-          ? undefined
-          : {
-              tabs: getTracingTabs(projectId),
-              activeTab: TRACING_TABS.TRACES,
-            },
+        tabsProps: {
+          tabs: getTracingTabs(projectId),
+          activeTab: TRACING_TABS.TRACES,
+        },
       }}
     >
-      {isBetaEnabled ? (
-        <ObservationsEventsTable projectId={projectId} />
-      ) : (
-        <TracesTable projectId={projectId} />
-      )}
+      <TracesTable projectId={projectId} />
     </Page>
   );
 }

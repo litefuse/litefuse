@@ -43,7 +43,19 @@ const _unsafeNonSecureCopyToClipboard = (text: string) => {
  */
 export const copyTextToClipboard = async (text: string) => {
   if (typeof navigator.clipboard?.writeText === "function") {
-    return navigator.clipboard.writeText(text);
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (error) {
+      console.warn("Clipboard API failed, falling back to execCommand", error);
+    }
   }
-  return _unsafeNonSecureCopyToClipboard(text);
+
+  try {
+    _unsafeNonSecureCopyToClipboard(text);
+    return true;
+  } catch (error) {
+    console.error("Unable to copy to clipboard", error);
+    return false;
+  }
 };

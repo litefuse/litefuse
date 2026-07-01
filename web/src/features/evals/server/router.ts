@@ -23,6 +23,7 @@ import {
   orderBy,
   jsonSchema,
   EvalTargetObject,
+  PersistedEvalOutputDefinitionSchema,
 } from "@langfuse/shared";
 import {
   getQueue,
@@ -130,10 +131,7 @@ export const CreateEvalTemplate = z.object({
   model: z.string().nullish(),
   modelParams: ZodModelConfig.nullish(),
   vars: z.array(z.string()),
-  outputSchema: z.object({
-    score: z.string(),
-    reasoning: z.string(),
-  }),
+  outputSchema: PersistedEvalOutputDefinitionSchema,
   cloneSourceId: z.string().optional(),
   referencedEvaluators: z
     .enum(EvalReferencedEvaluators)
@@ -494,6 +492,7 @@ export const evalRouter = createTRPCRouter({
             partner?: string;
             provider?: string;
             model?: string;
+            outputSchema: Prisma.JsonValue;
           }>
         >`
         WITH latest_templates AS (
@@ -504,6 +503,7 @@ export const evalRouter = createTRPCRouter({
             et.provider,
             et.model,
             et.partner,
+            et.output_schema,
             et.version,
             et.created_at,
             (
@@ -531,6 +531,7 @@ export const evalRouter = createTRPCRouter({
           provider,
           model,
           partner,
+          output_schema as "outputSchema",
           project_id as "projectId",
           version,
           created_at as "latestCreatedAt",

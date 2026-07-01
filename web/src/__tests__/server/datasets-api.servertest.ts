@@ -1738,6 +1738,7 @@ describe("/api/public/datasets and /api/public/dataset-items API Endpoints", () 
   it("should support creating experiment runs at specific dataset version", async () => {
     const datasetName = `experiment-version-dataset-${v4()}`;
     const runName = `experiment-run-${v4()}`;
+    const clientCreatedAt = new Date("2026-05-25T10:30:00.000Z");
 
     // Create dataset
     await makeZodVerifiedAPICall(
@@ -1792,11 +1793,14 @@ describe("/api/public/datasets and /api/public/dataset-items API Endpoints", () 
         datasetItemId: item.body.id,
         traceId: traceId,
         datasetVersion: experimentVersion,
+        createdAt: clientCreatedAt,
         metadata: { test: "versioned experiment" },
       },
       auth,
     );
     expect(runItem.status).toBe(200);
+    expect(runItem.body.createdAt).toEqual(clientCreatedAt);
+    expect(runItem.body.updatedAt).toEqual(clientCreatedAt);
 
     // Verify the run was created with version in metadata
     const dbRun = await prisma.datasetRuns.findFirst({
@@ -1809,6 +1813,23 @@ describe("/api/public/datasets and /api/public/dataset-items API Endpoints", () 
     expect(dbRun?.metadata).toMatchObject({
       test: "versioned experiment",
       dataset_version: experimentVersion.toISOString(),
+    });
+
+    await waitForExpect(async () => {
+      const runItems = await getDatasetRunItemsByDatasetIdCh({
+        projectId,
+        datasetId: item.body.datasetId,
+        runName,
+        limit: 10,
+        offset: 0,
+      });
+
+      expect(runItems).toHaveLength(1);
+      expect(runItems[0]).toMatchObject({
+        datasetItemId: item.body.id,
+        datasetItemInput: { text: "original" },
+        createdAt: clientCreatedAt,
+      });
     });
   }, 90000);
 });

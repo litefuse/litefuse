@@ -27,6 +27,7 @@ import {
 import { useDesktopLayoutContext } from "./TraceLayoutDesktop";
 import { TracePanelNavigationHeader } from "./TracePanelNavigationHeader";
 import { TracePanelNavigationHiddenNotice } from "./TracePanelNavigationHiddenNotice";
+import { TraceFullscreenDialog } from "./TraceFullscreenDialog";
 
 export function TracePanelNavigationLayoutDesktop({
   children,
@@ -58,7 +59,20 @@ export function TracePanelNavigationLayoutDesktop({
               </ResizablePanel>
               <ResizableHandle className="bg-border h-px" />
               <ResizablePanel defaultSize="40%" minSize="20%">
-                <div className="h-full overflow-hidden">{secondaryContent}</div>
+                <div className="flex h-full flex-col overflow-hidden">
+                  <div className="flex h-8 shrink-0 items-center justify-between border-b px-2">
+                    <span className="text-xs font-medium">Graph View</span>
+                    <TraceFullscreenDialog
+                      title="Graph View"
+                      triggerTitle="Open Graph fullscreen"
+                    >
+                      {secondaryContent}
+                    </TraceFullscreenDialog>
+                  </div>
+                  <div className="min-h-0 flex-1 overflow-hidden">
+                    {secondaryContent}
+                  </div>
+                </div>
               </ResizablePanel>
             </ResizablePanelGroup>
           ) : (

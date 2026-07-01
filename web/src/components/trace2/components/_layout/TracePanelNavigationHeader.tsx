@@ -20,8 +20,13 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { cn } from "@/src/utils/tailwind";
 import { useCallback } from "react";
 import { TraceSettingsDropdown } from "../TraceSettingsDropdown";
-import { downloadTraceAsJson } from "../../lib/download-trace";
+import {
+  downloadTraceAsJson,
+  type DownloadTraceAsJsonParams,
+} from "../../lib/download-trace";
 import { TracePanelNavigationButton } from "./TracePanelNavigationButton";
+import { TraceFullscreenDialog } from "./TraceFullscreenDialog";
+import { TraceTimeline } from "../TraceTimeline";
 
 interface TracePanelNavigationHeaderProps {
   isPanelCollapsed: boolean;
@@ -97,7 +102,7 @@ function TracePanelNavigationHeaderExpanded({
 
   const handleDownload = useCallback(() => {
     downloadTraceAsJson({
-      trace,
+      trace: trace as DownloadTraceAsJsonParams["trace"],
       observations,
     });
   }, [trace, observations]);
@@ -168,6 +173,15 @@ function TracePanelNavigationHeaderExpanded({
           >
             <span className="text-xs">Timeline</span>
           </Button>
+
+          {isTimelineView && (
+            <TraceFullscreenDialog
+              title="Timeline"
+              triggerTitle="Open Timeline fullscreen"
+            >
+              <TraceTimeline />
+            </TraceFullscreenDialog>
+          )}
         </div>
       </div>
     </Command>

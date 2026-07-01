@@ -19,17 +19,17 @@ import {
 } from "@langfuse/shared";
 import { prisma } from "@langfuse/shared/src/db";
 import { IngestionService } from "../../services/IngestionService";
-import * as clickhouseWriterExports from "../../services/ClickhouseWriter";
+import * as dorisWriterExports from "../../services/DorisWriter";
 
-// Mock ClickhouseWriter to avoid actual database writes
-const mockAddToClickhouseWriter = vi.fn();
-vi.mock("../../services/ClickhouseWriter", async (importOriginal) => {
+// Mock DorisWriter to avoid actual database writes
+const mockAddToDorisWriter = vi.fn();
+vi.mock("../../services/DorisWriter", async (importOriginal) => {
   const original = (await importOriginal()) as object;
   return {
     ...original,
-    ClickhouseWriter: {
+    DorisWriter: {
       getInstance: () => ({
-        addToQueue: mockAddToClickhouseWriter,
+        addToQueue: mockAddToDorisWriter,
       }),
     },
   };
@@ -50,7 +50,7 @@ const mockClickhouseClient = {
 const ingestionService = new IngestionService(
   null as any,
   prisma,
-  clickhouseWriterExports.ClickhouseWriter.getInstance() as any,
+  dorisWriterExports.DorisWriter.getInstance() as any,
   mockClickhouseClient as any,
 );
 
@@ -869,8 +869,30 @@ describe("OTEL to ObservationForEval Schema Validation", () => {
                     value: { stringValue: "item-123" },
                   },
                   {
+                    key: "langfuse.experiment.item.version",
+                    value: { stringValue: "2026-05-25T10:30:00.000Z" },
+                  },
+                  {
+                    key: "langfuse.experiment.item.root_observation_id",
+                    value: { stringValue: "root-observation-001" },
+                  },
+                  {
                     key: "langfuse.experiment.item.expected_output",
                     value: { stringValue: '{"expected": "result"}' },
+                  },
+                  {
+                    key: "langfuse.experiment.metadata",
+                    value: {
+                      stringValue:
+                        '{"ci":{"provider":"github","run_id":12345},"threshold":0.8}',
+                    },
+                  },
+                  {
+                    key: "langfuse.experiment.item.metadata",
+                    value: {
+                      stringValue:
+                        '{"case":"golden","tags":["ci","regression"]}',
+                    },
                   },
                   {
                     key: "langfuse.observation.input",
@@ -904,9 +926,26 @@ describe("OTEL to ObservationForEval Schema Validation", () => {
       expect(obs.experiment_description).toBe("Testing new prompt templates");
       expect(obs.experiment_dataset_id).toBe("dataset-test-001");
       expect(obs.experiment_item_id).toBe("item-123");
+      expect(obs.experiment_item_version).toBe("2026-05-25T10:30:00.000Z");
+      expect(obs.experiment_item_root_span_id).toBe("root-observation-001");
       expect(obs.experiment_item_expected_output).toBe(
         '{"expected": "result"}',
       );
+      expect(obs.experiment_metadata_names).toEqual([
+        "ci.provider",
+        "ci.run_id",
+        "threshold",
+      ]);
+      expect(obs.experiment_metadata_values).toEqual([
+        "github",
+        "12345",
+        "0.8",
+      ]);
+      expect(obs.experiment_item_metadata_names).toEqual(["case", "tags"]);
+      expect(obs.experiment_item_metadata_values).toEqual([
+        "golden",
+        '["ci","regression"]',
+      ]);
     });
   });
 

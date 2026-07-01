@@ -22,6 +22,7 @@ import { type ReactNode, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import { TracePanelNavigationHiddenNotice } from "./TracePanelNavigationHiddenNotice";
+import { TraceFullscreenDialog } from "./TraceFullscreenDialog";
 
 export function TracePanelNavigationLayoutMobile({
   children,
@@ -38,19 +39,33 @@ export function TracePanelNavigationLayoutMobile({
       <div className="flex-1 overflow-hidden">{children}</div>
       {secondaryContent && (
         <div className="border-t">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsGraphExpanded(!isGraphExpanded)}
-            className="flex w-full items-center justify-between px-2 py-1"
-          >
-            <span className="text-xs font-medium">Graph View</span>
-            {isGraphExpanded ? (
-              <ChevronUp className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronDown className="h-3.5 w-3.5" />
-            )}
-          </Button>
+          <div className="flex items-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsGraphExpanded(!isGraphExpanded)}
+              className="flex flex-1 items-center justify-between px-2 py-1"
+            >
+              <span className="text-xs font-medium">Graph View</span>
+              {isGraphExpanded ? (
+                <ChevronUp className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5" />
+              )}
+            </Button>
+            <div
+              className="px-1"
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+            >
+              <TraceFullscreenDialog
+                title="Graph View"
+                triggerTitle="Open Graph fullscreen"
+              >
+                {secondaryContent}
+              </TraceFullscreenDialog>
+            </div>
+          </div>
           {isGraphExpanded && (
             <div className="h-64 overflow-hidden">{secondaryContent}</div>
           )}
