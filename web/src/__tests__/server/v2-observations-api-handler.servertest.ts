@@ -328,7 +328,7 @@ describe("/api/public/v2/observations handler", () => {
     expect(res._getStatusCode()).toBe(404);
     expect(res._getJSONData()).toEqual({
       message:
-        "v2 APIs are currently in beta and only available on Langfuse Cloud",
+        "v2 APIs are currently in beta and only available on Litefuse Cloud",
       error: "LangfuseNotFoundError",
     });
   });
