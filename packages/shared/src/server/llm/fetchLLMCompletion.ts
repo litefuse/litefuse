@@ -37,6 +37,12 @@ import { decrypt } from "../../encryption";
 import { decryptAndParseExtraHeaders } from "./utils";
 import { logger } from "../logger";
 import { LLMCompletionError } from "./errors";
+import {
+  resolveAnthropicCompatibleProviderHandler,
+  resolveOpenAICompatibleProviderHandler,
+  type AnthropicCompatibleProviderConfig,
+  type OpenAICompatibleProviderConfig,
+} from "./handlers";
 
 export type CompletionWithReasoning = { text: string; reasoning?: string };
 
@@ -48,40 +54,6 @@ const THINKING_BLOCK_TYPES: Partial<Record<LLMAdapter, Set<string>>> = {
 
 function getThinkingBlockTypes(adapter: LLMAdapter): Set<string> | undefined {
   return THINKING_BLOCK_TYPES[adapter];
-}
-
-// Providers that return thinking/reasoning content in their responses.
-// These providers corrupt JSON parsing when using json_object mode for structured output,
-// so we must force function calling mode instead.
-const PROVIDERS_WITH_THINKING_CONTENT = new Set(["minimax"]);
-
-function hasThinkingContent(provider: string | undefined): boolean {
-  return provider ? PROVIDERS_WITH_THINKING_CONTENT.has(provider) : false;
-}
-
-// Regex to strip thinking tags from string content
-// Matches: <think>(anything)</think> or <think>(anything)内科
-const THINKING_TAG_REGEX = /<think>[\s\S]*?<\/think>/gi;
-
-/**
- * Recursively strips thinking content from an object.
- * Used for providers (like MiniMax) that include thinking tags in JSON string fields.
- */
-function stripThinkingFromObject(obj: unknown): unknown {
-  if (typeof obj === "string") {
-    return obj.replace(THINKING_TAG_REGEX, "");
-  }
-  if (Array.isArray(obj)) {
-    return obj.map(stripThinkingFromObject);
-  }
-  if (obj !== null && typeof obj === "object") {
-    const result: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(obj)) {
-      result[key] = stripThinkingFromObject(value);
-    }
-    return result;
-  }
-  return obj;
 }
 
 const PROVIDERS_WITH_REQUIRED_USER_MESSAGE = [
@@ -178,6 +150,20 @@ export async function fetchLLMCompletion(
   const { baseURL } = llmConnection;
   const apiKey = decrypt(llmConnection.secretKey); // the apiKey must never be printed to the console
   const extraHeaders = decryptAndParseExtraHeaders(llmConnection.extraHeaders);
+  const openAICompatibleProviderHandler =
+    resolveOpenAICompatibleProviderHandler({
+      adapter: modelParams.adapter,
+      provider: modelParams.provider,
+      baseURL,
+    });
+  const anthropicCompatibleProviderHandler =
+    resolveAnthropicCompatibleProviderHandler({
+      adapter: modelParams.adapter,
+      provider: modelParams.provider,
+      baseURL,
+    });
+  const activeProviderHandler =
+    openAICompatibleProviderHandler ?? anthropicCompatibleProviderHandler;
 
   let finalCallbacks: BaseCallbackHandler[] | undefined = callbacks ?? [];
   let processTracedEvents: ProcessTracedEvents = () => Promise.resolve();
@@ -264,9 +250,23 @@ export async function fetchLLMCompletion(
   const proxyUrl = env.HTTPS_PROXY;
   const proxyDispatcher = proxyUrl ? new ProxyAgent(proxyUrl) : undefined;
   const timeoutMs = env.LITEFUSE_FETCH_LLM_COMPLETION_TIMEOUT_MS;
+  let openAICompatibleProviderConfig:
+    | OpenAICompatibleProviderConfig
+    | undefined;
+  let anthropicCompatibleProviderConfig:
+    | AnthropicCompatibleProviderConfig
+    | undefined;
 
   let chatModel: ChatOpenAI | ChatAnthropic | ChatGoogleGenerativeAI;
   if (modelParams.adapter === LLMAdapter.Anthropic) {
+    anthropicCompatibleProviderConfig =
+      anthropicCompatibleProviderHandler?.buildConfig({
+        baseURL,
+        modelName: modelParams.model,
+        providerOptions: modelParams.providerOptions,
+        hasStructuredOutput: params.structuredOutputSchema != null,
+      });
+
     const isClaude45Family =
       modelParams.model?.includes("claude-sonnet-4-5") ||
       modelParams.model?.includes("claude-opus-4-1") ||
@@ -276,7 +276,8 @@ export async function fetchLLMCompletion(
 
     const chatOptions: ChatAnthropicInput = {
       anthropicApiKey: apiKey,
-      anthropicApiUrl: baseURL ?? undefined,
+      anthropicApiUrl:
+        anthropicCompatibleProviderConfig?.baseURL ?? baseURL ?? undefined,
       model: modelParams.model,
       maxTokens: modelParams.max_tokens,
       callbacks: finalCallbacks,
@@ -290,7 +291,9 @@ export async function fetchLLMCompletion(
       },
       temperature: modelParams.temperature,
       topP: modelParams.top_p,
-      invocationKwargs: modelParams.providerOptions,
+      invocationKwargs:
+        anthropicCompatibleProviderConfig?.invocationKwargs ??
+        modelParams.providerOptions,
     };
 
     chatModel = new ChatAnthropic(chatOptions);
@@ -317,10 +320,13 @@ export async function fetchLLMCompletion(
       }
     }
   } else if (modelParams.adapter === LLMAdapter.OpenAI) {
-    const processedBaseURL = processOpenAIBaseURL({
-      url: baseURL,
-      modelName: modelParams.model,
-    });
+    openAICompatibleProviderConfig =
+      openAICompatibleProviderHandler?.buildConfig({
+        baseURL,
+        modelName: modelParams.model,
+        providerOptions: modelParams.providerOptions,
+        hasStructuredOutput: params.structuredOutputSchema != null,
+      });
 
     chatModel = new ChatOpenAI({
       apiKey,
@@ -334,14 +340,14 @@ export async function fetchLLMCompletion(
       callbacks: finalCallbacks,
       maxRetries,
       configuration: {
-        baseURL: processedBaseURL,
+        baseURL: openAICompatibleProviderConfig?.baseURL,
         timeout: timeoutMs,
         defaultHeaders: extraHeaders,
         ...(proxyDispatcher && {
           fetchOptions: { dispatcher: proxyDispatcher },
         }),
       },
-      modelKwargs: modelParams.providerOptions,
+      modelKwargs: openAICompatibleProviderConfig?.modelKwargs,
       timeout: timeoutMs,
     });
   } else if (modelParams.adapter === LLMAdapter.GoogleAIStudio) {
@@ -378,22 +384,20 @@ export async function fetchLLMCompletion(
     metadata: traceSinkParams?.metadata,
   };
 
-  const thinkingTypes = getThinkingBlockTypes(modelParams.adapter);
+  const thinkingTypes =
+    openAICompatibleProviderConfig?.thinkingBlockTypes ??
+    anthropicCompatibleProviderConfig?.thinkingBlockTypes ??
+    getThinkingBlockTypes(modelParams.adapter);
 
   try {
     // Important: await all generations in the try block as otherwise `processTracedEvents` will run too early in finally block
     if (params.structuredOutputSchema) {
-      // Thinking-capable adapters may produce reasoning blocks that corrupt JSON schema
-      // parsing. Force function calling so the parser reads from tool_calls instead.
-      // Also force function calling for providers (like MiniMax) that return thinking content.
-      // Check both provider name and baseURL since provider may be empty in eval template.
-      const isMiniMaxUrl = baseURL?.includes("minimax") ?? false;
       const structuredOutputConfig =
-        thinkingTypes != null ||
-        hasThinkingContent(modelParams.provider) ||
-        isMiniMaxUrl
+        openAICompatibleProviderConfig?.structuredOutput ??
+        anthropicCompatibleProviderConfig?.structuredOutput ??
+        (thinkingTypes != null
           ? { method: "functionCalling" as const }
-          : undefined;
+          : undefined);
 
       const structuredOutput = await chatModel
         .withStructuredOutput(
@@ -402,16 +406,9 @@ export async function fetchLLMCompletion(
         )
         .invoke(finalMessages, runConfig);
 
-      // For providers with thinking content (like MiniMax), strip thinking tags from the result
-      // as a safety measure even when using function calling mode
-      if (hasThinkingContent(modelParams.provider) || isMiniMaxUrl) {
-        return stripThinkingFromObject(structuredOutput) as Record<
-          string,
-          unknown
-        >;
-      }
-
-      return structuredOutput;
+      return (activeProviderHandler?.normalizeStructuredOutput?.(
+        structuredOutput,
+      ) ?? structuredOutput) as Record<string, unknown>;
     }
 
     if (tools && tools.length > 0) {
@@ -439,7 +436,8 @@ export async function fetchLLMCompletion(
           throw Error("Failed to parse LLM tool call result");
 
         return {
-          ...parsed.data,
+          ...(activeProviderHandler?.normalizeToolCallResponse?.(parsed.data) ??
+            parsed.data),
           ...(reasoning ? { reasoning } : {}),
         };
       }
@@ -447,7 +445,10 @@ export async function fetchLLMCompletion(
       const parsed = ToolCallResponseSchema.safeParse(result);
       if (!parsed.success) throw Error("Failed to parse LLM tool call result");
 
-      return parsed.data;
+      return (
+        activeProviderHandler?.normalizeToolCallResponse?.(parsed.data) ??
+        parsed.data
+      );
     }
 
     if (streaming)
@@ -466,7 +467,9 @@ export async function fetchLLMCompletion(
       .pipe(new StringOutputParser())
       .invoke(finalMessages, runConfig);
 
-    return completion;
+    return (
+      activeProviderHandler?.normalizeTextCompletion?.(completion) ?? completion
+    );
   } catch (e) {
     const responseStatusCode =
       (e as any)?.response?.status ?? (e as any)?.status ?? 500;
@@ -531,7 +534,10 @@ function extractReasoning(
   const parts: string[] = [];
   for (const block of content) {
     if (typeof block !== "string" && thinkingBlockTypes.has(block.type)) {
-      const text = (block as any).text ?? (block as any).reasoning;
+      const text =
+        (block as any).text ??
+        (block as any).reasoning ??
+        (block as any).thinking;
       if (typeof text === "string") parts.push(text);
     }
   }
@@ -558,7 +564,10 @@ function extractCompletionWithReasoning(
     if (typeof block === "string") {
       textParts.push(block);
     } else if (!thinkingBlockTypes.has(block.type)) {
-      const text = (block as any).text ?? (block as any).reasoning;
+      const text =
+        (block as any).text ??
+        (block as any).reasoning ??
+        (block as any).thinking;
       if (typeof text === "string") textParts.push(text);
     }
   }
@@ -567,40 +576,6 @@ function extractCompletionWithReasoning(
     text: textParts.join(""),
     ...(reasoning ? { reasoning } : {}),
   };
-}
-
-/**
- * Process baseURL template for OpenAI adapter only.
- * Replaces {model} placeholder with actual model name.
- * This is a workaround for proxies that require the model name in the URL azureOpenAIBasePath
- * while having OpenAI compliance otherwise
- */
-function processOpenAIBaseURL(params: {
-  url: string | null | undefined;
-  modelName: string;
-}): string | null | undefined {
-  const { url, modelName } = params;
-
-  if (!url) return url;
-
-  // Process MiniMax-style unique URLs that use non-standard completions paths.
-  // MiniMax uses `/v1/text/chatcompletion_v2` which LangChain would incorrectly
-  // append `/chat/completions` to. We strip the completions path so LangChain
-  // can correctly append `/chat/completions` to reach the standard endpoint.
-  const miniMaxCompletionsPaths = ["/v1/text/chatcompletion_v2"];
-
-  for (const path of miniMaxCompletionsPaths) {
-    if (url.endsWith(path)) {
-      return url.slice(0, -path.length);
-    }
-  }
-
-  // Process {model} placeholder
-  if (!url.includes("{model}")) {
-    return url;
-  }
-
-  return url.replace("{model}", modelName);
 }
 
 function extractCleanErrorMessage(rawMessage: string): string {
