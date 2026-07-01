@@ -5,6 +5,7 @@ import {
   type ScoreSourceType,
   type ScoreDomain,
   type AggregatableScoreDataType,
+  type ScoreDataTypeType,
 } from "@langfuse/shared";
 
 /**
@@ -22,7 +23,7 @@ export const composeAggregateScoreKey = ({
 }: {
   name: string;
   source: ScoreSourceType;
-  dataType: AggregatableScoreDataType;
+  dataType: ScoreDataTypeType;
   keyPrefix?: string;
 }): string => {
   const formattedName = normalizeScoreName(name);

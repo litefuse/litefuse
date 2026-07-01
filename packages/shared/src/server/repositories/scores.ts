@@ -3,6 +3,7 @@ import {
   ScoreDomain,
   ScoreSourceType,
   AGGREGATABLE_SCORE_TYPES,
+  LISTABLE_SCORE_TYPES,
   AggregatableScoreDataType,
 } from "../../domain/scores";
 import { env } from "../../env";
@@ -265,7 +266,7 @@ export const getScoresForSessions = async <
         FROM scores s
         WHERE s.project_id = {projectId: String}
         AND s.session_id IN ({sessionIds: Array(String)})
-        AND s.data_type IN (${AGGREGATABLE_SCORE_TYPES.map((t) => `'${t}'`).join(", ")})
+        AND s.data_type IN (${LISTABLE_SCORE_TYPES.map((t) => `'${t}'`).join(", ")})
         ORDER BY event_ts DESC
         ${limit !== undefined && offset !== undefined ? `LIMIT {limit: Int32} OFFSET {offset: Int32}` : ""}
       `;
@@ -613,11 +614,13 @@ export const getScoresGroupedByNameSourceType = async ({
   filter,
   fromTimestamp,
   toTimestamp,
+  dataTypes = AGGREGATABLE_SCORE_TYPES,
 }: {
   projectId: string;
   filter: FilterCondition[];
   fromTimestamp?: Date;
   toTimestamp?: Date;
+  dataTypes?: readonly ScoreDataTypeType[];
 }) => {
   const dorisScoresFilter = new FilterList();
 
@@ -652,7 +655,7 @@ export const getScoresGroupedByNameSourceType = async ({
       ${dorisScoresFilterRes?.query ? `AND ${dorisScoresFilterRes.query}` : ""}
       ${fromTimestamp ? `AND s.timestamp >= {fromTimestamp: DateTime}` : ""}
       ${toTimestamp ? `AND s.timestamp <= {toTimestamp: DateTime}` : ""}
-      AND s.data_type IN (${AGGREGATABLE_SCORE_TYPES.map((t) => `'${t}'`).join(", ")})
+      AND s.data_type IN (${dataTypes.map((t) => `'${t}'`).join(", ")})
       GROUP BY name, source, data_type
       ORDER BY count() desc
       LIMIT 1000;
@@ -983,7 +986,7 @@ const getScoresUiGeneric = async <T>(props: {
 
   const scoresWhere = `
         WHERE s.project_id = {projectId: String}
-        AND s.data_type IN (${AGGREGATABLE_SCORE_TYPES.map((t) => `'${t}'`).join(", ")})
+        AND s.data_type IN (${LISTABLE_SCORE_TYPES.map((t) => `'${t}'`).join(", ")})
         ${scoresOnlyRes?.query ? `AND ${scoresOnlyRes.query}` : ""}
       `;
 
@@ -1057,7 +1060,7 @@ const getScoresUiGeneric = async <T>(props: {
     // Re-apply trace filters to get their query too (for the inline WHERE)
     const flatWhere = `
         WHERE s.project_id = {projectId: String}
-        AND s.data_type IN (${AGGREGATABLE_SCORE_TYPES.map((t) => `'${t}'`).join(", ")})
+        AND s.data_type IN (${LISTABLE_SCORE_TYPES.map((t) => `'${t}'`).join(", ")})
         ${flatWhereRes?.query ? `AND ${flatWhereRes.query}` : ""}
         ${traceFiltersRes?.query ? `AND ${traceFiltersRes.query}` : ""}
       `;
@@ -1159,7 +1162,7 @@ export const getScoreNames = async (
         from scores s
         WHERE s.project_id = {projectId: String}
         ${timestampFilterRes?.query ? `AND ${timestampFilterRes.query}` : ""}
-        AND s.data_type IN (${AGGREGATABLE_SCORE_TYPES.map((t) => `'${t}'`).join(", ")})
+        AND s.data_type IN (${LISTABLE_SCORE_TYPES.map((t) => `'${t}'`).join(", ")})
         GROUP BY name
         ORDER BY count() desc
         LIMIT 1000;

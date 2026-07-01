@@ -3,7 +3,7 @@ import { z } from "zod/v4";
 
 import { NonEmptyString, jsonSchema } from "../../utils/zod";
 import { ModelUsageUnit } from "../../constants";
-import { ScoreSourceType } from "../../domain";
+import { ScoreSourceType, TEXT_SCORE_MAX_LENGTH } from "../../domain";
 import { applyScoreValidation } from "../../utils/scores";
 
 export const idSchema = z
@@ -547,6 +547,13 @@ const createAllIngestionSchemas = ({
           value: z.string(),
           dataType: z.literal("CORRECTION"),
           configId: z.undefined().nullish(), // Cannot have config
+        }),
+      ),
+      BaseScoreBody.merge(
+        z.object({
+          value: z.string().min(1).max(TEXT_SCORE_MAX_LENGTH),
+          dataType: z.literal("TEXT"),
+          configId: z.string().nullish(),
         }),
       ),
       BaseScoreBody.merge(

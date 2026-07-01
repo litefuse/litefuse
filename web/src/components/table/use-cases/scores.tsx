@@ -263,7 +263,7 @@ export default function ScoresTable({
           count: n.count !== undefined ? Number(n.count) : undefined,
         })) ?? undefined,
       source: ["ANNOTATION", "API", "EVAL"],
-      dataType: ["NUMERIC", "CATEGORICAL", "BOOLEAN"],
+      dataType: ["NUMERIC", "CATEGORICAL", "BOOLEAN", "TEXT"],
       value: [],
       stringValue:
         filterOptions.data?.stringValue?.map((sv) => ({

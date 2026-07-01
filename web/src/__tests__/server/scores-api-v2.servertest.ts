@@ -100,6 +100,51 @@ describe("/api/public/v2/scores API Endpoint", () => {
       expect(fetchedScore.status).toBe(200);
     });
 
+    it("should GET a text score", async () => {
+      const { projectId, auth } = await createOrgProjectAndApiKey();
+
+      const scoreId = v4();
+      const traceId = v4();
+      const score = createTraceScore({
+        id: scoreId,
+        project_id: projectId,
+        trace_id: traceId,
+        name: "feedback",
+        timestamp: Date.now(),
+        observation_id: null,
+        value: 0,
+        string_value: "The answer is clear and cites the relevant context.",
+        source: "API",
+        data_type: "TEXT" as const,
+        created_at: Date.now(),
+        updated_at: Date.now(),
+        event_ts: Date.now(),
+        is_deleted: 0,
+      });
+
+      await createScoresCh([score]);
+
+      const fetchedScore = await makeZodVerifiedAPICall(
+        GetScoreResponseV2,
+        "GET",
+        `/api/public/v2/scores/${scoreId}`,
+        undefined,
+        auth,
+      );
+
+      expect(fetchedScore.status).toBe(200);
+      expect(fetchedScore.body).toMatchObject({
+        id: scoreId,
+        name: "feedback",
+        stringValue: "The answer is clear and cites the relevant context.",
+        source: "API",
+        traceId,
+        observationId: null,
+        dataType: "TEXT",
+      });
+      expect(fetchedScore.body).not.toHaveProperty("value");
+    });
+
     it("should GET a session score", async () => {
       const { projectId: projectId, auth } = await createOrgProjectAndApiKey();
 

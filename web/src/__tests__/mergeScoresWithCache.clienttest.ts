@@ -196,14 +196,34 @@ describe("mergeScoresWithCache", () => {
         sessionId: null,
         observationId: null,
       },
+      {
+        id: "score-3",
+        name: "feedback",
+        dataType: "TEXT",
+        source: "ANNOTATION",
+        configId: "config-3",
+        value: 0,
+        stringValue: "Clear and actionable",
+        comment: null,
+        traceId: "trace-1",
+        projectId: "project-1",
+        environment: "production",
+        timestamp: new Date(),
+        sessionId: null,
+        observationId: null,
+      },
     ];
 
     const result = mergeScoresWithCache(serverScores, cachedScores, new Set());
 
-    expect(result).toHaveLength(2);
+    expect(result).toHaveLength(3);
     const ids = result.map((s) => s.id);
     expect(ids).toContain("score-1");
     expect(ids).toContain("score-2");
+    expect(ids).toContain("score-3");
+    expect(result.find((s) => s.id === "score-3")?.stringValue).toBe(
+      "Clear and actionable",
+    );
   });
 
   it("should handle both delete and cache overlay", () => {

@@ -506,6 +506,7 @@ enum ScoreConfigDataType {
   CATEGORICAL
   NUMERIC
   BOOLEAN
+  TEXT
 }
 
 model AnnotationQueue {

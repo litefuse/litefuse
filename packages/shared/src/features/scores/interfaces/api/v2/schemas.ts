@@ -11,10 +11,15 @@ const CorrectionData = z.object({
   dataType: z.literal("CORRECTION"),
 });
 
+const TextData = z.object({
+  stringValue: z.string(),
+  dataType: z.literal("TEXT"),
+});
+
 /**
  * Foundation schema for scores API v2 i.e. trace, observation AND session scores
  *
- * Must be extended with score data specific schema (numeric, categorical, boolean)
+ * Must be extended with score data specific schema (numeric, categorical, boolean, text)
  * @see {@link NumericData}, {@link CategoricalData}, {@link BooleanData}
  */
 const ScoreFoundationSchemaV2 = ScoreSchemaExclReferencesAndDates.extend({
@@ -29,13 +34,12 @@ const ScoreFoundationSchemaV2 = ScoreSchemaExclReferencesAndDates.extend({
   datasetRunId: z.string().nullish(),
 });
 
-export const APIScoreSchemaV2 = ScoreFoundationSchemaV2.and(
-  z.discriminatedUnion("dataType", [
-    NumericData,
-    CategoricalData,
-    BooleanData,
-    CorrectionData,
-  ]),
-);
+export const APIScoreSchemaV2 = z.discriminatedUnion("dataType", [
+  ScoreFoundationSchemaV2.extend(NumericData.shape),
+  ScoreFoundationSchemaV2.extend(CategoricalData.shape),
+  ScoreFoundationSchemaV2.extend(BooleanData.shape),
+  ScoreFoundationSchemaV2.extend(CorrectionData.shape),
+  ScoreFoundationSchemaV2.omit({ value: true }).extend(TextData.shape),
+]);
 
 export type APIScoreV2 = z.infer<typeof APIScoreSchemaV2>;

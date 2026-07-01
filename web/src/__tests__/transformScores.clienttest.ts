@@ -30,6 +30,15 @@ const mockConfigs: ScoreConfigDomain[] = [
     updatedAt: new Date(),
     projectId: "project-1",
   },
+  {
+    id: "config-3",
+    name: "feedback",
+    dataType: "TEXT",
+    isArchived: false,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    projectId: "project-1",
+  },
 ];
 
 describe("transformToAnnotationScores - flat scores", () => {
@@ -81,11 +90,34 @@ describe("transformToAnnotationScores - flat scores", () => {
         executionTraceId: null,
         metadata: {},
       },
+      {
+        id: "score-3",
+        name: "feedback",
+        source: "ANNOTATION",
+        dataType: "TEXT",
+        value: 0,
+        stringValue: "Clear and actionable",
+        configId: "config-3",
+        comment: null,
+        traceId: "trace-1",
+        observationId: null,
+        sessionId: null,
+        projectId: "project-1",
+        environment: "production",
+        timestamp: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        authorUserId: "user-1",
+        queueId: null,
+        datasetRunId: null,
+        executionTraceId: null,
+        metadata: {},
+      },
     ];
 
     const result = transformToAnnotationScores(flatScores, mockConfigs);
 
-    expect(result).toHaveLength(2);
+    expect(result).toHaveLength(3);
     expect(result[0]).toEqual({
       id: "score-1",
       name: "quality",
@@ -108,6 +140,20 @@ describe("transformToAnnotationScores - flat scores", () => {
       configId: "config-2",
       value: 1,
       stringValue: "positive",
+      comment: null,
+      traceId: "trace-1",
+      observationId: null,
+      sessionId: null,
+      timestamp: expect.any(Date),
+    });
+    expect(result[2]).toEqual({
+      id: "score-3",
+      name: "feedback",
+      dataType: "TEXT",
+      source: "ANNOTATION",
+      configId: "config-3",
+      value: 0,
+      stringValue: "Clear and actionable",
       comment: null,
       traceId: "trace-1",
       observationId: null,

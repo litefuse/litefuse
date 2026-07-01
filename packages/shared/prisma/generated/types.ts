@@ -51,6 +51,7 @@ export const ScoreConfigDataType = {
   CATEGORICAL: "CATEGORICAL",
   NUMERIC: "NUMERIC",
   BOOLEAN: "BOOLEAN",
+  TEXT: "TEXT",
 } as const;
 export type ScoreConfigDataType =
   (typeof ScoreConfigDataType)[keyof typeof ScoreConfigDataType];

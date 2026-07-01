@@ -35,6 +35,7 @@ import {
   isBooleanDataType,
   isCategoricalDataType,
   isNumericDataType,
+  isTextDataType,
 } from "@/src/features/scores/lib/helpers";
 import DocPopup from "@/src/components/layouts/doc-popup";
 import { usePostHogClientCapture } from "@/src/features/posthog-analytics/usePostHogClientCapture";
@@ -194,8 +195,15 @@ export function UpsertScoreConfigDialog({
                         onValueChange={(value) => {
                           field.onChange(value as ScoreConfigDataType);
                           form.clearErrors();
-                          if (isNumericDataType(value as ScoreConfigDataType)) {
+                          if (
+                            isNumericDataType(value as ScoreConfigDataType) ||
+                            isTextDataType(value as ScoreConfigDataType)
+                          ) {
                             form.setValue("categories", undefined);
+                            if (isTextDataType(value as ScoreConfigDataType)) {
+                              form.setValue("minValue", undefined);
+                              form.setValue("maxValue", undefined);
+                            }
                           } else {
                             form.setValue("minValue", undefined);
                             form.setValue("maxValue", undefined);
@@ -282,7 +290,7 @@ export function UpsertScoreConfigDialog({
                       )}
                     />
                   </>
-                ) : (
+                ) : isTextDataType(form.getValues("dataType")) ? null : (
                   <div className="grid grid-flow-row gap-2">
                     <FormField
                       control={form.control}

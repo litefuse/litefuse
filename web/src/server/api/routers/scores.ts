@@ -32,6 +32,7 @@ import {
   ScoreSourceEnum,
   ScoreDataTypeEnum,
   CORRECTION_NAME,
+  LISTABLE_SCORE_TYPES,
 } from "@langfuse/shared";
 import {
   getScoresGroupedByNameSourceType,
@@ -760,7 +761,7 @@ export const scoresRouter = createTRPCRouter({
         } else {
           updatedScore = {
             ...baseScore,
-            dataType: input.dataType as "CATEGORICAL" | "BOOLEAN",
+            dataType: input.dataType as "CATEGORICAL" | "BOOLEAN" | "TEXT",
             stringValue: input.stringValue!,
           };
         }
@@ -847,9 +848,19 @@ export const scoresRouter = createTRPCRouter({
             stringValue: null,
           };
         } else {
+          if (
+            score.dataType !== ScoreDataTypeEnum.CATEGORICAL &&
+            score.dataType !== ScoreDataTypeEnum.BOOLEAN &&
+            score.dataType !== ScoreDataTypeEnum.TEXT
+          ) {
+            throw new InternalServerError(
+              `Annotation score data type ${score.dataType} cannot be updated via annotation drawer`,
+            );
+          }
+
           updatedScore = {
             ...baseScore,
-            dataType: input.dataType as "CATEGORICAL" | "BOOLEAN",
+            dataType: score.dataType,
             stringValue: input.stringValue!,
           };
         }
@@ -1044,6 +1055,7 @@ export const scoresRouter = createTRPCRouter({
         projectId: input.projectId,
         fromTimestamp: date,
         filter: [],
+        dataTypes: LISTABLE_SCORE_TYPES,
       });
       return res.map(({ name, source, dataType }) => ({
         key: composeAggregateScoreKey({ name, source, dataType }),
@@ -1069,6 +1081,7 @@ export const scoresRouter = createTRPCRouter({
         filter: filter || [],
         fromTimestamp,
         toTimestamp,
+        dataTypes: LISTABLE_SCORE_TYPES,
       });
 
       const scoreColumns = groupedScores.map(({ name, source, dataType }) => ({

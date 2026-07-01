@@ -1,0 +1,25 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/Users/jeffrey/Documents/litefuse/litefuse/.codex/hooks/post-tool-use-tracker.sh'"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/Users/jeffrey/Documents/litefuse/litefuse/.codex/hooks/skill-activation-prompt.sh'"
+          }
+        ]
+      }
+    ]
+  }
+}

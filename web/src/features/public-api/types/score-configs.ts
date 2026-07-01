@@ -6,6 +6,7 @@ import {
   paginationMetaResponseZod,
   publicApiPaginationZod,
   ScoreConfigCategory,
+  TextConfigFields,
   validateCategories,
   validateNumericRangeFields,
 } from "@langfuse/shared";
@@ -55,6 +56,10 @@ const APIScoreConfig = z
       ...ScoreConfigBase.shape,
       ...BooleanConfigFields.shape,
     }),
+    z.object({
+      ...ScoreConfigBase.shape,
+      ...TextConfigFields.shape,
+    }),
   ])
   .superRefine(validateNumericRangeFields);
 
@@ -93,6 +98,10 @@ export const PostScoreConfigBody = z
         dataType: z.literal("BOOLEAN"),
         categories: z.undefined(),
       }).shape,
+    }),
+    z.object({
+      ...PostScoreConfigBase.shape,
+      ...TextConfigFields.shape,
     }),
   ])
   .superRefine(validateNumericRangeFields);
