@@ -133,7 +133,7 @@
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
     "eslint-config-standard": "^17.1.0",
-    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-prettier": "^5.5.6",
     "kysely-codegen": "^0.16.8",
     "prettier": "^3.6.2",
     "prisma": "^6.17.1",
