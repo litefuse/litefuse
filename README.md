@@ -41,7 +41,7 @@
    </a>
    <a href="https://www.ycombinator.com/companies/litefuse"><img src="https://img.shields.io/badge/Y%20Combinator-W23-orange" alt="Y Combinator W23"></a>
    <a href="https://hub.docker.com/u/litefuse" target="_blank">
-   <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/litefuse/litefuse?labelColor=%20%23FDB062&logo=Docker&labelColor=%20%23528bff"></a>
+   <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/litefuse/litefuse-web?labelColor=%20%23FDB062&logo=Docker&labelColor=%20%23528bff"></a>
    <a href="https://pypi.python.org/pypi/litefuse"><img src="https://img.shields.io/pypi/dm/litefuse?logo=python&logoColor=white&label=pypi%20litefuse&color=blue" alt="litefuse Python package on PyPi"></a>
    <a href="https://www.npmjs.com/package/langfuse"><img src="https://img.shields.io/npm/dm/langfuse?logo=npm&logoColor=white&label=npm%20langfuse&color=blue" alt="langfuse npm package"></a>
    <br/>
