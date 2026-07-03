@@ -155,6 +155,7 @@ const OBSERVATION_FIELD_GROUP_COLUMNS: Record<
   usage: ["usage_details", "cost_details", "total_cost"],
   prompt: ["prompt_id", "prompt_name", "prompt_version"],
   metrics: ["latency", "time_to_first_token"],
+  trace_context: ["trace_name", "tags", "release"],
 };
 
 const getFileTypeProperties = (
