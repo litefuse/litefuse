@@ -42,6 +42,7 @@ export interface DorisClientConfig {
   timeout?: number;
   maxRetries?: number;
   retryDelay?: number;
+  maxRetryDelay?: number;
   headers?: Record<string, string>;
   maxOpenConnections?: number;
   maxSockets?: number;
@@ -54,6 +55,7 @@ export type DorisClientType = DorisClient;
  * Focuses on Stream Load functionality for high-performance data ingestion and MySQL protocol for queries
  */
 export class DorisClient {
+  private static readonly DEFAULT_STREAM_LOAD_MAX_RETRY_DELAY_MS = 60_000;
   private httpClient: AxiosInstance;
   // Dedicated instance for Stream Load PUTs. Shares agents + interceptors with
   // httpClient but omits the instance-level `auth` config — Stream Load callers
@@ -79,6 +81,9 @@ export class DorisClient {
       maxRetries:
         config.maxRetries ?? env.LITEFUSE_INGESTION_DORIS_MAX_ATTEMPTS ?? 3,
       retryDelay: config.retryDelay ?? 1000,
+      maxRetryDelay:
+        config.maxRetryDelay ??
+        DorisClient.DEFAULT_STREAM_LOAD_MAX_RETRY_DELAY_MS,
       headers: config.headers || {},
       maxOpenConnections:
         config.maxOpenConnections ?? env.DORIS_MAX_OPEN_CONNECTIONS,
@@ -705,7 +710,10 @@ export class DorisClient {
         lastError = error instanceof Error ? error : new Error(String(error));
 
         if (attempt < this.config.maxRetries) {
-          const delay = this.config.retryDelay * Math.pow(2, attempt - 1); // Exponential backoff
+          const delay = Math.min(
+            this.config.retryDelay * Math.pow(2, attempt - 1),
+            this.config.maxRetryDelay,
+          );
           logger.warn(
             `Stream load attempt ${attempt} failed for ${table}, retrying in ${delay}ms: ${lastError.message}`,
           );

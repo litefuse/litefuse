@@ -290,4 +290,46 @@ describe("DorisClient.streamLoad — FE→BE redirect connection reuse", () => {
     );
     expect(beHits).toBe(3);
   });
+
+  it("caps exponential backoff at 60 seconds", async () => {
+    vi.useFakeTimers();
+    try {
+      client = new DorisClient({
+        feHttpUrl: `http://127.0.0.1:${fe.port}`,
+        database: "langfuse",
+        username: "admin",
+        password: "secret",
+        timeout: 5000,
+        maxRetries: 3,
+        retryDelay: 40_000,
+        maxSockets: 8,
+      });
+
+      const setTimeoutSpy = vi.spyOn(global, "setTimeout");
+      const streamLoadSpy = vi
+        .spyOn(client, "streamLoad")
+        .mockRejectedValue(new Error("bad gateway"));
+
+      const insertPromise = client.insert("traces", [{ id: "x" }]);
+      const rejectionExpectation = expect(insertPromise).rejects.toThrowError(
+        /Stream load failed after 3 attempts/,
+      );
+
+      await vi.runAllTimersAsync();
+      await rejectionExpectation;
+
+      const retryDelays = setTimeoutSpy.mock.calls
+        .map(([, delay]) => delay)
+        .filter(
+          (delay): delay is number =>
+            typeof delay === "number" &&
+            [40_000, 60_000, 80_000].includes(delay),
+        );
+
+      expect(streamLoadSpy).toHaveBeenCalledTimes(3);
+      expect(retryDelays).toEqual([40_000, 60_000]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
