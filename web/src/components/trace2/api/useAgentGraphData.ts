@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { api } from "@/src/utils/api";
 import { type AgentGraphDataResponse } from "@/src/features/trace-graph-view/types";
+import { isGraphViewAvailable as getIsGraphViewAvailable } from "../lib/graph-availability";
 
 export type UseAgentGraphDataParams = {
   projectId: string;
@@ -59,38 +60,14 @@ export function useAgentGraphData({
   };
 }
 
-const MAX_NODES_FOR_GRAPH_UI = 5000;
-
 /**
  * Determines if graph view should be available based on observation data.
  */
 export function useIsGraphViewAvailable(
   agentGraphData: AgentGraphDataResponse[],
 ): boolean {
-  return useMemo(() => {
-    if (agentGraphData.length === 0) {
-      return false;
-    }
-
-    // Don't show graph UI for extremely large traces
-    if (agentGraphData.length >= MAX_NODES_FOR_GRAPH_UI) {
-      return false;
-    }
-
-    // Check if there are observations that would be included in the graph
-    // (not SPAN, EVENT, or GENERATION)
-    const hasGraphableObservations = agentGraphData.some(
-      (obs) =>
-        obs.observationType !== "SPAN" &&
-        obs.observationType !== "EVENT" &&
-        obs.observationType !== "GENERATION",
-    );
-
-    // Check for LangGraph data (has step != 0)
-    const hasLangGraphData = agentGraphData.some(
-      (obs) => obs.step != null && obs.step !== 0,
-    );
-
-    return hasGraphableObservations || hasLangGraphData;
-  }, [agentGraphData]);
+  return useMemo(
+    () => getIsGraphViewAvailable(agentGraphData),
+    [agentGraphData],
+  );
 }
