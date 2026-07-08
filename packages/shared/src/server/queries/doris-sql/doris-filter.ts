@@ -411,23 +411,32 @@ export class StringObjectFilter implements Filter {
     const escapedKey = this.key.replace(/'/g, "''");
     const escapedValue = this.value.replace(/'/g, "''");
 
+    // traces/observations filters run against events_full, which stores
+    // metadata flattened into parallel arrays (metadata_names +
+    // metadata_values) — there is no MAP column, so key access must go
+    // through array_position/element_at. scores has a real
+    // Map<String, String> metadata column, so MAP access syntax applies.
+    const accessor =
+      this.table === "traces" || this.table === "observations"
+        ? `element_at(${column}_values, array_position(${column}_names, '${escapedKey}'))`
+        : `${column}['${escapedKey}']`;
+
     let query: string;
     switch (this.operator) {
       case "=":
-        // 使用 Doris 的 MAP 访问语法
-        query = `${column}['${escapedKey}'] = '${escapedValue}'`;
+        query = `${accessor} = '${escapedValue}'`;
         break;
       case "contains":
-        query = `INSTR(${column}['${escapedKey}'], '${escapedValue}') > 0`;
+        query = `INSTR(${accessor}, '${escapedValue}') > 0`;
         break;
       case "does not contain":
-        query = `INSTR(${column}['${escapedKey}'], '${escapedValue}') = 0`;
+        query = `INSTR(${accessor}, '${escapedValue}') = 0`;
         break;
       case "starts with":
-        query = `STARTS_WITH(${column}['${escapedKey}'], '${escapedValue}')`;
+        query = `STARTS_WITH(${accessor}, '${escapedValue}')`;
         break;
       case "ends with":
-        query = `ENDS_WITH(${column}['${escapedKey}'], '${escapedValue}')`;
+        query = `ENDS_WITH(${accessor}, '${escapedValue}')`;
         break;
       default:
         throw new Error(`Unsupported operator: ${this.operator}`);

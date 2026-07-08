@@ -480,7 +480,10 @@ describe("CategoryOptionsFilter", () => {
 });
 
 describe("StringObjectFilter", () => {
-  it("should generate = query with MAP access", () => {
+  // traces/observations run against events_full, where metadata is stored
+  // as parallel arrays (metadata_names + metadata_values) — key access must
+  // use element_at/array_position, not MAP syntax.
+  it("should generate = query with array access for traces", () => {
     const filter = new StringObjectFilter({
       table: "traces",
       field: "metadata",
@@ -488,10 +491,12 @@ describe("StringObjectFilter", () => {
       key: "env",
       value: "production",
     });
-    expect(filter.apply().query).toBe("metadata['env'] = 'production'");
+    expect(filter.apply().query).toBe(
+      "element_at(metadata_values, array_position(metadata_names, 'env')) = 'production'",
+    );
   });
 
-  it("should generate contains query with MAP access", () => {
+  it("should generate contains query with array access for traces", () => {
     const filter = new StringObjectFilter({
       table: "traces",
       field: "metadata",
@@ -499,7 +504,9 @@ describe("StringObjectFilter", () => {
       key: "env",
       value: "prod",
     });
-    expect(filter.apply().query).toBe("INSTR(metadata['env'], 'prod') > 0");
+    expect(filter.apply().query).toBe(
+      "INSTR(element_at(metadata_values, array_position(metadata_names, 'env')), 'prod') > 0",
+    );
   });
 
   it("should generate does not contain query", () => {
@@ -510,7 +517,9 @@ describe("StringObjectFilter", () => {
       key: "env",
       value: "test",
     });
-    expect(filter.apply().query).toBe("INSTR(metadata['env'], 'test') = 0");
+    expect(filter.apply().query).toBe(
+      "INSTR(element_at(metadata_values, array_position(metadata_names, 'env')), 'test') = 0",
+    );
   });
 
   it("should generate starts with query", () => {
@@ -521,7 +530,9 @@ describe("StringObjectFilter", () => {
       key: "env",
       value: "pro",
     });
-    expect(filter.apply().query).toBe("STARTS_WITH(metadata['env'], 'pro')");
+    expect(filter.apply().query).toBe(
+      "STARTS_WITH(element_at(metadata_values, array_position(metadata_names, 'env')), 'pro')",
+    );
   });
 
   it("should generate ends with query", () => {
@@ -532,7 +543,9 @@ describe("StringObjectFilter", () => {
       key: "env",
       value: "tion",
     });
-    expect(filter.apply().query).toBe("ENDS_WITH(metadata['env'], 'tion')");
+    expect(filter.apply().query).toBe(
+      "ENDS_WITH(element_at(metadata_values, array_position(metadata_names, 'env')), 'tion')",
+    );
   });
 
   it("should escape single quotes in key and value", () => {
@@ -543,7 +556,9 @@ describe("StringObjectFilter", () => {
       key: "user's",
       value: "it's",
     });
-    expect(filter.apply().query).toBe("metadata['user''s'] = 'it''s'");
+    expect(filter.apply().query).toBe(
+      "element_at(metadata_values, array_position(metadata_names, 'user''s')) = 'it''s'",
+    );
   });
 
   it("should apply table prefix", () => {
@@ -555,7 +570,34 @@ describe("StringObjectFilter", () => {
       value: "prod",
       tablePrefix: "t",
     });
-    expect(filter.apply().query).toBe("t.metadata['env'] = 'prod'");
+    expect(filter.apply().query).toBe(
+      "element_at(t.metadata_values, array_position(t.metadata_names, 'env')) = 'prod'",
+    );
+  });
+
+  it("should use array access for observations (events_full backed)", () => {
+    const filter = new StringObjectFilter({
+      table: "observations",
+      field: "o.metadata",
+      operator: "=",
+      key: "env",
+      value: "prod",
+    });
+    expect(filter.apply().query).toBe(
+      "element_at(o.metadata_values, array_position(o.metadata_names, 'env')) = 'prod'",
+    );
+  });
+
+  it("should keep MAP access for scores (real Map column)", () => {
+    const filter = new StringObjectFilter({
+      table: "scores",
+      field: "metadata",
+      operator: "=",
+      key: "env",
+      value: "prod",
+      tablePrefix: "s",
+    });
+    expect(filter.apply().query).toBe("s.metadata['env'] = 'prod'");
   });
 });
 
