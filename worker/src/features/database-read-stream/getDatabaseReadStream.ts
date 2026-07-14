@@ -63,7 +63,10 @@ const isGenerationTimestampFilter = (
 export const isTraceTimestampFilter = (
   filter: FilterCondition,
 ): filter is TimeFilter => {
-  return filter.column === "Timestamp" && filter.type === "datetime";
+  return (
+    (filter.column === "Timestamp" || filter.column === "timestamp") &&
+    filter.type === "datetime"
+  );
 };
 export const getChunkWithFlattenedScores = <
   T extends
