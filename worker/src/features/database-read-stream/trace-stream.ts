@@ -1,7 +1,6 @@
 import {
   FilterCondition,
   ScoreDataTypeEnum,
-  type ScoreDataTypeType,
   TracingSearchType,
 } from "@langfuse/shared";
 import {
@@ -10,7 +9,7 @@ import {
   logger,
   FilterList,
   createFilterFromFilterState,
-  tracesTableUiColumnDefinitions,
+  tracesTableUiColumnDefinitionsForDoris,
   dorisSearchCondition,
   parseDorisUTCDateTimeFormat,
   StringFilter,
@@ -47,7 +46,7 @@ export const getTraceStream = async (props: {
   // Filter out observation-level filters since we don't join the observations table
   // This prevents batch export failures when observation-level filters are present
   const traceOnlyFilters = (filter ?? []).filter((f) => {
-    const columnDef = tracesTableUiColumnDefinitions.find(
+    const columnDef = tracesTableUiColumnDefinitionsForDoris.find(
       (col) => col.uiTableName === f.column || col.uiTableId === f.column,
     );
     // Keep the filter if it's not an observation-level filter
@@ -81,7 +80,7 @@ export const getTraceStream = async (props: {
           type: "datetime" as const,
         },
       ],
-      tracesTableUiColumnDefinitions,
+      tracesTableUiColumnDefinitionsForDoris,
     ),
   );
 
@@ -109,11 +108,11 @@ export const getTraceStream = async (props: {
   //     equivalent to upstream's argMaxIf.
   //   * trace_root: tags / metadata / input / output picked from the latest
   //     parent_span_id = '' root span via ROW_NUMBER().
-  // tracesTableUiColumnDefinitions / tracesFilter target column names
-  // (timestamp, release, ...) compatible with the legacy traces table —
-  // they apply at the trace_scalars level before the LEFT JOIN. Filter
-  // params resolve in the events_full WHERE because we don't alias the
-  // trace_scalars CTE inputs.
+  // tracesTableUiColumnDefinitionsForDoris / tracesFilter target Doris'
+  // events_full schema (start_time, trace_id, trace_name, ...). Filters and
+  // search clauses resolve against the root-span source aliased as `t` in the
+  // trace_scalars CTE, which keeps the export path aligned with the main trace
+  // repositories and avoids invalid legacy references like `t.timestamp`.
   //
   // metadata is rebuilt at output time from metadata_names / metadata_values
   // parallel arrays (events_full layout) into a Doris MAP that downstream
@@ -149,22 +148,22 @@ export const getTraceStream = async (props: {
     ),
     trace_scalars AS (
       SELECT
-        trace_id,
-        project_id,
-        MIN(start_time) AS \`timestamp\`,
-        MAX_BY(IF(trace_name <> '', trace_name, NULL), event_ts) AS name,
-        MAX_BY(IF(user_id <> '', user_id, NULL), event_ts) AS user_id,
-        MAX_BY(IF(session_id <> '', session_id, NULL), event_ts) AS session_id,
-        MAX_BY(IF(\`release\` <> '', \`release\`, NULL), event_ts) AS \`release\`,
-        MAX_BY(IF(version <> '', version, NULL), event_ts) AS version,
-        MAX_BY(IF(environment <> '', environment, NULL), event_ts) AS environment,
-        MAX_BY(IF(parent_span_id = '', bookmarked, NULL), event_ts) AS bookmarked,
-        MAX(\`public\`) AS \`public\`
-      FROM events_full
-      WHERE project_id = {projectId: String}
+        t.trace_id,
+        t.project_id,
+        MIN(t.start_time) AS \`timestamp\`,
+        MAX_BY(IF(t.trace_name <> '', t.trace_name, NULL), t.event_ts) AS name,
+        MAX_BY(IF(t.user_id <> '', t.user_id, NULL), t.event_ts) AS user_id,
+        MAX_BY(IF(t.session_id <> '', t.session_id, NULL), t.event_ts) AS session_id,
+        MAX_BY(IF(t.\`release\` <> '', t.\`release\`, NULL), t.event_ts) AS \`release\`,
+        MAX_BY(IF(t.version <> '', t.version, NULL), t.event_ts) AS version,
+        MAX_BY(IF(t.environment <> '', t.environment, NULL), t.event_ts) AS environment,
+        MAX_BY(IF(t.parent_span_id = '', t.bookmarked, NULL), t.event_ts) AS bookmarked,
+        MAX(t.\`public\`) AS \`public\`
+      FROM events_full t
+      WHERE t.project_id = {projectId: String}
         ${appliedTracesFilter.query ? `AND ${appliedTracesFilter.query}` : ""}
         ${search.query}
-      GROUP BY trace_id, project_id
+      GROUP BY t.trace_id, t.project_id
     ),
     trace_root AS (
       SELECT
@@ -188,9 +187,9 @@ export const getTraceStream = async (props: {
             PARTITION BY trace_id, project_id
             ORDER BY event_ts DESC
           ) AS rn
-        FROM events_full
-        WHERE project_id = {projectId: String}
-          AND parent_span_id = ''
+        FROM events_full t
+        WHERE t.project_id = {projectId: String}
+          AND t.parent_span_id = ''
       ) ranked
       WHERE rn = 1
     )
