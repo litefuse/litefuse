@@ -72,7 +72,7 @@ export default withMiddlewares({
           })) >= 1
         ) {
           throw new MethodNotAllowedError(
-            "Maximum number of annotation queues reached on Hobby plan.",
+            "Maximum number of annotation queues reached on Developer plan.",
           );
         }
       }

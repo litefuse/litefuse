@@ -14,9 +14,10 @@ import { useQueryProjectOrOrganization } from "@/src/features/projects/hooks";
 import { ApiKeyList } from "@/src/features/public-api/components/ApiKeyList";
 import AIFeatureSwitch from "@/src/features/organizations/components/AIFeatureSwitch";
 import { env } from "@/src/env.mjs";
+import { BillingSettings } from "@/src/features/billing/components/BillingSettings";
+import { useHasOrganizationAccess } from "@/src/features/rbac/utils/checkOrganizationAccess";
 
 // EE features removed from OSS build:
-//  - BillingSettings (cloud billing UI)
 //  - SSOSettings (multi-tenant SSO config)
 //  - OrgAuditLogsSettingsPage (audit log viewer)
 
@@ -30,21 +31,30 @@ type OrganizationSettingsPage = {
 export function useOrganizationSettingsPages(): OrganizationSettingsPage[] {
   const { organization } = useQueryProjectOrOrganization();
   const showOrgApiKeySettings = useHasEntitlement("admin-api");
+  const hasBillingAccess = useHasOrganizationAccess({
+    organizationId: organization?.id,
+    scope: "langfuseCloudBilling:CRUD",
+  });
+  const showBillingSettings =
+    Boolean(env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION) && hasBillingAccess;
 
   if (!organization) return [];
 
   return getOrganizationSettingsPages({
     organization,
     showOrgApiKeySettings,
+    showBillingSettings,
   });
 }
 
 export const getOrganizationSettingsPages = ({
   organization,
   showOrgApiKeySettings,
+  showBillingSettings,
 }: {
   organization: { id: string; name: string; metadata: Record<string, unknown> };
   showOrgApiKeySettings: boolean;
+  showBillingSettings: boolean;
 }): OrganizationSettingsPage[] => [
   {
     title: "General",
@@ -92,6 +102,13 @@ export const getOrganizationSettingsPages = ({
     show: showOrgApiKeySettings,
   },
   {
+    title: "Billing",
+    slug: "billing",
+    cmdKKeywords: ["plan", "pro", "stripe", "subscription"],
+    content: <BillingSettings orgId={organization.id} />,
+    show: showBillingSettings,
+  },
+  {
     title: "Members",
     slug: "members",
     cmdKKeywords: ["invite", "user", "rbac"],
@@ -107,8 +124,8 @@ export const getOrganizationSettingsPages = ({
       </div>
     ),
   },
-  // Audit Logs, Billing, and SSO settings pages were EE features and are not
-  // available in the OSS build.
+  // Audit Logs and SSO settings pages were EE features and are not available
+  // in the OSS build.
   {
     title: "Projects",
     slug: "projects",

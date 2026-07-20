@@ -31,6 +31,8 @@ import {
   OtelIngestionQueue,
   TraceUpsertQueue,
   EventPropagationQueue,
+  CloudUsageMeteringQueue,
+  CloudFreeTierUsageThresholdQueue,
 } from "@langfuse/shared/src/server";
 import { env } from "./env";
 import { ingestionQueueProcessorBuilder } from "./queues/ingestionQueue";
@@ -62,6 +64,10 @@ import { datasetDeleteProcessor } from "./queues/datasetDelete";
 import { otelIngestionQueueProcessor } from "./queues/otelIngestionQueue";
 import { eventPropagationProcessor } from "./queues/eventPropagationQueue";
 import { notificationQueueProcessor } from "./queues/notificationQueue";
+import {
+  cloudFreeTierUsageThresholdQueueProcessor,
+  cloudUsageMeteringQueueProcessor,
+} from "./queues/cloudBillingQueues";
 import {
   BatchProjectCleaner,
   BATCH_DELETION_TABLES,
@@ -140,6 +146,31 @@ if (env.LITEFUSE_S3_CORE_DATA_EXPORT_IS_ENABLED === "true") {
   WorkerManager.register(
     QueueName.CoreDataS3ExportQueue,
     coreDataS3ExportProcessor,
+  );
+}
+
+if (
+  env.QUEUE_CONSUMER_CLOUD_USAGE_METERING_QUEUE_IS_ENABLED === "true" &&
+  env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION &&
+  env.STRIPE_SECRET_KEY
+) {
+  CloudUsageMeteringQueue.getInstance();
+  WorkerManager.register(
+    QueueName.CloudUsageMeteringQueue,
+    cloudUsageMeteringQueueProcessor,
+    { concurrency: 1 },
+  );
+}
+
+if (
+  env.QUEUE_CONSUMER_FREE_TIER_USAGE_THRESHOLD_QUEUE_IS_ENABLED === "true" &&
+  env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION
+) {
+  CloudFreeTierUsageThresholdQueue.getInstance();
+  WorkerManager.register(
+    QueueName.CloudFreeTierUsageThresholdQueue,
+    cloudFreeTierUsageThresholdQueueProcessor,
+    { concurrency: 1 },
   );
 }
 
