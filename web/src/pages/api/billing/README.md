@@ -1,5 +1,18 @@
 # Cloud billing operations
 
+## QA and design documents
+
+The internal Chinese handoff documents for this billing implementation are:
+
+- [Feature overview](../../../../../docs/billing/feature-overview.md)
+- [User guide](../../../../../docs/billing/user-guide.md)
+- [Technical design](../../../../../docs/billing/technical-design.md)
+- [QA test focus](../../../../../docs/billing/qa-test-focus.md)
+- [Self-test report](../../../../../docs/billing/self-test-report.md)
+
+This file remains the operational entry point for Stripe catalogue and worker
+rollout configuration.
+
 The Stripe webhook is implemented in
 `web/src/app/api/billing/stripe-webhook/route.ts`. Organization billing actions
 are exposed through the billing tRPC router in
