@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/src/components/ui/select";
 import { useRouter } from "next/router";
+import { type ParsedUrlQuery } from "querystring";
 
 type SettingsProps = {
   pages: Array<
@@ -21,6 +22,14 @@ type SettingsProps = {
   >;
   activeSlug?: string;
 };
+
+function getSingleQueryValue(
+  query: ParsedUrlQuery,
+  key: string,
+): string | undefined {
+  const value = query[key];
+  return Array.isArray(value) ? value[0] : value;
+}
 
 export const PagedSettingsContainer = ({
   pages,
@@ -39,12 +48,44 @@ export const PagedSettingsContainer = ({
     availablePages.find((page) => page.slug === activeSlug) ??
     availablePages[0]; // Fallback to first page if not found
 
-  const onChange = (newSlug: string) => {
-    const pathSegments = router.asPath.split("/");
-    if (pathSegments[pathSegments.length - 1] !== "settings")
+  const getSettingsBasePath = () => {
+    const organizationId = getSingleQueryValue(router.query, "organizationId");
+    if (
+      router.pathname.startsWith("/organization/[organizationId]/settings") &&
+      organizationId
+    ) {
+      return `/organization/${encodeURIComponent(organizationId)}/settings`;
+    }
+
+    const projectId = getSingleQueryValue(router.query, "projectId");
+    if (
+      router.pathname.startsWith("/project/[projectId]/settings") &&
+      projectId
+    ) {
+      return `/project/${encodeURIComponent(projectId)}/settings`;
+    }
+
+    if (router.pathname.startsWith("/account/settings")) {
+      return "/account/settings";
+    }
+
+    const concretePath = router.asPath.split(/[?#]/)[0] ?? "";
+    const pathSegments = concretePath.split("/");
+    if (pathSegments[pathSegments.length - 1] !== "settings") {
       pathSegments.pop();
-    if (newSlug !== "index") pathSegments.push(newSlug);
-    router.push(pathSegments.join("/"));
+    }
+    return pathSegments.join("/");
+  };
+
+  const getPageHref = (slug: string) => {
+    const basePath = getSettingsBasePath();
+    return slug === "index"
+      ? basePath
+      : `${basePath}/${encodeURIComponent(slug)}`;
+  };
+
+  const onChange = (newSlug: string) => {
+    router.push(getPageHref(newSlug));
   };
 
   return (

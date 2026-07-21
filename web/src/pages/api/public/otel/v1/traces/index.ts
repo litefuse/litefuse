@@ -10,6 +10,7 @@ import { z } from "zod/v4";
 import { $root } from "@/src/pages/api/public/otel/otlp-proto/generated/root";
 import { gunzip } from "node:zlib";
 import { env } from "@/src/env.mjs";
+import { throwIfIngestionSuspended } from "@/src/features/public-api/server/ingestionSuspension";
 
 /** Read a Langfuse header that may arrive with hyphens or underscores. */
 function getLangfuseHeader(
@@ -36,6 +37,7 @@ export default withMiddlewares({
     responseSchema: z.any(),
     rateLimitResource: "ingestion",
     fn: async ({ req, res, auth }) => {
+      throwIfIngestionSuspended(auth.scope);
       // Mark project as using OTEL API
       await markProjectAsOtelUser(auth.scope.projectId);
 

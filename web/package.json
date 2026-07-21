@@ -173,6 +173,7 @@
     "remark-stringify": "^11.0.0",
     "rxjs": "^7.8.2",
     "sonner": "^2.0.7",
+    "stripe": "^22.3.1",
     "superjson": "2.2.2",
     "tailwind-merge": "^3.5.0",
     "tailwindcss-animate": "^1.0.7",

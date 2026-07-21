@@ -84,7 +84,7 @@ export const entitlementAccess: Record<
     entitlementLimits: {
       "annotation-queue-count": false,
       "organization-member-count": false,
-      "data-access-days": false,
+      "data-access-days": 1095,
       "model-based-evaluations-count-evaluators": false,
       "prompt-management-count-prompts": false,
     },
@@ -104,7 +104,7 @@ export const entitlementAccess: Record<
     entitlementLimits: {
       "annotation-queue-count": false,
       "organization-member-count": false,
-      "data-access-days": false,
+      "data-access-days": 1095,
       "model-based-evaluations-count-evaluators": false,
       "prompt-management-count-prompts": false,
     },

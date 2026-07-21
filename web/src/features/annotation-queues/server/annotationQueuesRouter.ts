@@ -321,7 +321,7 @@ export const queueRouter = createTRPCRouter({
             throw new TRPCError({
               code: "FORBIDDEN",
               message:
-                "Maximum number of annotation queues reached on Hobby plan.",
+                "Maximum number of annotation queues reached on Developer plan.",
             });
           }
         }

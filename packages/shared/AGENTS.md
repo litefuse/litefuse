@@ -24,6 +24,7 @@ Use root [AGENTS.md](../../AGENTS.md) for monorepo-level rules.
 - Server exports: `src/server/index.ts`
 - Domain model types: `src/domain/*`
 - Repository layer: `src/server/repositories/*`
+- Billing aggregation repository: `src/server/repositories/billing.ts`
 - Queue payload schemas: `src/server/queues.ts`
 - Queue helpers: `src/server/redis/*`
 - Postgres schema: `prisma/schema.prisma`
@@ -62,6 +63,10 @@ Use root [AGENTS.md](../../AGENTS.md) for monorepo-level rules.
    handling changed.
 3. Update producer and consumer code in `web`/`worker`.
 4. Add or update regression tests in affected packages.
+
+Cloud billing queue names and payloads are also owned by
+`src/server/queues.ts`; their producers are in `src/server/redis/` and their
+consumers are registered by `worker/src/app.ts`.
 
 ## Package-Specific Rules
 - Keep backward compatibility in queue payloads when possible during rolling

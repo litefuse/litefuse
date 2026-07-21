@@ -15,6 +15,7 @@ import {
   processEventBatch,
 } from "@langfuse/shared/src/server";
 import { ScoresApiService } from "@/src/features/public-api/server/scores-api-service";
+import { throwIfIngestionSuspended } from "@/src/features/public-api/server/ingestionSuspension";
 
 export default withMiddlewares({
   POST: createAuthedProjectAPIRoute({
@@ -22,6 +23,7 @@ export default withMiddlewares({
     bodySchema: PostScoresBodyV1,
     responseSchema: PostScoresResponseV1,
     fn: async ({ body, auth, res }) => {
+      throwIfIngestionSuspended(auth.scope);
       const event = {
         id: v4(),
         type: eventTypes.SCORE_CREATE,

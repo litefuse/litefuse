@@ -192,6 +192,7 @@ async function verifyAdminApiKeyAuth(req: NextApiRequest): Promise<
       rateLimitOverrides: [],
       apiKeyId: "ADMIN_API_KEY", // Special identifier for audit logging
       publicKey: "ADMIN_API_KEY",
+      isIngestionSuspended: false,
     },
   };
 }

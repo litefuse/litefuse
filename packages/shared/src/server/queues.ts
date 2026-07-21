@@ -328,6 +328,8 @@ export enum QueueName {
   OtelIngestionQueue = "otel-ingestion-queue",
   IngestionQueue = "ingestion-queue", // Process single events with S3-merge
   IngestionSecondaryQueue = "secondary-ingestion-queue", // Separates high priority + high throughput projects from other projects.
+  CloudUsageMeteringQueue = "cloud-usage-metering-queue",
+  CloudFreeTierUsageThresholdQueue = "cloud-free-tier-usage-threshold-queue",
   ExperimentCreate = "experiment-create-queue",
   PostHogIntegrationQueue = "posthog-integration-queue",
   PostHogIntegrationProcessingQueue = "posthog-integration-processing-queue",
@@ -358,6 +360,8 @@ export enum QueueJobs {
   OtelIngestionJob = "otel-ingestion-job",
   IngestionJob = "ingestion-job",
   IngestionSecondaryJob = "secondary-ingestion-job",
+  CloudUsageMeteringJob = "cloud-usage-metering-job",
+  CloudFreeTierUsageThresholdJob = "cloud-free-tier-usage-threshold-job",
   ExperimentCreateJob = "experiment-create-job",
   PostHogIntegrationJob = "posthog-integration-job",
   PostHogIntegrationProcessingJob = "posthog-integration-processing-job",
@@ -459,6 +463,18 @@ export type TQueueJobTypes = {
     id: string;
     payload: IngestionEventQueueType;
     name: QueueJobs.IngestionJob;
+  };
+  [QueueName.CloudUsageMeteringQueue]: {
+    timestamp: Date;
+    id: string;
+    payload: Record<string, never>;
+    name: QueueJobs.CloudUsageMeteringJob;
+  };
+  [QueueName.CloudFreeTierUsageThresholdQueue]: {
+    timestamp: Date;
+    id: string;
+    payload: Record<string, never>;
+    name: QueueJobs.CloudFreeTierUsageThresholdJob;
   };
   [QueueName.ExperimentCreate]: {
     timestamp: Date;

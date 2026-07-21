@@ -14,6 +14,8 @@ export const CloudConfigSchema = z.object({
       activeSubscriptionId: z.string().nullish(),
       activeProductId: z.string().nullish(),
       activeUsageProductId: z.string().nullish(),
+      activeTeamsAddonProductId: z.string().nullish(),
+      resolvedPlan: z.enum(["Pro", "Team"]).nullish(),
       subscriptionStatus: z.string().nullish(), // should be one of ["active","past_due", "unpaid", "canceled", "incomplete", "incomplete_expired", "paused"]; we don't enforce to have a backwards compatibility for this field
     })
     .transform((data) => ({

@@ -34,6 +34,9 @@ litefuse/
   - `@langfuse/shared` -> no imports from `web` or `worker`
 - Queue payload schemas and queue-name contracts are owned by
   `packages/shared/src/server/queues.ts`.
+- Cloud billing queue producers live in `packages/shared/src/server/redis/`;
+  consumers and metering processors live in `worker/src/features/billing/` and
+  `worker/src/queues/cloudBillingQueues.ts`.
 
 ## Build, Test, and Development Commands
 - Install deps: `pnpm install`
@@ -57,6 +60,7 @@ Minimum verification matrix:
 | `packages/shared/prisma/**` or `packages/shared/clickhouse/**` | `pnpm --filter @langfuse/shared run lint` + `pnpm run db:generate` + targeted web/worker regressions |
 | Public API contract (`web/src/pages/api/public/**`, `web/src/features/public-api/types/**`, `fern/apis/**`) | web lint + targeted server API tests + Fern update/regeneration; never hand-edit `generated/**` |
 | Cross-package refactor (`web` + `worker` + `shared`) | `pnpm run lint` + `pnpm run typecheck` + targeted tests per impacted package |
+| Cloud billing lifecycle or metering | targeted billing web/worker tests + shared/web/worker lint and typecheck + `pnpm run build:check` |
 
 ## Coding Style & Naming Conventions
 - Keep changes scoped; avoid unrelated refactors.

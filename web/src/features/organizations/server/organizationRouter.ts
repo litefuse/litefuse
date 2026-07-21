@@ -15,6 +15,7 @@ import { ApiAuthService } from "@/src/features/public-api/server/apiAuth";
 import { redis } from "@langfuse/shared/src/server";
 
 import { env } from "@/src/env.mjs";
+import { cancelSubscriptionImmediatelyForOrganization } from "@/src/features/billing/server/billingService";
 
 export const organizationsRouter = createTRPCRouter({
   create: authenticatedProcedure
@@ -152,8 +153,9 @@ export const organizationsRouter = createTRPCRouter({
         });
       }
 
-      // Stripe billing cancellation lived in the EE billing module, which is
-      // not available in the OSS build, so there is nothing to cancel here.
+      // Never delete the local organization while leaving a billable Stripe
+      // subscription behind. A Stripe failure aborts the deletion.
+      await cancelSubscriptionImmediatelyForOrganization(input.orgId);
 
       const organization = await ctx.prisma.organization.delete({
         where: {

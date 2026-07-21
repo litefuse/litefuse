@@ -17,6 +17,7 @@ import {
 } from "@langfuse/shared";
 import { prisma } from "@langfuse/shared/src/db";
 import { logger, instrumentAsync } from "@langfuse/shared/src/server";
+import { throwIfIngestionSuspended } from "@/src/features/public-api/server/ingestionSuspension";
 
 export default withMiddlewares({
   POST: createAuthedProjectAPIRoute({
@@ -26,6 +27,7 @@ export default withMiddlewares({
     successStatusCode: 201,
     rateLimitResource: "ingestion",
     fn: async ({ body, auth }) => {
+      throwIfIngestionSuspended(auth.scope);
       if (auth.scope.accessLevel !== "project") throw new ForbiddenError();
 
       const { projectId } = auth.scope;

@@ -31,9 +31,14 @@ export function getOrganizationPlanServerSide(
             throw new Error(`Unhandled plan case: ${exhaustiveCheck}`);
         }
       }
-      // Stripe-product-id-based plan resolution lived in the EE billing
-      // catalogue, which is not part of the OSS build. Fall through to the
-      // default cloud:hobby plan when no manual override is set.
+      if (
+        cloudConfig.stripe?.activeSubscriptionId &&
+        cloudConfig.stripe.resolvedPlan
+      ) {
+        return cloudConfig.stripe.resolvedPlan === "Team"
+          ? "cloud:team"
+          : "cloud:pro";
+      }
     }
     return "cloud:hobby";
   }

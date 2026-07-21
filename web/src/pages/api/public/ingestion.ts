@@ -22,6 +22,7 @@ import { prisma } from "@langfuse/shared/src/db";
 import { ApiAuthService } from "@/src/features/public-api/server/apiAuth";
 import { RateLimitService } from "@/src/features/public-api/server/RateLimitService";
 import * as opentelemetry from "@opentelemetry/api";
+import { throwIfIngestionSuspended } from "@/src/features/public-api/server/ingestionSuspension";
 
 export const config = {
   api: {
@@ -86,6 +87,7 @@ export default async function handler(
         "Missing projectId in scope. Are you using an organization key?",
       );
     }
+    throwIfIngestionSuspended(authCheck.scope);
 
     const ctx = contextWithLangfuseProps({
       headers: req.headers,

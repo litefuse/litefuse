@@ -21,6 +21,8 @@ Use root [AGENTS.md](../AGENTS.md) for monorepo-level rules.
 - Worker registration/lifecycle: `src/queues/workerManager.ts`
 - Queue processors: `src/queues/*`
 - Feature processors: `src/features/*`
+- Cloud usage metering and free-tier enforcement: `src/features/billing/*`
+- Cloud billing queue adapters: `src/queues/cloudBillingQueues.ts`
 - Service layer: `src/services/*`
 - Background migrations: `src/backgroundMigrations/*`
 - Tests: `src/__tests__/*`, `src/queues/__tests__/*`
@@ -48,6 +50,8 @@ Use root [AGENTS.md](../AGENTS.md) for monorepo-level rules.
 - Preserve metrics/tracing patterns in `workerManager` and queue processors.
 - Prefer explicit env-flag gating in `src/app.ts` for new consumers.
 - Keep queue payload parsing/schema validation centralized in shared contracts.
+- Cloud metering jobs must retain deterministic Stripe identifiers and advance
+  the `CronJobs` checkpoint only after the complete interval succeeds.
 
 ## Operational Scripts
 - Refill ingestion events: `pnpm --filter worker run refill-ingestion-events`

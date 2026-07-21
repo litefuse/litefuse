@@ -26,6 +26,8 @@ Use root [AGENTS.md](../AGENTS.md) for monorepo-level rules.
 - tRPC routers: `src/server/api/routers/*`, `src/features/*/server/*`
 - Public REST API routes: `src/pages/api/public/*`
 - Feature modules: `src/features/*`
+- Cloud billing service, router, and UI: `src/features/billing/*`
+- Stripe webhook: `src/app/api/billing/stripe-webhook/route.ts`
 - Reusable UI components: `src/components/*`
 - Tests:
   - Server tests: `src/__tests__/server/*.servertest.ts`
@@ -66,6 +68,15 @@ Use root [AGENTS.md](../AGENTS.md) for monorepo-level rules.
 1. Prefer `src/features/<feature>/*` for feature-local code.
 2. Put broadly reusable components in `src/components/*`.
 3. Keep server logic near feature server folders when possible.
+
+### Change cloud billing
+
+1. Keep Stripe catalogue, lifecycle, and webhook behavior in
+   `src/features/billing/server/*`.
+2. Preserve the separation between manual `cloudConfig.plan` overrides and
+   webhook-resolved `cloudConfig.stripe.resolvedPlan`.
+3. Add lifecycle/webhook regression coverage in
+   `src/__tests__/server/billing-pro.servertest.ts`.
 
 ## Package-Specific Rules
 
