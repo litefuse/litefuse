@@ -52,7 +52,10 @@ export function BillingSettings({ orgId }: BillingSettingsProps) {
   const [pendingPlan, setPendingPlan] = useState<PurchasablePlan | null>(null);
   const billingStatus = api.billing.getBillingStatus.useQuery(
     { orgId },
-    { refetchOnWindowFocus: false },
+    {
+      refetchInterval: 60_000,
+      refetchOnWindowFocus: true,
+    },
   );
   const refresh = () => utils.billing.getBillingStatus.invalidate({ orgId });
   const checkoutMutation = api.billing.createCheckoutSession.useMutation({

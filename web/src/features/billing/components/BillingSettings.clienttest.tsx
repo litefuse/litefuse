@@ -72,6 +72,20 @@ function billingStatus(
 describe("BillingSettings", () => {
   afterEach(() => mockedUseQuery.mockReset());
 
+  it("refreshes usage while the billing page is open", () => {
+    mockedUseQuery.mockReturnValue(billingStatus());
+
+    render(<BillingSettings orgId="org_test" />);
+
+    expect(mockedUseQuery).toHaveBeenCalledWith(
+      { orgId: "org_test" },
+      expect.objectContaining({
+        refetchInterval: 60_000,
+        refetchOnWindowFocus: true,
+      }),
+    );
+  });
+
   it("shows the Developer allowance and blocked state", () => {
     mockedUseQuery.mockReturnValue(billingStatus({ usageState: "BLOCKED" }));
 

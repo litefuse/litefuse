@@ -24,6 +24,7 @@ import {
   isBillingCatalogueConfigured,
   type BillingTargetPlan,
 } from "./billingCatalogue";
+import { getFreshBillingUsage } from "./billingUsageService";
 
 type StripeConfigPurpose = "checkout" | "portal" | "webhook";
 
@@ -242,11 +243,14 @@ async function getSubscriptionSchedule(
 export async function getBillingStatus(orgId: string) {
   const org = await prisma.organization.findUniqueOrThrow({
     where: { id: orgId },
+    include: {
+      projects: { select: { id: true }, where: { deletedAt: null } },
+    },
   });
   const cloudConfig = parseCloudConfig(org.cloudConfig);
   const plan = getOrganizationPlanServerSide(cloudConfig ?? undefined);
   const includedUnits = plan === "cloud:hobby" ? 100_000 : 200_000;
-  const currentUnits = org.cloudCurrentCycleUsage ?? 0;
+  const usagePromise = getFreshBillingUsage({ organization: org });
   const billingConfigurationIssues = getInvalidBillingCatalogueEntries().map(
     (entry) =>
       `${entry.envVar} must be a Stripe Price ID starting with price_. Current value starts with ${entry.value.slice(0, 5)}.`,
@@ -288,6 +292,7 @@ export async function getBillingStatus(orgId: string) {
     }
   }
 
+  const { currentUnits, updatedAt: usageUpdatedAt } = await usagePromise;
   const cycleEnd = getBillingCycleEnd(org, new Date());
 
   return {
@@ -318,12 +323,12 @@ export async function getBillingStatus(orgId: string) {
           ? 0
           : Math.max(0, currentUnits - includedUnits) * 0.00004,
       state: org.cloudFreeTierUsageThresholdState,
-      updatedAt: org.cloudBillingCycleUpdatedAt,
+      updatedAt: usageUpdatedAt,
     },
     billingCycle: {
       anchor: org.cloudBillingCycleAnchor,
       end: cycleEnd,
-      updatedAt: org.cloudBillingCycleUpdatedAt,
+      updatedAt: usageUpdatedAt,
     },
   };
 }
