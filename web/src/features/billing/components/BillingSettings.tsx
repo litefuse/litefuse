@@ -8,7 +8,7 @@ import { api } from "@/src/utils/api";
 import { planLabels, type Plan } from "@langfuse/shared";
 import { AlertCircle, CreditCard, ExternalLink } from "lucide-react";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 type BillingSettingsProps = { orgId: string };
@@ -50,6 +50,7 @@ export function BillingSettings({ orgId }: BillingSettingsProps) {
   const router = useRouter();
   const utils = api.useUtils();
   const [pendingPlan, setPendingPlan] = useState<PurchasablePlan | null>(null);
+  const portalTabRef = useRef<Window | null>(null);
   const billingStatus = api.billing.getBillingStatus.useQuery(
     { orgId },
     {
@@ -71,7 +72,21 @@ export function BillingSettings({ orgId }: BillingSettingsProps) {
     onError: () => setPendingPlan(null),
   });
   const portalMutation = api.billing.createPortalSession.useMutation({
-    onSuccess: ({ url }) => window.location.assign(url),
+    onSuccess: ({ url }) => {
+      const portalTab = portalTabRef.current;
+      portalTabRef.current = null;
+
+      if (!portalTab || portalTab.closed) {
+        toast.error("The billing portal tab was closed. Please try again.");
+        return;
+      }
+
+      portalTab.location.assign(url);
+    },
+    onError: () => {
+      portalTabRef.current?.close();
+      portalTabRef.current = null;
+    },
   });
   const cancelMutation = api.billing.cancelSubscription.useMutation({
     onSuccess: refresh,
@@ -121,6 +136,15 @@ export function BillingSettings({ orgId }: BillingSettingsProps) {
       toast.error("No Stripe customer exists for this organization yet.");
       return;
     }
+
+    const portalTab = window.open("about:blank", "_blank");
+    if (!portalTab) {
+      toast.error("Allow pop-ups to open the billing portal.");
+      return;
+    }
+
+    portalTab.opener = null;
+    portalTabRef.current = portalTab;
     portalMutation.mutate({ orgId });
   };
 

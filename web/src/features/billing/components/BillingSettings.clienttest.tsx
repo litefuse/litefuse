@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { api } from "../../../utils/api";
 import { BillingSettings } from "./BillingSettings";
 
@@ -17,7 +17,7 @@ jest.mock("../../../utils/api", () => {
         getBillingStatus: { useQuery: jest.fn() },
         createCheckoutSession: { useMutation },
         changePlan: { useMutation },
-        createPortalSession: { useMutation },
+        createPortalSession: { useMutation: jest.fn(useMutation) },
         cancelSubscription: { useMutation },
         reactivateSubscription: { useMutation },
         clearScheduledChange: { useMutation },
@@ -27,6 +27,8 @@ jest.mock("../../../utils/api", () => {
 });
 
 const mockedUseQuery = api.billing.getBillingStatus.useQuery as jest.Mock;
+const mockedCreatePortalMutation = api.billing.createPortalSession
+  .useMutation as jest.Mock;
 
 function billingStatus(
   overrides: Partial<{
@@ -111,5 +113,40 @@ describe("BillingSettings", () => {
     expect(screen.getByText(/Estimated overage before discounts/)).toBeTruthy();
     expect(screen.getByText("Past due")).toBeTruthy();
     expect(screen.queryByText("Pro + Teams")).toBeNull();
+  });
+
+  it("opens payment methods and invoices in a new tab", () => {
+    const portalLocationAssign = jest.fn();
+    const portalTab = {
+      closed: false,
+      location: { assign: portalLocationAssign },
+      opener: window,
+    } as unknown as Window;
+    const openSpy = jest.spyOn(window, "open").mockReturnValue(portalTab);
+
+    mockedUseQuery.mockReturnValue(billingStatus({ plan: "cloud:pro" }));
+    mockedCreatePortalMutation.mockImplementationOnce(
+      (options: { onSuccess: (result: { url: string }) => void }) => ({
+        mutate: jest.fn(() =>
+          options.onSuccess({ url: "https://billing.example.com/portal" }),
+        ),
+        isPending: false,
+      }),
+    );
+
+    render(<BillingSettings orgId="org_test" />);
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Payment methods & invoices",
+      }),
+    );
+
+    expect(openSpy).toHaveBeenCalledWith("about:blank", "_blank");
+    expect(portalTab.opener).toBeNull();
+    expect(portalLocationAssign).toHaveBeenCalledWith(
+      "https://billing.example.com/portal",
+    );
+
+    openSpy.mockRestore();
   });
 });
