@@ -2,26 +2,28 @@
 
 本文汇总 Billing 分支交付 QA 前已经执行的自测。状态含义：
 
-最近一次定向自动化复核日期：**2026-07-20**。
+最近一次定向自动化复核日期：**2026-07-24**。
 
 - **通过**：自动化测试或静态检查完成且成功；
 - **已验证**：在 Stripe Sandbox 或本地完整链路中人工验证成功；
+- **需重验**：实现口径已变化，原人工验证结果需要按新口径复核；
 - **被阻塞**：已执行，但由非本功能的既有问题阻断；
 - **未执行**：尚无完整结果，QA/合并前仍需执行。
 
 ## 结果摘要
 
-| 范围                              | 状态   | 结果                                            |
-| --------------------------------- | ------ | ----------------------------------------------- |
-| Billing server tests              | 通过   | 17/17                                           |
-| Billing client tests              | 通过   | 2/2                                             |
-| Worker billing unit tests         | 通过   | 5/5                                             |
-| Ingestion suspension server tests | 通过   | 2/2                                             |
-| Billing 相关 targeted ESLint      | 通过   | 无 lint error                                   |
-| Stripe Sandbox Usage Price/账单   | 已验证 | 300,000 units → $199 + $4 = $203                |
-| Worker 自动聚合上报 E2E           | 已验证 | 聚合 4 units；checkpoint 成功；同小时重放仍为 4 |
-| 全量 web typecheck                | 被阻塞 | 既有 NextAuth adapter 重复类型依赖冲突          |
-| 全仓 lint/typecheck/build:check   | 未执行 | 需要在最终回归补齐                              |
+| 范围                              | 状态   | 结果                                                         |
+| --------------------------------- | ------ | ------------------------------------------------------------ |
+| Billing server tests              | 通过   | 17/17                                                        |
+| Billing client tests              | 通过   | 2/2                                                          |
+| Shared billing query tests        | 通过   | 3/3；root span 不再重复计入 observation                      |
+| Worker billing unit tests         | 通过   | 5/5                                                          |
+| Ingestion suspension server tests | 通过   | 2/2                                                          |
+| Billing 相关 targeted ESLint      | 通过   | 无 lint error                                                |
+| Stripe Sandbox Usage Price/账单   | 已验证 | 300,000 units → $199 + $4 = $203                             |
+| Worker 自动聚合上报 E2E           | 需重验 | 新口径预期聚合 3 units；需确认 checkpoint 与同小时重放仍为 3 |
+| 全量 web typecheck                | 被阻塞 | 既有 NextAuth adapter 重复类型依赖冲突                       |
+| 全仓 lint/typecheck/build:check   | 未执行 | 需要在最终回归补齐                                           |
 
 ## 自动化测试明细
 
@@ -61,6 +63,15 @@
 - 79,999、80,000、99,999、100,000 的阈值映射；
 - Organization + interval 的确定性 Stripe identifier。
 
+### Shared billing query：3/3 通过
+
+测试文件：
+
+- `packages/shared/src/server/repositories/billing.unit.test.ts`
+- `packages/shared/src/server/repositories/observations.unit.test.ts`
+
+已覆盖按日、按小时和当前账期的 observation 聚合均排除 root span。
+
 ### Ingestion suspension：2/2 通过
 
 测试文件：`web/src/__tests__/server/ingestion-suspension.servertest.ts`
@@ -89,18 +100,18 @@
 
 ## Worker 自动聚合上报 E2E
 
-状态：**已验证**。
+状态：**需按新口径重新验证**。
 
 验证链路：Doris 测试数据 → BullMQ job → Billing Worker → PostgreSQL `BillingMeterBackup` → Stripe meter summary → invoice preview。
 
 结果：
 
 - 使用独立 Organization、Project、Stripe Customer 和 Subscription；
-- 当前固定 fixture 聚合为 **4 units**；
-- `BillingMeterBackup.aggregatedValue=4` 且 `submittedAt` 成功写入；
-- Stripe meter summary 收到对应 interval 的 4 units；
-- 对同一小时重放后仍为 4，没有重复累计；
-- 第二个订阅内 interval 在 200,000 免费层内显示 `4 × Litefuse Usage`，金额为 $0；
+- 当前固定 fixture 的新口径预期为 **3 units**；
+- `BillingMeterBackup.aggregatedValue` 应为 3，且 `submittedAt` 应成功写入；
+- Stripe meter summary 应收到对应 interval 的 3 units；
+- 对同一小时重放后应仍为 3，没有重复累计；
+- 第二个订阅内 interval 在 200,000 免费层内应显示 `3 × Litefuse Usage`，金额为 $0；
 - 验证结束后清理测试 Organization 和 Stripe 资源。
 
 ## 静态检查

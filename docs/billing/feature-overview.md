@@ -22,11 +22,11 @@ Self-hosted Open Source 不接入 Stripe，不执行云端免费额度阻断，�
 计量使用服务端 `created_at`，不使用客户端回填的业务时间。当前聚合口径为：
 
 - `events_full` 中每个根事件计 1 个 trace unit；
-- `events_full` 中每个事件计 1 个 observation unit；
+- `events_full` 中每个非根事件计 1 个 observation unit；
 - `scores` 中每条 score 计 1 个 score unit；
 - 将组织下所有未删除 Project 的结果相加。
 
-QA 固定测试数据的当前预期聚合结果为 **4 units**，首次上报和同一小时重放都必须保持 4，不得重复累计。
+根事件只贡献 trace unit，不再重复贡献 observation unit。QA 固定测试数据的当前预期聚合结果为 **3 units**，首次上报和同一小时重放都必须保持 3，不得重复累计。
 
 Developer 达到 80,000 units 后进入 `WARNING`，达到 100,000 units 后进入 `BLOCKED`。开启 enforcement 时，系统会通知组织 OWNER/ADMIN，并阻止新的 ingestion 写入；下一账期或成功升级后自动解除。
 

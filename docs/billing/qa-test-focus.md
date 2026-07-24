@@ -1,6 +1,6 @@
 # Billing QA 测试重点
 
-本文是 Billing 分支的 QA 执行清单。测试统一按当前聚合实现断言 **4 units**，不使用其他口径。
+本文是 Billing 分支的 QA 执行清单。测试统一按当前聚合实现断言 **3 units**，不使用其他口径。
 
 ## 测试目标与优先级
 
@@ -111,14 +111,14 @@ stripe listen --forward-to http://localhost:3000/api/billing/stripe-webhook
 
 ## P0：Worker 自动聚合上报
 
-### 固定 4 units 用例
+### 固定 3 units 用例
 
 1. 创建专用 Organization、至少一个 Project、Stripe Customer 和包含 Pro + Usage Price 的订阅。
 2. 在一个完整小时内写入固定 billing fixture，并等待 Doris 可查询。
 3. 触发 `cloud-usage-metering-job`，或等待每小时第 5 分钟任务。
-4. 检查 `billing_meter_backups`：interval、org_id、customer、event_name 正确，`aggregated_value=4`，成功后 `submitted_at` 非空。
-5. 检查 Stripe meter summary：对应账期增加 4 units。
-6. 对同一个小时再次触发任务，确认 backup 仍是一条、Stripe summary 仍为 4，不重复收费。
+4. 检查 `billing_meter_backups`：interval、org_id、customer、event_name 正确，`aggregated_value=3`，成功后 `submitted_at` 非空。
+5. 检查 Stripe meter summary：对应账期增加 3 units。
+6. 对同一个小时再次触发任务，确认 backup 仍是一条、Stripe summary 仍为 3，不重复收费。
 
 ### 追赶与失败恢复
 
@@ -208,7 +208,7 @@ Billing 涉及 Prisma schema 时还应执行 `pnpm run db:generate`。测试专�
 ## 通过标准
 
 - 所有 P0 用例通过，且没有重复 meter event、跨 Organization/区域串单或错误免费额度阻断；
-- 4 units fixture 首次上报与重放后均为 4；
+- 3 units fixture 首次上报与重放后均为 3；
 - Stripe 300,000 units 发票预览为 `$199 + $4 = $203`（税前、无折扣）；
 - 已知 v2 score/MCP guard 与账期时分秒边界有明确测试记录，不得被误标为已通过；
 - 自动化测试、lint、typecheck、build 结果连同失败原因一并附在 QA 报告中。
