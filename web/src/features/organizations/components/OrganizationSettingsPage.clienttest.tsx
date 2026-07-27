@@ -1,15 +1,15 @@
 import { renderHook } from "@testing-library/react";
-import { useHasEntitlement } from "../../../../features/entitlements/hooks";
-import { useQueryProjectOrOrganization } from "../../../../features/projects/hooks";
-import { useHasOrganizationAccess } from "../../../../features/rbac/utils/checkOrganizationAccess";
-import { useOrganizationSettingsPages } from "./index";
+import { useHasEntitlement } from "../../entitlements/hooks";
+import { useQueryProjectOrOrganization } from "../../projects/hooks";
+import { useHasOrganizationAccess } from "../../rbac/utils/checkOrganizationAccess";
+import { useOrganizationSettingsPages } from "../../../pages/organization/[organizationId]/settings";
 
-jest.mock("../../../../env.mjs", () => ({
+jest.mock("../../../env.mjs", () => ({
   env: { NEXT_PUBLIC_LITEFUSE_CLOUD_REGION: undefined },
 }));
-jest.mock("../../../../features/entitlements/hooks");
-jest.mock("../../../../features/projects/hooks");
-jest.mock("../../../../features/rbac/utils/checkOrganizationAccess");
+jest.mock("../../entitlements/hooks");
+jest.mock("../../projects/hooks");
+jest.mock("../../rbac/utils/checkOrganizationAccess");
 
 const mockedUseHasEntitlement = useHasEntitlement as jest.Mock;
 const mockedUseQueryProjectOrOrganization =
