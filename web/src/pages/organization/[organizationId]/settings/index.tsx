@@ -35,8 +35,7 @@ export function useOrganizationSettingsPages(): OrganizationSettingsPage[] {
     organizationId: organization?.id,
     scope: "langfuseCloudBilling:CRUD",
   });
-  const showBillingSettings =
-    Boolean(env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION) && hasBillingAccess;
+  const showBillingSettings = hasBillingAccess;
 
   if (!organization) return [];
 

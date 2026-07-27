@@ -110,7 +110,7 @@ ENV DOCKER_BUILD 0
 # Set NEXT_MANUAL_SIG_HANDLE for runtime
 ENV NEXT_MANUAL_SIG_HANDLE true
 
-RUN apk add --no-cache dumb-init tzdata mysql-client
+RUN apk add --no-cache dumb-init tzdata mysql-client wget
 
 # Don't run production as root
 ARG UID=1001

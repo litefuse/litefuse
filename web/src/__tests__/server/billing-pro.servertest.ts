@@ -7,6 +7,7 @@ import {
   getInvalidBillingCatalogueEntries,
 } from "@/src/features/billing/server/billingCatalogue";
 import {
+  getBillingStatus,
   parseCloudConfig,
   syncSubscriptionToOrganization,
 } from "@/src/features/billing/server/billingService";
@@ -116,20 +117,24 @@ function createSubscription(params: {
   status: Stripe.Subscription.Status;
   subscriptionId?: string;
   team?: boolean;
+  cancelAtPeriodEnd?: boolean;
 }): Stripe.Subscription {
   return {
     id: params.subscriptionId ?? `sub_${uuidv4()}`,
     customer: params.customerId,
     status: params.status,
+    cancel_at_period_end: params.cancelAtPeriodEnd ?? false,
     metadata: {
       orgId: params.orgId,
       cloudRegion: env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION ?? "DEV",
     },
     current_period_start: 1_700_000_000,
+    current_period_end: 1_700_086_400,
     items: {
       data: [
         {
           current_period_start: 1_700_000_000,
+          current_period_end: 1_700_086_400,
           price: {
             id: STRIPE_PRO_MONTHLY_PRICE_ID,
             product: "prod_litefuse_pro",
@@ -137,6 +142,7 @@ function createSubscription(params: {
         },
         {
           current_period_start: 1_700_000_000,
+          current_period_end: 1_700_086_400,
           price: {
             id: STRIPE_USAGE_PRICE_ID,
             product: "prod_litefuse_usage",
@@ -146,6 +152,7 @@ function createSubscription(params: {
           ? [
               {
                 current_period_start: 1_700_000_000,
+                current_period_end: 1_700_086_400,
                 price: {
                   id: STRIPE_TEAMS_MONTHLY_ADDON_PRICE_ID,
                   product: "prod_litefuse_teams",
@@ -259,6 +266,75 @@ describe("Litefuse Pro billing", () => {
     expect(
       getOrganizationPlanServerSide(canceledCloudConfig ?? undefined),
     ).toBe("cloud:hobby");
+  });
+
+  it("persists cancellation scheduled in the Stripe portal", async () => {
+    const { org } = await createBillingOrg();
+    const customerId = parseCloudConfig(org.cloudConfig)?.stripe?.customerId!;
+
+    await syncSubscriptionToOrganization(
+      createSubscription({
+        orgId: org.id,
+        customerId,
+        status: "active",
+        cancelAtPeriodEnd: true,
+      }),
+    );
+
+    const updatedOrg = await prisma.organization.findUniqueOrThrow({
+      where: { id: org.id },
+    });
+    const cloudConfig = parseCloudConfig(updatedOrg.cloudConfig);
+    expect(cloudConfig?.stripe?.cancelAtPeriodEnd).toBe(true);
+    expect(cloudConfig?.stripe?.currentPeriodEnd).toBe(
+      "2023-11-15T22:13:20.000Z",
+    );
+    expect(cloudConfig?.stripe?.resolvedPlan).toBe("Pro");
+  });
+
+  it("repairs stale paid state from Stripe when a cancellation webhook was missed", async () => {
+    const { org } = await createBillingOrg();
+    const customerId = parseCloudConfig(org.cloudConfig)?.stripe?.customerId!;
+    const subscriptionId = `sub_${uuidv4()}`;
+
+    await syncSubscriptionToOrganization(
+      createSubscription({
+        orgId: org.id,
+        customerId,
+        status: "active",
+        subscriptionId,
+      }),
+    );
+
+    const canceledSubscription = createSubscription({
+      orgId: org.id,
+      customerId,
+      status: "canceled",
+      subscriptionId,
+    });
+    const stripe = {
+      subscriptions: {
+        retrieve: jest.fn().mockResolvedValue(canceledSubscription),
+      },
+      subscriptionSchedules: {
+        retrieve: jest.fn(),
+      },
+    };
+
+    await expect(getBillingStatus(org.id, stripe)).resolves.toMatchObject({
+      plan: "cloud:hobby",
+      stripe: {
+        activeSubscriptionId: null,
+        subscriptionStatus: "canceled",
+      },
+    });
+
+    const updatedOrg = await prisma.organization.findUniqueOrThrow({
+      where: { id: org.id },
+    });
+    expect(
+      parseCloudConfig(updatedOrg.cloudConfig)?.stripe?.resolvedPlan,
+    ).toBeNull();
   });
 
   it("keeps Pro on past_due subscriptions", async () => {
