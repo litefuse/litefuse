@@ -23,6 +23,7 @@ next-env.d.ts
 
 # production
 /build
+/artifacts/
 
 # idea
 .idea

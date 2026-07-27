@@ -22,11 +22,22 @@ import { ActionButton } from "@/src/components/ActionButton";
 import { useHasEntitlement } from "@/src/features/entitlements/hooks";
 
 export default function ConfigureRetention() {
-  const { update: updateSession } = useSession();
   const { project } = useQueryProject();
+
+  return project ? (
+    <ConfigureRetentionForm key={project.id} project={project} />
+  ) : null;
+}
+
+function ConfigureRetentionForm({
+  project,
+}: {
+  project: { id: string; retentionDays?: number | null };
+}) {
+  const { update: updateSession } = useSession();
   const capture = usePostHogClientCapture();
   const hasAccess = useHasProjectAccess({
-    projectId: project?.id,
+    projectId: project.id,
     scope: "project:update",
   });
   const hasEntitlement = useHasEntitlement("data-retention");
@@ -34,7 +45,7 @@ export default function ConfigureRetention() {
   const form = useForm({
     resolver: zodResolver(projectRetentionSchema),
     defaultValues: {
-      retention: project?.retentionDays ?? 0,
+      retention: project.retentionDays ?? 0,
     },
   });
   const setRetention = api.projects.setRetention.useMutation({
@@ -45,7 +56,7 @@ export default function ConfigureRetention() {
   });
 
   function onSubmit(values: z.infer<typeof projectRetentionSchema>) {
-    if (!hasAccess || !project) return;
+    if (!hasAccess) return;
     capture("project_settings:retention_form_submit");
     setRetention
       .mutateAsync({
@@ -53,7 +64,7 @@ export default function ConfigureRetention() {
         retention: values.retention || null, // Fallback to null for indefinite retention
       })
       .then(() => {
-        form.reset();
+        form.reset({ retention: values.retention });
       })
       .catch((error) => {
         console.error(error);
@@ -71,24 +82,24 @@ export default function ConfigureRetention() {
           event may be available for a while after they expired.
         </p>
         {Boolean(form.getValues().retention) &&
-        form.getValues().retention !== project?.retentionDays ? (
+        form.getValues().retention !== project.retentionDays ? (
           <p className="text-primary mb-4 text-sm">
             Your Project&#39;s retention will be set from &quot;
-            {project?.retentionDays ?? "Indefinite"}
+            {project.retentionDays ?? "Indefinite"}
             &quot; to &quot;
             {Number(form.watch("retention")) === 0
               ? "Indefinite"
               : Number(form.watch("retention"))}
             &quot; days.
           </p>
-        ) : !Boolean(project?.retentionDays) ? (
+        ) : !Boolean(project.retentionDays) ? (
           <p className="text-primary mb-4 text-sm">
             Your Project retains data indefinitely.
           </p>
         ) : (
           <p className="text-primary mb-4 text-sm">
             Your Project&#39;s current retention is &quot;
-            {project?.retentionDays ?? ""}
+            {project.retentionDays ?? ""}
             &quot; days.
           </p>
         )}
@@ -108,7 +119,7 @@ export default function ConfigureRetention() {
                       <Input
                         type="number"
                         step="1"
-                        placeholder={project?.retentionDays?.toString() ?? ""}
+                        placeholder={project.retentionDays?.toString() ?? ""}
                         {...field}
                         value={(field.value as number) ?? ""}
                         className="flex-1"
