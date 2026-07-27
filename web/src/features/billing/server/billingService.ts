@@ -28,6 +28,15 @@ import { getFreshBillingUsage } from "./billingUsageService";
 
 type StripeConfigPurpose = "checkout" | "portal" | "webhook";
 
+type BillingStatusStripeClient = {
+  subscriptions: {
+    retrieve(subscriptionId: string): Promise<Stripe.Subscription>;
+  };
+  subscriptionSchedules: {
+    retrieve(scheduleId: string): Promise<Stripe.SubscriptionSchedule>;
+  };
+};
+
 const PAID_STATUSES: Stripe.Subscription.Status[] = [
   "active",
   "trialing",
@@ -111,6 +120,8 @@ function cloudConfigToJson(
     activeTeamsAddonProductId?: string | null;
     resolvedPlan?: "Pro" | "Team" | null;
     subscriptionStatus?: string | null;
+    cancelAtPeriodEnd?: boolean | null;
+    currentPeriodEnd?: string | null;
   },
 ): Prisma.InputJsonObject {
   const next: Record<string, Prisma.InputJsonValue> = {};
@@ -155,6 +166,14 @@ function cloudConfigToJson(
     subscriptionStatus: patchOrCurrent(
       stripePatch.subscriptionStatus,
       current?.stripe?.subscriptionStatus,
+    ),
+    cancelAtPeriodEnd: patchOrCurrent(
+      stripePatch.cancelAtPeriodEnd,
+      current?.stripe?.cancelAtPeriodEnd,
+    ),
+    currentPeriodEnd: patchOrCurrent(
+      stripePatch.currentPeriodEnd,
+      current?.stripe?.currentPeriodEnd,
     ),
   };
 
@@ -233,56 +252,95 @@ function getSubscriptionPlan(subscription: Stripe.Subscription): {
 
 async function getSubscriptionSchedule(
   subscription: Stripe.Subscription,
+  stripeClient: BillingStatusStripeClient = getStripeClient(),
 ): Promise<Stripe.SubscriptionSchedule | null> {
   const scheduleId = stripeId(subscription.schedule);
   return scheduleId
-    ? await getStripeClient().subscriptionSchedules.retrieve(scheduleId)
+    ? await stripeClient.subscriptionSchedules.retrieve(scheduleId)
     : null;
 }
 
-export async function getBillingStatus(orgId: string) {
-  const org = await prisma.organization.findUniqueOrThrow({
+function subscriptionSyncState(
+  subscription: Stripe.Subscription,
+  forceClear: boolean = false,
+) {
+  const subscriptionPlan = getSubscriptionPlan(subscription);
+  const paid =
+    !forceClear &&
+    PAID_STATUSES.includes(subscription.status) &&
+    subscriptionPlan.plan !== null;
+
+  return {
+    customerId: stripeId(subscription.customer),
+    activeSubscriptionId: paid ? subscription.id : null,
+    activeProductId: paid ? subscriptionPlan.proProductId : null,
+    activeUsageProductId: paid ? subscriptionPlan.usageProductId : null,
+    activeTeamsAddonProductId: paid
+      ? subscriptionPlan.teamsAddonProductId
+      : null,
+    resolvedPlan: paid ? subscriptionPlan.plan : null,
+    subscriptionStatus: subscription.status,
+    cancelAtPeriodEnd: paid ? subscription.cancel_at_period_end : false,
+    currentPeriodEnd:
+      subscriptionPeriodEnd(subscription)?.toISOString() ?? null,
+    paid,
+  };
+}
+
+function subscriptionNeedsSync(
+  subscription: Stripe.Subscription,
+  cloudConfig: CloudConfig | null,
+): boolean {
+  const current = cloudConfig?.stripe;
+  const expected = subscriptionSyncState(subscription);
+
+  return (
+    (current?.customerId ?? null) !== expected.customerId ||
+    (current?.activeSubscriptionId ?? null) !== expected.activeSubscriptionId ||
+    (current?.activeProductId ?? null) !== expected.activeProductId ||
+    (current?.activeUsageProductId ?? null) !== expected.activeUsageProductId ||
+    (current?.activeTeamsAddonProductId ?? null) !==
+      expected.activeTeamsAddonProductId ||
+    (current?.resolvedPlan ?? null) !== expected.resolvedPlan ||
+    (current?.subscriptionStatus ?? null) !== expected.subscriptionStatus ||
+    (current?.cancelAtPeriodEnd ?? false) !== expected.cancelAtPeriodEnd ||
+    (current?.currentPeriodEnd ?? null) !== expected.currentPeriodEnd
+  );
+}
+
+function storedPeriodEnd(cloudConfig: CloudConfig | null): Date | null {
+  const value = cloudConfig?.stripe?.currentPeriodEnd;
+  return value ? new Date(value) : null;
+}
+
+async function getBillingOrganization(orgId: string) {
+  return prisma.organization.findUniqueOrThrow({
     where: { id: orgId },
     include: {
       projects: { select: { id: true }, where: { deletedAt: null } },
     },
   });
-  const cloudConfig = parseCloudConfig(org.cloudConfig);
-  const plan = getOrganizationPlanServerSide(cloudConfig ?? undefined);
-  const includedUnits = plan === "cloud:hobby" ? 100_000 : 200_000;
-  const usagePromise = getFreshBillingUsage({ organization: org });
-  const billingConfigurationIssues = getInvalidBillingCatalogueEntries().map(
-    (entry) =>
-      `${entry.envVar} must be a Stripe Price ID starting with price_. Current value starts with ${entry.value.slice(0, 5)}.`,
-  );
+}
 
-  let cancelAtPeriodEnd = false;
-  let currentPeriodEnd: Date | null = null;
-  let scheduledPlan: "cloud:hobby" | "cloud:pro" | "cloud:team" | null = null;
-  const subscriptionId = cloudConfig?.stripe?.activeSubscriptionId;
+export async function getBillingStatus(
+  orgId: string,
+  stripeClient?: BillingStatusStripeClient,
+) {
+  let org = await getBillingOrganization(orgId);
+  let cloudConfig = parseCloudConfig(org.cloudConfig);
+  let subscriptionId = cloudConfig?.stripe?.activeSubscriptionId;
+  let cancelAtPeriodEnd = cloudConfig?.stripe?.cancelAtPeriodEnd ?? false;
+  let currentPeriodEnd = storedPeriodEnd(cloudConfig);
+  let scheduledPlan: "cloud:hobby" | "cloud:pro" | "cloud:team" | null =
+    cancelAtPeriodEnd && subscriptionId ? "cloud:hobby" : null;
+  let subscription: Stripe.Subscription | null = null;
+  let activeStripeClient = stripeClient;
 
   if (env.STRIPE_SECRET_KEY && subscriptionId) {
     try {
-      const subscription =
-        await getStripeClient().subscriptions.retrieve(subscriptionId);
-      cancelAtPeriodEnd = subscription.cancel_at_period_end;
-      currentPeriodEnd = subscriptionPeriodEnd(subscription);
-      const schedule = await getSubscriptionSchedule(subscription);
-      if (schedule?.phases?.length && schedule.phases.length > 1) {
-        const finalPhase = schedule.phases[schedule.phases.length - 1];
-        const finalKinds = new Set(
-          finalPhase.items.map((item) =>
-            getBillingPriceKind(
-              typeof item.price === "string" ? item.price : item.price.id,
-            ),
-          ),
-        );
-        scheduledPlan = finalKinds.has("teams-addon")
-          ? "cloud:team"
-          : "cloud:pro";
-      } else if (cancelAtPeriodEnd) {
-        scheduledPlan = "cloud:hobby";
-      }
+      activeStripeClient ??= getStripeClient();
+      subscription =
+        await activeStripeClient.subscriptions.retrieve(subscriptionId);
     } catch (error) {
       logger.warn("Unable to retrieve live Stripe subscription status", {
         orgId,
@@ -291,6 +349,58 @@ export async function getBillingStatus(orgId: string) {
       });
     }
   }
+
+  if (subscription) {
+    if (subscriptionNeedsSync(subscription, cloudConfig)) {
+      await syncSubscriptionToOrganization(subscription);
+      org = await getBillingOrganization(orgId);
+      cloudConfig = parseCloudConfig(org.cloudConfig);
+      subscriptionId = cloudConfig?.stripe?.activeSubscriptionId;
+    }
+
+    cancelAtPeriodEnd =
+      cloudConfig?.stripe?.cancelAtPeriodEnd ??
+      subscription.cancel_at_period_end;
+    currentPeriodEnd =
+      storedPeriodEnd(cloudConfig) ?? subscriptionPeriodEnd(subscription);
+    scheduledPlan = cancelAtPeriodEnd && subscriptionId ? "cloud:hobby" : null;
+
+    if (subscriptionId && activeStripeClient) {
+      try {
+        const schedule = await getSubscriptionSchedule(
+          subscription,
+          activeStripeClient,
+        );
+        if (schedule?.phases?.length && schedule.phases.length > 1) {
+          const finalPhase = schedule.phases[schedule.phases.length - 1];
+          const finalKinds = new Set(
+            finalPhase.items.map((item) =>
+              getBillingPriceKind(
+                typeof item.price === "string" ? item.price : item.price.id,
+              ),
+            ),
+          );
+          scheduledPlan = finalKinds.has("teams-addon")
+            ? "cloud:team"
+            : "cloud:pro";
+        }
+      } catch (error) {
+        logger.warn("Unable to retrieve Stripe subscription schedule", {
+          orgId,
+          subscriptionId,
+          error,
+        });
+      }
+    }
+  }
+
+  const plan = getOrganizationPlanServerSide(cloudConfig ?? undefined);
+  const includedUnits = plan === "cloud:hobby" ? 100_000 : 200_000;
+  const usagePromise = getFreshBillingUsage({ organization: org });
+  const billingConfigurationIssues = getInvalidBillingCatalogueEntries().map(
+    (entry) =>
+      `${entry.envVar} must be a Stripe Price ID starting with price_. Current value starts with ${entry.value.slice(0, 5)}.`,
+  );
 
   const { currentUnits, updatedAt: usageUpdatedAt } = await usagePromise;
   const cycleEnd = getBillingCycleEnd(org, new Date());
@@ -618,13 +728,8 @@ export async function syncSubscriptionToOrganization(
 
   const cloudConfig = parseCloudConfig(org.cloudConfig);
   const previousPlan = cloudConfig?.stripe?.resolvedPlan ?? null;
-  const subscriptionPlan = getSubscriptionPlan(subscription);
-  const paid =
-    !forceClear &&
-    PAID_STATUSES.includes(subscription.status) &&
-    subscriptionPlan.plan !== null;
-  const nextPlan = paid ? subscriptionPlan.plan : null;
-  const anchor = paid
+  const syncState = subscriptionSyncState(subscription, forceClear);
+  const anchor = syncState.paid
     ? subscriptionPeriodStart(subscription)
     : (subscriptionPeriodEnd(subscription) ?? new Date());
   const anchorChanged =
@@ -635,15 +740,15 @@ export async function syncSubscriptionToOrganization(
     where: { id: org.id },
     data: {
       cloudConfig: cloudConfigToJson(cloudConfig, {
-        customerId,
-        activeSubscriptionId: paid ? subscription.id : null,
-        activeProductId: paid ? subscriptionPlan.proProductId : null,
-        activeUsageProductId: paid ? subscriptionPlan.usageProductId : null,
-        activeTeamsAddonProductId: paid
-          ? subscriptionPlan.teamsAddonProductId
-          : null,
-        resolvedPlan: nextPlan,
-        subscriptionStatus: subscription.status,
+        customerId: syncState.customerId,
+        activeSubscriptionId: syncState.activeSubscriptionId,
+        activeProductId: syncState.activeProductId,
+        activeUsageProductId: syncState.activeUsageProductId,
+        activeTeamsAddonProductId: syncState.activeTeamsAddonProductId,
+        resolvedPlan: syncState.resolvedPlan,
+        subscriptionStatus: syncState.subscriptionStatus,
+        cancelAtPeriodEnd: syncState.cancelAtPeriodEnd,
+        currentPeriodEnd: syncState.currentPeriodEnd,
       }),
       cloudBillingCycleAnchor: anchor ?? undefined,
       cloudBillingCycleUpdatedAt: new Date(),
@@ -655,7 +760,10 @@ export async function syncSubscriptionToOrganization(
   });
 
   await new ApiAuthService(prisma, redis).invalidateCachedOrgApiKeys(org.id);
-  return { orgId: org.id, planChanged: previousPlan !== nextPlan };
+  return {
+    orgId: org.id,
+    planChanged: previousPlan !== syncState.resolvedPlan,
+  };
 }
 
 export async function cancelSubscriptionImmediatelyForOrganization(

@@ -229,7 +229,9 @@ export function BillingSettings({ orgId }: BillingSettingsProps) {
             </Badge>
             {status ? (
               <Badge variant={isPastDue ? "warning" : "outline-solid"}>
-                {statusCopy[status] ?? status}
+                {data?.stripe.cancelAtPeriodEnd
+                  ? "Cancels at period end"
+                  : (statusCopy[status] ?? status)}
               </Badge>
             ) : null}
           </div>

@@ -36,6 +36,7 @@ function billingStatus(
     subscriptionStatus: string | null;
     activeSubscriptionId: string | null;
     scheduledPlan: "cloud:hobby" | "cloud:pro" | "cloud:team" | null;
+    cancelAtPeriodEnd: boolean;
     usageState: string | null;
   }> = {},
 ) {
@@ -55,7 +56,7 @@ function billingStatus(
           overrides.activeSubscriptionId ??
           (plan === "cloud:hobby" ? null : "sub_test"),
         subscriptionStatus: overrides.subscriptionStatus ?? null,
-        cancelAtPeriodEnd: false,
+        cancelAtPeriodEnd: overrides.cancelAtPeriodEnd ?? false,
         currentPeriodEnd: new Date("2026-08-16T00:00:00.000Z"),
         scheduledPlan: overrides.scheduledPlan ?? null,
       },
@@ -113,6 +114,22 @@ describe("BillingSettings", () => {
     expect(screen.getByText(/Estimated overage before discounts/)).toBeTruthy();
     expect(screen.getByText("Past due")).toBeTruthy();
     expect(screen.queryByText("Pro + Teams")).toBeNull();
+  });
+
+  it("shows cancellation scheduled in the Stripe portal", () => {
+    mockedUseQuery.mockReturnValue(
+      billingStatus({
+        plan: "cloud:pro",
+        subscriptionStatus: "active",
+        cancelAtPeriodEnd: true,
+        scheduledPlan: "cloud:hobby",
+      }),
+    );
+
+    render(<BillingSettings orgId="org_test" />);
+
+    expect(screen.getByText("Cancels at period end")).toBeTruthy();
+    expect(screen.getByText("Scheduled billing change")).toBeTruthy();
   });
 
   it("opens payment methods and invoices in a new tab", () => {
