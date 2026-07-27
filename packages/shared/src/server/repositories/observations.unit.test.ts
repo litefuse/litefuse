@@ -18,7 +18,7 @@ describe("billing observation counts", () => {
     queryDorisMock.mockReset();
   });
 
-  it("excludes root spans from interval counts", async () => {
+  it("includes root spans in interval counts", async () => {
     queryDorisMock.mockResolvedValueOnce([
       { project_id: "project-1", count: "1" },
     ]);
@@ -28,12 +28,12 @@ describe("billing observation counts", () => {
       end: new Date("2026-07-24T01:00:00.000Z"),
     });
 
-    expect(queryDorisMock.mock.calls[0][0].query).toContain(
+    expect(queryDorisMock.mock.calls[0][0].query).not.toContain(
       "parent_span_id != ''",
     );
   });
 
-  it("excludes root spans from billing-cycle counts", async () => {
+  it("includes root spans in billing-cycle counts", async () => {
     queryDorisMock.mockResolvedValueOnce([{ count: "1" }]);
 
     await getObservationCountOfProjectsSinceCreationDate({
@@ -41,7 +41,7 @@ describe("billing observation counts", () => {
       start: new Date("2026-07-01T00:00:00.000Z"),
     });
 
-    expect(queryDorisMock.mock.calls[0][0].query).toContain(
+    expect(queryDorisMock.mock.calls[0][0].query).not.toContain(
       "parent_span_id != ''",
     );
   });

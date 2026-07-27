@@ -2,7 +2,7 @@
 
 本文汇总 Billing 分支交付 QA 前已经执行的自测。状态含义：
 
-最近一次定向自动化复核日期：**2026-07-24**。
+最近一次定向自动化复核日期：**2026-07-27**。
 
 - **通过**：自动化测试或静态检查完成且成功；
 - **已验证**：在 Stripe Sandbox 或本地完整链路中人工验证成功；
@@ -12,18 +12,18 @@
 
 ## 结果摘要
 
-| 范围                              | 状态   | 结果                                                         |
-| --------------------------------- | ------ | ------------------------------------------------------------ |
-| Billing server tests              | 通过   | 17/17                                                        |
-| Billing client tests              | 通过   | 2/2                                                          |
-| Shared billing query tests        | 通过   | 3/3；root span 不再重复计入 observation                      |
-| Worker billing unit tests         | 通过   | 5/5                                                          |
-| Ingestion suspension server tests | 通过   | 2/2                                                          |
-| Billing 相关 targeted ESLint      | 通过   | 无 lint error                                                |
-| Stripe Sandbox Usage Price/账单   | 已验证 | 300,000 units → $199 + $4 = $203                             |
-| Worker 自动聚合上报 E2E           | 需重验 | 新口径预期聚合 3 units；需确认 checkpoint 与同小时重放仍为 3 |
-| 全量 web typecheck                | 被阻塞 | 既有 NextAuth adapter 重复类型依赖冲突                       |
-| 全仓 lint/typecheck/build:check   | 未执行 | 需要在最终回归补齐                                           |
+| 范围                              | 状态   | 结果                                                                    |
+| --------------------------------- | ------ | ----------------------------------------------------------------------- |
+| Billing server tests              | 通过   | 17/17                                                                   |
+| Billing client tests              | 通过   | 2/2                                                                     |
+| Shared billing query tests        | 通过   | 3/3；root span 同时计入 trace 与 observation                            |
+| Worker billing unit tests         | 通过   | 5/5                                                                     |
+| Ingestion suspension server tests | 通过   | 2/2                                                                     |
+| Billing 相关 targeted ESLint      | 通过   | 无 lint error                                                           |
+| Stripe Sandbox Usage Price/账单   | 已验证 | 300,000 units → $199 + $4 = $203                                        |
+| Worker 自动聚合上报 E2E           | 需重验 | Langfuse 对齐口径预期聚合 4 units；需确认 checkpoint 与同小时重放仍为 4 |
+| 全量 web typecheck                | 被阻塞 | 既有 NextAuth 重复类型及 `index.clienttest.tsx` 页面校验错误            |
+| 全仓 lint/typecheck/build:check   | 被阻塞 | shared/worker 类型与构建通过；既有 lint warning 和 Web 页面校验阻断     |
 
 ## 自动化测试明细
 
@@ -70,7 +70,7 @@
 - `packages/shared/src/server/repositories/billing.unit.test.ts`
 - `packages/shared/src/server/repositories/observations.unit.test.ts`
 
-已覆盖按日、按小时和当前账期的 observation 聚合均排除 root span。
+已覆盖按日、按小时和当前账期的 observation 聚合均包含 root span。
 
 ### Ingestion suspension：2/2 通过
 
@@ -107,11 +107,11 @@
 结果：
 
 - 使用独立 Organization、Project、Stripe Customer 和 Subscription；
-- 当前固定 fixture 的新口径预期为 **3 units**；
-- `BillingMeterBackup.aggregatedValue` 应为 3，且 `submittedAt` 应成功写入；
-- Stripe meter summary 应收到对应 interval 的 3 units；
-- 对同一小时重放后应仍为 3，没有重复累计；
-- 第二个订阅内 interval 在 200,000 免费层内应显示 `3 × Litefuse Usage`，金额为 $0；
+- 当前固定 fixture 的 Langfuse 对齐口径预期为 **4 units**；
+- `BillingMeterBackup.aggregatedValue` 应为 4，且 `submittedAt` 应成功写入；
+- Stripe meter summary 应收到对应 interval 的 4 units；
+- 对同一小时重放后应仍为 4，没有重复累计；
+- 第二个订阅内 interval 在 200,000 免费层内应显示 `4 × Litefuse Usage`，金额为 $0；
 - 验证结束后清理测试 Organization 和 Stripe 资源。
 
 ## 静态检查
@@ -124,16 +124,27 @@
 
 状态：**被阻塞**。
 
-执行全量 web typecheck 时在 `web/src/server/auth.ts:499` 遇到既有 NextAuth adapter 重复类型依赖冲突。该错误不在 Billing 改动范围内，不能据此将 Billing typecheck 标记为通过；最终合并前仍需在依赖问题解决或基线确认后重跑。
+执行全量 web typecheck 时遇到两个既有问题：
+
+- `web/src/server/auth.ts:499` 的 NextAuth adapter 重复类型依赖冲突；
+- `web/src/pages/organization/[organizationId]/settings/index.clienttest.tsx` 被生成的 Next.js 页面校验当作页面模块，但没有 default export。
+
+这些错误不在 Billing 改动范围内，不能据此将 Billing typecheck 标记为通过；最终合并前仍需在基线问题解决后重跑。
+
+### Package lint、typecheck 与 build:check
+
+状态：**部分通过，仓库既有问题阻断全绿**。
+
+- shared typecheck 和 worker typecheck 通过；
+- `pnpm run build:check` 中 shared、worker 构建通过，Web 被上述 `index.clienttest.tsx` 页面校验错误阻断；
+- shared lint 被 52 个既有 warning 阻断，worker lint 被 14 个既有 warning 阻断，均无 error；
+- Web lint 持续运行约 15 分钟仍未完成，手动结束；本次改动文件的 targeted ESLint 无 error；
+- 本次没有 Prisma schema 变更；`build:check` 使用缓存成功完成了 `db:generate`。
 
 ## 尚未执行或未完整覆盖
 
-以下项目当前状态均为 **未执行** 或没有完整通过记录：
+以下项目当前没有完整通过记录：
 
-- `pnpm run lint` 全仓 lint；
-- `pnpm run typecheck` 全仓 typecheck；
-- `pnpm run build:check`；
-- `pnpm run db:generate` 的本轮最终确认；
 - 所有 Billing 生命周期在真实浏览器 UI 中的完整回归；
 - webhook 超过 5 分钟 processing lease 后 reclaim；
 - Worker Stripe 失败重试、多个漏跑小时追赶和双 Worker 并发 claim；

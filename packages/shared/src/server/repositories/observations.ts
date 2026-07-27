@@ -1548,7 +1548,6 @@ export const getObservationCountsByProjectInCreationInterval = async ({
       FROM events_full
       WHERE created_at >= {start: DateTime}
       AND created_at < {end: DateTime}
-      AND parent_span_id != ''
       GROUP BY project_id
     `;
 
@@ -1584,7 +1583,6 @@ export const getObservationCountOfProjectsSinceCreationDate = async ({
       FROM events_full
       WHERE project_id IN ({projectIds: Array(String)})
       AND created_at >= {start: DateTime}
-      AND parent_span_id != ''
     `;
 
   const rows = await queryDoris<{ count: string }>({
