@@ -14,3 +14,16 @@ export function nextUsageState(total: number): UsageState {
 export function billingMeterIdentifier(orgId: string, intervalStart: Date) {
   return `litefuse:${orgId}:${Math.floor(intervalStart.getTime() / 1000)}`;
 }
+
+export function shouldRegisterCloudUsageMeteringQueue(params: {
+  consumerEnabled: "true" | "false";
+  stripeSecretKey?: string;
+}) {
+  return params.consumerEnabled === "true" && Boolean(params.stripeSecretKey);
+}
+
+export function shouldRegisterFreeTierUsageThresholdQueue(
+  consumerEnabled: "true" | "false",
+) {
+  return consumerEnabled === "true";
+}

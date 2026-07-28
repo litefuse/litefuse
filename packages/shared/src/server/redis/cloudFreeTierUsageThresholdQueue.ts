@@ -1,5 +1,4 @@
 import { Queue } from "bullmq";
-import { env } from "../../env";
 import { logger } from "../logger";
 import { QueueJobs, QueueName } from "../queues";
 import {
@@ -12,7 +11,6 @@ export class CloudFreeTierUsageThresholdQueue {
   private static instance: Queue | null = null;
 
   public static getInstance(): Queue | null {
-    if (!env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION) return null;
     if (CloudFreeTierUsageThresholdQueue.instance) {
       return CloudFreeTierUsageThresholdQueue.instance;
     }

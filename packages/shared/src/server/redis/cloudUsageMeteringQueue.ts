@@ -12,7 +12,7 @@ export class CloudUsageMeteringQueue {
   private static instance: Queue | null = null;
 
   public static getInstance(): Queue | null {
-    if (!env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION || !env.STRIPE_SECRET_KEY) {
+    if (!env.STRIPE_SECRET_KEY) {
       return null;
     }
     if (CloudUsageMeteringQueue.instance)
