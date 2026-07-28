@@ -128,7 +128,7 @@ Webhook 监听并处理：
 7. identifier 固定为 `litefuse:{orgId}:{intervalStartSeconds}`；成功后写 `submittedAt`；
 8. 推进 CronJobs `lastRun`。若仍落后于当前时间，立即补发下一个 job 继续追赶。
 
-当前计数来自 `events_full` 和 `scores`：根事件只贡献 trace 计数，非根 event row 贡献 observation 计数，score 独立计数。QA 固定 fixture 的断言为 **3 units**。同一 interval 重跑时，checkpoint 与确定性 identifier 必须保证 Stripe summary 仍为 3。
+当前计数来自 `events_full` 和 `scores`：根事件贡献 trace 计数，全部 event row（包括根事件）贡献 observation 计数，score 独立计数。这与 Langfuse 的 `traces + observations + scores` 口径一致。QA 固定 fixture 的断言为 **4 units**。同一 interval 重跑时，checkpoint 与确定性 identifier 必须保证 Stripe summary 仍为 4。
 
 Usage Price 在 Stripe 配置为 Graduated：前 200,000 免费，之后 `$0.00004/unit`。Worker 始终上报原始值，不扣除包含量。
 

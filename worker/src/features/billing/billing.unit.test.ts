@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { billingMeterIdentifier, nextUsageState } from "./constants";
+import {
+  billingMeterIdentifier,
+  nextUsageState,
+  shouldRegisterCloudUsageMeteringQueue,
+  shouldRegisterFreeTierUsageThresholdQueue,
+} from "./constants";
 
 describe("cloud billing helpers", () => {
   it.each([
@@ -19,5 +24,31 @@ describe("cloud billing helpers", () => {
     expect(billingMeterIdentifier("org_123", intervalStart)).toBe(
       billingMeterIdentifier("org_123", new Date(intervalStart)),
     );
+  });
+
+  it("registers cloud usage metering without a cloud region", () => {
+    expect(
+      shouldRegisterCloudUsageMeteringQueue({
+        consumerEnabled: "true",
+        stripeSecretKey: "sk_test_123",
+      }),
+    ).toBe(true);
+    expect(
+      shouldRegisterCloudUsageMeteringQueue({
+        consumerEnabled: "false",
+        stripeSecretKey: "sk_test_123",
+      }),
+    ).toBe(false);
+    expect(
+      shouldRegisterCloudUsageMeteringQueue({
+        consumerEnabled: "true",
+        stripeSecretKey: undefined,
+      }),
+    ).toBe(false);
+  });
+
+  it("registers free-tier usage thresholds without a cloud region", () => {
+    expect(shouldRegisterFreeTierUsageThresholdQueue("true")).toBe(true);
+    expect(shouldRegisterFreeTierUsageThresholdQueue("false")).toBe(false);
   });
 });

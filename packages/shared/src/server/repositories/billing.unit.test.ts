@@ -15,14 +15,14 @@ describe("getBillingUnitCountsByProjectAndDay", () => {
     queryDorisMock.mockReset();
   });
 
-  it("does not count root spans as observations", async () => {
+  it("counts root spans as observations and traces", async () => {
     queryDorisMock
       .mockResolvedValueOnce([
         {
           project_id: "project-1",
           date: "2026-07-24",
           traces: "1",
-          observations: "1",
+          observations: "2",
         },
       ])
       .mockResolvedValueOnce([
@@ -43,14 +43,14 @@ describe("getBillingUnitCountsByProjectAndDay", () => {
         projectId: "project-1",
         date: "2026-07-24",
         traces: 1,
-        observations: 1,
+        observations: 2,
         scores: 1,
-        total: 3,
+        total: 4,
       },
     ]);
 
     expect(queryDorisMock.mock.calls[0][0].query).toContain(
-      "SUM(CASE WHEN parent_span_id != '' THEN 1 ELSE 0 END) AS observations",
+      "COUNT(*) AS observations",
     );
   });
 });

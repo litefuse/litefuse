@@ -26,7 +26,7 @@ export async function getBillingUnitCountsByProjectAndDay(params: {
           project_id,
           CAST(created_at AS DATE) AS date,
           SUM(CASE WHEN parent_span_id = '' THEN 1 ELSE 0 END) AS traces,
-          SUM(CASE WHEN parent_span_id != '' THEN 1 ELSE 0 END) AS observations
+          COUNT(*) AS observations
         FROM events_full
         WHERE created_at >= {start: DateTime}
           AND created_at < {end: DateTime}

@@ -69,6 +69,10 @@ import {
   cloudUsageMeteringQueueProcessor,
 } from "./queues/cloudBillingQueues";
 import {
+  shouldRegisterCloudUsageMeteringQueue,
+  shouldRegisterFreeTierUsageThresholdQueue,
+} from "./features/billing/constants";
+import {
   BatchProjectCleaner,
   BATCH_DELETION_TABLES,
 } from "./features/batch-project-cleaner";
@@ -150,9 +154,10 @@ if (env.LITEFUSE_S3_CORE_DATA_EXPORT_IS_ENABLED === "true") {
 }
 
 if (
-  env.QUEUE_CONSUMER_CLOUD_USAGE_METERING_QUEUE_IS_ENABLED === "true" &&
-  env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION &&
-  env.STRIPE_SECRET_KEY
+  shouldRegisterCloudUsageMeteringQueue({
+    consumerEnabled: env.QUEUE_CONSUMER_CLOUD_USAGE_METERING_QUEUE_IS_ENABLED,
+    stripeSecretKey: env.STRIPE_SECRET_KEY,
+  })
 ) {
   CloudUsageMeteringQueue.getInstance();
   WorkerManager.register(
@@ -163,8 +168,9 @@ if (
 }
 
 if (
-  env.QUEUE_CONSUMER_FREE_TIER_USAGE_THRESHOLD_QUEUE_IS_ENABLED === "true" &&
-  env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION
+  shouldRegisterFreeTierUsageThresholdQueue(
+    env.QUEUE_CONSUMER_FREE_TIER_USAGE_THRESHOLD_QUEUE_IS_ENABLED,
+  )
 ) {
   CloudFreeTierUsageThresholdQueue.getInstance();
   WorkerManager.register(

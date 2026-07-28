@@ -358,11 +358,11 @@ export async function getBillingStatus(
       subscriptionId = cloudConfig?.stripe?.activeSubscriptionId;
     }
 
-    cancelAtPeriodEnd =
-      cloudConfig?.stripe?.cancelAtPeriodEnd ??
-      subscription.cancel_at_period_end;
-    currentPeriodEnd =
-      storedPeriodEnd(cloudConfig) ?? subscriptionPeriodEnd(subscription);
+    // The live Stripe response is authoritative for this request. Persistence
+    // can remain stale when a webhook is delayed or subscription metadata
+    // prevents the generic webhook resolver from applying the update.
+    cancelAtPeriodEnd = subscription.cancel_at_period_end;
+    currentPeriodEnd = subscriptionPeriodEnd(subscription);
     scheduledPlan = cancelAtPeriodEnd && subscriptionId ? "cloud:hobby" : null;
 
     if (subscriptionId && activeStripeClient) {
