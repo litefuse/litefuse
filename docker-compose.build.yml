@@ -4,7 +4,7 @@ services:
       dockerfile: ./web/Dockerfile
       context: .
       args:
-        - NEXT_PUBLIC_LITEFUSE_CLOUD_REGION=${NEXT_PUBLIC_LITEFUSE_CLOUD_REGION}
+        - NEXT_PUBLIC_LITEFUSE_CLOUD_REGION=${NEXT_PUBLIC_LITEFUSE_CLOUD_REGION:-Asia}
     depends_on: &litefuse-depends-on
       postgres:
         condition: service_healthy
@@ -81,7 +81,7 @@ services:
       dockerfile: ./worker/Dockerfile
       context: .
       args:
-        - NEXT_PUBLIC_LITEFUSE_CLOUD_REGION=${NEXT_PUBLIC_LITEFUSE_CLOUD_REGION}
+        - NEXT_PUBLIC_LITEFUSE_CLOUD_REGION=${NEXT_PUBLIC_LITEFUSE_CLOUD_REGION:-Asia}
     depends_on: *litefuse-depends-on
     ports:
       - "3030:3030"

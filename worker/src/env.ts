@@ -17,7 +17,7 @@ const EnvSchema = z.object({
   NEXTAUTH_URL: z.string().optional(),
 
   NEXT_PUBLIC_LITEFUSE_CLOUD_REGION: z
-    .enum(["US", "EU", "STAGING", "DEV", "HIPAA", "JP"])
+    .enum(["US", "EU", "STAGING", "DEV", "HIPAA", "JP", "Asia"])
     .optional(),
 
   LITEFUSE_CACHE_AUTOMATIONS_ENABLED: z.enum(["true", "false"]).default("true"),
