@@ -337,6 +337,55 @@ describe("Litefuse Pro billing", () => {
     ).toBeNull();
   });
 
+  it("returns live Stripe cancellation state when persistence remains stale", async () => {
+    const { org } = await createBillingOrg();
+    const customerId = parseCloudConfig(org.cloudConfig)?.stripe?.customerId!;
+    const subscriptionId = `sub_${uuidv4()}`;
+
+    await syncSubscriptionToOrganization(
+      createSubscription({
+        orgId: org.id,
+        customerId,
+        status: "active",
+        subscriptionId,
+      }),
+    );
+
+    const cancelingSubscription = createSubscription({
+      orgId: org.id,
+      customerId,
+      status: "active",
+      subscriptionId,
+      cancelAtPeriodEnd: true,
+    });
+    cancelingSubscription.metadata.cloudRegion = "another-region";
+    const stripe = {
+      subscriptions: {
+        retrieve: jest.fn().mockResolvedValue(cancelingSubscription),
+      },
+      subscriptionSchedules: {
+        retrieve: jest.fn(),
+      },
+    };
+
+    await expect(getBillingStatus(org.id, stripe)).resolves.toMatchObject({
+      plan: "cloud:pro",
+      stripe: {
+        activeSubscriptionId: subscriptionId,
+        subscriptionStatus: "active",
+        cancelAtPeriodEnd: true,
+        scheduledPlan: "cloud:hobby",
+      },
+    });
+
+    const unchangedOrg = await prisma.organization.findUniqueOrThrow({
+      where: { id: org.id },
+    });
+    expect(
+      parseCloudConfig(unchangedOrg.cloudConfig)?.stripe?.cancelAtPeriodEnd,
+    ).toBe(false);
+  });
+
   it("keeps Pro on past_due subscriptions", async () => {
     const { org } = await createBillingOrg();
     const customerId = parseCloudConfig(org.cloudConfig)?.stripe?.customerId!;

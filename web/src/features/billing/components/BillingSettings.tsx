@@ -8,7 +8,7 @@ import { api } from "@/src/utils/api";
 import { planLabels, type Plan } from "@langfuse/shared";
 import { AlertCircle, CreditCard, ExternalLink } from "lucide-react";
 import { useRouter } from "next/router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 type BillingSettingsProps = { orgId: string };
@@ -55,9 +55,18 @@ export function BillingSettings({ orgId }: BillingSettingsProps) {
     { orgId },
     {
       refetchInterval: 60_000,
-      refetchOnWindowFocus: true,
+      refetchOnWindowFocus: false,
     },
   );
+  const refetchBillingStatus = billingStatus.refetch;
+  useEffect(() => {
+    const refreshStripeState = () => {
+      void refetchBillingStatus();
+    };
+    window.addEventListener("focus", refreshStripeState);
+    return () => window.removeEventListener("focus", refreshStripeState);
+  }, [refetchBillingStatus]);
+
   const refresh = () => utils.billing.getBillingStatus.invalidate({ orgId });
   const checkoutMutation = api.billing.createCheckoutSession.useMutation({
     onSuccess: ({ url }) => window.location.assign(url),

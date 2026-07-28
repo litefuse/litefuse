@@ -39,10 +39,12 @@ function billingStatus(
     cancelAtPeriodEnd: boolean;
     usageState: string | null;
   }> = {},
+  refetch: jest.Mock = jest.fn(),
 ) {
   const plan = overrides.plan ?? "cloud:hobby";
   return {
     isLoading: false,
+    refetch,
     data: {
       plan,
       isManualPlanOverride: false,
@@ -84,9 +86,19 @@ describe("BillingSettings", () => {
       { orgId: "org_test" },
       expect.objectContaining({
         refetchInterval: 60_000,
-        refetchOnWindowFocus: true,
+        refetchOnWindowFocus: false,
       }),
     );
+  });
+
+  it("refreshes Stripe state immediately when the billing page regains focus", () => {
+    const refetch = jest.fn();
+    mockedUseQuery.mockReturnValue(billingStatus({}, refetch));
+
+    render(<BillingSettings orgId="org_test" />);
+    window.dispatchEvent(new Event("focus"));
+
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 
   it("shows the Developer allowance and blocked state", () => {
