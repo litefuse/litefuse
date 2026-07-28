@@ -27,12 +27,13 @@ const regions =
           flag: "🇪🇺",
         },
       ]
-    : env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION === "DEV"
+    : env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION === "DEV" ||
+        env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION === "Asia"
       ? [
           {
-            name: "DEV",
+            name: env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION,
             hostname: null,
-            flag: "🚧",
+            flag: env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION === "DEV" ? "🚧" : "🌏",
           },
         ]
       : env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION === "JP"
