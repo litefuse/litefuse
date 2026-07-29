@@ -280,11 +280,15 @@ function subscriptionSyncState(
       : null,
     resolvedPlan: paid ? subscriptionPlan.plan : null,
     subscriptionStatus: subscription.status,
-    cancelAtPeriodEnd: paid ? subscription.cancel_at_period_end : false,
+    cancelAtPeriodEnd: paid ? hasScheduledCancellation(subscription) : false,
     currentPeriodEnd:
       subscriptionPeriodEnd(subscription)?.toISOString() ?? null,
     paid,
   };
+}
+
+function hasScheduledCancellation(subscription: Stripe.Subscription): boolean {
+  return subscription.cancel_at_period_end || subscription.cancel_at != null;
 }
 
 function subscriptionNeedsSync(
@@ -361,7 +365,7 @@ export async function getBillingStatus(
     // The live Stripe response is authoritative for this request. Persistence
     // can remain stale when a webhook is delayed or subscription metadata
     // prevents the generic webhook resolver from applying the update.
-    cancelAtPeriodEnd = subscription.cancel_at_period_end;
+    cancelAtPeriodEnd = hasScheduledCancellation(subscription);
     currentPeriodEnd = subscriptionPeriodEnd(subscription);
     scheduledPlan = cancelAtPeriodEnd && subscriptionId ? "cloud:hobby" : null;
 
@@ -636,31 +640,45 @@ export async function cancelSubscription(orgId: string) {
   if (schedule && ["active", "not_started"].includes(schedule.status)) {
     await getStripeClient().subscriptionSchedules.release(schedule.id);
   }
-  await getStripeClient().subscriptions.update(subscription.id, {
-    cancel_at_period_end: true,
-  });
+  const updatedSubscription = await getStripeClient().subscriptions.update(
+    subscription.id,
+    {
+      cancel_at_period_end: true,
+    },
+  );
+  await syncSubscriptionToOrganization(updatedSubscription);
   return { ok: true } as const;
 }
 
 export async function reactivateSubscription(orgId: string) {
   const subscription = await getActiveSubscription(orgId);
-  await getStripeClient().subscriptions.update(subscription.id, {
-    cancel_at_period_end: false,
-  });
+  const updatedSubscription = await getStripeClient().subscriptions.update(
+    subscription.id,
+    {
+      cancel_at: "",
+      cancel_at_period_end: false,
+    },
+  );
+  await syncSubscriptionToOrganization(updatedSubscription);
   return { ok: true } as const;
 }
 
 export async function clearScheduledChange(orgId: string) {
-  const subscription = await getActiveSubscription(orgId);
+  let subscription = await getActiveSubscription(orgId);
   const schedule = await getSubscriptionSchedule(subscription);
   if (schedule && ["active", "not_started"].includes(schedule.status)) {
     await getStripeClient().subscriptionSchedules.release(schedule.id);
   }
-  if (subscription.cancel_at_period_end) {
-    await getStripeClient().subscriptions.update(subscription.id, {
-      cancel_at_period_end: false,
-    });
+  if (hasScheduledCancellation(subscription)) {
+    subscription = await getStripeClient().subscriptions.update(
+      subscription.id,
+      {
+        cancel_at: "",
+        cancel_at_period_end: false,
+      },
+    );
   }
+  await syncSubscriptionToOrganization(subscription);
   return { ok: true } as const;
 }
 
@@ -679,7 +697,7 @@ export async function createPortalSession(params: { orgId: string }) {
     });
   }
   const baseUrl = env.NEXTAUTH_URL.replace(/\/$/, "");
-  const returnUrl = `${baseUrl}/organization/${encodeURIComponent(params.orgId)}/settings/billing`;
+  const returnUrl = `${baseUrl}/organization/${encodeURIComponent(params.orgId)}/settings/billing?billingPortal=return`;
   const session = await getStripeClient().billingPortal.sessions.create({
     customer: customerId,
     return_url: returnUrl,

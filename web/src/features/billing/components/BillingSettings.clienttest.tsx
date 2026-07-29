@@ -2,8 +2,10 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { api } from "../../../utils/api";
 import { BillingSettings } from "./BillingSettings";
 
+const mockRouterQuery: Record<string, string | undefined> = {};
+
 jest.mock("next/router", () => ({
-  useRouter: () => ({ query: {} }),
+  useRouter: () => ({ query: mockRouterQuery }),
 }));
 
 jest.mock("../../../utils/api", () => {
@@ -75,7 +77,10 @@ function billingStatus(
 }
 
 describe("BillingSettings", () => {
-  afterEach(() => mockedUseQuery.mockReset());
+  afterEach(() => {
+    mockedUseQuery.mockReset();
+    for (const key of Object.keys(mockRouterQuery)) delete mockRouterQuery[key];
+  });
 
   it("refreshes usage while the billing page is open", () => {
     mockedUseQuery.mockReturnValue(billingStatus());
@@ -97,6 +102,30 @@ describe("BillingSettings", () => {
 
     render(<BillingSettings orgId="org_test" />);
     window.dispatchEvent(new Event("focus"));
+
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("refreshes Stripe state when the billing tab becomes visible", () => {
+    const refetch = jest.fn();
+    mockedUseQuery.mockReturnValue(billingStatus({}, refetch));
+    const visibilityState = jest
+      .spyOn(document, "visibilityState", "get")
+      .mockReturnValue("visible");
+
+    render(<BillingSettings orgId="org_test" />);
+    document.dispatchEvent(new Event("visibilitychange"));
+
+    expect(refetch).toHaveBeenCalledTimes(1);
+    visibilityState.mockRestore();
+  });
+
+  it("refreshes Stripe state after returning from the billing portal", () => {
+    const refetch = jest.fn();
+    mockRouterQuery.billingPortal = "return";
+    mockedUseQuery.mockReturnValue(billingStatus({}, refetch));
+
+    render(<BillingSettings orgId="org_test" />);
 
     expect(refetch).toHaveBeenCalledTimes(1);
   });
