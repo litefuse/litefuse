@@ -59,13 +59,26 @@ export function BillingSettings({ orgId }: BillingSettingsProps) {
     },
   );
   const refetchBillingStatus = billingStatus.refetch;
+  const returnedFromBillingPortal = router.query.billingPortal === "return";
   useEffect(() => {
     const refreshStripeState = () => {
       void refetchBillingStatus();
     };
+    const refreshVisibleStripeState = () => {
+      if (document.visibilityState === "visible") refreshStripeState();
+    };
+
+    if (returnedFromBillingPortal) refreshStripeState();
     window.addEventListener("focus", refreshStripeState);
-    return () => window.removeEventListener("focus", refreshStripeState);
-  }, [refetchBillingStatus]);
+    document.addEventListener("visibilitychange", refreshVisibleStripeState);
+    return () => {
+      window.removeEventListener("focus", refreshStripeState);
+      document.removeEventListener(
+        "visibilitychange",
+        refreshVisibleStripeState,
+      );
+    };
+  }, [refetchBillingStatus, returnedFromBillingPortal]);
 
   const refresh = () => utils.billing.getBillingStatus.invalidate({ orgId });
   const checkoutMutation = api.billing.createCheckoutSession.useMutation({

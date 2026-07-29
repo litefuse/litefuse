@@ -7,8 +7,12 @@ import {
   getInvalidBillingCatalogueEntries,
 } from "@/src/features/billing/server/billingCatalogue";
 import {
+  cancelSubscription,
+  createPortalSession,
+  getStripeClient,
   getBillingStatus,
   parseCloudConfig,
+  reactivateSubscription,
   syncSubscriptionToOrganization,
 } from "@/src/features/billing/server/billingService";
 import { handleStripeWebhook } from "@/src/features/billing/server/stripeWebhookHandler";
@@ -117,12 +121,14 @@ function createSubscription(params: {
   status: Stripe.Subscription.Status;
   subscriptionId?: string;
   team?: boolean;
+  cancelAt?: number | null;
   cancelAtPeriodEnd?: boolean;
 }): Stripe.Subscription {
   return {
     id: params.subscriptionId ?? `sub_${uuidv4()}`,
     customer: params.customerId,
     status: params.status,
+    cancel_at: params.cancelAt ?? null,
     cancel_at_period_end: params.cancelAtPeriodEnd ?? false,
     metadata: {
       orgId: params.orgId,
@@ -290,6 +296,144 @@ describe("Litefuse Pro billing", () => {
       "2023-11-15T22:13:20.000Z",
     );
     expect(cloudConfig?.stripe?.resolvedPlan).toBe("Pro");
+  });
+
+  it("persists explicit cancel_at schedules used by the Stripe portal", async () => {
+    const { org } = await createBillingOrg();
+    const customerId = parseCloudConfig(org.cloudConfig)?.stripe?.customerId!;
+
+    await syncSubscriptionToOrganization(
+      createSubscription({
+        orgId: org.id,
+        customerId,
+        status: "active",
+        cancelAt: 1_700_086_400,
+      }),
+    );
+
+    const updatedOrg = await prisma.organization.findUniqueOrThrow({
+      where: { id: org.id },
+    });
+    const cloudConfig = parseCloudConfig(updatedOrg.cloudConfig);
+    expect(cloudConfig?.stripe?.cancelAtPeriodEnd).toBe(true);
+    expect(cloudConfig?.stripe?.resolvedPlan).toBe("Pro");
+  });
+
+  it("persists cancellation before the app action returns", async () => {
+    const { org } = await createBillingOrg();
+    const customerId = parseCloudConfig(org.cloudConfig)?.stripe?.customerId!;
+    const subscriptionId = `sub_${uuidv4()}`;
+    const activeSubscription = createSubscription({
+      orgId: org.id,
+      customerId,
+      status: "active",
+      subscriptionId,
+    });
+    const cancelingSubscription = createSubscription({
+      orgId: org.id,
+      customerId,
+      status: "active",
+      subscriptionId,
+      cancelAtPeriodEnd: true,
+    });
+
+    await syncSubscriptionToOrganization(activeSubscription);
+
+    const stripe = getStripeClient();
+    const retrieveSubscription = jest
+      .spyOn(stripe.subscriptions, "retrieve")
+      .mockResolvedValue(activeSubscription);
+    const updateSubscription = jest
+      .spyOn(stripe.subscriptions, "update")
+      .mockResolvedValue(cancelingSubscription);
+
+    try {
+      await cancelSubscription(org.id);
+    } finally {
+      retrieveSubscription.mockRestore();
+      updateSubscription.mockRestore();
+    }
+
+    const updatedOrg = await prisma.organization.findUniqueOrThrow({
+      where: { id: org.id },
+    });
+    expect(
+      parseCloudConfig(updatedOrg.cloudConfig)?.stripe?.cancelAtPeriodEnd,
+    ).toBe(true);
+  });
+
+  it("marks the Stripe portal return URL for a billing status refresh", async () => {
+    const { org } = await createBillingOrg();
+    const customerId = parseCloudConfig(org.cloudConfig)?.stripe?.customerId!;
+    const stripe = getStripeClient();
+    const createSession = jest
+      .spyOn(stripe.billingPortal.sessions, "create")
+      .mockResolvedValue({
+        id: "bps_test",
+        object: "billing_portal.session",
+        configuration: "bpc_test",
+        created: 1_700_000_000,
+        customer: customerId,
+        livemode: false,
+        locale: null,
+        on_behalf_of: null,
+        return_url: null,
+        url: "https://billing.stripe.test/session",
+      } as Stripe.BillingPortal.Session);
+
+    try {
+      await expect(createPortalSession({ orgId: org.id })).resolves.toEqual({
+        url: "https://billing.stripe.test/session",
+      });
+      expect(createSession).toHaveBeenCalledWith({
+        customer: customerId,
+        return_url: expect.stringContaining(
+          `/organization/${encodeURIComponent(org.id)}/settings/billing?billingPortal=return`,
+        ),
+      });
+    } finally {
+      createSession.mockRestore();
+    }
+  });
+
+  it("clears an explicit cancel_at schedule when reactivating", async () => {
+    const { org } = await createBillingOrg();
+    const customerId = parseCloudConfig(org.cloudConfig)?.stripe?.customerId!;
+    const subscriptionId = `sub_${uuidv4()}`;
+    const cancelingSubscription = createSubscription({
+      orgId: org.id,
+      customerId,
+      status: "active",
+      subscriptionId,
+      cancelAt: 1_700_086_400,
+    });
+    const activeSubscription = createSubscription({
+      orgId: org.id,
+      customerId,
+      status: "active",
+      subscriptionId,
+    });
+
+    await syncSubscriptionToOrganization(cancelingSubscription);
+
+    const stripe = getStripeClient();
+    const retrieveSubscription = jest
+      .spyOn(stripe.subscriptions, "retrieve")
+      .mockResolvedValue(cancelingSubscription);
+    const updateSubscription = jest
+      .spyOn(stripe.subscriptions, "update")
+      .mockResolvedValue(activeSubscription);
+
+    try {
+      await reactivateSubscription(org.id);
+      expect(updateSubscription).toHaveBeenCalledWith(subscriptionId, {
+        cancel_at: "",
+        cancel_at_period_end: false,
+      });
+    } finally {
+      retrieveSubscription.mockRestore();
+      updateSubscription.mockRestore();
+    }
   });
 
   it("repairs stale paid state from Stripe when a cancellation webhook was missed", async () => {
