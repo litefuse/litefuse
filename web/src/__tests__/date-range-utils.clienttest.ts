@@ -2,7 +2,10 @@
  * @jest-environment node
  */
 
-import { formatDateRange } from "@/src/utils/date-range-utils";
+import {
+  clampTableTimeRangeToLookbackLimit,
+  formatDateRange,
+} from "@/src/utils/date-range-utils";
 
 describe("formatDateRange", () => {
   beforeEach(() => {
@@ -21,5 +24,39 @@ describe("formatDateRange", () => {
     );
 
     expect(formatted).toBe("Mar 01 - Mar 07");
+  });
+});
+
+describe("clampTableTimeRangeToLookbackLimit", () => {
+  const now = new Date("2026-07-30T12:00:00.000Z");
+
+  it("clamps an unavailable preset to the largest available table range", () => {
+    expect(
+      clampTableTimeRangeToLookbackLimit({ range: "last90Days" }, 30, now),
+    ).toEqual({ range: "last30Days" });
+  });
+
+  it("clamps a custom range to the access cutoff", () => {
+    expect(
+      clampTableTimeRangeToLookbackLimit(
+        {
+          from: new Date("2026-06-01T00:00:00.000Z"),
+          to: now,
+        },
+        30,
+        now,
+      ),
+    ).toEqual({
+      from: new Date("2026-06-30T12:00:00.000Z"),
+      to: now,
+    });
+  });
+
+  it("does not clamp unlimited access", () => {
+    const timeRange = { range: "last90Days" };
+
+    expect(clampTableTimeRangeToLookbackLimit(timeRange, false, now)).toBe(
+      timeRange,
+    );
   });
 });

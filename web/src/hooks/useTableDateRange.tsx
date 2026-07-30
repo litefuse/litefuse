@@ -5,10 +5,12 @@ import {
   rangeToString,
   rangeFromString,
   getAbbreviatedTimeRange,
+  clampTableTimeRangeToLookbackLimit,
   type TimeRange,
 } from "@/src/utils/date-range-utils";
 import { useMemo } from "react";
 import useSessionStorage from "@/src/components/useSessionStorage";
+import { useEntitlementLimit } from "@/src/features/entitlements/hooks";
 
 export interface UseTableDateRangeOutput {
   timeRange: TimeRange;
@@ -22,6 +24,7 @@ export function useTableDateRange(
   } = {},
 ): UseTableDateRangeOutput {
   const fallbackAggregation = options.defaultRelativeAggregation ?? "last1Day";
+  const lookbackLimit = useEntitlementLimit("data-access-days");
 
   // Get stored preference from local storage
   const [storedDateRange, setStoredDateRange] = useSessionStorage(
@@ -35,14 +38,19 @@ export function useTableDateRange(
   });
 
   return useMemo(() => {
-    const timeRange = rangeFromString(
-      queryParams.dateRange,
-      TABLE_AGGREGATION_OPTIONS,
-      fallbackAggregation,
+    const timeRange = clampTableTimeRangeToLookbackLimit(
+      rangeFromString(
+        queryParams.dateRange,
+        TABLE_AGGREGATION_OPTIONS,
+        fallbackAggregation,
+      ),
+      lookbackLimit,
     );
 
     const setTimeRange = (timeRange: TimeRange) => {
-      const newParam = rangeToString(timeRange);
+      const newParam = rangeToString(
+        clampTableTimeRangeToLookbackLimit(timeRange, lookbackLimit),
+      );
       setQueryParams({ dateRange: newParam });
       // Also update local storage for future sessions
       setStoredDateRange(newParam);
@@ -55,6 +63,7 @@ export function useTableDateRange(
   }, [
     queryParams.dateRange,
     fallbackAggregation,
+    lookbackLimit,
     setQueryParams,
     setStoredDateRange,
   ]);

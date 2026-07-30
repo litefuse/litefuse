@@ -56,12 +56,12 @@ import {
   type AgentGraphDataResponse,
   AgentGraphDataSchema,
 } from "@/src/features/trace-graph-view/types";
-import { env } from "@/src/env.mjs";
 import {
   toDomainWithStringifiedMetadata,
   toDomainArrayWithStringifiedMetadata,
 } from "@/src/utils/clientSideDomainTypes";
 import partition from "lodash/partition";
+import { getProjectDataAccessLimitFilter } from "@/src/features/entitlements/server/dataAccess";
 
 const TraceFilterOptions = z.object({
   projectId: z.string(), // Required for protectedProjectProcedure
@@ -131,9 +131,14 @@ export const traceRouter = createTRPCRouter({
         return { traces: [] };
       }
 
+      const dataAccessFilter = getProjectDataAccessLimitFilter({
+        sessionUser: ctx.session.user,
+        projectId: ctx.session.projectId,
+        timestampColumn: "timestamp",
+      });
       const traces = await getTracesTable({
         projectId: ctx.session.projectId,
-        filter: filterState,
+        filter: [...filterState, ...dataAccessFilter],
         searchQuery: input.searchQuery ?? undefined,
         searchType: input.searchType ?? ["id"],
         orderBy: normalizeOrderByForTable({
@@ -159,9 +164,14 @@ export const traceRouter = createTRPCRouter({
         return { totalCount: 0 };
       }
 
+      const dataAccessFilter = getProjectDataAccessLimitFilter({
+        sessionUser: ctx.session.user,
+        projectId: ctx.session.projectId,
+        timestampColumn: "timestamp",
+      });
       const count = await getTracesTableCount({
         projectId: ctx.session.projectId,
-        filter: filterState,
+        filter: [...filterState, ...dataAccessFilter],
         searchType: input.searchType,
         searchQuery: input.searchQuery ?? undefined,
         limit: 1,
@@ -216,11 +226,17 @@ export const traceRouter = createTRPCRouter({
             f.operator === "any of"
           ),
       );
+      const dataAccessFilter = getProjectDataAccessLimitFilter({
+        sessionUser: ctx.session.user,
+        projectId: ctx.session.projectId,
+        timestampColumn: "timestamp",
+      });
 
       const res = await getTracesTableMetrics({
         projectId: ctx.session.projectId,
         filter: [
           ...filterWithoutCommentIds,
+          ...dataAccessFilter,
           {
             type: "stringOptions",
             operator: "any of",
@@ -261,8 +277,17 @@ export const traceRouter = createTRPCRouter({
         timestampFilter: z.array(timeFilter).optional(),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const { timestampFilter } = input;
+      const dataAccessFilter = getProjectDataAccessLimitFilter({
+        sessionUser: ctx.session.user,
+        projectId: ctx.session.projectId,
+        timestampColumn: "timestamp",
+      });
+      const effectiveTimestampFilter = [
+        ...(timestampFilter ?? []),
+        ...dataAccessFilter,
+      ];
 
       const [
         numericScoreNames,
@@ -272,30 +297,33 @@ export const traceRouter = createTRPCRouter({
         userIds,
         sessionIds,
       ] = await Promise.all([
-        getNumericScoresGroupedByName(input.projectId, timestampFilter ?? []),
+        getNumericScoresGroupedByName(
+          input.projectId,
+          effectiveTimestampFilter,
+        ),
         getCategoricalScoresGroupedByName(
           input.projectId,
-          timestampFilter ?? [],
+          effectiveTimestampFilter,
         ),
         getTracesGroupedByName(
           input.projectId,
           tracesTableUiColumnDefinitionsForDoris,
-          timestampFilter ?? [],
+          effectiveTimestampFilter,
         ),
         getTracesGroupedByTags({
           projectId: input.projectId,
-          filter: timestampFilter ?? [],
+          filter: effectiveTimestampFilter,
         }),
         getTracesGroupedByUsers(
           input.projectId,
-          timestampFilter ?? [],
+          effectiveTimestampFilter,
           undefined,
           100,
           0,
         ),
         getTracesGroupedBySessionId(
           input.projectId,
-          timestampFilter ?? [],
+          effectiveTimestampFilter,
           undefined,
           100,
           0,
