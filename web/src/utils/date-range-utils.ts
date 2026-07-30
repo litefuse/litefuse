@@ -203,6 +203,13 @@ export const isDashboardDateRangeOptionAvailable = ({
   return limitDays >= minutes / (24 * 60);
 };
 
+export const getAvailableDashboardDateRangeOptions = (
+  limitDays: number | false,
+): DashboardDateRangeAggregationOption[] =>
+  DASHBOARD_AGGREGATION_OPTIONS.filter((option) =>
+    isDashboardDateRangeOptionAvailable({ option, limitDays }),
+  );
+
 type SelectedTimeOption = z.infer<typeof SelectedTimeOptionSchema>;
 
 const TABLE_DATE_RANGE_AGGREGATION_SETTINGS = new Map<
@@ -370,9 +377,10 @@ export const getDataAccessCutoffDate = (
  * Restrict table time ranges to the current plan's data-access window.
  * This also handles stale URL/session-storage values after a plan downgrade.
  */
-export const clampTableTimeRangeToLookbackLimit = (
+const clampTimeRangeToLookbackLimit = (
   timeRange: TimeRange,
   limitDays: number | false,
+  aggregationOptions: readonly DateRangeAggregationOption[],
   now = new Date(),
 ): TimeRange => {
   if (limitDays === false) return timeRange;
@@ -390,15 +398,15 @@ export const clampTableTimeRangeToLookbackLimit = (
       return timeRange;
     }
 
-    const largestAvailablePreset = TABLE_AGGREGATION_OPTIONS.filter(
-      (option) => {
+    const largestAvailablePreset = aggregationOptions
+      .filter((option) => {
         const minutes = TIME_RANGES[option].minutes;
         return minutes !== null && minutes <= limitDays * 24 * 60;
-      },
-    ).at(-1);
+      })
+      .at(-1);
 
     return {
-      range: largestAvailablePreset ?? TABLE_AGGREGATION_OPTIONS[0],
+      range: largestAvailablePreset ?? aggregationOptions[0],
     };
   }
 
@@ -412,6 +420,30 @@ export const clampTableTimeRangeToLookbackLimit = (
     to: boundedTo,
   };
 };
+
+export const clampTableTimeRangeToLookbackLimit = (
+  timeRange: TimeRange,
+  limitDays: number | false,
+  now = new Date(),
+): TimeRange =>
+  clampTimeRangeToLookbackLimit(
+    timeRange,
+    limitDays,
+    TABLE_AGGREGATION_OPTIONS,
+    now,
+  );
+
+export const clampDashboardTimeRangeToLookbackLimit = (
+  timeRange: TimeRange,
+  limitDays: number | false,
+  now = new Date(),
+): TimeRange =>
+  clampTimeRangeToLookbackLimit(
+    timeRange,
+    limitDays,
+    DASHBOARD_AGGREGATION_OPTIONS,
+    now,
+  );
 
 /**
  * =======================
