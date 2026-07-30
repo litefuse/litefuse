@@ -9,6 +9,7 @@ import {
 } from "@langfuse/shared/src/server";
 import { env } from "@/src/env.mjs";
 import { applyCommentFilters } from "@langfuse/shared/src/server";
+import { getProjectDataAccessLimitFilter } from "@/src/features/entitlements/server/dataAccess";
 
 const GetAllGenerationsInput = GenerationTableOptions.extend({
   ...paginationZod,
@@ -31,10 +32,15 @@ export const getAllQueries = {
         return { generations: [] };
       }
 
+      const dataAccessFilter = getProjectDataAccessLimitFilter({
+        sessionUser: ctx.session.user,
+        projectId: ctx.session.projectId,
+        timestampColumn: "startTime",
+      });
       const { generations } = await getAllGenerations({
         input: {
           ...input,
-          filter: filterState,
+          filter: [...filterState, ...dataAccessFilter],
         },
         selectIOAndMetadata: false,
       });
@@ -54,9 +60,14 @@ export const getAllQueries = {
         return { totalCount: 0 };
       }
 
+      const dataAccessFilter = getProjectDataAccessLimitFilter({
+        sessionUser: ctx.session.user,
+        projectId: ctx.session.projectId,
+        timestampColumn: "startTime",
+      });
       const queryOpts = {
         projectId: ctx.session.projectId,
-        filter: filterState,
+        filter: [...filterState, ...dataAccessFilter],
         limit: 1,
         offset: 0,
         selectIOAndMetadata: false,

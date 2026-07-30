@@ -19,6 +19,7 @@ import {
   getTracesGroupedByTags,
   tracesTableUiColumnDefinitionsForDoris,
 } from "@langfuse/shared/src/server";
+import { getProjectDataAccessLimitFilter } from "@/src/features/entitlements/server/dataAccess";
 
 export const filterOptionsQuery = protectedProjectProcedure
   .input(
@@ -30,13 +31,22 @@ export const filterOptionsQuery = protectedProjectProcedure
         .default("GENERATION"),
     }),
   )
-  .query(async ({ input }) => {
+  .query(async ({ input, ctx }) => {
     const { startTimeFilter } = input;
+    const dataAccessFilter = getProjectDataAccessLimitFilter({
+      sessionUser: ctx.session.user,
+      projectId: ctx.session.projectId,
+      timestampColumn: "startTime",
+    });
+    const effectiveStartTimeFilter = [
+      ...(startTimeFilter ?? []),
+      ...dataAccessFilter,
+    ];
 
     // map startTimeFilter to Timestamp column for trace queries
     const traceTimestampFilters =
-      startTimeFilter && startTimeFilter.length > 0
-        ? startTimeFilter.map((f) => ({
+      effectiveStartTimeFilter.length > 0
+        ? effectiveStartTimeFilter.map((f) => ({
             column: "Timestamp" as const,
             operator: f.operator,
             value: f.value,
@@ -80,30 +90,36 @@ export const filterOptionsQuery = protectedProjectProcedure
       // categorical scores
       getCategoricalScoresGroupedByName(input.projectId, traceTimestampFilters),
       //model
-      getObservationsGroupedByModel(input.projectId, startTimeFilter ?? []),
+      getObservationsGroupedByModel(input.projectId, effectiveStartTimeFilter),
       //name
       getObservationsGroupedByName(
         input.projectId,
-        startTimeFilter ?? [],
+        effectiveStartTimeFilter,
         input.observationType === "ALL" ? null : input.observationType,
       ),
       //prompt name
       getObservationsGroupedByPromptName(
         input.projectId,
-        startTimeFilter ?? [],
+        effectiveStartTimeFilter,
       ),
       //trace name
       getDorisTraceName(),
       // trace tags
       getDorisTraceTags(),
       // modelId
-      getObservationsGroupedByModelId(input.projectId, startTimeFilter ?? []),
+      getObservationsGroupedByModelId(
+        input.projectId,
+        effectiveStartTimeFilter,
+      ),
       // available tool names (from tool_definitions)
-      getObservationsGroupedByToolName(input.projectId, startTimeFilter ?? []),
+      getObservationsGroupedByToolName(
+        input.projectId,
+        effectiveStartTimeFilter,
+      ),
       // called tool names (from tool_call_names)
       getObservationsGroupedByCalledToolName(
         input.projectId,
-        startTimeFilter ?? [],
+        effectiveStartTimeFilter,
       ),
     ]);
 

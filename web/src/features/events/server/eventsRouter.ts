@@ -33,6 +33,7 @@ import {
   type AgentGraphDataResponse,
 } from "@/src/features/trace-graph-view/types";
 import type * as opentelemetry from "@opentelemetry/api";
+import { getProjectDataAccessLimitFilter } from "@/src/features/entitlements/server/dataAccess";
 
 const GetAllEventsInput = EventsTableOptions.extend({
   ...paginationZod,
@@ -84,6 +85,11 @@ export const eventsRouter = createTRPCRouter({
         return { observations: [] };
       }
 
+      const dataAccessFilter = getProjectDataAccessLimitFilter({
+        sessionUser: ctx.session.user,
+        projectId: ctx.session.projectId,
+        timestampColumn: "startTime",
+      });
       return instrumentAsync(
         {
           name: "get-event-list-trpc",
@@ -97,7 +103,7 @@ export const eventsRouter = createTRPCRouter({
 
           return getEventList({
             projectId: ctx.session.projectId,
-            filter: filterState,
+            filter: [...filterState, ...dataAccessFilter],
             searchQuery: input.searchQuery ?? undefined,
             searchType: input.searchType,
             orderBy: normalizedOrderBy,
@@ -121,6 +127,11 @@ export const eventsRouter = createTRPCRouter({
         return { totalCount: 0 };
       }
 
+      const dataAccessFilter = getProjectDataAccessLimitFilter({
+        sessionUser: ctx.session.user,
+        projectId: ctx.session.projectId,
+        timestampColumn: "startTime",
+      });
       return instrumentAsync(
         {
           name: "get-event-count-trpc",
@@ -133,7 +144,7 @@ export const eventsRouter = createTRPCRouter({
           addAttributesToSpan({ span, input, orderBy: normalizedOrderBy });
           return getEventCount({
             projectId: ctx.session.projectId,
-            filter: filterState,
+            filter: [...filterState, ...dataAccessFilter],
             searchQuery: input.searchQuery ?? undefined,
             searchType: input.searchType,
             orderBy: normalizedOrderBy,
@@ -149,7 +160,12 @@ export const eventsRouter = createTRPCRouter({
         hasParentObservation: zodSchema.boolean().optional(),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      const dataAccessFilter = getProjectDataAccessLimitFilter({
+        sessionUser: ctx.session.user,
+        projectId: ctx.session.projectId,
+        timestampColumn: "startTime",
+      });
       return instrumentAsync(
         {
           name: "get-event-filter-options-trpc",
@@ -159,7 +175,10 @@ export const eventsRouter = createTRPCRouter({
           addAttributesToSpan({ span, input, orderBy: undefined });
           return getEventFilterOptions({
             projectId: input.projectId,
-            startTimeFilter: input.startTimeFilter,
+            startTimeFilter: [
+              ...(input.startTimeFilter ?? []),
+              ...dataAccessFilter,
+            ],
             hasParentObservation: input.hasParentObservation,
           });
         },

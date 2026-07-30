@@ -53,6 +53,7 @@ import {
 import chunk from "lodash/chunk";
 import { aggregateScores } from "@/src/features/scores/lib/aggregateScores";
 import { toDomainArrayWithStringifiedMetadata } from "@/src/utils/clientSideDomainTypes";
+import { getProjectDataAccessLimitFilter } from "@/src/features/entitlements/server/dataAccess";
 
 const SessionFilterOptions = z.object({
   projectId: z.string(), // Required for protectedProjectProcedure
@@ -177,10 +178,15 @@ export const sessionRouter = createTRPCRouter({
         return { sessions: [] };
       }
 
-      const finalFilter = await getPublicSessionsFilter(
-        input.projectId,
-        filterState,
-      );
+      const dataAccessFilter = getProjectDataAccessLimitFilter({
+        sessionUser: ctx.session.user,
+        projectId: ctx.session.projectId,
+        timestampColumn: "createdAt",
+      });
+      const finalFilter = await getPublicSessionsFilter(input.projectId, [
+        ...filterState,
+        ...dataAccessFilter,
+      ]);
       const normalizedOrderBy = normalizeOrderByForTable({
         orderBy: input.orderBy,
         expectedTimeColumn: "createdAt",
@@ -240,10 +246,15 @@ export const sessionRouter = createTRPCRouter({
         return { sessions: [] };
       }
 
-      const finalFilter = await getPublicSessionsFilter(
-        input.projectId,
-        filterState,
-      );
+      const dataAccessFilter = getProjectDataAccessLimitFilter({
+        sessionUser: ctx.session.user,
+        projectId: ctx.session.projectId,
+        timestampColumn: "createdAt",
+      });
+      const finalFilter = await getPublicSessionsFilter(input.projectId, [
+        ...filterState,
+        ...dataAccessFilter,
+      ]);
       const normalizedOrderBy = normalizeOrderByForTable({
         orderBy: input.orderBy,
         expectedTimeColumn: "createdAt",
@@ -302,10 +313,15 @@ export const sessionRouter = createTRPCRouter({
         return { totalCount: 0 };
       }
 
-      const finalFilter = await getPublicSessionsFilter(
-        input.projectId,
-        filterState,
-      );
+      const dataAccessFilter = getProjectDataAccessLimitFilter({
+        sessionUser: ctx.session.user,
+        projectId: ctx.session.projectId,
+        timestampColumn: "createdAt",
+      });
+      const finalFilter = await getPublicSessionsFilter(input.projectId, [
+        ...filterState,
+        ...dataAccessFilter,
+      ]);
       const normalizedOrderBy = normalizeOrderByForTable({
         orderBy: input.orderBy,
         expectedTimeColumn: "createdAt",
@@ -336,10 +352,15 @@ export const sessionRouter = createTRPCRouter({
         return { totalCount: 0 };
       }
 
-      const finalFilter = await getPublicSessionsFilter(
-        input.projectId,
-        filterState,
-      );
+      const dataAccessFilter = getProjectDataAccessLimitFilter({
+        sessionUser: ctx.session.user,
+        projectId: ctx.session.projectId,
+        timestampColumn: "createdAt",
+      });
+      const finalFilter = await getPublicSessionsFilter(input.projectId, [
+        ...filterState,
+        ...dataAccessFilter,
+      ]);
       const normalizedOrderBy = normalizeOrderByForTable({
         orderBy: input.orderBy,
         expectedTimeColumn: "createdAt",
@@ -507,8 +528,17 @@ export const sessionRouter = createTRPCRouter({
         timestampFilter: z.array(timeFilter).optional(),
       }),
     )
-    .query(async ({ input }): Promise<SessionOptions> => {
+    .query(async ({ input, ctx }): Promise<SessionOptions> => {
       const { timestampFilter } = input;
+      const dataAccessFilter = getProjectDataAccessLimitFilter({
+        sessionUser: ctx.session.user,
+        projectId: ctx.session.projectId,
+        timestampColumn: "createdAt",
+      });
+      const effectiveTimestampFilter = [
+        ...(timestampFilter ?? []),
+        ...dataAccessFilter,
+      ];
       const columns = [
         ...tracesTableUiColumnDefinitionsForDoris,
         {
@@ -530,13 +560,13 @@ export const sessionRouter = createTRPCRouter({
           value: "",
         },
       ];
-      if (timestampFilter && timestampFilter.length > 0) {
-        filter.push(...timestampFilter);
+      if (effectiveTimestampFilter.length > 0) {
+        filter.push(...effectiveTimestampFilter);
       }
       // Create a proper trace timestamp filter for score functions
       const scoreTimestampFilter =
-        timestampFilter && timestampFilter.length > 0
-          ? timestampFilter.map((tf) => ({
+        effectiveTimestampFilter.length > 0
+          ? effectiveTimestampFilter.map((tf) => ({
               ...tf,
               column: "Timestamp", // Use exact trace column name for score functions
             }))

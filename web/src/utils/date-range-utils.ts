@@ -356,6 +356,63 @@ export type AbsoluteTimeRange = {
 
 export type TimeRange = RelativeTimeRange | AbsoluteTimeRange;
 
+const DATA_ACCESS_MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+export const getDataAccessCutoffDate = (
+  limitDays: number | false,
+  now = new Date(),
+): Date | undefined => {
+  if (limitDays === false) return undefined;
+  return new Date(now.getTime() - limitDays * DATA_ACCESS_MS_PER_DAY);
+};
+
+/**
+ * Restrict table time ranges to the current plan's data-access window.
+ * This also handles stale URL/session-storage values after a plan downgrade.
+ */
+export const clampTableTimeRangeToLookbackLimit = (
+  timeRange: TimeRange,
+  limitDays: number | false,
+  now = new Date(),
+): TimeRange => {
+  if (limitDays === false) return timeRange;
+
+  const cutoff = getDataAccessCutoffDate(limitDays, now)!;
+
+  if ("range" in timeRange) {
+    const selectedMinutes =
+      TIME_RANGES[timeRange.range as keyof typeof TIME_RANGES]?.minutes;
+    if (
+      selectedMinutes !== null &&
+      selectedMinutes !== undefined &&
+      selectedMinutes <= limitDays * 24 * 60
+    ) {
+      return timeRange;
+    }
+
+    const largestAvailablePreset = TABLE_AGGREGATION_OPTIONS.filter(
+      (option) => {
+        const minutes = TIME_RANGES[option].minutes;
+        return minutes !== null && minutes <= limitDays * 24 * 60;
+      },
+    ).at(-1);
+
+    return {
+      range: largestAvailablePreset ?? TABLE_AGGREGATION_OPTIONS[0],
+    };
+  }
+
+  const boundedTo = timeRange.to.getTime() > now.getTime() ? now : timeRange.to;
+  if (boundedTo.getTime() < cutoff.getTime()) {
+    return { from: cutoff, to: now };
+  }
+
+  return {
+    from: timeRange.from.getTime() < cutoff.getTime() ? cutoff : timeRange.from,
+    to: boundedTo,
+  };
+};
+
 /**
  * =======================
  * Interval Configuration

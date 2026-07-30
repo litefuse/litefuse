@@ -1,5 +1,10 @@
 import { Button } from "@/src/components/ui/button";
-import React, { type Dispatch, type SetStateAction, useState } from "react";
+import React, {
+  type Dispatch,
+  type SetStateAction,
+  useMemo,
+  useState,
+} from "react";
 import { Input } from "@/src/components/ui/input";
 import { DataTableColumnVisibilityFilter } from "@/src/components/table/data-table-column-visibility-filter";
 import { PopoverFilterBuilder } from "@/src/features/filters/components/filter-builder";
@@ -33,6 +38,8 @@ import { TimeRangePicker } from "@/src/components/date-picker";
 import {
   type TimeRange,
   TABLE_AGGREGATION_OPTIONS,
+  getDataAccessCutoffDate,
+  isTableDataRangeOptionAvailable,
 } from "@/src/utils/date-range-utils";
 import { DataTableSelectAllBanner } from "@/src/components/table/data-table-multi-select-actions/data-table-select-all-banner";
 import { cn } from "@/src/utils/tailwind";
@@ -51,6 +58,7 @@ import {
   DataTableRefreshButton,
   type RefreshInterval,
 } from "@/src/components/table/data-table-refresh-button";
+import { useEntitlementLimit } from "@/src/features/entitlements/hooks";
 
 export interface MultiSelect {
   selectAll: boolean;
@@ -159,6 +167,21 @@ export function DataTableToolbar<TData, TValue>({
   const capture = usePostHogClientCapture();
   const { open: controlsPanelOpen, setOpen: setControlsPanelOpen } =
     useDataTableControls();
+  const lookbackLimit = useEntitlementLimit("data-access-days");
+  const availableTimeRangePresets = useMemo(
+    () =>
+      TABLE_AGGREGATION_OPTIONS.filter((option) =>
+        isTableDataRangeOptionAvailable({
+          option,
+          limitDays: lookbackLimit,
+        }),
+      ),
+    [lookbackLimit],
+  );
+  const dataAccessCutoff = useMemo(
+    () => getDataAccessCutoffDate(lookbackLimit),
+    [lookbackLimit],
+  );
 
   // Only show the toggle button when we're using the new sidebar
   const hasNewSidebar = !filterColumnDefinition && filterState !== undefined;
@@ -326,7 +349,10 @@ export function DataTableToolbar<TData, TValue>({
           <TimeRangePicker
             timeRange={timeRange}
             onTimeRangeChange={setTimeRange}
-            timeRangePresets={TABLE_AGGREGATION_OPTIONS}
+            timeRangePresets={availableTimeRangePresets}
+            disabled={
+              dataAccessCutoff ? { before: dataAccessCutoff } : undefined
+            }
             className="my-0 max-w-full overflow-x-auto"
           />
         )}

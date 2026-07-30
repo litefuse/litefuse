@@ -74,6 +74,7 @@ import {
   isTraceScore,
 } from "@/src/features/scores/lib/helpers";
 import { toDomainWithStringifiedMetadata } from "@/src/utils/clientSideDomainTypes";
+import { getProjectDataAccessLimitFilter } from "@/src/features/entitlements/server/dataAccess";
 
 const ScoreFilterOptions = z.object({
   projectId: z.string(), // Required for protectedProjectProcedure
@@ -108,13 +109,18 @@ export const scoresRouter = createTRPCRouter({
   all: protectedProjectProcedure
     .input(ScoreAllOptions)
     .query(async ({ input, ctx }) => {
+      const dataAccessFilter = getProjectDataAccessLimitFilter({
+        sessionUser: ctx.session.user,
+        projectId: ctx.session.projectId,
+        timestampColumn: "timestamp",
+      });
       const normalizedOrderBy = normalizeOrderByForTable({
         orderBy: input.orderBy,
         expectedTimeColumn: "timestamp",
       });
       const dorisScoreData = await getScoresUiTable({
         projectId: input.projectId,
-        filter: input.filter ?? [],
+        filter: [...(input.filter ?? []), ...dataAccessFilter],
         orderBy: normalizedOrderBy,
         limit: input.limit,
         offset: input.page * input.limit,
@@ -189,14 +195,19 @@ export const scoresRouter = createTRPCRouter({
     }),
   countAll: protectedProjectProcedure
     .input(ScoreAllOptions)
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      const dataAccessFilter = getProjectDataAccessLimitFilter({
+        sessionUser: ctx.session.user,
+        projectId: ctx.session.projectId,
+        timestampColumn: "timestamp",
+      });
       const normalizedOrderBy = normalizeOrderByForTable({
         orderBy: input.orderBy,
         expectedTimeColumn: "timestamp",
       });
       const dorisScoreData = await getScoresUiCount({
         projectId: input.projectId,
-        filter: input.filter ?? [],
+        filter: [...(input.filter ?? []), ...dataAccessFilter],
         orderBy: normalizedOrderBy,
         limit: 1,
         offset: 0,
@@ -212,13 +223,18 @@ export const scoresRouter = createTRPCRouter({
   allFromEvents: protectedProjectProcedure
     .input(ScoreAllOptions)
     .query(async ({ input, ctx }) => {
+      const dataAccessFilter = getProjectDataAccessLimitFilter({
+        sessionUser: ctx.session.user,
+        projectId: ctx.session.projectId,
+        timestampColumn: "timestamp",
+      });
       const normalizedOrderBy = normalizeOrderByForTable({
         orderBy: input.orderBy,
         expectedTimeColumn: "timestamp",
       });
       const dorisScoreData = await getScoresUiTableFromEvents({
         projectId: input.projectId,
-        filter: input.filter ?? [],
+        filter: [...(input.filter ?? []), ...dataAccessFilter],
         orderBy: normalizedOrderBy,
         limit: input.limit,
         offset: input.page * input.limit,
@@ -274,14 +290,19 @@ export const scoresRouter = createTRPCRouter({
    */
   countAllFromEvents: protectedProjectProcedure
     .input(ScoreAllOptions)
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      const dataAccessFilter = getProjectDataAccessLimitFilter({
+        sessionUser: ctx.session.user,
+        projectId: ctx.session.projectId,
+        timestampColumn: "timestamp",
+      });
       const normalizedOrderBy = normalizeOrderByForTable({
         orderBy: input.orderBy,
         expectedTimeColumn: "timestamp",
       });
       const count = await getScoresUiCountFromEvents({
         projectId: input.projectId,
-        filter: input.filter ?? [],
+        filter: [...(input.filter ?? []), ...dataAccessFilter],
         orderBy: normalizedOrderBy,
         limit: 1,
         offset: 0,
@@ -325,13 +346,22 @@ export const scoresRouter = createTRPCRouter({
         timestampFilter: z.array(timeFilter).optional(),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const { timestampFilter } = input;
+      const dataAccessFilter = getProjectDataAccessLimitFilter({
+        sessionUser: ctx.session.user,
+        projectId: ctx.session.projectId,
+        timestampColumn: "timestamp",
+      });
+      const effectiveTimestampFilter = [
+        ...(timestampFilter ?? []),
+        ...dataAccessFilter,
+      ];
 
       const eventsFilter: FilterState = [];
-      if (timestampFilter && timestampFilter.length > 0) {
+      if (effectiveTimestampFilter.length > 0) {
         eventsFilter.push(
-          ...timestampFilter.map((tf) => ({
+          ...effectiveTimestampFilter.map((tf) => ({
             ...tf,
             column: "startTime" as const,
           })),
@@ -343,7 +373,7 @@ export const scoresRouter = createTRPCRouter({
 
       const [names, tags, traceNames, userIds, stringValues] =
         await Promise.all([
-          getScoreNames(input.projectId, timestampFilter ?? []),
+          getScoreNames(input.projectId, effectiveTimestampFilter),
           getEventsGroupedByTraceTags(input.projectId, eventsFilter, {
             extraWhereRaw: scoredTracesScope,
           }),
@@ -353,7 +383,7 @@ export const scoresRouter = createTRPCRouter({
           getEventsGroupedByUserId(input.projectId, eventsFilter, {
             extraWhereRaw: scoredTracesScope,
           }),
-          getScoreStringValues(input.projectId, timestampFilter ?? []),
+          getScoreStringValues(input.projectId, effectiveTimestampFilter),
         ]);
 
       return {
@@ -377,28 +407,37 @@ export const scoresRouter = createTRPCRouter({
         timestampFilter: z.array(timeFilter).optional(),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const { timestampFilter } = input;
+      const dataAccessFilter = getProjectDataAccessLimitFilter({
+        sessionUser: ctx.session.user,
+        projectId: ctx.session.projectId,
+        timestampColumn: "timestamp",
+      });
+      const effectiveTimestampFilter = [
+        ...(timestampFilter ?? []),
+        ...dataAccessFilter,
+      ];
       const [names, tags, traceNames, userIds, stringValues] =
         await Promise.all([
-          getScoreNames(input.projectId, timestampFilter ?? []),
+          getScoreNames(input.projectId, effectiveTimestampFilter),
           getTracesGroupedByTags({
             projectId: input.projectId,
-            filter: timestampFilter ?? [],
+            filter: effectiveTimestampFilter,
           }),
           getTracesGroupedByName(
             input.projectId,
             tracesTableUiColumnDefinitionsForDoris,
-            timestampFilter ?? [],
+            effectiveTimestampFilter,
           ),
           getTracesGroupedByUsers(
             input.projectId,
-            timestampFilter ?? [],
+            effectiveTimestampFilter,
             undefined,
             100, // limit to top 100 users
             0,
           ),
-          getScoreStringValues(input.projectId, timestampFilter ?? []),
+          getScoreStringValues(input.projectId, effectiveTimestampFilter),
         ]);
 
       return {
