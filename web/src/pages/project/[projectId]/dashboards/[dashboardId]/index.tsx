@@ -23,7 +23,7 @@ import { usePostHogClientCapture } from "@/src/features/posthog-analytics/usePos
 import { DashboardGrid } from "@/src/features/widgets/components/DashboardGrid";
 import { useDashboardDateRange } from "@/src/hooks/useDashboardDateRange";
 import {
-  DASHBOARD_AGGREGATION_OPTIONS,
+  getAvailableDashboardDateRangeOptions,
   toAbsoluteTimeRange,
 } from "@/src/utils/date-range-utils";
 import { useEntitlementLimit } from "@/src/features/entitlements/hooks";
@@ -374,7 +374,10 @@ export default function DashboardDetail() {
     mutateCloneDashboard.mutate({ projectId, dashboardId });
   };
 
-  const dashboardTimeRangePresets = DASHBOARD_AGGREGATION_OPTIONS;
+  const dashboardTimeRangePresets = useMemo(
+    () => getAvailableDashboardDateRangeOptions(lookbackLimit),
+    [lookbackLimit],
+  );
   const widgetSchedulerPrefix = `dashboard:${projectId}:${dashboardId}:widget:`;
   const widgetPlacements = useMemo(
     () => localDashboardDefinition?.widgets ?? [],

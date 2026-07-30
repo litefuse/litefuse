@@ -18,8 +18,8 @@ import { useQueryFilterState } from "@/src/features/filters/hooks/useFilterState
 import { LatencyTables } from "@/src/features/dashboard/components/LatencyTables";
 import { useMemo } from "react";
 import {
-  DASHBOARD_AGGREGATION_OPTIONS,
   findClosestDashboardInterval,
+  getAvailableDashboardDateRangeOptions,
   toAbsoluteTimeRange,
   type DashboardDateRangeAggregationOption,
 } from "@/src/utils/date-range-utils";
@@ -130,7 +130,10 @@ export default function Dashboard() {
     },
   ];
 
-  const dashboardTimeRangePresets = DASHBOARD_AGGREGATION_OPTIONS;
+  const dashboardTimeRangePresets = useMemo(
+    () => getAvailableDashboardDateRangeOptions(lookbackLimit),
+    [lookbackLimit],
+  );
 
   const agg = useMemo(() => {
     if ("range" in timeRange) {

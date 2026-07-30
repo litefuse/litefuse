@@ -37,9 +37,11 @@ import { DatePickerWithRange } from "@/src/components/date-picker";
 import { InlineFilterBuilder } from "@/src/features/filters/components/filter-builder";
 import { useDashboardDateRange } from "@/src/hooks/useDashboardDateRange";
 import {
+  getDataAccessCutoffDate,
   toAbsoluteTimeRange,
   type DashboardDateRangeOptions,
 } from "@/src/utils/date-range-utils";
+import { useEntitlementLimit } from "@/src/features/entitlements/hooks";
 import { type ColumnDefinition } from "@langfuse/shared";
 import { Chart } from "@/src/features/widgets/chart-library/Chart";
 import { type DataPoint } from "@/src/features/widgets/chart-library/chart-props";
@@ -348,6 +350,11 @@ export function WidgetForm({
   const { timeRange, setTimeRange } = useDashboardDateRange({
     defaultRelativeAggregation: "last7Days",
   });
+  const lookbackLimit = useEntitlementLimit("data-access-days");
+  const dataAccessCutoff = useMemo(
+    () => getDataAccessCutoffDate(lookbackLimit),
+    [lookbackLimit],
+  );
 
   // Convert timeRange to absolute date range for compatibility
   const dateRange = useMemo(() => {
@@ -1901,6 +1908,13 @@ export function WidgetForm({
                   }}
                   selectedOption={
                     (selectedOption ?? "custom") as DashboardDateRangeOptions
+                  }
+                  disabled={
+                    dataAccessCutoff
+                      ? {
+                          before: dataAccessCutoff,
+                        }
+                      : undefined
                   }
                   className="w-full"
                 />

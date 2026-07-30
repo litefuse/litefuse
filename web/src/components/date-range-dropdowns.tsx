@@ -13,12 +13,11 @@ import {
   DASHBOARD_AGGREGATION_PLACEHOLDER,
   type DashboardDateRangeOptions,
   type TableDateRangeOptions,
-  DASHBOARD_AGGREGATION_OPTIONS,
   type DashboardDateRange,
   TABLE_AGGREGATION_OPTIONS,
   getDateFromOption,
   isTableDataRangeOptionAvailable,
-  isDashboardDateRangeOptionAvailable,
+  getAvailableDashboardDateRangeOptions,
   getAbbreviatedTimeRange,
   getTimeRangeLabel,
 } from "@/src/utils/date-range-utils";
@@ -111,15 +110,10 @@ export const DashboardDateRangeDropdown: React.FC<
   DashboardDateRangeDropdownProps
 > = ({ selectedOption, setDateRangeAndOption }) => {
   const lookbackLimit = useEntitlementLimit("data-access-days");
-  const disabledOptions = useMemo(() => {
-    return DASHBOARD_AGGREGATION_OPTIONS.filter(
-      (option) =>
-        !isDashboardDateRangeOptionAvailable({
-          option,
-          limitDays: lookbackLimit,
-        }),
-    );
-  }, [lookbackLimit]);
+  const availableOptions = useMemo(
+    () => getAvailableDashboardDateRangeOptions(lookbackLimit),
+    [lookbackLimit],
+  );
 
   const onDropDownSelection = (value: DashboardDateRangeOptions) => {
     if (value === DASHBOARD_AGGREGATION_PLACEHOLDER) {
@@ -138,13 +132,12 @@ export const DashboardDateRangeDropdown: React.FC<
 
   const options =
     selectedOption === DASHBOARD_AGGREGATION_PLACEHOLDER
-      ? [...DASHBOARD_AGGREGATION_OPTIONS, DASHBOARD_AGGREGATION_PLACEHOLDER]
-      : [...DASHBOARD_AGGREGATION_OPTIONS];
+      ? [...availableOptions, DASHBOARD_AGGREGATION_PLACEHOLDER]
+      : availableOptions;
   return (
     <BaseDateRangeDropdown
       selectedOption={selectedOption}
       options={options}
-      limitedOptions={disabledOptions}
       onSelectionChange={onDropDownSelection}
     />
   );
