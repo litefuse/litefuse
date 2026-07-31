@@ -105,13 +105,13 @@ Webhook 监听并处理：
 
 ## 账期
 
-- Developer 默认使用 Organization `createdAt` 的 UTC 日期作为月度锚点；
+- Developer 默认使用 Organization `createdAt` 的精确 UTC 时间作为月度锚点；
 - 付费订阅同步时使用 Stripe subscription period start；
 - 订阅失效时使用 period end，缺失时回退当前时间；
-- 锚点变化时清零 `cloudCurrentCycleUsage`；同一账期重复 webhook 不清零；
-- 月末锚点会自动适配短月份，例如 31 日锚定到 2 月最后一天。
+- 锚点变化时将用量快照和更新时间置空，由新账期重新计算，避免把临时的 0 当作有效缓存；
+- 月末锚点会自动适配短月份，例如 31 日锚定到 2 月最后一天，同时保留时、分、秒和毫秒。
 
-当前 `getBillingCycleAnchor` 会把锚点归一到 UTC 当日 00:00。Stripe period start 的具体时分秒不会参与应用账期边界计算，这是 QA 需要覆盖的边界行为。
+订阅同步在 Organization 行锁内重新读取并更新状态。不同 Stripe event 并发到达时会被串行化；终止事件的 subscription ID 与当前 active subscription 不同时会被忽略。
 
 ## Usage Meter 上报
 
@@ -121,11 +121,11 @@ Webhook 监听并处理：
 
 1. 使用 `CronJobs` 中的 `cloud-usage-metering-hourly` checkpoint 确定下一个完整小时 `[start, end)`；
 2. 通过 30 分钟 processing lease 防止多个 Worker 同时处理同一小时；
-3. 查找拥有有效 Stripe Customer、Subscription 和 resolvedPlan 的 Organization；
-4. 按 Doris 服务端 `created_at` 分别统计 trace、observation、score，并跨 Organization 的所有未删除 Project 求和；
-5. 对非零用量 upsert `BillingMeterBackup`，唯一键为 Customer、meter、start、end；
+3. 查找拥有 Stripe Customer 且 metering lifetime 与当前小时相交的 Organization；
+4. 将小时与 `meteringStartAt`、`meteringEndAt` 求交；首次升级和月度账期边界位于小时中间时拆分 segment；
+5. 按 Doris 服务端 `created_at` 统计 trace、observation、score，并对每个非零 segment upsert `BillingMeterBackup`；
 6. 若 `submittedAt` 为空，向 Stripe meter `litefuse_units` 上报；Stripe API 内部最多重试 3 次；
-7. identifier 固定为 `litefuse:{orgId}:{intervalStartSeconds}`；成功后写 `submittedAt`；
+7. identifier 固定为 `litefuse:{orgId}:{segmentStartSeconds}`；meter event timestamp 使用 segment 结束前一毫秒，成功后写 `submittedAt`；
 8. 推进 CronJobs `lastRun`。若仍落后于当前时间，立即补发下一个 job 继续追赶。
 
 当前计数来自 `events_full` 和 `scores`：根事件贡献 trace 计数，全部 event row（包括根事件）贡献 observation 计数，score 独立计数。这与 Langfuse 的 `traces + observations + scores` 口径一致。QA 固定 fixture 的断言为 **4 units**。同一 interval 重跑时，checkpoint 与确定性 identifier 必须保证 Stripe summary 仍为 4。
@@ -141,6 +141,8 @@ Usage Price 在 Stripe 配置为 Graduated：前 200,000 免费，之后 `$0.000
 - `cloudFreeTierUsageThresholdState`
 
 状态边界为 79,999 → `null`、80,000 → `WARNING`、99,999 → `WARNING`、100,000 → `BLOCKED`。人工付费套餐或有效 Stripe 付费套餐不会被免费额度阻断。
+
+上述用量快照仅由 Developer threshold Job 写入。写入带有 Organization `updatedAt` 和账期 anchor 条件；计算期间若发生升级，旧结果会被丢弃。付费 Billing 页面以已提交的 `BillingMeterBackup` 加尚未上报的 Doris 尾段计算，不写 `cloudCurrentCycleUsage`。
 
 `LITEFUSE_FREE_TIER_USAGE_THRESHOLD_ENFORCEMENT_ENABLED=false` 时只统计用量，状态保持为空，不发送邮件、不阻断。开启后，状态变化到 WARNING/BLOCKED 时向 OWNER/ADMIN 发信；涉及 BLOCKED 的进入或退出会使 Organization API Key 缓存失效。
 

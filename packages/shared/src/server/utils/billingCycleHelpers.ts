@@ -1,6 +1,11 @@
 import { getDaysInMonth, subMonths } from "date-fns";
 import type { Organization } from "@prisma/client";
 
+type BillingCycleSource = Pick<
+  Organization,
+  "cloudBillingCycleAnchor" | "createdAt"
+>;
+
 /**
  * Start of day in UTC (00:00:00.000Z)
  */
@@ -30,13 +35,30 @@ export function endOfDayUTC(date: Date): Date {
 }
 
 /**
- * Get billing cycle anchor with fallback to createdAt
- * Always returns start of day in UTC
+ * Get the exact billing cycle anchor with fallback to createdAt.
  */
-export function getBillingCycleAnchor(org: Organization): Date {
-  return org.cloudBillingCycleAnchor
-    ? startOfDayUTC(org.cloudBillingCycleAnchor)
-    : startOfDayUTC(org.createdAt);
+export function getBillingCycleAnchor(org: BillingCycleSource): Date {
+  return new Date(org.cloudBillingCycleAnchor ?? org.createdAt);
+}
+
+function cycleOccurrence(params: {
+  anchor: Date;
+  year: number;
+  month: number;
+}): Date {
+  const normalizedMonth = new Date(Date.UTC(params.year, params.month, 1));
+  const daysInTargetMonth = getDaysInMonth(normalizedMonth);
+  return new Date(
+    Date.UTC(
+      normalizedMonth.getUTCFullYear(),
+      normalizedMonth.getUTCMonth(),
+      Math.min(params.anchor.getUTCDate(), daysInTargetMonth),
+      params.anchor.getUTCHours(),
+      params.anchor.getUTCMinutes(),
+      params.anchor.getUTCSeconds(),
+      params.anchor.getUTCMilliseconds(),
+    ),
+  );
 }
 
 /**
@@ -54,37 +76,28 @@ export function getBillingCycleAnchor(org: Organization): Date {
  * - Since Feb 20 >= Feb 15, we're in Feb's cycle → return Feb 15
  */
 export function getBillingCycleStart(
-  org: Organization,
+  org: BillingCycleSource,
   referenceDate: Date,
 ): Date {
   const anchor = getBillingCycleAnchor(org);
-  const dayOfMonth = anchor.getUTCDate(); // e.g. 31
 
   // Get reference month/year in UTC
   const refYear = referenceDate.getUTCFullYear();
   const refMonth = referenceDate.getUTCMonth();
 
-  // Calculate adjusted day for current month (handles 31 → 28/29/30)
-  const daysInRefMonth = getDaysInMonth(
-    new Date(Date.UTC(refYear, refMonth, 1)),
-  );
-  const adjustedDay = Math.min(dayOfMonth, daysInRefMonth);
-
-  const currentMonthCycleStart = new Date(
-    Date.UTC(refYear, refMonth, adjustedDay),
-  );
+  const currentMonthCycleStart = cycleOccurrence({
+    anchor,
+    year: refYear,
+    month: refMonth,
+  });
 
   // If current month's cycle start is after reference date, use previous month
   if (currentMonthCycleStart > referenceDate) {
-    const prevDate = subMonths(new Date(Date.UTC(refYear, refMonth, 1)), 1);
-    const daysInPrevMonth = getDaysInMonth(prevDate);
-    return new Date(
-      Date.UTC(
-        prevDate.getUTCFullYear(),
-        prevDate.getUTCMonth(),
-        Math.min(dayOfMonth, daysInPrevMonth),
-      ),
-    );
+    return cycleOccurrence({
+      anchor,
+      year: refYear,
+      month: refMonth - 1,
+    });
   }
 
   return currentMonthCycleStart;
@@ -107,32 +120,33 @@ export function getBillingCycleStart(
  * @returns Date when the usage limit resets (start of next billing cycle)
  */
 export function getBillingCycleEnd(
-  org: Organization,
+  org: BillingCycleSource,
   referenceDate: Date,
 ): Date {
   // Get the current cycle start using existing function
   const currentCycleStart = getBillingCycleStart(org, referenceDate);
   const anchor = getBillingCycleAnchor(org);
-  const dayOfMonth = anchor.getUTCDate();
+  return cycleOccurrence({
+    anchor,
+    year: currentCycleStart.getUTCFullYear(),
+    month: currentCycleStart.getUTCMonth() + 1,
+  });
+}
 
-  // Calculate next month's cycle day (one month after current cycle start)
-  const nextMonthDate = new Date(
-    Date.UTC(
-      currentCycleStart.getUTCFullYear(),
-      currentCycleStart.getUTCMonth() + 1,
-      1,
-    ),
-  );
-  const daysInNextMonth = getDaysInMonth(nextMonthDate);
-  const adjustedDay = Math.min(dayOfMonth, daysInNextMonth);
+export function getBillingCycleBoundaries(
+  org: BillingCycleSource,
+  start: Date,
+  end: Date,
+): Date[] {
+  if (start >= end) return [];
 
-  return new Date(
-    Date.UTC(
-      nextMonthDate.getUTCFullYear(),
-      nextMonthDate.getUTCMonth(),
-      adjustedDay,
-    ),
-  );
+  const boundaries: Date[] = [];
+  let boundary = getBillingCycleEnd(org, start);
+  while (boundary < end) {
+    if (boundary > start) boundaries.push(boundary);
+    boundary = getBillingCycleEnd(org, new Date(boundary.getTime() + 1));
+  }
+  return boundaries;
 }
 
 /**

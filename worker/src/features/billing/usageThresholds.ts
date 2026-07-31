@@ -3,7 +3,7 @@ import { prisma } from "@langfuse/shared/src/db";
 import {
   getBillingCycleEnd,
   getBillingCycleStart,
-  getBillingUnitCountsByProjectAndDay,
+  getBillingUnitCountsForProjectWindows,
   invalidateCachedOrgApiKeys,
   logger,
   sendUsageThresholdEmail,
@@ -75,50 +75,53 @@ export async function processUsageThresholds(referenceDate = new Date()) {
   }));
   if (organizations.length === 0) return { processed: 0, blocked: 0 };
 
-  const starts = organizations.map((org) =>
-    getBillingCycleStart(org, referenceDate),
+  const unpaidOrganizations = organizations.filter(
+    (org) => !isPaidOrganization(org),
   );
-  const earliestStart = new Date(
-    Math.min(...starts.map((date) => date.getTime())),
-  );
-  const rows = await getBillingUnitCountsByProjectAndDay({
-    start: earliestStart,
-    end: new Date(referenceDate.getTime() + 1),
+  const projectWindows = unpaidOrganizations.flatMap((org) => {
+    const start = getBillingCycleStart(org, referenceDate);
+    return org.projectIds.map((projectId) => ({ projectId, start }));
   });
-  const projectToOrg = new Map<string, string>();
-  for (const org of organizations) {
-    for (const projectId of org.projectIds) projectToOrg.set(projectId, org.id);
-  }
-  const cycleStartByOrg = new Map(
-    organizations.map((org) => [
-      org.id,
-      getBillingCycleStart(org, referenceDate).toISOString().slice(0, 10),
-    ]),
-  );
-  const usageByOrg = new Map(organizations.map((org) => [org.id, 0]));
-  for (const row of rows) {
-    const orgId = projectToOrg.get(row.projectId);
-    if (!orgId || row.date < (cycleStartByOrg.get(orgId) ?? "")) continue;
-    usageByOrg.set(orgId, (usageByOrg.get(orgId) ?? 0) + row.total);
-  }
+  const usageByProject = await getBillingUnitCountsForProjectWindows({
+    windows: projectWindows,
+    end: referenceDate,
+  });
 
   let blocked = 0;
   for (const org of organizations) {
-    const usage = usageByOrg.get(org.id) ?? 0;
     const paid = isPaidOrganization(org);
+    const usage = paid
+      ? 0
+      : org.projectIds.reduce(
+          (sum, projectId) => sum + (usageByProject.get(projectId) ?? 0),
+          0,
+        );
     const enforcementEnabled =
       env.LITEFUSE_FREE_TIER_USAGE_THRESHOLD_ENFORCEMENT_ENABLED === "true";
     const state = paid || !enforcementEnabled ? null : nextUsageState(usage);
     const previousState = org.cloudFreeTierUsageThresholdState as UsageState;
+    if (paid && previousState === null) continue;
 
-    await prisma.organization.update({
-      where: { id: org.id },
-      data: {
-        cloudCurrentCycleUsage: usage,
-        cloudBillingCycleUpdatedAt: referenceDate,
-        cloudFreeTierUsageThresholdState: state,
+    const updated = await prisma.organization.updateMany({
+      where: {
+        id: org.id,
+        updatedAt: org.updatedAt,
+        cloudBillingCycleAnchor: org.cloudBillingCycleAnchor,
       },
+      data: paid
+        ? { cloudFreeTierUsageThresholdState: null }
+        : {
+            cloudCurrentCycleUsage: usage,
+            cloudBillingCycleUpdatedAt: referenceDate,
+            cloudFreeTierUsageThresholdState: state,
+          },
     });
+    if (updated.count !== 1) {
+      logger.info("Skipping stale Developer usage threshold result", {
+        orgId: org.id,
+      });
+      continue;
+    }
 
     if (
       previousState !== state &&

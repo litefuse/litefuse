@@ -136,6 +136,8 @@ function createSubscription(params: {
     },
     current_period_start: 1_700_000_000,
     current_period_end: 1_700_086_400,
+    start_date: 1_700_000_000,
+    ended_at: null,
     items: {
       data: [
         {
@@ -608,16 +610,93 @@ describe("Litefuse Pro billing", () => {
       status: "active",
     });
 
-    await syncSubscriptionToOrganization(subscription);
     await prisma.organization.update({
       where: { id: org.id },
-      data: { cloudCurrentCycleUsage: 42_000 },
+      data: {
+        cloudCurrentCycleUsage: 12_000,
+        cloudBillingCycleUpdatedAt: new Date(),
+      },
+    });
+    await syncSubscriptionToOrganization(subscription);
+    await expect(
+      prisma.organization.findUniqueOrThrow({ where: { id: org.id } }),
+    ).resolves.toMatchObject({
+      cloudCurrentCycleUsage: null,
+      cloudBillingCycleUpdatedAt: null,
+    });
+
+    await prisma.organization.update({
+      where: { id: org.id },
+      data: {
+        cloudCurrentCycleUsage: 42_000,
+        cloudBillingCycleUpdatedAt: new Date(),
+      },
     });
     await syncSubscriptionToOrganization(subscription);
 
     await expect(
       prisma.organization.findUniqueOrThrow({ where: { id: org.id } }),
-    ).resolves.toMatchObject({ cloudCurrentCycleUsage: 42_000 });
+    ).resolves.toMatchObject({
+      cloudCurrentCycleUsage: 42_000,
+      cloudBillingCycleUpdatedAt: expect.any(Date),
+    });
+  });
+
+  it("does not let a stale deletion clear a newer subscription", async () => {
+    const { org } = await createBillingOrg();
+    const customerId = parseCloudConfig(org.cloudConfig)?.stripe?.customerId!;
+    const oldSubscription = createSubscription({
+      orgId: org.id,
+      customerId,
+      status: "active",
+      subscriptionId: "sub_old",
+    });
+    const newSubscription = createSubscription({
+      orgId: org.id,
+      customerId,
+      status: "active",
+      subscriptionId: "sub_new",
+    });
+
+    await syncSubscriptionToOrganization(oldSubscription);
+    await syncSubscriptionToOrganization(newSubscription);
+    await syncSubscriptionToOrganization(oldSubscription, true);
+
+    const updatedOrg = await prisma.organization.findUniqueOrThrow({
+      where: { id: org.id },
+    });
+    expect(
+      parseCloudConfig(updatedOrg.cloudConfig)?.stripe?.activeSubscriptionId,
+    ).toBe("sub_new");
+  });
+
+  it("serializes concurrent subscription synchronization", async () => {
+    const { org } = await createBillingOrg();
+    const customerId = parseCloudConfig(org.cloudConfig)?.stripe?.customerId!;
+    const subscription = createSubscription({
+      orgId: org.id,
+      customerId,
+      status: "active",
+    });
+    await prisma.organization.update({
+      where: { id: org.id },
+      data: {
+        cloudCurrentCycleUsage: 42_000,
+        cloudBillingCycleUpdatedAt: new Date(),
+      },
+    });
+
+    await Promise.all([
+      syncSubscriptionToOrganization(subscription),
+      syncSubscriptionToOrganization(subscription),
+    ]);
+
+    await expect(
+      prisma.organization.findUniqueOrThrow({ where: { id: org.id } }),
+    ).resolves.toMatchObject({
+      cloudCurrentCycleUsage: null,
+      cloudBillingCycleUpdatedAt: null,
+    });
   });
 
   it("ignores subscriptions from another cloud region", async () => {
@@ -666,13 +745,20 @@ describe("Litefuse Pro billing", () => {
       payload,
       secret: STRIPE_WEBHOOK_SECRET,
     });
+    const retrieveSubscription = jest
+      .spyOn(getStripeClient().subscriptions, "retrieve")
+      .mockResolvedValue(event.data.object as Stripe.Subscription);
 
-    await expect(
-      handleStripeWebhook({ rawBody: payload, signature }),
-    ).resolves.toEqual({ received: true, duplicate: false });
-    await expect(
-      handleStripeWebhook({ rawBody: payload, signature }),
-    ).resolves.toEqual({ received: true, duplicate: true });
+    try {
+      await expect(
+        handleStripeWebhook({ rawBody: payload, signature }),
+      ).resolves.toEqual({ received: true, duplicate: false });
+      await expect(
+        handleStripeWebhook({ rawBody: payload, signature }),
+      ).resolves.toEqual({ received: true, duplicate: true });
+    } finally {
+      retrieveSubscription.mockRestore();
+    }
 
     await expect(
       prisma.stripeWebhookEvent.count({
@@ -714,10 +800,17 @@ describe("Litefuse Pro billing", () => {
       payload,
       secret: STRIPE_WEBHOOK_SECRET,
     });
+    const retrieveSubscription = jest
+      .spyOn(getStripeClient().subscriptions, "retrieve")
+      .mockResolvedValue(event.data.object as Stripe.Subscription);
 
-    await expect(
-      handleStripeWebhook({ rawBody: payload, signature }),
-    ).resolves.toEqual({ received: true, duplicate: false });
+    try {
+      await expect(
+        handleStripeWebhook({ rawBody: payload, signature }),
+      ).resolves.toEqual({ received: true, duplicate: false });
+    } finally {
+      retrieveSubscription.mockRestore();
+    }
     await expect(
       prisma.stripeWebhookEvent.findUniqueOrThrow({
         where: { stripeEventId: event.id },
@@ -757,10 +850,17 @@ describe("Litefuse Pro billing", () => {
       payload,
       secret: STRIPE_WEBHOOK_SECRET,
     });
+    const retrieveSubscription = jest
+      .spyOn(getStripeClient().subscriptions, "retrieve")
+      .mockResolvedValue(event.data.object as Stripe.Subscription);
 
-    await expect(
-      handleStripeWebhook({ rawBody: payload, signature }),
-    ).resolves.toEqual({ received: true, duplicate: true });
+    try {
+      await expect(
+        handleStripeWebhook({ rawBody: payload, signature }),
+      ).resolves.toEqual({ received: true, duplicate: true });
+    } finally {
+      retrieveSubscription.mockRestore();
+    }
     const unchangedOrg = await prisma.organization.findUniqueOrThrow({
       where: { id: org.id },
     });

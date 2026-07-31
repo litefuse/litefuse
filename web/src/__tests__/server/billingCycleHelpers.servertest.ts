@@ -10,7 +10,7 @@ import {
 import { type Organization } from "@langfuse/shared";
 
 describe("getBillingCycleAnchor", () => {
-  it("returns cloudBillingCycleAnchor when set", () => {
+  it("returns the exact cloudBillingCycleAnchor when set", () => {
     const org = {
       id: "org-1",
       cloudBillingCycleAnchor: new Date("2024-01-15T10:30:00Z"),
@@ -19,10 +19,10 @@ describe("getBillingCycleAnchor", () => {
 
     const result = getBillingCycleAnchor(org);
 
-    expect(result).toEqual(new Date("2024-01-15T00:00:00Z")); // start of day
+    expect(result).toEqual(new Date("2024-01-15T10:30:00Z"));
   });
 
-  it("falls back to createdAt when cloudBillingCycleAnchor is null", () => {
+  it("falls back to the exact createdAt when cloudBillingCycleAnchor is null", () => {
     const org = {
       id: "org-1",
       cloudBillingCycleAnchor: null,
@@ -31,7 +31,7 @@ describe("getBillingCycleAnchor", () => {
 
     const result = getBillingCycleAnchor(org);
 
-    expect(result).toEqual(new Date("2024-01-01T00:00:00Z")); // start of day
+    expect(result).toEqual(new Date("2024-01-01T10:30:00Z"));
   });
 });
 
@@ -172,7 +172,19 @@ describe("getBillingCycleStart", () => {
     } as Organization;
 
     expect(getBillingCycleStart(org, new Date("2024-02-20T10:00:00Z"))).toEqual(
-      new Date("2024-02-15T00:00:00Z"),
+      new Date("2024-02-15T10:30:00Z"),
+    );
+  });
+
+  it("preserves the anchor time across months and clamps the day", () => {
+    const org = {
+      id: "org-1",
+      cloudBillingCycleAnchor: new Date("2024-01-31T10:37:22.456Z"),
+      createdAt: new Date("2024-01-01T00:00:00Z"),
+    } as Organization;
+
+    expect(getBillingCycleStart(org, new Date("2024-03-01T00:00:00Z"))).toEqual(
+      new Date("2024-02-29T10:37:22.456Z"),
     );
   });
 });
@@ -291,7 +303,19 @@ describe("getBillingCycleEnd", () => {
 
     // Feb 20 reference → next cycle is March 15
     expect(getBillingCycleEnd(org, new Date("2024-02-20T10:00:00Z"))).toEqual(
-      new Date("2024-03-15T00:00:00Z"),
+      new Date("2024-03-15T10:30:00Z"),
+    );
+  });
+
+  it("preserves the exact anchor time for the next cycle", () => {
+    const org = {
+      id: "org-1",
+      cloudBillingCycleAnchor: new Date("2024-01-31T10:37:22.456Z"),
+      createdAt: new Date("2024-01-01T00:00:00Z"),
+    } as Organization;
+
+    expect(getBillingCycleEnd(org, new Date("2024-02-20T10:00:00Z"))).toEqual(
+      new Date("2024-02-29T10:37:22.456Z"),
     );
   });
 });

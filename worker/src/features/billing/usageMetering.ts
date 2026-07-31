@@ -1,6 +1,8 @@
 import { parseDbOrg, Prisma } from "@langfuse/shared";
 import { prisma } from "@langfuse/shared/src/db";
 import {
+  getBillingCycleBoundaries,
+  getBillingUnitCountForProjects,
   getObservationCountsByProjectInCreationInterval,
   getScoreCountsByProjectInCreationInterval,
   getTraceCountsByProjectInCreationInterval,
@@ -18,6 +20,41 @@ import {
 
 const HOUR_MS = 60 * 60 * 1000;
 const INTERVAL_DELAY_MS = HOUR_MS + 5 * 60 * 1000;
+
+export type MeteringSegment = { start: Date; end: Date };
+
+export function buildMeteringSegments(params: {
+  intervalStart: Date;
+  intervalEnd: Date;
+  meteringStartAt: Date;
+  meteringEndAt: Date | null;
+  cycleAnchor: Date;
+}): MeteringSegment[] {
+  const start = new Date(
+    Math.max(params.intervalStart.getTime(), params.meteringStartAt.getTime()),
+  );
+  const end = new Date(
+    Math.min(
+      params.intervalEnd.getTime(),
+      params.meteringEndAt?.getTime() ?? params.intervalEnd.getTime(),
+    ),
+  );
+  if (start >= end) return [];
+
+  const boundaries = getBillingCycleBoundaries(
+    {
+      cloudBillingCycleAnchor: params.cycleAnchor,
+      createdAt: params.cycleAnchor,
+    },
+    start,
+    end,
+  );
+  const points = [start, ...boundaries, end];
+  return points.slice(0, -1).map((segmentStart, index) => ({
+    start: segmentStart,
+    end: points[index + 1],
+  }));
+}
 
 export async function processCloudUsageMetering(job?: Job) {
   if (!env.STRIPE_SECRET_KEY) throw new Error("Stripe secret key not found");
@@ -65,7 +102,7 @@ export async function processCloudUsageMetering(job?: Job) {
       await prisma.organization.findMany({
         where: {
           cloudConfig: {
-            path: ["stripe", "activeSubscriptionId"],
+            path: ["stripe", "customerId"],
             not: Prisma.DbNull,
           },
         },
@@ -81,8 +118,9 @@ export async function processCloudUsageMetering(job?: Job) {
       .filter(
         (org) =>
           org.cloudConfig?.stripe?.customerId &&
-          org.cloudConfig?.stripe?.activeSubscriptionId &&
-          org.cloudConfig?.stripe?.resolvedPlan,
+          (org.cloudConfig?.stripe?.meteringStartAt ||
+            (org.cloudConfig?.stripe?.activeSubscriptionId &&
+              org.cloudBillingCycleAnchor)),
       );
     const [traceCounts, observationCounts, scoreCounts] = await Promise.all([
       getTraceCountsByProjectInCreationInterval({ start, end }),
@@ -103,60 +141,89 @@ export async function processCloudUsageMetering(job?: Job) {
             sum + (org.projectIds.has(row.projectId) ? row.count : 0),
           0,
         );
-      const units =
-        count(traceCounts) + count(observationCounts) + count(scoreCounts);
-      totalUnits += units;
-      if (units === 0) continue;
       const customerId = org.cloudConfig!.stripe!.customerId!;
-      const backup = await prisma.billingMeterBackup.upsert({
-        where: {
-          stripeCustomerId_meterId_startTime_endTime: {
-            stripeCustomerId: customerId,
-            meterId: BILLING_METER_EVENT_NAME,
-            startTime: start,
-            endTime: end,
-          },
-        },
-        create: {
-          stripeCustomerId: customerId,
-          meterId: BILLING_METER_EVENT_NAME,
-          startTime: start,
-          endTime: end,
-          aggregatedValue: units,
-          eventName: BILLING_METER_EVENT_NAME,
-          orgId: org.id,
-        },
-        update: {
-          aggregatedValue: units,
-          eventName: BILLING_METER_EVENT_NAME,
-          orgId: org.id,
-        },
-      });
-      if (backup.submittedAt) continue;
-      await backOff(
-        () =>
-          stripe.billing.meterEvents.create({
-            event_name: BILLING_METER_EVENT_NAME,
-            identifier: billingMeterIdentifier(org.id, start),
-            timestamp: Math.floor(end.getTime() / 1000),
-            payload: {
-              stripe_customer_id: customerId,
-              value: units.toString(),
-            },
-          }),
-        { numOfAttempts: 3 },
+      const meteringStartAt = new Date(
+        org.cloudConfig!.stripe!.meteringStartAt ??
+          org.cloudBillingCycleAnchor!,
       );
-      await prisma.billingMeterBackup.update({
-        where: {
-          stripeCustomerId_meterId_startTime_endTime: {
+      const meteringEndAt = org.cloudConfig!.stripe!.meteringEndAt
+        ? new Date(org.cloudConfig!.stripe!.meteringEndAt)
+        : null;
+      const cycleAnchor = org.cloudBillingCycleAnchor ?? meteringStartAt;
+      const segments = buildMeteringSegments({
+        intervalStart: start,
+        intervalEnd: end,
+        meteringStartAt,
+        meteringEndAt,
+        cycleAnchor,
+      });
+
+      for (const segment of segments) {
+        const isFullInterval =
+          segment.start.getTime() === start.getTime() &&
+          segment.end.getTime() === end.getTime();
+        const units = isFullInterval
+          ? count(traceCounts) + count(observationCounts) + count(scoreCounts)
+          : (
+              await getBillingUnitCountForProjects({
+                projectIds: [...org.projectIds],
+                start: segment.start,
+                end: segment.end,
+              })
+            ).total;
+        totalUnits += units;
+        if (units === 0) continue;
+
+        const backup = await prisma.billingMeterBackup.upsert({
+          where: {
+            stripeCustomerId_meterId_startTime_endTime: {
+              stripeCustomerId: customerId,
+              meterId: BILLING_METER_EVENT_NAME,
+              startTime: segment.start,
+              endTime: segment.end,
+            },
+          },
+          create: {
             stripeCustomerId: customerId,
             meterId: BILLING_METER_EVENT_NAME,
-            startTime: start,
-            endTime: end,
+            startTime: segment.start,
+            endTime: segment.end,
+            aggregatedValue: units,
+            eventName: BILLING_METER_EVENT_NAME,
+            orgId: org.id,
           },
-        },
-        data: { submittedAt: new Date() },
-      });
+          update: {
+            aggregatedValue: units,
+            eventName: BILLING_METER_EVENT_NAME,
+            orgId: org.id,
+          },
+        });
+        if (backup.submittedAt) continue;
+        await backOff(
+          () =>
+            stripe.billing.meterEvents.create({
+              event_name: BILLING_METER_EVENT_NAME,
+              identifier: billingMeterIdentifier(org.id, segment.start),
+              timestamp: Math.floor((segment.end.getTime() - 1) / 1000),
+              payload: {
+                stripe_customer_id: customerId,
+                value: units.toString(),
+              },
+            }),
+          { numOfAttempts: 3 },
+        );
+        await prisma.billingMeterBackup.update({
+          where: {
+            stripeCustomerId_meterId_startTime_endTime: {
+              stripeCustomerId: customerId,
+              meterId: BILLING_METER_EVENT_NAME,
+              startTime: segment.start,
+              endTime: segment.end,
+            },
+          },
+          data: { submittedAt: new Date() },
+        });
+      }
     }
 
     await prisma.cronJobs.update({
