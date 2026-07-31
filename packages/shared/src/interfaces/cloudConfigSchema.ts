@@ -19,6 +19,8 @@ export const CloudConfigSchema = z.object({
       subscriptionStatus: z.string().nullish(), // should be one of ["active","past_due", "unpaid", "canceled", "incomplete", "incomplete_expired", "paused"]; we don't enforce to have a backwards compatibility for this field
       cancelAtPeriodEnd: z.boolean().nullish(),
       currentPeriodEnd: z.string().datetime().nullish(),
+      meteringStartAt: z.string().datetime().nullish(),
+      meteringEndAt: z.string().datetime().nullish(),
     })
     .transform((data) => ({
       ...data,

@@ -90,7 +90,26 @@ async function getSubscriptionFromInvoice(invoice: Stripe.Invoice) {
     : null;
 }
 
+async function getCurrentSubscription(
+  subscription: Stripe.Subscription,
+  allowEventFallback: boolean = false,
+): Promise<Stripe.Subscription> {
+  try {
+    return await getStripeClient().subscriptions.retrieve(subscription.id);
+  } catch (error) {
+    if (allowEventFallback) {
+      logger.warn("Using terminal Stripe subscription event as fallback", {
+        subscriptionId: subscription.id,
+        error,
+      });
+      return subscription;
+    }
+    throw error;
+  }
+}
+
 async function handleStripeEvent(event: Stripe.Event): Promise<void> {
+  const effectiveAt = new Date(event.created * 1000);
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
@@ -98,21 +117,23 @@ async function handleStripeEvent(event: Stripe.Event): Promise<void> {
       if (!subscriptionId) return;
       const subscription =
         await getStripeClient().subscriptions.retrieve(subscriptionId);
-      await syncSubscriptionToOrganization(subscription);
+      await syncSubscriptionToOrganization(subscription, false, effectiveAt);
       return;
     }
     case "customer.subscription.created":
     case "customer.subscription.updated": {
-      await syncSubscriptionToOrganization(
+      const subscription = await getCurrentSubscription(
         event.data.object as Stripe.Subscription,
       );
+      await syncSubscriptionToOrganization(subscription, false, effectiveAt);
       return;
     }
     case "customer.subscription.deleted": {
-      await syncSubscriptionToOrganization(
+      const subscription = await getCurrentSubscription(
         event.data.object as Stripe.Subscription,
         true,
       );
+      await syncSubscriptionToOrganization(subscription, true, effectiveAt);
       return;
     }
     case "invoice.payment_failed":
@@ -120,7 +141,9 @@ async function handleStripeEvent(event: Stripe.Event): Promise<void> {
       const subscription = await getSubscriptionFromInvoice(
         event.data.object as Stripe.Invoice,
       );
-      if (subscription) await syncSubscriptionToOrganization(subscription);
+      if (subscription) {
+        await syncSubscriptionToOrganization(subscription, false, effectiveAt);
+      }
       return;
     }
     default:

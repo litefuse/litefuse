@@ -35,6 +35,7 @@ Pro 的 Stripe Usage Price 使用 Graduated tiers：
 - 前 200,000 units：$0；
 - 200,001 及以上：$0.00004/unit，即每额外 100,000 units 收取 $4；
 - 应用向 Stripe 上报原始 units，不在应用侧预先扣除 200,000 免费额度；
+- Billing 页面将已成功提交 Stripe 的 units 与尚未上报的当前尾段分开展示，主用量为两者之和；
 - Billing 页面展示的超额金额是折扣前估算，最终税费、折扣和发票金额以 Stripe 为准。
 
 ## 订阅生命周期

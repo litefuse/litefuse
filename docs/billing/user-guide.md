@@ -16,11 +16,14 @@ Billing 入口只在 Cloud 部署中显示，并要求当前用户拥有 `langfu
 
 - 当前套餐和 Stripe 订阅状态；
 - 当前账期已使用 units、包含额度和重置日期；
+- Pro 已成功提交给 Stripe 的 units，以及尚未上报的 Pending units；
 - Pro 超出 200,000 units 后的预计超额金额；
 - 待生效的降级或退订；
 - Stripe 未配置、Price ID 错误、付款异常或人工套餐覆盖提示。
 
 用量按 Organization 汇总，同一 Organization 下所有 Project 共享额度。Pro 的预计超额金额按 `$0.00004 × overage units` 计算，未包含可能的优惠、税费或合同调整。
+
+Pro 主用量等于 **Reported to Stripe + Pending**。Reported 表示 Stripe API 已接受对应 meter event；Stripe Dashboard 仍可能需要短暂时间完成异步聚合。Pending 是 metering checkpoint 之后、当前账期内的 Doris 用量估算。
 
 ## 从 Developer 升级到 Pro
 
@@ -111,4 +114,4 @@ Pro 及具有 `data-retention` 权益的套餐可以按 Project 配置主动删�
 
 ### 用量与刚写入的数据不一致
 
-用量由 Worker 每小时聚合，Billing 页面不是实时计数器。等待下一个 usage threshold 任务运行后再核对。
+Developer 用量由 Worker 每小时刷新，Billing 页面不是实时计数器。Pro 页面会同时展示已上报和待上报部分；等待每小时 metering 任务追平后，Pending 应降为 0。

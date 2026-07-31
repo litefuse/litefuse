@@ -268,6 +268,14 @@ export function BillingSettings({ orgId }: BillingSettingsProps) {
               <span>Resets {formatDate(data?.billingCycle.end)}</span>
             </div>
             <Progress value={usagePercent} />
+            {usage?.reportedUnits !== null &&
+            usage?.reportedUnits !== undefined ? (
+              <p className="text-muted-foreground mt-2 text-xs">
+                Reported to Stripe:{" "}
+                {numberFormatter.format(usage.reportedUnits)} units · Pending:{" "}
+                {numberFormatter.format(usage.pendingUnits ?? 0)} units
+              </p>
+            ) : null}
             {(usage?.overageUnits ?? 0) > 0 ? (
               <p className="text-muted-foreground mt-2 text-xs">
                 Estimated overage before discounts:{" "}

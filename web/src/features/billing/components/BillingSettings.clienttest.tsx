@@ -69,6 +69,10 @@ function billingStatus(
         includedUnits: plan === "cloud:hobby" ? 100_000 : 200_000,
         overageUnits: plan === "cloud:hobby" ? 0 : 50_000,
         estimatedOverageUsd: plan === "cloud:hobby" ? 0 : 2,
+        reportedUnits: plan === "cloud:hobby" ? null : 240_000,
+        pendingUnits: plan === "cloud:hobby" ? null : 10_000,
+        reportedThrough:
+          plan === "cloud:hobby" ? null : new Date("2026-07-16T10:00:00.000Z"),
         state: overrides.usageState ?? null,
       },
       billingCycle: { end: new Date("2026-08-16T00:00:00.000Z") },
@@ -153,6 +157,8 @@ describe("BillingSettings", () => {
     expect(screen.getByText("Payment needs attention")).toBeTruthy();
     expect(screen.getByText("Scheduled billing change")).toBeTruthy();
     expect(screen.getByText(/Estimated overage before discounts/)).toBeTruthy();
+    expect(screen.getByText(/Reported to Stripe: 240,000 units/)).toBeTruthy();
+    expect(screen.getByText(/Pending: 10,000 units/)).toBeTruthy();
     expect(screen.getByText("Past due")).toBeTruthy();
     expect(screen.queryByText("Pro + Teams")).toBeNull();
   });

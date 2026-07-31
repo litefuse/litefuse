@@ -24,7 +24,10 @@ import {
   isBillingCatalogueConfigured,
   type BillingTargetPlan,
 } from "./billingCatalogue";
-import { getFreshBillingUsage } from "./billingUsageService";
+import {
+  getFreshBillingUsage,
+  getPaidBillingUsage,
+} from "./billingUsageService";
 
 type StripeConfigPurpose = "checkout" | "portal" | "webhook";
 
@@ -122,6 +125,8 @@ function cloudConfigToJson(
     subscriptionStatus?: string | null;
     cancelAtPeriodEnd?: boolean | null;
     currentPeriodEnd?: string | null;
+    meteringStartAt?: string | null;
+    meteringEndAt?: string | null;
   },
 ): Prisma.InputJsonObject {
   const next: Record<string, Prisma.InputJsonValue> = {};
@@ -175,6 +180,14 @@ function cloudConfigToJson(
       stripePatch.currentPeriodEnd,
       current?.stripe?.currentPeriodEnd,
     ),
+    meteringStartAt: patchOrCurrent(
+      stripePatch.meteringStartAt,
+      current?.stripe?.meteringStartAt,
+    ),
+    meteringEndAt: patchOrCurrent(
+      stripePatch.meteringEndAt,
+      current?.stripe?.meteringEndAt,
+    ),
   };
 
   return next as Prisma.InputJsonObject;
@@ -212,6 +225,26 @@ function subscriptionPeriodEnd(subscription: Stripe.Subscription): Date | null {
       (subscription as Stripe.Subscription & { current_period_end?: number })
         .current_period_end,
     ) ?? timestampSecondsToDate(firstItem?.current_period_end)
+  );
+}
+
+function subscriptionMeteringStart(
+  subscription: Stripe.Subscription,
+): Date | null {
+  return (
+    timestampSecondsToDate(subscription.start_date) ??
+    subscriptionPeriodStart(subscription)
+  );
+}
+
+function subscriptionMeteringEnd(
+  subscription: Stripe.Subscription,
+  effectiveAt: Date,
+): Date {
+  return (
+    timestampSecondsToDate(subscription.ended_at) ??
+    subscriptionPeriodEnd(subscription) ??
+    effectiveAt
   );
 }
 
@@ -297,6 +330,8 @@ function subscriptionNeedsSync(
 ): boolean {
   const current = cloudConfig?.stripe;
   const expected = subscriptionSyncState(subscription);
+  const expectedMeteringStart =
+    subscriptionMeteringStart(subscription)?.toISOString() ?? null;
 
   return (
     (current?.customerId ?? null) !== expected.customerId ||
@@ -308,7 +343,9 @@ function subscriptionNeedsSync(
     (current?.resolvedPlan ?? null) !== expected.resolvedPlan ||
     (current?.subscriptionStatus ?? null) !== expected.subscriptionStatus ||
     (current?.cancelAtPeriodEnd ?? false) !== expected.cancelAtPeriodEnd ||
-    (current?.currentPeriodEnd ?? null) !== expected.currentPeriodEnd
+    (current?.currentPeriodEnd ?? null) !== expected.currentPeriodEnd ||
+    (current?.meteringStartAt ?? null) !== expectedMeteringStart ||
+    (current?.meteringEndAt ?? null) !== null
   );
 }
 
@@ -400,13 +437,33 @@ export async function getBillingStatus(
 
   const plan = getOrganizationPlanServerSide(cloudConfig ?? undefined);
   const includedUnits = plan === "cloud:hobby" ? 100_000 : 200_000;
-  const usagePromise = getFreshBillingUsage({ organization: org });
+  const stripeCustomerId = cloudConfig?.stripe?.customerId;
+  const hasStripeMetering =
+    plan !== "cloud:hobby" && Boolean(subscriptionId && stripeCustomerId);
+  const usagePromise =
+    hasStripeMetering && stripeCustomerId
+      ? getPaidBillingUsage({
+          organization: org,
+          customerId: stripeCustomerId,
+        })
+      : getFreshBillingUsage({ organization: org }).then((usage) => ({
+          ...usage,
+          reportedUnits: null,
+          pendingUnits: null,
+          reportedThrough: null,
+        }));
   const billingConfigurationIssues = getInvalidBillingCatalogueEntries().map(
     (entry) =>
       `${entry.envVar} must be a Stripe Price ID starting with price_. Current value starts with ${entry.value.slice(0, 5)}.`,
   );
 
-  const { currentUnits, updatedAt: usageUpdatedAt } = await usagePromise;
+  const {
+    currentUnits,
+    reportedUnits,
+    pendingUnits,
+    reportedThrough,
+    updatedAt: usageUpdatedAt,
+  } = await usagePromise;
   const cycleEnd = getBillingCycleEnd(org, new Date());
 
   return {
@@ -430,6 +487,9 @@ export async function getBillingStatus(
     },
     usage: {
       currentUnits,
+      reportedUnits,
+      pendingUnits,
+      reportedThrough,
       includedUnits,
       overageUnits: Math.max(0, currentUnits - includedUnits),
       estimatedOverageUsd:
@@ -708,6 +768,7 @@ export async function createPortalSession(params: { orgId: string }) {
 export async function syncSubscriptionToOrganization(
   subscription: Stripe.Subscription,
   forceClear: boolean = false,
+  effectiveAt: Date = new Date(),
 ): Promise<{ orgId: string | null; planChanged: boolean }> {
   const customerId = stripeId(subscription.customer);
   const metadataOrgId = jsonString(subscription.metadata?.orgId);
@@ -744,43 +805,78 @@ export async function syncSubscriptionToOrganization(
     return { orgId: null, planChanged: false };
   }
 
-  const cloudConfig = parseCloudConfig(org.cloudConfig);
-  const previousPlan = cloudConfig?.stripe?.resolvedPlan ?? null;
   const syncState = subscriptionSyncState(subscription, forceClear);
   const anchor = syncState.paid
     ? subscriptionPeriodStart(subscription)
-    : (subscriptionPeriodEnd(subscription) ?? new Date());
-  const anchorChanged =
-    Boolean(anchor) &&
-    org.cloudBillingCycleAnchor?.getTime() !== anchor?.getTime();
+    : subscriptionMeteringEnd(subscription, effectiveAt);
+  const meteringStartAt = subscriptionMeteringStart(subscription);
+  const meteringEndAt = syncState.paid
+    ? null
+    : subscriptionMeteringEnd(subscription, effectiveAt);
 
-  await prisma.organization.update({
-    where: { id: org.id },
-    data: {
-      cloudConfig: cloudConfigToJson(cloudConfig, {
-        customerId: syncState.customerId,
-        activeSubscriptionId: syncState.activeSubscriptionId,
-        activeProductId: syncState.activeProductId,
-        activeUsageProductId: syncState.activeUsageProductId,
-        activeTeamsAddonProductId: syncState.activeTeamsAddonProductId,
-        resolvedPlan: syncState.resolvedPlan,
-        subscriptionStatus: syncState.subscriptionStatus,
-        cancelAtPeriodEnd: syncState.cancelAtPeriodEnd,
-        currentPeriodEnd: syncState.currentPeriodEnd,
-      }),
-      cloudBillingCycleAnchor: anchor ?? undefined,
-      cloudBillingCycleUpdatedAt: new Date(),
-      // Subscription updates and invoice events can occur many times in one
-      // cycle. Only reset usage when the actual billing-cycle anchor changes.
-      cloudCurrentCycleUsage: anchorChanged ? 0 : undefined,
-      cloudFreeTierUsageThresholdState: null,
-    },
+  const result = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw<Array<{ id: string }>>`
+      SELECT id
+      FROM organizations
+      WHERE id = ${org.id}
+      FOR UPDATE
+    `;
+    const lockedOrg = await tx.organization.findUniqueOrThrow({
+      where: { id: org.id },
+    });
+    const cloudConfig = parseCloudConfig(lockedOrg.cloudConfig);
+    const previousPlan = cloudConfig?.stripe?.resolvedPlan ?? null;
+    const currentSubscriptionId =
+      cloudConfig?.stripe?.activeSubscriptionId ?? null;
+
+    if (
+      forceClear &&
+      currentSubscriptionId &&
+      currentSubscriptionId !== subscription.id
+    ) {
+      logger.info("Ignoring stale Stripe subscription deletion", {
+        orgId: org.id,
+        deletedSubscriptionId: subscription.id,
+        currentSubscriptionId,
+      });
+      return { applied: false, previousPlan };
+    }
+
+    const anchorChanged =
+      Boolean(anchor) &&
+      lockedOrg.cloudBillingCycleAnchor?.getTime() !== anchor?.getTime();
+    await tx.organization.update({
+      where: { id: org.id },
+      data: {
+        cloudConfig: cloudConfigToJson(cloudConfig, {
+          customerId: syncState.customerId,
+          activeSubscriptionId: syncState.activeSubscriptionId,
+          activeProductId: syncState.activeProductId,
+          activeUsageProductId: syncState.activeUsageProductId,
+          activeTeamsAddonProductId: syncState.activeTeamsAddonProductId,
+          resolvedPlan: syncState.resolvedPlan,
+          subscriptionStatus: syncState.subscriptionStatus,
+          cancelAtPeriodEnd: syncState.cancelAtPeriodEnd,
+          currentPeriodEnd: syncState.currentPeriodEnd,
+          meteringStartAt: meteringStartAt?.toISOString() ?? null,
+          meteringEndAt: meteringEndAt?.toISOString() ?? null,
+        }),
+        cloudBillingCycleAnchor: anchor ?? undefined,
+        cloudBillingCycleUpdatedAt: anchorChanged ? null : undefined,
+        cloudCurrentCycleUsage: anchorChanged ? null : undefined,
+        cloudFreeTierUsageThresholdState: null,
+      },
+    });
+    return { applied: true, previousPlan };
   });
 
-  await new ApiAuthService(prisma, redis).invalidateCachedOrgApiKeys(org.id);
+  if (result.applied) {
+    await new ApiAuthService(prisma, redis).invalidateCachedOrgApiKeys(org.id);
+  }
   return {
     orgId: org.id,
-    planChanged: previousPlan !== syncState.resolvedPlan,
+    planChanged:
+      result.applied && result.previousPlan !== syncState.resolvedPlan,
   };
 }
 

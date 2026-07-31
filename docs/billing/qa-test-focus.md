@@ -166,16 +166,18 @@ BLOCKED 后验证以下写入均返回一致 403：
 - Developer 无显式 anchor 时使用 Organization 创建日；
 - Stripe 订阅建立后切换到 period start；
 - 付费服务结束后从 period end 开始 Developer 周期；
-- 同一 anchor 的重复 webhook 不清零 usage，anchor 真正变化时清零；
-- 29/30/31 日锚点在短月份使用当月最后一天；
-- 当前应用把 anchor 归一到 UTC 00:00，需专门验证 Stripe period start 非 00:00 时边界是否符合业务预期，并记录差异。
+- 同一 anchor 的重复 webhook 不触碰 usage；anchor 真正变化时将旧快照置为无效，不产生 fresh 0；
+- 29/30/31 日锚点在短月份使用当月最后一天，并保留精确 UTC 时间；
+- 10:37 升级时，页面和 Stripe segment 都只统计 10:37 之后的数据；
+- threshold 计算期间发生升级时，旧账期条件更新失败且不得恢复 BLOCKED；
+- 多个不同 subscription/invoice webhook 并发时只应用当前订阅状态，旧订阅删除事件不能清除新订阅。
 
 ## P1：Billing UI
 
 覆盖以下状态截图：
 
 - Developer 正常、WARNING、BLOCKED；
-- Pro 正常和 250,000 units（预计超额 $2）；
+- Pro 正常和 250,000 units（预计超额 $2），并展示 Reported to Stripe 与 Pending，两者之和等于主用量；
 - Teams 历史订阅、past_due、待降级 Pro；
 - 待取消 Developer、恢复成功；
 - Stripe 未配置、Price ID 无效、无 Customer；
