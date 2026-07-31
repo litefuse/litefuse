@@ -36,7 +36,7 @@
 </div>
 
 <p align="center">
-  <a href="https://github.com/selectdb/Litefuse-doris/blob/main/LICENSE">
+  <a href="https://github.com/litefuse/litefuse/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/License-MIT-E11311.svg" alt="MIT License">
   </a>
   <a href="https://www.ycombinator.com/companies/Litefuse">
@@ -64,13 +64,13 @@
     <img src="https://custom-icon-badges.demolab.com/badge/LinkedIn-0A66C2?logo=linkedin-white&logoColor=fff"
          alt="在 LinkedIn 上关注">
   </a>
-  <a href="https://github.com/selectdb/Litefuse-doris/graphs/commit-activity" target="_blank">
+  <a href="https://github.com/litefuse/litefuse/graphs/commit-activity" target="_blank">
     <img alt="过去一个月的提交" src="https://img.shields.io/github/commit-activity/m/Litefuse/Litefuse?labelColor=%20%2332b583&color=%20%2312b76a">
   </a>
-  <a href="https://github.com/selectdb/Litefuse-doris/" target="_blank">
+  <a href="https://github.com/litefuse/litefuse/" target="_blank">
     <img alt="已关闭的问题" src="https://img.shields.io/github/issues-search?query=repo%3ALitefuse%2FLitefuse%20is%3Aclosed&label=issues%20closed&labelColor=%20%237d89b0&color=%20%235d6b98">
   </a>
-  <a href="https://github.com/selectdb/Litefuse-doris/discussions/" target="_blank">
+  <a href="https://github.com/litefuse/litefuse/discussions/" target="_blank">
     <img alt="讨论帖数量" src="https://img.shields.io/github/discussions/Litefuse/Litefuse?labelColor=%20%239b8afb&color=%20%237a5af8">
   </a>
 </p>
@@ -123,8 +123,8 @@ Litefuse 是一个 **开源 LLM 工程** 平台。它帮助团队协作 **开发
 
   ```bash:README.md/docker-compose
   # 获取最新的 Litefuse 仓库副本
-  git clone https://github.com/selectdb/Litefuse-doris.git
-  cd Litefuse
+  git clone https://github.com/litefuse/litefuse.git
+  cd litefuse
 
   # 运行 Litefuse 的 docker compose
   docker compose up
@@ -258,7 +258,7 @@ _[Litefuse 中的公共示例追踪](https://cloud.litefuse.ai/project/cloramnkj
 
 - **在 GitHub Discussions 的 [公共问答](https://github.com/orgs/litefuse/discussions/categories/support) 中提出任何问题。** 请尽量提供详细信息（如代码片段、截图、背景信息）以帮助我们理解你的问题。
 - 在 GitHub Discussions 中 [提出功能请求](https://github.com/orgs/litefuse/discussions/categories/ideas)。
-- 在 GitHub Issues 中 [报告 Bug](https://github.com/selectdb/litefuse/issues)。
+- 在 GitHub Issues 中 [报告 Bug](https://github.com/litefuse/litefuse/issues)。
 - 对于时效性较强的问题，请通过应用内聊天小部件联系我们。
 
 ## 🤝 贡献
@@ -266,7 +266,7 @@ _[Litefuse 中的公共示例追踪](https://cloud.litefuse.ai/project/cloramnkj
 欢迎你的贡献！
 
 - 在 GitHub Discussions 中为 [想法](https://github.com/orgs/Litefuse/discussions/categories/ideas)投票。
-- 提出并评论 [问题](https://github.com/selectdb/Litefuse-doris/issues)。
+- 提出并评论 [问题](https://github.com/litefuse/litefuse/issues)。
 - 提交 PR —— 详情请参见 [CONTRIBUTING.md](CONTRIBUTING.md)，了解如何搭建开发环境。
 
 ## 🙏 关于本 Fork
@@ -289,7 +289,7 @@ _[Litefuse 中的公共示例追踪](https://cloud.litefuse.ai/project/cloramnkj
 
 ## ❤️ 使用 Litefuse 的开源项目
 
-以下是使用 Litefuse 的顶级开源 Python 项目，按星标数排名（[来源](https://github.com/selectdb/Litefuse-doris-docs/blob/main/components-mdx/dependents)）：
+以下是使用 Litefuse 的顶级开源 Python 项目，按星标数排名（[来源](https://github.com/litefuse/litefuse-docs/blob/main/components-mdx/dependents)）：
 
 | 仓库                                                                                                                                                                                                                                                                |  星数 |
 | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----: |

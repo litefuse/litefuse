@@ -69,7 +69,7 @@ flowchart TB
         Worker["Async Worker<br/>(litefuse/worker)"]
         Postgres["Postgres - OLTP<br/>(Transactional Data)"]
         Cache["Redis/Valkey<br/>(Cache, Queue)"]
-        Clickhouse["Clickhouse - OLAP<br/>(Observability Data)"]
+        Doris["Apache Doris - OLAP<br/>(Observability Data)"]
         S3["S3 / Blob Storage<br/>(Raw events, multi-modal attachments)"]
     end
     LLM["LLM API/Gateway<br/>(optional)"]
@@ -78,11 +78,11 @@ flowchart TB
     Web --> S3
     Web --> Postgres
     Web --> Cache
-    Web --> Clickhouse
+    Web --> Doris
     Web -.->|"optional for playground"| LLM
 
     Cache --> Worker
-    Worker --> Clickhouse
+    Worker --> Doris
     Worker --> Postgres
     Worker --> S3
     Worker -.->|"optional for evals"| LLM
@@ -112,7 +112,7 @@ Requirements
 - Node.js 24 as specified in the [.nvmrc](.nvmrc)
 - Pnpm v.9.5.0
 - Docker to run the database locally
-- Clickhouse client
+- MySQL client (Apache Doris uses the MySQL protocol)
 
 **Note:** You can also simply run Litefuse in a **GitHub Codespace** via the provided devcontainer. To do this, click on the green "Code" button in the top right corner of the repository and select "Open with Codespaces".
 
@@ -153,14 +153,14 @@ Notes:
 - It does **not** start the full Litefuse stack. Local development still uses
   Docker and `pnpm run dx` / `pnpm run dev`.
 - Running the full application inside Codex requires external services for
-  PostgreSQL, Redis, ClickHouse, and object storage, plus matching environment
+  PostgreSQL, Redis, Apache Doris, and object storage, plus matching environment
   variables in the Codex UI.
 
 **Steps**
 
 1. Install development dependencies:
    - [golang-migrate](https://github.com/golang-migrate/migrate/tree/master/cmd/migrate#migrate-cli) as CLI
-   - [clickhouse binary](https://clickhouse.com/docs/install) on macOS with brew: `brew install --cask clickhouse`
+   - MySQL client (used to connect to Apache Doris) on macOS with brew: `brew install mysql-client`
 
 2. Fork the repository and clone it locally
 
@@ -189,7 +189,7 @@ Notes:
    pnpm run dev # any subsequent runs
    ```
 
-   You will be asked whether you want to reset Postgres and ClickHouse. Confirm both with 'Y' and press enter.
+   You will be asked whether you want to reset Postgres and Doris. Confirm both with 'Y' and press enter.
 
 6. Open the web app in your browser to start using Litefuse:
    - [Sign up page, http://localhost:3000](http://localhost:3000)
@@ -274,7 +274,7 @@ Then, a different PostgreSQL and Redis are used for the tests.
 The `.env.test` file only overrides the set values and falls back on `.env` for all undefined values.
 
 - **PostgreSQL**: Uses separate `litefuse_test` database for isolation
-- **ClickHouse**: Uses shared `default` database for now
+- **Doris**: Uses the shared database (default `langfuse`) for now
 - **Redis**: Uses database 1 instead of 0 for isolation (Redis data is not cleaned between tests)
 
 Tests automatically create the PostgreSQL test database if it doesn't exist and clean up data between runs.

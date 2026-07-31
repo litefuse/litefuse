@@ -36,7 +36,7 @@
 </div>
 
 <p align="center">
-   <a href="https://github.com/selectdb/litefuse-doris/blob/main/LICENSE">
+   <a href="https://github.com/litefuse/litefuse/blob/main/LICENSE">
    <img src="https://img.shields.io/badge/License-MIT-E11311.svg" alt="MIT License">
    </a>
    <a href="https://www.ycombinator.com/companies/litefuse"><img src="https://img.shields.io/badge/Y%20Combinator-W23-orange" alt="Y Combinator W23"></a>
@@ -54,11 +54,11 @@
    <a href="https://www.linkedin.com/company/litefuse/" target="_blank">
    <img src="https://custom-icon-badges.demolab.com/badge/LinkedIn-0A66C2?logo=linkedin-white&logoColor=fff"
       alt="follow on LinkedIn"></a>
-   <a href="https://github.com/selectdb/litefuse-doris/graphs/commit-activity" target="_blank">
+   <a href="https://github.com/litefuse/litefuse/graphs/commit-activity" target="_blank">
    <img alt="Commits last month" src="https://img.shields.io/github/commit-activity/m/litefuse/litefuse?labelColor=%20%2332b583&color=%20%2312b76a"></a>
-   <a href="https://github.com/selectdb/litefuse-doris/" target="_blank">
+   <a href="https://github.com/litefuse/litefuse/" target="_blank">
    <img alt="Issues closed" src="https://img.shields.io/github/issues-search?query=repo%3Alitefuse%2Flitefuse%20is%3Aclosed&label=issues%20closed&labelColor=%20%237d89b0&color=%20%235d6b98"></a>
-   <a href="https://github.com/selectdb/litefuse-doris/discussions/" target="_blank">
+   <a href="https://github.com/litefuse/litefuse/discussions/" target="_blank">
    <img alt="Discussion posts" src="https://img.shields.io/github/discussions/litefuse/litefuse?labelColor=%20%239b8afb&color=%20%237a5af8"></a>
    <a href="https://deepwiki.com/litefuse/litefuse" target="_blank">
    <img alt="Ask DeepWiki" src="https://deepwiki.com/badge.svg"></a>
@@ -72,7 +72,7 @@
 </p>
 
 <p align="center">
-   <a href="https://github.com/ClickHouse/ClickHouse"><strong>Proudly made with ClickHouse open source database</strong></a>
+   <a href="https://github.com/apache/doris"><strong>Proudly made with Apache Doris open source database</strong></a>
 </p>
 
 Litefuse is an **open source LLM engineering** platform. It helps teams collaboratively
@@ -243,15 +243,15 @@ Support Channels:
 
 - **Ask any question in our [public Q&A](https://github.com/orgs/litefuse/discussions/categories/support) on GitHub Discussions.** Please include as much detail as possible (e.g. code snippets, screenshots, background information) to help us understand your question.
 - [Request a feature](https://github.com/orgs/litefuse/discussions/categories/ideas) on GitHub Discussions.
-- [Report a Bug](https://github.com/selectdb/litefuse/issues) on GitHub Issues.
+- [Report a Bug](https://github.com/litefuse/litefuse/issues) on GitHub Issues.
 - For time-sensitive queries, ping us via the in-app chat widget.
 
 ## 🤝 Contributing
 
 Your contributions are welcome!
 
-- Vote on [Ideas](https://github.com/selectdb/litefuse/discussions/categories/ideas) in GitHub Discussions.
-- Raise and comment on [Issues](https://github.com/selectdb/litefuse/issues).
+- Vote on [Ideas](https://github.com/litefuse/litefuse/discussions/categories/ideas) in GitHub Discussions.
+- Raise and comment on [Issues](https://github.com/litefuse/litefuse/issues).
 - Open a PR - see [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to setup a development environment.
 
 ## 🙏 About this fork

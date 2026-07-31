@@ -36,7 +36,7 @@
 </div>
 
 <p align="center">
-   <a href="https://github.com/selectdb/Litefuse-doris/blob/main/LICENSE">
+   <a href="https://github.com/litefuse/litefuse/blob/main/LICENSE">
    <img src="https://img.shields.io/badge/License-MIT-E11311.svg" alt="MIT License">
    </a>
    <a href="https://www.ycombinator.com/companies/Litefuse"><img src="https://img.shields.io/badge/Y%20Combinator-W23-orange" alt="Y Combinator W23"></a>
@@ -54,11 +54,11 @@
    <a href="https://www.linkedin.com/company/Litefuse/" target="_blank">
    <img src="https://custom-icon-badges.demolab.com/badge/LinkedIn-0A66C2?logo=linkedin-white&logoColor=fff"
       alt="follow on LinkedIn"></a>
-   <a href="https://github.com/selectdb/Litefuse-doris/graphs/commit-activity" target="_blank">
+   <a href="https://github.com/litefuse/litefuse/graphs/commit-activity" target="_blank">
    <img alt="Commits last month" src="https://img.shields.io/github/commit-activity/m/Litefuse/Litefuse?labelColor=%20%2332b583&color=%20%2312b76a"></a>
-   <a href="https://github.com/selectdb/Litefuse-doris/" target="_blank">
+   <a href="https://github.com/litefuse/litefuse/" target="_blank">
    <img alt="Issues closed" src="https://img.shields.io/github/issues-search?query=repo%3ALitefuse%2FLitefuse%20is%3Aclosed&label=issues%20closed&labelColor=%20%237d89b0&color=%20%235d6b98"></a>
-   <a href="https://github.com/selectdb/Litefuse-doris/discussions/" target="_blank">
+   <a href="https://github.com/litefuse/litefuse/discussions/" target="_blank">
    <img alt="Discussion posts" src="https://img.shields.io/github/discussions/Litefuse/Litefuse?labelColor=%20%239b8afb&color=%20%237a5af8"></a>
 </p>
 
@@ -119,8 +119,8 @@ Litefuse 팀이 관리하는 배포 방식으로, 후한 무료 플랜(취미 �
 
   ```bash
   # 최신 Litefuse 저장소 클론
-  git clone https://github.com/selectdb/Litefuse-doris.git
-  cd Litefuse
+  git clone https://github.com/litefuse/litefuse.git
+  cd litefuse
 
   # Litefuse docker compose 실행
   docker compose up
@@ -246,7 +246,7 @@ _[Litefuse의 공개 예제 trace](https://cloud.litefuse.ai/project/cloramnkj00
 
 - **GitHub Discussions의 [공개 Q&A](https://github.com/orgs/litefuse/discussions/categories/support)** 에 질문을 남겨주세요. 가능한 한 많은 세부 사항(예: 코드 스니펫, 스크린샷, 배경 정보)을 포함해 질문해 주시기 바랍니다.
 - [기능 요청](https://github.com/orgs/litefuse/discussions/categories/ideas)을 남겨주세요.
-- [버그 신고](https://github.com/selectdb/litefuse/issues)는 GitHub Issues를 통해 해주세요.
+- [버그 신고](https://github.com/litefuse/litefuse/issues)는 GitHub Issues를 통해 해주세요.
 - 긴급한 문의는 앱 내 채팅 위젯을 통해 연락 바랍니다.
 
 ## 🤝 기여하기
@@ -277,7 +277,7 @@ _[Litefuse의 공개 예제 trace](https://cloud.litefuse.ai/project/cloramnkj00
 
 ## ❤️ Litefuse를 사용하는 오픈 소스 프로젝트
 
-별(star) 수를 기준으로 순위가 매겨진 Litefuse를 사용하는 상위 오픈 소스 Python 프로젝트들 ([출처](https://github.com/selectdb/Litefuse-doris-docs/blob/main/components-mdx/dependents)):
+별(star) 수를 기준으로 순위가 매겨진 Litefuse를 사용하는 상위 오픈 소스 Python 프로젝트들 ([출처](https://github.com/litefuse/litefuse-docs/blob/main/components-mdx/dependents)):
 
 | 저장소                                                                                                                                                                                                                                                              |    별 |
 | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----: |

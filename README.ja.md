@@ -36,7 +36,7 @@
 </div>
 
 <p align="center">
-   <a href="https://github.com/selectdb/Litefuse-doris/blob/main/LICENSE">
+   <a href="https://github.com/litefuse/litefuse/blob/main/LICENSE">
    <img src="https://img.shields.io/badge/License-MIT-E11311.svg" alt="MIT License">
    </a>
    <a href="https://www.ycombinator.com/companies/Litefuse"><img src="https://img.shields.io/badge/Y%20Combinator-W23-orange" alt="Y Combinator W23"></a>
@@ -54,11 +54,11 @@
    <a href="https://www.linkedin.com/company/Litefuse/" target="_blank">
    <img src="https://custom-icon-badges.demolab.com/badge/LinkedIn-0A66C2?logo=linkedin-white&logoColor=fff"
       alt="follow on LinkedIn"></a>
-   <a href="https://github.com/selectdb/Litefuse-doris/graphs/commit-activity" target="_blank">
+   <a href="https://github.com/litefuse/litefuse/graphs/commit-activity" target="_blank">
    <img alt="Commits last month" src="https://img.shields.io/github/commit-activity/m/Litefuse/Litefuse?labelColor=%20%2332b583&color=%20%2312b76a"></a>
-   <a href="https://github.com/selectdb/Litefuse-doris/" target="_blank">
+   <a href="https://github.com/litefuse/litefuse/" target="_blank">
    <img alt="Issues closed" src="https://img.shields.io/github/issues-search?query=repo%3ALitefuse%2FLitefuse%20is%3Aclosed&label=issues%20closed&labelColor=%20%237d89b0&color=%20%235d6b98"></a>
-   <a href="https://github.com/selectdb/Litefuse-doris/discussions/" target="_blank">
+   <a href="https://github.com/litefuse/litefuse/discussions/" target="_blank">
    <img alt="Discussion posts" src="https://img.shields.io/github/discussions/Litefuse/Litefuse?labelColor=%20%239b8afb&color=%20%237a5af8"></a>
 </p>
 
@@ -127,8 +127,8 @@ Litefuseチームによるマネージドデプロイメント。充実した無
 
   ```bash
   # 最新のLitefuseリポジトリのコピーを取得
-  git clone https://github.com/selectdb/Litefuse-doris.git
-  cd Litefuse
+  git clone https://github.com/litefuse/litefuse.git
+  cd litefuse
 
   # Litefuseのdocker composeを起動
   docker compose up
@@ -263,7 +263,7 @@ _[Litefuseの公開トレース例](https://cloud.litefuse.ai/project/cloramnkj0
 - **GitHub Discussionsの[パブリックQ&A](https://github.com/orgs/litefuse/discussions/categories/support)で質問してください。**  
   質問には、コードスニペット、スクリーンショット、背景情報など、できるだけ詳細な情報を含めるとスムーズな対応が可能です。
 - GitHub Discussionsで[機能リクエスト](https://github.com/orgs/litefuse/discussions/categories/ideas)を投稿してください。
-- GitHub Issuesにて[バグ報告](https://github.com/selectdb/litefuse/issues)を行ってください。
+- GitHub Issuesにて[バグ報告](https://github.com/litefuse/litefuse/issues)を行ってください。
 - 緊急の問い合わせの場合は、アプリ内チャットウィジェットでご連絡ください。
 
 ## 🤝 貢献
@@ -271,7 +271,7 @@ _[Litefuseの公開トレース例](https://cloud.litefuse.ai/project/cloramnkj0
 皆様からの貢献を歓迎します!
 
 - GitHub Discussionsの[アイデア](https://github.com/orgs/Litefuse/discussions/categories/ideas)に投票してください。
-- [Issues](https://github.com/selectdb/Litefuse-doris/issues)を作成・コメントしてください。
+- [Issues](https://github.com/litefuse/litefuse/issues)を作成・コメントしてください。
 - プルリクエストを送信してください。開発環境のセットアップ方法については[CONTRIBUTING.md](CONTRIBUTING.md)をご参照ください。
 
 ## 🙏 このフォークについて
@@ -294,7 +294,7 @@ _[Litefuseの公開トレース例](https://cloud.litefuse.ai/project/cloramnkj0
 
 ## ❤️ Litefuseを利用しているオープンソースプロジェクト
 
-Litefuseを利用している主要なオープンソースPythonプロジェクト（スター数順）: ([出典](https://github.com/selectdb/Litefuse-doris-docs/blob/main/components-mdx/dependents))
+Litefuseを利用している主要なオープンソースPythonプロジェクト（スター数順）: ([出典](https://github.com/litefuse/litefuse-docs/blob/main/components-mdx/dependents))
 
 | リポジトリ                                                                                                                                                                                                                                                          | スター |
 | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -----: |
