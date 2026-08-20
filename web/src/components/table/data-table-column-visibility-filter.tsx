@@ -393,7 +393,7 @@ export function DataTableColumnVisibilityFilter<TData, TValue>({
       onDragEnd={isColumnOrderingEnabled ? handleDragEnd : undefined}
       sensors={sensors}
     >
-      <Drawer modal={false}>
+      <Drawer modal={false} dismissible>
         <DrawerTrigger asChild>
           <Button variant="outline" title="Show/hide columns">
             <span>Columns</span>
