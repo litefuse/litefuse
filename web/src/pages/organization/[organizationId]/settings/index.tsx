@@ -12,7 +12,6 @@ import { useHasEntitlement } from "@/src/features/entitlements/hooks";
 import ContainerPage from "@/src/components/layouts/container-page";
 import { useQueryProjectOrOrganization } from "@/src/features/projects/hooks";
 import { ApiKeyList } from "@/src/features/public-api/components/ApiKeyList";
-import AIFeatureSwitch from "@/src/features/organizations/components/AIFeatureSwitch";
 import { env } from "@/src/env.mjs";
 import { BillingSettings } from "@/src/features/billing/components/BillingSettings";
 import { useHasOrganizationAccess } from "@/src/features/rbac/utils/checkOrganizationAccess";
@@ -76,7 +75,6 @@ export const getOrganizationSettingsPages = ({
             }}
           />
         </div>
-        <AIFeatureSwitch />
         <SettingsDangerZone
           items={[
             {
