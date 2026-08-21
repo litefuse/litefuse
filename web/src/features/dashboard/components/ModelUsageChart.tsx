@@ -340,7 +340,7 @@ export const ModelUsageChart = ({
       totalMetric: totalTokens
         ? compactNumberFormatter(totalTokens)
         : compactNumberFormatter(0),
-      metricDescription: `Units`,
+      metricDescription: `Model Units`,
     },
     {
       tabTitle: "Usage by type",
@@ -348,7 +348,7 @@ export const ModelUsageChart = ({
       totalMetric: totalTokens
         ? compactNumberFormatter(totalTokens)
         : compactNumberFormatter(0),
-      metricDescription: `Units`,
+      metricDescription: `Model Units`,
     },
   ];
 
