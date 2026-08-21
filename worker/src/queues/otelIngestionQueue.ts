@@ -85,7 +85,7 @@ export function checkHeaderBasedDirectWrite(params: {
 
 /**
  * Master events_full migration: the legacy dual-write path (mergeAndWrite
- * to traces / observation_source) is gated off by this sentinel. Defined
+ * to traces / observations) is gated off by this sentinel. Defined
  * as a function call so TypeScript does not constant-fold the value and
  * mark the legacy branch as unreachable — keeping the preserved-for-
  * reference code type-checked. Flip to `true` to restore the dual-write
@@ -450,11 +450,13 @@ export const otelIngestionQueueProcessor: Processor = async (
     if (sessionEnvByid.size > 0) {
       try {
         await prisma.traceSession.createMany({
-          data: Array.from(sessionEnvByid.entries()).map(([id, environment]) => ({
-            id,
-            projectId,
-            environment,
-          })),
+          data: Array.from(sessionEnvByid.entries()).map(
+            ([id, environment]) => ({
+              id,
+              projectId,
+              environment,
+            }),
+          ),
           skipDuplicates: true,
         });
       } catch (e) {

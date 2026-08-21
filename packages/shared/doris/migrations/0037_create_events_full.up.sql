@@ -8,7 +8,7 @@
 --   pre-read + per-column merge before each Stream Load. Doris MoW
 --   resolves any remaining conflicts by load order; that's enough given
 --   the writer always sends the post-merge state. (V3 traces /
---   observation_source used the same pattern without a sequence_col
+--   observations used the same pattern without a sequence_col
 --   binding and were correct.)
 --
 -- All non-key columns are nullable or have DEFAULT so that Stream Load with

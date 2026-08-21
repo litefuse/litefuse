@@ -47,8 +47,22 @@ DORIS_PORT="${DORIS_FE_QUERY_PORT}"
 echo "Connecting to Doris at ${DORIS_HTTP_PROTOCOL}://${DORIS_HOST}:${DORIS_PORT} with database ${DORIS_DB}"
 echo "Debug: DORIS_USER=${DORIS_USER}, DORIS_PASSWORD=${DORIS_PASSWORD}"
 
+# Detect the MySQL client major version to choose the correct SSL-disable flag.
+# Per MySQL docs: --ssl=0 was deprecated in 5.7.11 and removed in 8.0;
+#                 --ssl-mode=DISABLED was introduced in 5.7.11.
+#   major < 8  (5.x): --ssl=0       (deprecated from 5.7.11 but still works)
+#   major >= 8 (8.x, 9.x): --ssl-mode=DISABLED  (--ssl=0 no longer exists)
+# Doris speaks the MySQL wire protocol without TLS, so SSL negotiation must
+# be disabled on the client side.
+_MYSQL_MAJOR=$(mysql --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 | cut -d. -f1)
+if [ "${_MYSQL_MAJOR:-8}" -ge 8 ]; then
+    _SSL_ARG="--ssl-mode=DISABLED"
+else
+    _SSL_ARG="--ssl=0"
+fi
+
 # Build MySQL connection arguments
-MYSQL_ARGS="-h${DORIS_HOST} -P${DORIS_PORT} -u${DORIS_USER} --protocol=TCP --ssl=0"
+MYSQL_ARGS="-h${DORIS_HOST} -P${DORIS_PORT} -u${DORIS_USER} --protocol=TCP ${_SSL_ARG}"
 if [ -n "${DORIS_PASSWORD}" ]; then
     MYSQL_ARGS="${MYSQL_ARGS} -p${DORIS_PASSWORD}"
 fi

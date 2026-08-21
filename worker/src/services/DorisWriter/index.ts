@@ -337,7 +337,7 @@ export class DorisWriter {
 export enum TableName {
   Traces = "traces",
   Scores = "scores",
-  Observations = "observation_source",
+  Observations = "observations",
   BlobStorageFileLog = "blob_storage_file_log",
   DatasetRunItems = "dataset_run_items_rmt",
   EventsFull = "events_full",
