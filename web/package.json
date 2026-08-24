@@ -29,7 +29,7 @@
     "@appsignal/opentelemetry-instrumentation-bullmq": "^0.7.3",
     "@baselime/trpc-opentelemetry-middleware": "^0.1.2",
     "@codemirror/lang-json": "^6.0.2",
-    "@codemirror/language": "^6.12.2",
+    "@codemirror/language": "^6.12.4",
     "@codemirror/lint": "^6.9.5",
     "@codemirror/search": "^6.6.0",
     "@codemirror/state": "^6.6.0",
