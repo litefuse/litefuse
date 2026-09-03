@@ -1,19 +1,10 @@
 import { prisma } from "../../db";
 import { env } from "../../env";
+import { RETENTION_FLOOR_DAYS } from "../../constants";
 import { logger } from "../logger";
 import { recordIncrement } from "../instrumentation";
 import { enqueueDorisSplitTableProvisioning } from "../redis/dorisSplitTableProvisioningQueue";
 import { publishSplitCacheInvalidation } from "./tableSplitCache";
-
-/**
- * Minimum per-project retention (days), Stage 1.8 / design §4.5. A split table
- * is dynamic_partition: once a day-partition ages past retention it is DROPPED.
- * Retention below the "retry horizon" — max(label-keep window, DLQ redrive
- * window), ≥7d in practice — would let a partition be dropped while a job
- * targeting it is still redrivable / reconcilable, i.e. silent data loss. A
- * finite retention below this floor is rejected; null (no TTL) is always fine.
- */
-export const RETENTION_FLOOR_DAYS = 7;
 
 /** Free-tier split-table TTL (days), fixed. Retention is a PAID feature — a free
  * org's projects keep this fixed short window regardless of Project.retentionDays. */

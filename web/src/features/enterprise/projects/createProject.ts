@@ -8,7 +8,7 @@ import {
 import { projectNameSchema } from "@/src/features/auth/lib/projectNameSchema";
 import { projectRetentionSchema } from "@/src/features/auth/lib/projectRetentionSchema";
 import { hasEntitlementBasedOnPlan } from "@/src/features/entitlements/server/hasEntitlement";
-import { getDefaultScoreConfigsForProject } from "@langfuse/shared";
+import { getDefaultScoreConfigsForProject, RETENTION_FLOOR_DAYS } from "@langfuse/shared";
 
 /**
  * Create a project (POST /api/public/projects).
@@ -57,7 +57,7 @@ export async function createProject(
         projectRetentionSchema.parse({ retention });
       } catch {
         return res.status(400).json({
-          message: "Invalid retention value. Must be 0 or at least 7 days.",
+          message: `Invalid retention value. Must be 0 or at least ${RETENTION_FLOOR_DAYS} days.`,
         });
       }
 

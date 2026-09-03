@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { createEnv } from "@t3-oss/env-nextjs";
+import { RETENTION_FLOOR_DAYS } from "@langfuse/shared";
 
 const zAuthMethod = z
   .enum([
@@ -342,7 +343,7 @@ export const env = createEnv({
     LITEFUSE_INIT_ORG_CLOUD_PLAN: z.string().optional(), // for use in CI
     LITEFUSE_INIT_PROJECT_ID: z.string().optional(),
     LITEFUSE_INIT_PROJECT_NAME: z.string().optional(),
-    LITEFUSE_INIT_PROJECT_RETENTION: z.coerce.number().int().gte(3).optional(),
+    LITEFUSE_INIT_PROJECT_RETENTION: z.coerce.number().int().gte(RETENTION_FLOOR_DAYS).optional(),
     LITEFUSE_INIT_PROJECT_PUBLIC_KEY: z.string().optional(),
     LITEFUSE_INIT_PROJECT_SECRET_KEY: z.string().optional(),
     LITEFUSE_INIT_USER_EMAIL: z
