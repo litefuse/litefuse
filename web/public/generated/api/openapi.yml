@@ -4020,7 +4020,7 @@ paths:
                 retention:
                   type: integer
                   description: >-
-                    Number of days to retain data. Must be 0 or at least 3 days.
+                    Number of days to retain data. Must be 0 or at least 7 days.
                     Requires data-retention entitlement for non-zero values.
                     Optional.
               required:
@@ -4091,7 +4091,7 @@ paths:
                   nullable: true
                   description: |-
                     Number of days to retain data.
-                    Must be 0 or at least 3 days.
+                    Must be 0 or at least 7 days.
                     Requires data-retention entitlement for non-zero values.
                     Optional. Will retain existing retention setting if omitted.
               required:

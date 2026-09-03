@@ -4,6 +4,7 @@ import {
   protectedProjectProcedure,
 } from "@/src/server/api/trpc";
 import * as z from "zod/v4";
+import { RETENTION_FLOOR_DAYS } from "@langfuse/shared";
 import { throwIfNoProjectAccess } from "@/src/features/rbac/utils/checkProjectAccess";
 import { TRPCError } from "@trpc/server";
 import { projectNameSchema } from "@/src/features/auth/lib/projectNameSchema";
@@ -189,7 +190,7 @@ export const projectsRouter = createTRPCRouter({
     .input(
       z.object({
         projectId: z.string(),
-        retention: z.number().int().gte(3).nullable(),
+        retention: z.number().int().gte(RETENTION_FLOOR_DAYS).nullable(),
       }),
     )
     .mutation(async ({ input, ctx }) => {

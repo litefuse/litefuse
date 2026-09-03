@@ -358,18 +358,30 @@ describe("Projects API", () => {
     it("should validate retention days", async () => {
       const uniqueProjectName = `Test Project ${randomUUID().substring(0, 8)}`;
 
-      // Test with invalid retention days (less than 3 and not 0)
+      // Test with invalid retention days (below the 7-day minimum and not 0)
       const invalidResult = await makeAPICall(
         "POST",
         "/api/public/projects",
         {
           name: uniqueProjectName,
-          retention: 2, // Invalid: less than 3 and not 0
+          retention: 2, // Invalid: below the 7-day minimum and not 0
         },
         createBasicAuthHeader(orgApiKey, orgSecretKey),
       );
       expect(invalidResult.status).toBe(400);
       expect(invalidResult.body.message).toContain("Invalid retention value");
+
+      // Boundary: 6 is still below the 7-day minimum → 400
+      const sixDayResult = await makeAPICall(
+        "POST",
+        "/api/public/projects",
+        {
+          name: `Test Project ${randomUUID().substring(0, 8)}`,
+          retention: 6,
+        },
+        createBasicAuthHeader(orgApiKey, orgSecretKey),
+      );
+      expect(sixDayResult.status).toBe(400);
     });
 
     it("should return 403 when using project API key instead of organization API key", async () => {
@@ -510,18 +522,34 @@ describe("Projects API", () => {
     });
 
     it("should validate retention days on update", async () => {
-      // Test with invalid retention days (less than 3 and not 0)
+      // Test with invalid retention days (below the 7-day minimum and not 0)
       const invalidResult = await makeAPICall(
         "PUT",
         `/api/public/projects/${testProjectId}`,
         {
           name: "Updated Project Name",
-          retention: 2, // Invalid: less than 3 and not 0
+          retention: 2, // Invalid: below the 7-day minimum and not 0
         },
         createBasicAuthHeader(orgApiKey, orgSecretKey),
       );
       expect(invalidResult.status).toBe(400);
       expect(invalidResult.body.message).toContain("Invalid retention value");
+    });
+
+    it("should allow setting retention to the 7-day minimum", async () => {
+      const response = await makeZodVerifiedAPICall(
+        ProjectUpdateResponseSchema,
+        "PUT",
+        `/api/public/projects/${testProjectId}`,
+        {
+          name: "Updated Project Name",
+          retention: 7, // Valid: equals the 7-day minimum
+        },
+        createBasicAuthHeader(orgApiKey, orgSecretKey),
+        200, // Expected status code is 200 OK
+      );
+      expect(response.status).toBe(200);
+      expect(response.body.retentionDays).toBe(7);
     });
 
     it("should allow setting retention to 0", async () => {

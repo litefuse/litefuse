@@ -8,6 +8,7 @@ import {
 import { projectNameSchema } from "@/src/features/auth/lib/projectNameSchema";
 import { projectRetentionSchema } from "@/src/features/auth/lib/projectRetentionSchema";
 import { hasEntitlementBasedOnPlan } from "@/src/features/entitlements/server/hasEntitlement";
+import { RETENTION_FLOOR_DAYS } from "@langfuse/shared";
 
 /**
  * Update a project (PUT /api/public/projects/{id}).
@@ -56,7 +57,7 @@ export async function updateProject(
         projectRetentionSchema.parse({ retention });
       } catch {
         return res.status(400).json({
-          message: "Invalid retention value. Must be 0 or at least 3 days.",
+          message: `Invalid retention value. Must be 0 or at least ${RETENTION_FLOOR_DAYS} days.`,
         });
       }
 
