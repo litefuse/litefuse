@@ -548,7 +548,8 @@ describe("Projects API", () => {
         createBasicAuthHeader(orgApiKey, orgSecretKey),
         200, // Expected status code is 200 OK
       );
-      expect(response.retentionDays).toBe(7);
+      expect(response.status).toBe(200);
+      expect(response.body.retentionDays).toBe(7);
     });
 
     it("should allow setting retention to 0", async () => {
