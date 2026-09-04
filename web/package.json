@@ -158,7 +158,7 @@
     "react-dom": "19.2.3",
     "react-dropzone": "^14.3.8",
     "react-grid-layout": "^1.5.2",
-    "react-hook-form": "^7.62.0",
+    "react-hook-form": "^7.85.0",
     "react-icons": "^5.5.0",
     "react-markdown": "^10.1.0",
     "react-resizable": "^3.1.3",
