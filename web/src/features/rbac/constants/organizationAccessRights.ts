@@ -31,7 +31,6 @@ export const organizationRoleAccessRights: Record<Role, OrganizationScope[]> = {
   ],
   ADMIN: [
     "projects:create",
-    "projects:transfer_org",
     "organization:update",
     "organizationMembers:CUD",
     "organizationMembers:read",
