@@ -141,7 +141,6 @@ const OpenAICompletionUsageSchema = z
       for (const [key, value] of Object.entries(prompt_tokens_details)) {
         if (value !== null && value !== undefined) {
           result[`input_${key}`] = value;
-          result.input = Math.max(result.input - (value ?? 0), 0);
         }
       }
     }
@@ -150,7 +149,6 @@ const OpenAICompletionUsageSchema = z
       for (const [key, value] of Object.entries(completion_tokens_details)) {
         if (value !== null && value !== undefined) {
           result[`output_${key}`] = value;
-          result.output = Math.max(result.output - (value ?? 0), 0);
         }
       }
     }
@@ -196,7 +194,6 @@ const OpenAIResponseUsageSchema = z
       for (const [key, value] of Object.entries(input_tokens_details)) {
         if (value !== null && value !== undefined) {
           result[`input_${key}`] = value;
-          result.input = Math.max(result.input - (value ?? 0), 0);
         }
       }
     }
@@ -205,7 +202,6 @@ const OpenAIResponseUsageSchema = z
       for (const [key, value] of Object.entries(output_tokens_details)) {
         if (value !== null && value !== undefined) {
           result[`output_${key}`] = value;
-          result.output = Math.max(result.output - (value ?? 0), 0);
         }
       }
     }
