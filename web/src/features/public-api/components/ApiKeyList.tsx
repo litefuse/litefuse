@@ -44,9 +44,12 @@ export function ApiKeyList(props: { entityId: string; scope: ApiKeyScope }) {
     );
   }
 
-  const hasProjectAccess = useHasProjectAccess({
+  // Viewing the key list is a read operation (apiKeys:read), so members with a
+  // read-only role can see masked keys. Creating/deleting/renaming stays gated
+  // on apiKeys:CUD (CreateApiKeyButton, DeleteApiKeyButton, ApiKeyNote).
+  const hasProjectViewAccess = useHasProjectAccess({
     projectId: props.entityId,
-    scope: "apiKeys:CUD",
+    scope: "apiKeys:read",
   });
   const hasOrganizationAccess = useHasOrganizationAccess({
     organizationId: props.entityId,
@@ -54,11 +57,11 @@ export function ApiKeyList(props: { entityId: string; scope: ApiKeyScope }) {
   });
 
   const hasAccess =
-    props.scope === "project" ? hasProjectAccess : hasOrganizationAccess;
+    props.scope === "project" ? hasProjectViewAccess : hasOrganizationAccess;
 
   const projectApiKeysQuery = api.projectApiKeys.byProjectId.useQuery(
     { projectId: entityId },
-    { enabled: hasProjectAccess && props.scope === "project" },
+    { enabled: hasProjectViewAccess && props.scope === "project" },
   );
   const organizationApiKeysQuery =
     api.organizationApiKeys.byOrganizationId.useQuery(

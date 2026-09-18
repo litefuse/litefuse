@@ -52,7 +52,7 @@ export default async function handler(
   // Return the schemas
   return res.status(200).json({
     schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
-    totalResults: 2,
+    totalResults: 1,
     Resources: [
       // User Schema
       {
@@ -72,16 +72,40 @@ export default async function handler(
             uniqueness: "server",
           },
           {
+            name: "externalId",
+            type: "string",
+            multiValued: false,
+            description:
+              "Identifier of the user in the provisioning client. Litefuse returns its own user id here, so clients can keep their link and address the user by id.",
+            required: false,
+            caseExact: true,
+            mutability: "readWrite",
+            returned: "default",
+            uniqueness: "none",
+          },
+          {
             name: "userName",
             type: "string",
             multiValued: false,
             description:
-              "Unique identifier for the User, typically the email address",
+              "Unique identifier for the User, and the source of the email address in Litefuse",
             required: true,
             caseExact: false,
             mutability: "readWrite",
             returned: "always",
             uniqueness: "server",
+          },
+          {
+            name: "displayName",
+            type: "string",
+            multiValued: false,
+            description:
+              "The name of the user, suitable for display to end-users. Maps to the same value as name.formatted.",
+            required: false,
+            caseExact: false,
+            mutability: "readWrite",
+            returned: "default",
+            uniqueness: "none",
           },
           {
             name: "name",
@@ -95,6 +119,30 @@ export default async function handler(
                 type: "string",
                 multiValued: false,
                 description: "The user's full name",
+                required: false,
+                caseExact: false,
+                mutability: "readWrite",
+                returned: "default",
+                uniqueness: "none",
+              },
+              {
+                name: "givenName",
+                type: "string",
+                multiValued: false,
+                description:
+                  "The first name of the user. Accepted on write; joined with familyName into the stored name.",
+                required: false,
+                caseExact: false,
+                mutability: "readWrite",
+                returned: "default",
+                uniqueness: "none",
+              },
+              {
+                name: "familyName",
+                type: "string",
+                multiValued: false,
+                description:
+                  "The last name of the user. Accepted on write; joined with givenName into the stored name.",
                 required: false,
                 caseExact: false,
                 mutability: "readWrite",
@@ -159,6 +207,29 @@ export default async function handler(
             caseExact: false,
             mutability: "writeOnly",
             returned: "never",
+            uniqueness: "none",
+          },
+          {
+            name: "active",
+            type: "boolean",
+            multiValued: false,
+            description:
+              "Whether the user is an active member of the organization. Setting it to false removes the organization membership (deprovisions the user), setting it to true re-provisions them.",
+            required: false,
+            mutability: "readWrite",
+            returned: "default",
+            uniqueness: "none",
+          },
+          {
+            name: "roles",
+            type: "string",
+            multiValued: true,
+            description:
+              'Organization role of the user, as an array of strings (["ADMIN"]). Requests also accept the complex form ([{"value":"ADMIN"}]) and the path form with a single value.',
+            required: false,
+            caseExact: true,
+            mutability: "readWrite",
+            returned: "default",
             uniqueness: "none",
           },
           {

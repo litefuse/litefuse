@@ -109,6 +109,7 @@ export const entitlementAccess: Record<
       "data-retention",
       "prompt-protected-labels",
       "admin-api",
+      "cloud-multi-tenant-sso",
     ],
     entitlementLimits: {
       "annotation-queue-count": false,

@@ -21,6 +21,7 @@ import {
 } from "@/src/features/playground/page/types";
 import { usePostHogClientCapture } from "@/src/features/posthog-analytics/usePostHogClientCapture";
 import useProjectIdFromURL from "@/src/hooks/useProjectIdFromURL";
+import { useHasProjectAccess } from "@/src/features/rbac/utils/checkProjectAccess";
 import {
   ChatMessageRole,
   type Observation,
@@ -76,6 +77,10 @@ export const JumpToPlaygroundButton: React.FC<JumpToPlaygroundButtonProps> = (
   const router = useRouter();
   const capture = usePostHogClientCapture();
   const projectId = useProjectIdFromURL();
+  const hasPlaygroundAccess = useHasProjectAccess({
+    projectId,
+    scope: "playground:execute",
+  });
   const { addWindowWithId, clearAllCache } = usePersistedWindowIds();
   const [capturedState, setCapturedState] = useState<PlaygroundCache>(null);
   const [isAvailable, setIsAvailable] = useState<boolean>(false);
@@ -184,6 +189,9 @@ export const JumpToPlaygroundButton: React.FC<JumpToPlaygroundButtonProps> = (
       }
     });
   };
+
+  // Hide the entry point for roles without playground:execute access
+  if (!hasPlaygroundAccess) return null;
 
   const tooltipMessage = isAvailable
     ? "Test in LLM playground"

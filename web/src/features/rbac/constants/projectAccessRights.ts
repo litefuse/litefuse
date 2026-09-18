@@ -31,6 +31,7 @@ export const projectScopes = [
 
   "integrations:CRUD",
 
+  "datasets:read",
   "datasets:CUD",
 
   "prompts:CUD",
@@ -63,6 +64,8 @@ export const projectScopes = [
 
   "llmTools:CUD",
   "llmTools:read",
+
+  "playground:execute",
 
   "comments:CUD",
   "comments:read",
@@ -99,6 +102,7 @@ export const projectRoleAccessRights: Record<Role, ProjectScope[]> = {
     "scores:CUD",
     "scoreConfigs:CUD",
     "scoreConfigs:read",
+    "datasets:read",
     "datasets:CUD",
     "prompts:CUD",
     "prompts:read",
@@ -119,6 +123,7 @@ export const projectRoleAccessRights: Record<Role, ProjectScope[]> = {
     "llmSchemas:read",
     "llmTools:CUD",
     "llmTools:read",
+    "playground:execute",
     "batchExports:create",
     "batchExports:read",
     "comments:CUD",
@@ -152,6 +157,7 @@ export const projectRoleAccessRights: Record<Role, ProjectScope[]> = {
     "scores:CUD",
     "scoreConfigs:CUD",
     "scoreConfigs:read",
+    "datasets:read",
     "datasets:CUD",
     "prompts:CUD",
     "prompts:read",
@@ -172,6 +178,7 @@ export const projectRoleAccessRights: Record<Role, ProjectScope[]> = {
     "llmSchemas:read",
     "llmTools:CUD",
     "llmTools:read",
+    "playground:execute",
     "batchExports:create",
     "batchExports:read",
     "comments:CUD",
@@ -200,6 +207,7 @@ export const projectRoleAccessRights: Record<Role, ProjectScope[]> = {
     "scores:CUD",
     "scoreConfigs:CUD",
     "scoreConfigs:read",
+    "datasets:read",
     "datasets:CUD",
     "prompts:CUD",
     "prompts:read",
@@ -212,8 +220,10 @@ export const projectRoleAccessRights: Record<Role, ProjectScope[]> = {
     "evalDefaultModel:CUD",
     "llmApiKeys:read",
     "llmSchemas:read",
+    "llmSchemas:CUD",
     "llmTools:CUD",
     "llmTools:read",
+    "playground:execute",
     "batchExports:create",
     "batchExports:read",
     "comments:CUD",
@@ -237,6 +247,7 @@ export const projectRoleAccessRights: Record<Role, ProjectScope[]> = {
     "evalJob:read",
     "evalJobExecution:read",
     "evalDefaultModel:read",
+    "datasets:read",
     "llmApiKeys:read",
     "llmSchemas:read",
     "llmTools:read",

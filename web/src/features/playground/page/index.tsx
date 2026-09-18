@@ -14,6 +14,13 @@ import {
   MessageSearchToolbar,
 } from "@/src/components/ChatMessages/MessageSearch";
 import useProjectIdFromURL from "@/src/hooks/useProjectIdFromURL";
+import { useSession } from "next-auth/react";
+import { useHasProjectAccess } from "@/src/features/rbac/utils/checkProjectAccess";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/src/components/ui/alert";
 
 /**
  * PlaygroundPage Component
@@ -38,6 +45,11 @@ import useProjectIdFromURL from "@/src/hooks/useProjectIdFromURL";
  */
 export default function PlaygroundPage() {
   const projectId = useProjectIdFromURL();
+  const session = useSession();
+  const hasPlaygroundAccess = useHasProjectAccess({
+    projectId,
+    scope: "playground:execute",
+  });
   const { windowIds, isLoaded, addWindowWithCopy, removeWindowId } =
     usePersistedWindowIds();
 
@@ -94,7 +106,7 @@ export default function PlaygroundPage() {
   );
 
   // Don't render until window IDs are loaded
-  if (!isLoaded) {
+  if (!isLoaded || session.status === "loading") {
     return (
       <Page
         withPadding={false}
@@ -109,6 +121,27 @@ export default function PlaygroundPage() {
       >
         <div className="flex h-full items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </Page>
+    );
+  }
+
+  // Hide the Playground entirely for roles without playground:execute access
+  if (!hasPlaygroundAccess) {
+    return (
+      <Page
+        withPadding={false}
+        headerProps={{
+          title: "Playground",
+        }}
+      >
+        <div className="p-4">
+          <Alert>
+            <AlertTitle>Access Denied</AlertTitle>
+            <AlertDescription>
+              You do not have permission to use the Playground in this project.
+            </AlertDescription>
+          </Alert>
         </div>
       </Page>
     );
