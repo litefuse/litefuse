@@ -1,6 +1,7 @@
 import { Button } from "@/src/components/ui/button";
 import { useSupportDrawer } from "@/src/features/support-chat/SupportDrawerProvider";
 import { AlertTriangle, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface ErrorNotificationProps {
   error: string;
@@ -19,6 +20,7 @@ export const ErrorNotification: React.FC<ErrorNotificationProps> = ({
   toast,
   path,
 }) => {
+  const { t } = useTranslation();
   const { setOpen } = useSupportDrawer();
   const isError = type === "ERROR";
   const textColor = isError
@@ -52,7 +54,7 @@ export const ErrorNotification: React.FC<ErrorNotificationProps> = ({
         )}
         {path && (
           <div className={`text-sm leading-tight ${textColor}`}>
-            Path: {path}
+            {t("Path: {{path}}", { path })}
           </div>
         )}
 
@@ -64,7 +66,7 @@ export const ErrorNotification: React.FC<ErrorNotificationProps> = ({
               setOpen(true);
             }}
           >
-            Report issue to Litefuse team
+            {t("Report issue to Litefuse team")}
           </Button>
         )}
       </div>
@@ -79,7 +81,7 @@ export const ErrorNotification: React.FC<ErrorNotificationProps> = ({
           e.stopPropagation();
           e.preventDefault();
         }}
-        aria-label="Close"
+        aria-label={t("Close")}
       >
         <X size={14} />
       </button>

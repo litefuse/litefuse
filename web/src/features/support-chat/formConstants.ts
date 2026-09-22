@@ -1,6 +1,7 @@
 // formModels.ts
 import { z } from "zod";
 
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 /** ── Message Type ────────────────────────────────────────────────────────── */
 export const MessageTypeSchema = z.enum(["Question", "Feedback", "Bug"]);
 export type MessageType = z.infer<typeof MessageTypeSchema>;
@@ -68,7 +69,7 @@ export const SupportFormSchema = z.object({
   integrationType: z.string().optional(),
   topic: z
     .union([TopicSchema, z.literal("")])
-    .refine((val) => val !== "", { message: "Please select a topic." })
+    .refine((val) => val !== "", { message: i18nKey("Please select a topic.") })
     .transform((val) => val as z.infer<typeof TopicSchema>),
   message: z
     .string()

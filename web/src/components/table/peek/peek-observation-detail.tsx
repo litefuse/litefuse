@@ -4,11 +4,13 @@ import { Trace } from "@/src/components/trace2/Trace";
 import { Skeleton } from "@/src/components/ui/skeleton";
 import { StringParam, useQueryParam, withDefault } from "use-query-params";
 
+import { useTranslation } from "react-i18next";
 export const PeekViewObservationDetail = ({
   projectId,
 }: {
   projectId: string;
 }) => {
+  const { t } = useTranslation();
   const router = useRouter();
   const peekId = router.query.peek as string | undefined;
   const timestamp = router.query.timestamp

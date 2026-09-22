@@ -6,6 +6,7 @@ import { Input } from "./input";
 
 import { cn } from "@/src/utils/tailwind";
 
+import { useTranslation } from "react-i18next";
 export interface SliderProps
   extends React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root> {
   showInput?: boolean;
@@ -22,6 +23,7 @@ const Slider = React.forwardRef<
     { className, showInput, displayAsPercentage, decimalPlaces = 2, ...props },
     ref,
   ) => {
+    const { t } = useTranslation();
     const [inputValue, setInputValue] = React.useState<string>("");
 
     // Calculate display value based on the first slider value
@@ -136,7 +138,7 @@ const Slider = React.forwardRef<
                     : 100
                   : props.max
               }
-              aria-label="Slider value"
+              aria-label={t("Slider value")}
             />
             {displayAsPercentage && (
               <span className="text-muted-foreground text-sm">%</span>

@@ -3,7 +3,9 @@ import { useScoreAnalytics } from "./ScoreAnalyticsProvider";
 import { useState, useEffect } from "react";
 import { SamplingDetailsHoverCard } from "./SamplingDetailsHoverCard";
 
+import { useTranslation } from "react-i18next";
 export function ScoreAnalyticsNoticeBanner() {
+  const { t } = useTranslation();
   const { isEstimating, estimate, isLoading, data } = useScoreAnalytics();
   const [showLoadingBanner, setShowLoadingBanner] = useState(false);
 
@@ -44,18 +46,27 @@ export function ScoreAnalyticsNoticeBanner() {
           <div className="flex-1 space-y-1">
             <div className="text-sm font-medium">
               {showLargeDataset
-                ? "Processing large dataset..."
-                : "Loading analytics..."}
+                ? t("Processing large dataset...")
+                : t("Loading analytics...")}
             </div>
             {estimate && (
               <div className="text-muted-foreground text-sm">
                 {estimate.mode === "single"
-                  ? `Analyzing ~${estimate.score1Count.toLocaleString()} scores`
-                  : `Analyzing ~${estimate.score1Count.toLocaleString()} (Score 1) and ~${estimate.score2Count.toLocaleString()} (Score 2) scores`}
-                {estimate.willSample && " • Sampling will be applied"}
-                {estimate.estimatedQueryTime && (
-                  <> • Est. time: {estimate.estimatedQueryTime}</>
-                )}
+                  ? t("Analyzing ~{{total}} scores", {
+                      total: estimate.score1Count.toLocaleString(),
+                    })
+                  : t(
+                      "Analyzing ~{{first}} (Score 1) and ~{{second}} (Score 2) scores",
+                      {
+                        first: estimate.score1Count.toLocaleString(),
+                        second: estimate.score2Count.toLocaleString(),
+                      },
+                    )}
+                {estimate.willSample && ` ${t("• Sampling will be applied")}`}
+                {estimate.estimatedQueryTime &&
+                  ` ${t("• Est. time: {{time}}", {
+                    time: estimate.estimatedQueryTime,
+                  })}`}
               </div>
             )}
           </div>
@@ -72,7 +83,7 @@ export function ScoreAnalyticsNoticeBanner() {
           <Info className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
           <div className="flex-1 space-y-1">
             <div className="flex items-center gap-2 text-sm font-medium">
-              Sampled Data
+              {t("Sampled Data")}
               <SamplingDetailsHoverCard
                 samplingMetadata={data.samplingMetadata}
                 mode={data.metadata.mode}

@@ -5,11 +5,13 @@ import { useMediaQuery } from "react-responsive";
 import { ResizableDesktopLayout } from "@/src/components/layouts/ResizableDesktopLayout";
 import { useDataTableControls } from "./data-table-controls";
 
+import { useTranslation } from "react-i18next";
 /** Resizable layout for filter sidebar and table content.
  *  On mobile, renders a stacked layout instead of resizable panels.
  *  Expects exactly 2 children: filter sidebar (DataTableControls) and table content.
  */
 export function ResizableFilterLayout({ children }: PropsWithChildren) {
+  const { t } = useTranslation();
   const { open, tableName } = useDataTableControls();
   const isDesktop = useMediaQuery({ query: "(min-width: 768px)" });
 

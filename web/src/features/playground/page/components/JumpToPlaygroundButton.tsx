@@ -42,6 +42,10 @@ import { convertChatMlToPlayground } from "@/src/utils/chatml/playgroundConverte
 import { api } from "@/src/utils/api";
 import { cn } from "@/src/utils/tailwind";
 import usePlaygroundCache from "@/src/features/playground/page/hooks/usePlaygroundCache";
+import { useTranslation } from "react-i18next";
+
+/** Stored on the schema record, not rendered as a label. */
+const SCHEMA_SOURCE_DESCRIPTION = "Schema parsed from generation";
 import {
   type MetadataDomainClient,
   type WithStringifiedMetadata,
@@ -73,6 +77,7 @@ type JumpToPlaygroundButtonProps = (
 export const JumpToPlaygroundButton: React.FC<JumpToPlaygroundButtonProps> = (
   props,
 ) => {
+  const { t } = useTranslation();
   const router = useRouter();
   const capture = usePostHogClientCapture();
   const projectId = useProjectIdFromURL();
@@ -206,7 +211,7 @@ export const JumpToPlaygroundButton: React.FC<JumpToPlaygroundButtonProps> = (
             className={props.size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4"}
           />
           <span className={cn("hidden md:inline", props.className)}>
-            Playground
+            {t("Playground")}
           </span>
           <ChevronDown className="h-3 w-3" />
         </Button>
@@ -214,17 +219,17 @@ export const JumpToPlaygroundButton: React.FC<JumpToPlaygroundButtonProps> = (
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => handlePlaygroundAction(true)}>
           <Terminal className="mr-2 h-4 w-4" />
-          Fresh playground
+          {t("Fresh playground")}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => handlePlaygroundAction(false)}>
           <Terminal className="mr-2 h-4 w-4" />
-          Add to existing
+          {t("Add to existing")}
         </DropdownMenuItem>
         {props.source === "generation" && (
           <>
             <DropdownMenuSeparator />
             <div className="flex items-center justify-between px-2 py-1.5">
-              <span className="text-sm">Include output</span>
+              <span className="text-sm">{t("Include output")}</span>
               <Switch
                 checked={includeOutput}
                 onCheckedChange={setIncludeOutput}
@@ -537,7 +542,7 @@ function parseStructuredOutputSchema(
         return {
           id: Math.random().toString(36).substring(2),
           name: parseStructuredOutputSchema.data.json_schema.name,
-          description: "Schema parsed from generation",
+          description: SCHEMA_SOURCE_DESCRIPTION,
           schema: parseStructuredOutputSchema.data.json_schema.schema,
         };
     }
@@ -560,7 +565,7 @@ function parseStructuredOutputSchema(
         return {
           id: Math.random().toString(36).substring(2),
           name: parseStructuredOutputSchema.data.json_schema.name,
-          description: "Schema parsed from generation",
+          description: SCHEMA_SOURCE_DESCRIPTION,
           schema: parseStructuredOutputSchema.data.json_schema.schema,
         };
     }

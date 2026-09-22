@@ -1,3 +1,5 @@
+import { type TFunction } from "i18next";
+import { getRuntimeLocale } from "@/src/features/i18n/runtimeLocale";
 export const utcDateOffsetByDays = (days: number) => {
   const date = new Date();
   date.setUTCHours(0, 0, 0, 0);
@@ -59,20 +61,23 @@ export const getTimezoneDetails = () => {
   return `${location} (UTC${utcDifference >= 0 ? "+" : ""}${utcDifference})`;
 };
 
-export const getRelativeTimestampFromNow = (timestamp: Date): string => {
+export const getRelativeTimestampFromNow = (
+  timestamp: Date,
+  t: TFunction,
+): string => {
   const diffInMs = new Date().getTime() - timestamp.getTime();
   const diffInMinutes = diffInMs / (1000 * 60);
   const diffInHours = diffInMinutes / 60;
   const diffInDays = diffInHours / 24;
 
   if (diffInHours < 1) {
-    return `${Math.floor(diffInMinutes)} minutes ago`;
+    return t("{{n}} minutes ago", { n: Math.floor(diffInMinutes) });
   } else if (diffInHours < 24) {
-    return `${Math.floor(diffInHours)} hours ago`;
+    return t("{{n}} hours ago", { n: Math.floor(diffInHours) });
   } else if (diffInDays < 7) {
-    return `${Math.floor(diffInDays)} days ago`;
+    return t("{{n}} days ago", { n: Math.floor(diffInDays) });
   } else {
-    return timestamp.toLocaleDateString("en-US", {
+    return timestamp.toLocaleDateString(getRuntimeLocale(), {
       year: "2-digit",
       month: "numeric",
       day: "numeric",

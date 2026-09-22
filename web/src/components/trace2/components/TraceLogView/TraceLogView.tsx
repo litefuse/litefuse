@@ -53,6 +53,7 @@ import { useLogViewPreferences } from "./useLogViewPreferences";
 import { useLogViewDownload } from "./useLogViewDownload";
 import { useLogViewColumns } from "./useLogViewColumns";
 
+import { useTranslation } from "react-i18next";
 export interface TraceLogViewProps {
   traceId: string;
   projectId: string;
@@ -75,6 +76,7 @@ export const TraceLogView = ({
   projectId,
   currentView = "pretty",
 }: TraceLogViewProps) => {
+  const { t } = useTranslation();
   const { roots, observations } = useTraceData();
   const { logViewMode, logViewTreeStyle } = useViewPreferences();
   const { formattedExpansion, setFormattedFieldExpansion } = useJsonExpansion();
@@ -293,7 +295,7 @@ export const TraceLogView = ({
       {hasNoObservations && (
         <div className="flex flex-1 items-center justify-center">
           <div className="text-muted-foreground text-sm">
-            No observations in this trace
+            {t("No observations in this trace")}
           </div>
         </div>
       )}
@@ -301,7 +303,7 @@ export const TraceLogView = ({
       {hasNoSearchResults && (
         <div className="flex flex-1 items-center justify-center">
           <div className="text-muted-foreground text-sm">
-            No observations match &quot;{searchQuery}&quot;
+            {t('No observations match "{{query}}"', { query: searchQuery })}
           </div>
         </div>
       )}

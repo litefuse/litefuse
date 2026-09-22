@@ -6,6 +6,7 @@ import { SectionMedia } from "./SectionMedia";
 import { type ChatMlMessage, shouldRenderMessage } from "./chat-message-utils";
 import { type MediaReturnType } from "@/src/features/media/validation";
 
+import { useTranslation } from "react-i18next";
 const COLLAPSE_THRESHOLD = 3;
 
 // ChatMessageList props
@@ -39,6 +40,7 @@ export function ChatMessageList({
   collapseLongHistory = true,
   inputMessageCount,
 }: ChatMessageListProps) {
+  const { t } = useTranslation();
   // Filter messages to only those with renderable content
   const messagesToRender = useMemo(
     () => messages.filter(shouldRenderMessage),
@@ -85,7 +87,7 @@ export function ChatMessageList({
                   >
                     {isCollapsed
                       ? `Show ${messagesToRender.length - COLLAPSE_THRESHOLD} more ...`
-                      : "Hide history"}
+                      : t("Hide history")}
                   </Button>
                 )}
               </Fragment>
@@ -95,7 +97,7 @@ export function ChatMessageList({
         {/* Additional input section */}
         {additionalInput && (
           <PrettyJsonView
-            title="Additional Input"
+            title={t("Additional Input")}
             json={additionalInput}
             currentView={shouldRenderMarkdown ? "pretty" : "json"}
           />

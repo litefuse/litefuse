@@ -13,6 +13,7 @@ import {
 import { compactNumberFormatter } from "@/src/utils/numbers";
 import { cn } from "@/src/utils/tailwind";
 
+import { useTranslation } from "react-i18next";
 export const AreaChartTimeSeries: React.FC<ChartProps> = ({
   data,
   config = {
@@ -28,6 +29,7 @@ export const AreaChartTimeSeries: React.FC<ChartProps> = ({
   legendPosition = "none",
   subtleFill = false,
 }) => {
+  const { t } = useTranslation();
   const [highlightedDimension, setHighlightedDimension] = useState<
     string | null
   >(null);
@@ -63,7 +65,9 @@ export const AreaChartTimeSeries: React.FC<ChartProps> = ({
                   )}
                   aria-pressed={isHighlighted}
                   aria-label={
-                    isHighlighted ? `Show only ${dimension}` : "Show all series"
+                    isHighlighted
+                      ? t("Show only {{dimension}}", { dimension })
+                      : t("Show all series")
                   }
                 >
                   <div

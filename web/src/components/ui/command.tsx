@@ -6,6 +6,7 @@ import { Command as CommandPrimitive } from "cmdk";
 import { Search } from "lucide-react";
 
 import { cn } from "@/src/utils/tailwind";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogBody,
@@ -35,6 +36,7 @@ const CommandDialog = ({
 }: DialogProps & {
   filter?: React.ComponentProps<typeof CommandPrimitive>["filter"];
 }) => {
+  const { t } = useTranslation();
   return (
     <Dialog {...props}>
       <DialogContent
@@ -42,7 +44,7 @@ const CommandDialog = ({
         closeOnInteractionOutside
       >
         <DialogHeader className="sr-only p-0">
-          <DialogTitle>Search</DialogTitle>
+          <DialogTitle>{t("Search")}</DialogTitle>
         </DialogHeader>
         <DialogBody className="p-0">
           <Command

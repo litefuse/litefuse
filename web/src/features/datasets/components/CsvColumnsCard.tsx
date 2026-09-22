@@ -9,6 +9,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { GripVertical } from "lucide-react";
 import type { CsvColumnPreview } from "@/src/features/datasets/lib/csv/types";
 
+import { useTranslation } from "react-i18next";
 function DraggableColumn({ column }: { column: CsvColumnPreview }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: column.name,
@@ -46,13 +47,16 @@ export function CsvColumnsCard({
   columns: CsvColumnPreview[];
   columnCount: number;
 }) {
+  const { t } = useTranslation();
   return (
     <Card className="flex h-full flex-col overflow-hidden">
       <CardHeader className="shrink-0 p-4 pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-semibold">CSV Columns</CardTitle>
+          <CardTitle className="text-base font-semibold">
+            {t("CSV Columns")}
+          </CardTitle>
           <span className="bg-muted text-muted-foreground rounded-full px-2.5 py-0.5 text-xs font-medium">
-            {columnCount} {columnCount === 1 ? "column" : "columns"}
+            {t("{{count}} column", { count: columnCount })}
           </span>
         </div>
       </CardHeader>
@@ -63,8 +67,8 @@ export function CsvColumnsCard({
           ))}
         </div>
         <div className="bg-light-blue/40 text-accent-dark-blue shrink-0 rounded-lg p-3 text-xs leading-relaxed">
-          <strong className="font-semibold">Tip:</strong> Drag columns from this
-          list to the mapping fields on the right.
+          <strong className="font-semibold">{t("Tip:")}</strong>{" "}
+          {t("Drag columns from this list to the mapping fields on the right.")}
         </div>
       </CardContent>
     </Card>

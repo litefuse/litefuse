@@ -1,6 +1,7 @@
 import { type DataPoint } from "./chart-props";
 import { type DashboardWidgetChartType } from "@langfuse/shared/src/db";
 
+import { type TFunction } from "i18next";
 /**
  * Groups data by dimension to prepare it for time series breakdowns
  * @param data
@@ -68,27 +69,28 @@ export const formatAxisLabel = (label: string): string =>
  */
 export function getChartTypeDisplayName(
   chartType: DashboardWidgetChartType,
+  t: TFunction,
 ): string {
   switch (chartType) {
     case "LINE_TIME_SERIES":
-      return "Line Chart (Time Series)";
+      return t("Line Chart (Time Series)");
     case "AREA_TIME_SERIES":
-      return "Area Chart (Time Series)";
+      return t("Area Chart (Time Series)");
     case "BAR_TIME_SERIES":
-      return "Bar Chart (Time Series)";
+      return t("Bar Chart (Time Series)");
     case "HORIZONTAL_BAR":
-      return "Horizontal Bar Chart (Total Value)";
+      return t("Horizontal Bar Chart (Total Value)");
     case "VERTICAL_BAR":
-      return "Vertical Bar Chart (Total Value)";
+      return t("Vertical Bar Chart (Total Value)");
     case "PIE":
-      return "Pie Chart (Total Value)";
+      return t("Pie Chart (Total Value)");
     case "NUMBER":
-      return "Big Number (Total Value)";
+      return t("Big Number (Total Value)");
     case "HISTOGRAM":
-      return "Histogram (Total Value)";
+      return t("Histogram (Total Value)");
     case "PIVOT_TABLE":
-      return "Pivot Table (Total Value)";
+      return t("Pivot Table (Total Value)");
     default:
-      return "Unknown Chart Type";
+      return t("Unknown Chart Type");
   }
 }

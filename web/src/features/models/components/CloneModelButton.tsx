@@ -3,6 +3,7 @@ import { useHasProjectAccess } from "@/src/features/rbac/utils/checkProjectAcces
 import { UpsertModelFormDialog } from "@/src/features/models/components/UpsertModelFormDialog";
 import { type GetModelResult } from "@/src/features/models/validation";
 
+import { useTranslation } from "react-i18next";
 export const CloneModelButton = ({
   modelData,
   projectId,
@@ -10,20 +11,25 @@ export const CloneModelButton = ({
   modelData: GetModelResult;
   projectId: string;
 }) => {
+  const { t } = useTranslation();
   const hasAccess = useHasProjectAccess({
     projectId,
     scope: "models:CUD",
   });
 
   return (
-    <UpsertModelFormDialog {...{ modelData, projectId, action: "clone" }}>
+    <UpsertModelFormDialog
+      modelData={modelData}
+      projectId={projectId}
+      action="clone"
+    >
       <Button
         variant="outline"
         disabled={!hasAccess}
-        title="Clone model"
+        title={t("Clone model")}
         className="flex items-center"
       >
-        <span>Clone</span>
+        <span>{t("Clone")}</span>
       </Button>
     </UpsertModelFormDialog>
   );

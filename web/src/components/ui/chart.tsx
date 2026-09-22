@@ -8,6 +8,9 @@ import { cn } from "@/src/utils/tailwind";
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: "", dark: ".dark" } as const;
 
+/** Recharts payload key, not user-facing text. */
+const DEFAULT_PAYLOAD_KEY = "value";
+
 export type ChartConfig = {
   [k in string]: {
     label?: React.ReactNode;
@@ -201,7 +204,7 @@ const ChartTooltipContent = React.forwardRef<
         {!nestLabel ? tooltipLabel : null}
         <div className="grid gap-1.5">
           {displayPayload.map((item, index) => {
-            const key = `${nameKey || item.name || item.dataKey || "value"}`;
+            const key = `${nameKey || item.name || item.dataKey || DEFAULT_PAYLOAD_KEY}`;
             const itemConfig = getPayloadConfigFromPayload(config, item, key);
             const indicatorColor = color || item.payload.fill || item.color;
 
@@ -307,7 +310,7 @@ const ChartLegendContent = React.forwardRef<
         )}
       >
         {payload.map((item) => {
-          const key = `${nameKey || item.dataKey || "value"}`;
+          const key = `${nameKey || item.dataKey || DEFAULT_PAYLOAD_KEY}`;
           const itemConfig = getPayloadConfigFromPayload(config, item, key);
 
           return (

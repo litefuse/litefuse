@@ -79,6 +79,8 @@ import { AddObservationsToDatasetDialog } from "@/src/features/batch-actions/com
 import useSessionStorage from "@/src/components/useSessionStorage";
 import { buildTraceDetailPath } from "@/src/utils/navigation";
 import { getSafeRedirectPath } from "@/src/utils/redirect";
+import { useTranslation } from "react-i18next";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 import {
   type RefreshInterval,
   REFRESH_INTERVALS,
@@ -152,6 +154,7 @@ export default function ObservationsTable({
   externalDateRange,
   limitRows,
 }: ObservationsTableProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const { viewId } = router.query;
   const utils = api.useUtils();
@@ -500,11 +503,14 @@ export default function ObservationsTable({
   const addToQueueMutation = api.annotationQueueItems.createMany.useMutation({
     onSuccess: (data) => {
       showSuccessToast({
-        title: "Observations added to queue",
-        description: `Selected observations will be added to queue "${data.queueName}". This may take a minute.`,
+        title: t("Observations added to queue"),
+        description: t(
+          'Selected observations will be added to queue "{{queue}}". This may take a minute.',
+          { queue: data.queueName },
+        ),
         link: {
           href: `/project/${projectId}/annotation-queues/${data.queueId}`,
-          text: `View queue "${data.queueName}"`,
+          text: t('View queue "{{queue}}"', { queue: data.queueName }),
         },
       });
     },
@@ -572,9 +578,9 @@ export default function ObservationsTable({
     {
       id: ActionId.ObservationAddToAnnotationQueue,
       type: BatchActionType.Create,
-      label: "Add to Annotation Queue",
-      description: "Add selected observations to an annotation queue.",
-      targetLabel: "Annotation Queue",
+      label: t("Add to Annotation Queue"),
+      description: t("Add selected observations to an annotation queue."),
+      targetLabel: t("Annotation Queue"),
       execute: handleAddToAnnotationQueue,
       accessCheck: {
         scope: "annotationQueues:CUD",
@@ -583,8 +589,8 @@ export default function ObservationsTable({
     {
       id: ActionId.ObservationAddToDataset,
       type: BatchActionType.Create,
-      label: "Add to Dataset",
-      description: "Add selected observations to a dataset",
+      label: t("Add to Dataset"),
+      description: t("Add selected observations to a dataset"),
       customDialog: true,
       accessCheck: {
         scope: "datasets:CUD",
@@ -599,7 +605,7 @@ export default function ObservationsTable({
     {
       accessorKey: "startTime",
       id: "startTime",
-      header: "Start Time",
+      header: t("Start Time"),
       size: 150,
       enableHiding: true,
       enableSorting,
@@ -611,7 +617,7 @@ export default function ObservationsTable({
     {
       accessorKey: "type",
       id: "type",
-      header: "Type",
+      header: t("Type"),
       size: 50,
       enableSorting,
       cell: ({ row }) => {
@@ -626,7 +632,7 @@ export default function ObservationsTable({
     {
       accessorKey: "name",
       id: "name",
-      header: "Name",
+      header: t("Name"),
       size: 150,
       enableSorting,
       cell: ({ row }) => {
@@ -636,7 +642,7 @@ export default function ObservationsTable({
     },
     {
       accessorKey: "input",
-      header: "Input",
+      header: t("Input"),
       id: "input",
       size: 300,
       cell: ({ row }) => {
@@ -658,7 +664,7 @@ export default function ObservationsTable({
     {
       accessorKey: "output",
       id: "output",
-      header: "Output",
+      header: t("Output"),
       size: 300,
       cell: ({ row }) => {
         const observationId: string = row.getValue("id");
@@ -679,11 +685,12 @@ export default function ObservationsTable({
     {
       accessorKey: "level",
       id: "level",
-      header: "Level",
+      header: t("Level"),
       size: 100,
       headerTooltip: {
-        description:
+        description: t(
           "You can differentiate the importance of observations with the level attribute to control the verbosity of your traces and highlight errors and warnings.",
+        ),
         href: "https://litefuse.ai/docs/observability/features/log-levels",
       },
       enableHiding: true,
@@ -705,12 +712,13 @@ export default function ObservationsTable({
     },
     {
       accessorKey: "statusMessage",
-      header: "Status Message",
+      header: t("Status Message"),
       id: "statusMessage",
       size: 150,
       headerTooltip: {
-        description:
+        description: t(
           "Use a statusMessage to e.g. provide additional information on a status such as level=ERROR.",
+        ),
         href: "https://litefuse.ai/docs/observability/features/log-levels",
       },
       enableHiding: true,
@@ -719,7 +727,7 @@ export default function ObservationsTable({
     {
       accessorKey: "latency",
       id: "latency",
-      header: "Latency",
+      header: t("Latency"),
       size: 100,
       cell: ({ row }) => {
         const latency: number | undefined = row.getValue("latency");
@@ -732,7 +740,7 @@ export default function ObservationsTable({
     },
     {
       accessorKey: "totalCost",
-      header: "Total Cost",
+      header: t("Total Cost"),
       id: "totalCost",
       size: 120,
       cell: ({ row }) => {
@@ -757,7 +765,7 @@ export default function ObservationsTable({
     {
       accessorKey: "toolDefinitions",
       id: "toolDefinitions",
-      header: "Available Tools",
+      header: t("Available Tools"),
       size: 120,
       enableHiding: true,
       enableSorting,
@@ -772,7 +780,7 @@ export default function ObservationsTable({
     {
       accessorKey: "toolCalls",
       id: "toolCalls",
-      header: "Tool Calls",
+      header: t("Tool Calls"),
       size: 100,
       enableHiding: true,
       enableSorting,
@@ -787,7 +795,7 @@ export default function ObservationsTable({
     {
       accessorKey: "timeToFirstToken",
       id: "timeToFirstToken",
-      header: "Time to First Token",
+      header: t("Time to First Token"),
       size: 150,
       enableHiding: true,
       enableSorting,
@@ -804,7 +812,7 @@ export default function ObservationsTable({
     },
     {
       accessorKey: "tokens",
-      header: "Tokens",
+      header: t("Tokens"),
       id: "tokens",
       size: 150,
       cell: ({ row }) => {
@@ -834,7 +842,7 @@ export default function ObservationsTable({
     {
       accessorKey: "model",
       id: "model",
-      header: "Model",
+      header: t("Model"),
       size: 150,
       enableHiding: true,
       enableSorting,
@@ -878,9 +886,9 @@ export default function ObservationsTable({
     {
       accessorKey: "promptName",
       id: "promptName",
-      header: "Prompt",
+      header: t("Prompt"),
       headerTooltip: {
-        description: "Link to prompt version in Litefuse prompt management.",
+        description: t("Link to prompt version in Litefuse prompt management."),
         href: "https://litefuse.ai/docs/prompt-management/get-started",
       },
       size: 200,
@@ -895,7 +903,7 @@ export default function ObservationsTable({
     },
     {
       accessorKey: "environment",
-      header: "Environment",
+      header: t("Environment"),
       id: "environment",
       size: 150,
       enableHiding: true,
@@ -915,7 +923,7 @@ export default function ObservationsTable({
     {
       accessorKey: "traceTags",
       id: "traceTags",
-      header: "Trace Tags",
+      header: t("Trace Tags"),
       size: 250,
       enableHiding: true,
       cell: ({ row }) => {
@@ -936,10 +944,12 @@ export default function ObservationsTable({
     },
     {
       accessorKey: "metadata",
-      header: "Metadata",
+      header: t("Metadata"),
       size: 300,
       headerTooltip: {
-        description: "Add metadata to traces to track additional information.",
+        description: t(
+          "Add metadata to traces to track additional information.",
+        ),
         href: "https://litefuse.ai/docs/observability/features/metadata",
       },
       cell: ({ row }) => {
@@ -960,7 +970,7 @@ export default function ObservationsTable({
     },
     {
       accessorKey: "scores",
-      header: "Scores",
+      header: t("Scores"),
       id: "scores",
       enableHiding: true,
       defaultHidden: true,
@@ -972,7 +982,7 @@ export default function ObservationsTable({
     {
       accessorKey: "endTime",
       id: "endTime",
-      header: "End Time",
+      header: t("End Time"),
       size: 150,
       enableHiding: true,
       enableSorting,
@@ -985,7 +995,7 @@ export default function ObservationsTable({
     {
       accessorKey: "id",
       id: "id",
-      header: "ObservationID",
+      header: t("ObservationID"),
       size: 100,
       defaultHidden: true,
       enableSorting,
@@ -1002,7 +1012,7 @@ export default function ObservationsTable({
     {
       accessorKey: "traceName",
       id: "traceName",
-      header: "Trace Name",
+      header: t("Trace Name"),
       size: 150,
       enableHiding: true,
       enableSorting,
@@ -1011,7 +1021,7 @@ export default function ObservationsTable({
     {
       accessorKey: "traceId",
       id: "traceId",
-      header: "Trace ID",
+      header: t("Trace ID"),
       size: 100,
       cell: ({ row }) => {
         const value = row.getValue("traceId");
@@ -1026,7 +1036,7 @@ export default function ObservationsTable({
     {
       accessorKey: "modelId",
       id: "modelId",
-      header: "Model ID",
+      header: t("Model ID"),
       size: 100,
       enableHiding: true,
       defaultHidden: true,
@@ -1034,10 +1044,10 @@ export default function ObservationsTable({
     {
       accessorKey: "version",
       id: "version",
-      header: "Version",
+      header: t("Version"),
       size: 100,
       headerTooltip: {
-        description: "Track changes via the version tag.",
+        description: t("Track changes via the version tag."),
         href: "https://litefuse.ai/docs/experimentation",
       },
       enableHiding: true,
@@ -1046,7 +1056,7 @@ export default function ObservationsTable({
     },
     {
       accessorKey: "usage",
-      header: "Usage",
+      header: t("Usage"),
       id: "usage",
       enableHiding: true,
       defaultHidden: true,
@@ -1059,7 +1069,7 @@ export default function ObservationsTable({
         {
           accessorKey: "tokensPerSecond",
           id: "tokensPerSecond",
-          header: "Tokens per second",
+          header: t("Tokens per second"),
           size: 200,
           cell: ({ row }: { row: Row<ObservationsTableRow> }) => {
             const latency: number | undefined = row.getValue("latency");
@@ -1084,7 +1094,7 @@ export default function ObservationsTable({
         {
           accessorKey: "inputTokens",
           id: "inputTokens",
-          header: "Input Tokens",
+          header: t("Input Tokens"),
           size: 100,
           enableHiding: true,
           defaultHidden: true,
@@ -1101,7 +1111,7 @@ export default function ObservationsTable({
         {
           accessorKey: "outputTokens",
           id: "outputTokens",
-          header: "Output Tokens",
+          header: t("Output Tokens"),
           size: 100,
           enableHiding: true,
           defaultHidden: true,
@@ -1118,7 +1128,7 @@ export default function ObservationsTable({
         {
           accessorKey: "totalTokens",
           id: "totalTokens",
-          header: "Total Tokens",
+          header: t("Total Tokens"),
           size: 100,
           enableHiding: true,
           defaultHidden: true,
@@ -1136,7 +1146,7 @@ export default function ObservationsTable({
     },
     {
       accessorKey: "cost",
-      header: "Cost",
+      header: t("Cost"),
       id: "cost",
       enableHiding: true,
       defaultHidden: true,
@@ -1149,7 +1159,7 @@ export default function ObservationsTable({
         {
           accessorKey: "inputCost",
           id: "inputCost",
-          header: "Input Cost",
+          header: t("Input Cost"),
           size: 120,
           cell: ({ row }: { row: Row<ObservationsTableRow> }) => {
             const value: {
@@ -1168,7 +1178,7 @@ export default function ObservationsTable({
         {
           accessorKey: "outputCost",
           id: "outputCost",
-          header: "Output Cost",
+          header: t("Output Cost"),
           size: 120,
           cell: ({ row }: { row: Row<ObservationsTableRow> }) => {
             const value: {
@@ -1315,7 +1325,12 @@ export default function ObservationsTable({
             columns={columns}
             filterState={queryFilter.explicitFilterState}
             searchConfig={{
-              metadataSearchFields: ["ID", "Name", "Trace Name", "Model"],
+              metadataSearchFields: [
+                i18nKey("ID"),
+                i18nKey("Name"),
+                i18nKey("Trace Name"),
+                i18nKey("Model"),
+              ],
               updateQuery: setSearchQuery,
               currentQuery: searchQuery ?? undefined,
               searchType,

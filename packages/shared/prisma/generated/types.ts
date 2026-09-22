@@ -993,6 +993,7 @@ export type User = {
   image: string | null;
   admin: Generated<boolean>;
   v4_beta_enabled: Generated<boolean>;
+  locale: string | null;
   created_at: Generated<Timestamp>;
   updated_at: Generated<Timestamp>;
   feature_flags: Generated<string[]>;

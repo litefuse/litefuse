@@ -20,6 +20,7 @@ import { useLangfuseCloudRegion } from "@/src/features/organizations/hooks";
 import { useUiCustomization } from "@/src/features/ui-customization/useUiCustomization";
 import { usePostHogClientCapture } from "@/src/features/posthog-analytics/usePostHogClientCapture";
 
+import { useTranslation } from "react-i18next";
 type SupportType = "in-app-support" | "custom" | "community";
 
 export function IntroSection({
@@ -28,6 +29,7 @@ export function IntroSection({
   onStartForm: () => void;
   displayDensity?: "default" | "compact";
 }) {
+  const { t } = useTranslation();
   const uiCustomization = useUiCustomization();
   const { isLangfuseCloud } = useLangfuseCloudRegion();
   const capture = usePostHogClientCapture();
@@ -81,11 +83,12 @@ export function IntroSection({
 
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2 text-base font-semibold">
-          <LibraryBig className="h-4 w-4" /> Docs
+          <LibraryBig className="h-4 w-4" /> {t("Docs")}
         </div>
         <p className="text-muted-foreground text-sm">
-          Dive into guides, concepts, and API reference — clear steps and
-          examples to move quickly.
+          {t(
+            "Dive into guides, concepts, and API reference — clear steps and examples to move quickly.",
+          )}
         </p>
 
         <Button asChild variant="outline">
@@ -96,7 +99,7 @@ export function IntroSection({
             target="_blank"
             rel="noopener"
           >
-            View documentation
+            {t("View documentation")}
           </a>
         </Button>
       </div>
@@ -107,11 +110,12 @@ export function IntroSection({
         <>
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2 text-base font-semibold">
-              <LifeBuoy className="h-4 w-4" /> Support
+              <LifeBuoy className="h-4 w-4" /> {t("Support")}
             </div>
             <p className="text-muted-foreground text-sm">
-              Ask AI & Docs did not unblock you? Get in touch with the support
-              team.
+              {t(
+                "Ask AI & Docs did not unblock you? Get in touch with the support team.",
+              )}
             </p>
             <Button variant="outline" asChild>
               <a
@@ -119,7 +123,7 @@ export function IntroSection({
                 target="_blank"
                 rel="noopener"
               >
-                Open Support
+                {t("Open Support")}
               </a>
             </Button>
             {uiCustomization?.feedbackHref && (
@@ -129,7 +133,7 @@ export function IntroSection({
                   target="_blank"
                   rel="noopener"
                 >
-                  Submit Feedback
+                  {t("Submit Feedback")}
                 </a>
               </Button>
             )}
@@ -184,11 +188,12 @@ export function IntroSection({
         <>
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2 text-base font-semibold">
-              <LifeBuoy className="h-4 w-4" /> Community Support
+              <LifeBuoy className="h-4 w-4" /> {t("Community Support")}
             </div>
             <p className="text-muted-foreground text-sm">
-              Ask AI & Docs did not unblock you? Get help from and share
-              feedback with the community.
+              {t(
+                "Ask AI & Docs did not unblock you? Get help from and share feedback with the community.",
+              )}
             </p>
             {/* <Button variant="outline" asChild>
               <a

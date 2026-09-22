@@ -12,6 +12,7 @@ import { useMemo, useState } from "react";
 import { generateSchemaExample } from "../lib/generateSchemaExample";
 import { copyTextToClipboard } from "@/src/utils/clipboard";
 
+import { Trans, useTranslation } from "react-i18next";
 type DatasetSchemaHoverCardProps = {
   schema: Prisma.JsonValue;
   schemaType: "input" | "expectedOutput";
@@ -23,6 +24,7 @@ export const DatasetSchemaHoverCard: React.FC<DatasetSchemaHoverCardProps> = ({
   schemaType,
   showLabel = false,
 }) => {
+  const { t } = useTranslation();
   const title =
     schemaType === "input" ? "Input Schema" : "Expected Output Schema";
 
@@ -53,7 +55,7 @@ export const DatasetSchemaHoverCard: React.FC<DatasetSchemaHoverCardProps> = ({
           size="sm"
         >
           <LockIcon className={showLabel ? "h-3 w-3" : "h-4 w-4"} />
-          {showLabel && <span>Schema enforced</span>}
+          {showLabel && <span>{t("Schema enforced")}</span>}
         </Button>
       </HoverCardTrigger>
       <HoverCardContent
@@ -62,16 +64,18 @@ export const DatasetSchemaHoverCard: React.FC<DatasetSchemaHoverCardProps> = ({
       >
         <p className="text-sm font-medium">{title}</p>
         <p className="text-muted-foreground pt-2 text-sm">
-          Learn more about{" "}
-          <a
-            href="https://json-schema.org/learn/miscellaneous-examples"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-foreground inline-flex items-center underline"
-          >
-            JSON Schema
-            <ArrowUpRight className="ml-0.5 h-3 w-3" />
-          </a>
+          <Trans>
+            Learn more about{" "}
+            <a
+              href="https://json-schema.org/learn/miscellaneous-examples"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-foreground inline-flex items-center underline"
+            >
+              JSON Schema
+              <ArrowUpRight className="ml-0.5 h-3 w-3" />
+            </a>
+          </Trans>
         </p>
         <div className="mt-2">
           <CodeMirrorEditor
@@ -87,7 +91,7 @@ export const DatasetSchemaHoverCard: React.FC<DatasetSchemaHoverCardProps> = ({
           <>
             <Separator className="my-4" />
             <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">Example Object</p>
+              <p className="text-sm font-medium">{t("Example Object")}</p>
               <Button
                 variant="ghost"
                 size="sm"

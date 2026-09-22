@@ -7,12 +7,14 @@ import {
 } from "@/src/components/ui/select";
 import { type ObjectType } from "@/src/features/score-analytics/lib/analytics-url-state";
 
+import { useTranslation } from "react-i18next";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 const OBJECT_TYPE_OPTIONS: Array<{ value: ObjectType; label: string }> = [
-  { value: "all", label: "All Objects" },
-  { value: "trace", label: "Traces" },
-  { value: "session", label: "Sessions" },
-  { value: "observation", label: "Observations" },
-  { value: "dataset_run", label: "Dataset Runs" },
+  { value: "all", label: i18nKey("All Objects") },
+  { value: "trace", label: i18nKey("Traces") },
+  { value: "session", label: i18nKey("Sessions") },
+  { value: "observation", label: i18nKey("Observations") },
+  { value: "dataset_run", label: i18nKey("Dataset Runs") },
 ];
 
 interface ObjectTypeFilterProps {
@@ -26,15 +28,16 @@ export function ObjectTypeFilter({
   onChange,
   className,
 }: ObjectTypeFilterProps) {
+  const { t } = useTranslation();
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className={className} aria-label="Object type">
-        <SelectValue placeholder="Object type" />
+      <SelectTrigger className={className} aria-label={t("Object type")}>
+        <SelectValue placeholder={t("Object type")} />
       </SelectTrigger>
       <SelectContent>
         {OBJECT_TYPE_OPTIONS.map((option) => (
           <SelectItem key={option.value} value={option.value}>
-            {option.label}
+            {t(option.label)}
           </SelectItem>
         ))}
       </SelectContent>

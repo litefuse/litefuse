@@ -25,6 +25,8 @@ import { cva } from "class-variance-authority";
 import { type ObservationType } from "@langfuse/shared";
 import { cn } from "@/src/utils/tailwind";
 
+import { useTranslation } from "react-i18next";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 export type LangfuseItemType =
   | ObservationType
   | "TRACE"
@@ -98,6 +100,33 @@ export function renderFilterIcon(value: string): React.ReactNode {
   );
 }
 
+/**
+ * Item types are protocol values; these are the labels shown for them. An
+ * unknown type still falls back to the capitalised value.
+ */
+const itemLabels: Record<string, string> = {
+  TRACE: i18nKey("Trace"),
+  GENERATION: i18nKey("Generation"),
+  EVENT: i18nKey("Event"),
+  SPAN: i18nKey("Span"),
+  AGENT: i18nKey("Agent"),
+  TOOL: i18nKey("Tool"),
+  CHAIN: i18nKey("Chain"),
+  RETRIEVER: i18nKey("Retriever"),
+  EMBEDDING: i18nKey("Embedding"),
+  GUARDRAIL: i18nKey("Guardrail"),
+  SESSION: i18nKey("Session"),
+  USER: i18nKey("User"),
+  QUEUE_ITEM: i18nKey("Queue item"),
+  DATASET: i18nKey("Dataset"),
+  DATASET_RUN: i18nKey("Dataset run"),
+  DATASET_ITEM: i18nKey("Dataset item"),
+  ANNOTATION_QUEUE: i18nKey("Annotation queue"),
+  PROMPT: i18nKey("Prompt"),
+  EVALUATOR: i18nKey("Evaluator"),
+  RUNNING_EVALUATOR: i18nKey("Running evaluator"),
+};
+
 export function ItemBadge({
   type,
   showLabel = false,
@@ -109,6 +138,7 @@ export function ItemBadge({
   isSmall?: boolean;
   className?: string;
 }) {
+  const { t } = useTranslation();
   const Icon = iconMap[type] || ListTree; // Default to ListTree if unknown type
 
   // Modify this line to ensure the icon is properly sized
@@ -118,8 +148,11 @@ export function ItemBadge({
     className,
   );
 
-  const label =
-    String(type).charAt(0).toUpperCase() + String(type).slice(1).toLowerCase();
+  const label = t(
+    itemLabels[type] ??
+      String(type).charAt(0).toUpperCase() +
+        String(type).slice(1).toLowerCase(),
+  );
 
   return (
     <Badge

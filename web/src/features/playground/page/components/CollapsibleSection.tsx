@@ -4,6 +4,7 @@ import { Badge } from "@/src/components/ui/badge";
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { cn } from "@/src/utils/tailwind";
 
+import { useTranslation } from "react-i18next";
 interface CollapsibleSectionProps {
   title: string;
   badge?: string;
@@ -29,6 +30,7 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   className,
   summaryContent,
 }) => {
+  const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   const toggleExpanded = () => {
@@ -77,7 +79,7 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
           ) : (
             <div className="px-2 py-1">
               <p className="text-muted-foreground text-xs">
-                {emptyMessage || "No items configured."}
+                {emptyMessage || t("No items configured.")}
               </p>
             </div>
           )}
@@ -90,8 +92,8 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
           <p className="text-muted-foreground text-xs">
             {summaryContent ||
               (count !== undefined && count > 0
-                ? `${count} item${count === 1 ? "" : "s"} configured`
-                : "Configured")}
+                ? t("{{count}} item configured", { count })
+                : t("Configured"))}
           </p>
         </div>
       )}

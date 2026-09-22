@@ -1,3 +1,5 @@
+import { i18nKey } from "@/src/features/i18n/i18nKey";
+import { type TFunction } from "i18next";
 import Decimal from "decimal.js";
 
 export const compactNumberFormatter = (
@@ -74,17 +76,28 @@ export const usdFormatter = (
   }).format(numberToFormat ?? 0);
 };
 
+const USAGE_LABELS = {
+  prompt: i18nKey("prompt"),
+  completion: i18nKey("completion"),
+};
+
 export const formatTokenCounts = (
   inputUsage?: number | null,
   outputUsage?: number | null,
   totalUsage?: number | null,
   showLabels = false,
+  t?: TFunction,
 ): string => {
   if (!inputUsage && !outputUsage && !totalUsage) return "";
 
-  return showLabels
-    ? `${numberFormatter(inputUsage ?? 0, 0)} prompt → ${numberFormatter(outputUsage ?? 0, 0)} completion (∑ ${numberFormatter(totalUsage ?? 0, 0)})`
-    : `${numberFormatter(inputUsage ?? 0, 0)} → ${numberFormatter(outputUsage ?? 0, 0)} (∑ ${numberFormatter(totalUsage ?? 0, 0)})`;
+  const counts = `${numberFormatter(inputUsage ?? 0, 0)} → ${numberFormatter(outputUsage ?? 0, 0)} (∑ ${numberFormatter(totalUsage ?? 0, 0)})`;
+  if (!showLabels) return counts;
+
+  // The labelled form names the two usage directions; these are copy, not the
+  // `prompt` / `completion` usage keys the SDK sends.
+  const inputLabel = t ? t(USAGE_LABELS.prompt) : USAGE_LABELS.prompt;
+  const outputLabel = t ? t(USAGE_LABELS.completion) : USAGE_LABELS.completion;
+  return `${numberFormatter(inputUsage ?? 0, 0)} ${inputLabel} → ${numberFormatter(outputUsage ?? 0, 0)} ${outputLabel} (∑ ${numberFormatter(totalUsage ?? 0, 0)})`;
 };
 
 export function randomIntFromInterval(min: number, max: number) {

@@ -16,6 +16,7 @@ import {
 import { copyTextToClipboard } from "@/src/utils/clipboard";
 import { type ObservationType } from "@langfuse/shared";
 
+import { Trans, useTranslation } from "react-i18next";
 type IdItem = {
   name: string;
   id: string;
@@ -34,6 +35,7 @@ export function DetailHeaderActionsMenu({
   projectId,
   spanName,
 }: DetailHeaderActionsMenuProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -67,10 +69,10 @@ export function DetailHeaderActionsMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          aria-label="Options"
+          aria-label={t("Options")}
           className="mt-0.5 shrink-0"
           size="icon-xs"
-          title="Options"
+          title={t("Options")}
           variant="ghost"
         >
           <EllipsisVertical className="h-4 w-4" />
@@ -85,8 +87,11 @@ export function DetailHeaderActionsMenu({
                 onSelect={() => void router.push(href)}
               >
                 <span className="max-w-[260px] truncate" title={spanName}>
-                  filter by{" "}
-                  <span className="font-semibold">name:{spanName}</span>
+                  <Trans
+                    i18nKey="filter by <0>name:{{spanName}}</0>"
+                    values={{ spanName }}
+                    components={[<span className="font-semibold" key="name" />]}
+                  />
                 </span>
               </DropdownMenuItem>
             )}
@@ -99,8 +104,11 @@ export function DetailHeaderActionsMenu({
                   className="max-w-[260px] truncate"
                   title={filterTypeLabel}
                 >
-                  filter by{" "}
-                  <span className="font-semibold">{filterTypeLabel}</span>
+                  <Trans
+                    i18nKey="filter by <0>{{filterTypeLabel}}</0>"
+                    values={{ filterTypeLabel }}
+                    components={[<span className="font-semibold" key="type" />]}
+                  />
                 </span>
               </DropdownMenuItem>
             )}
@@ -119,7 +127,7 @@ export function DetailHeaderActionsMenu({
               <CopyIcon className="mr-2 h-4 w-4" />
             )}
             <span className="max-w-[260px] truncate" title={item.id}>
-              Copy {item.name}
+              {t("Copy {{name}}", { name: item.name })}
             </span>
           </DropdownMenuItem>
         ))}

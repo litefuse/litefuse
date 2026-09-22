@@ -3,6 +3,7 @@ import type { SectionContext } from "../types";
 import { type MediaReturnType } from "@/src/features/media/validation";
 import { MediaButtonGroup } from "./MediaButtonGroup";
 
+import { useTranslation } from "react-i18next";
 export interface MultiSectionJsonViewerHeaderProps {
   /** Display title for the section */
   title: string;
@@ -27,6 +28,7 @@ export function MultiSectionJsonViewerHeader({
   media,
   commentCount,
 }: MultiSectionJsonViewerHeaderProps) {
+  const { t } = useTranslation();
   return (
     <div
       style={{
@@ -64,7 +66,7 @@ export function MultiSectionJsonViewerHeader({
           fontSize: "0.65rem",
         }}
       >
-        {context.rowCount.toLocaleString()} keys
+        {t("{{count}} keys", { count: context.rowCount })}
       </span>
       {commentCount !== undefined && commentCount > 0 && (
         <span

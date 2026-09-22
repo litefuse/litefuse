@@ -11,6 +11,7 @@ import { type JSONTheme } from "../types";
 import { safeStringify } from "../utils/jsonTypes";
 import { cn } from "@/src/utils/tailwind";
 
+import { useTranslation } from "react-i18next";
 interface CopyButtonProps {
   value: unknown;
   theme: JSONTheme;
@@ -18,6 +19,7 @@ interface CopyButtonProps {
 }
 
 export function CopyButton({ value, theme, className }: CopyButtonProps) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async (e: React.MouseEvent) => {
@@ -55,8 +57,8 @@ export function CopyButton({ value, theme, className }: CopyButtonProps) {
         marginLeft: "4px",
         opacity: 0.3,
       }}
-      aria-label={copied ? "Copied!" : "Copy value"}
-      title={copied ? "Copied!" : "Copy value"}
+      aria-label={copied ? t("Copied!") : t("Copy value")}
+      title={copied ? t("Copied!") : t("Copy value")}
     >
       <Icon size={9} />
     </button>

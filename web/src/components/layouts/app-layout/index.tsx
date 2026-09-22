@@ -16,6 +16,7 @@ import posthog from "posthog-js";
 import { env } from "@/src/env.mjs";
 import { useQueryProjectOrOrganization } from "@/src/features/projects/hooks";
 import { ErrorPageWithSentry } from "@/src/components/error-page";
+import { useTranslation } from "react-i18next";
 
 // Layout variants
 import { LoadingLayout } from "./variants/LoadingLayout";
@@ -40,6 +41,7 @@ import { useLayoutMetadata } from "./hooks/useLayoutMetadata";
  * - User permissions
  */
 export function AppLayout(props: PropsWithChildren) {
+  const { t } = useTranslation();
   const router = useRouter();
   const session = useAuthSession();
   const { organization } = useQueryProjectOrOrganization();
@@ -92,10 +94,12 @@ export function AppLayout(props: PropsWithChildren) {
     // For non-publishable paths, show error page
     return (
       <ErrorPageWithSentry
-        title="Project Not Found"
-        message="The project you are trying to access does not exist or you do not have access to it."
+        title={t("Project Not Found")}
+        message={t(
+          "The project you are trying to access does not exist or you do not have access to it.",
+        )}
         additionalButton={{
-          label: "Go to Home",
+          label: t("Go to Home"),
           href: "/",
         }}
       />
@@ -124,7 +128,7 @@ export function AppLayout(props: PropsWithChildren) {
   // The authGuard hook ensures we don't reach here without a valid session
   if (!session.data) {
     // This should never happen due to guards above, but TypeScript needs this
-    return <LoadingLayout message="Loading" />;
+    return <LoadingLayout message={t("Loading")} />;
   }
 
   const handleSignOut = async () => {

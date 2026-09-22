@@ -10,6 +10,7 @@ import { Button } from "@/src/components/ui/button";
 import { cn } from "@/src/utils/tailwind";
 import { FileCode } from "lucide-react";
 
+import { useTranslation } from "react-i18next";
 const PROMPT_REFERENCE_MARKDOWN_PREFIX = "/__langfuse_prompt_reference__?";
 const PromptReferenceContext = createContext<string | undefined>(undefined);
 
@@ -148,6 +149,7 @@ export const PromptReferenceButton = ({
   promptRef: ParsedPromptDependencyTag;
   fallbackText: string;
 }) => {
+  const { t } = useTranslation();
   const projectId = usePromptReferenceProjectId();
 
   if (!projectId) {
@@ -171,14 +173,16 @@ export const PromptReferenceButton = ({
       onClick={() =>
         window.open(getPromptReferenceUrl(projectId, promptRef), "_blank")
       }
-      title={`Open prompt: ${promptRef.name}${promptRef.type === "version" ? ` (v${promptRef.version})` : promptRef.label ? ` (${promptRef.label})` : ""}`}
+      title={t("Open prompt: {{name}}", {
+        name: `${promptRef.name}${promptRef.type === "version" ? ` (v${promptRef.version})` : promptRef.label ? ` (${promptRef.label})` : ""}`,
+      })}
     >
       <FileCode className="text-muted-foreground h-3 w-3 shrink-0" />
       <span className="truncate font-medium">
         {promptRef.name}
         {promptRef.type === "version" ? (
           <Badge variant="outline" className="ml-1 px-1 py-0 text-[10px]">
-            v{promptRef.version}
+            {`v${promptRef.version}`}
           </Badge>
         ) : promptRef.label ? (
           <Badge variant="outline" className="ml-1 px-1 py-0 text-[10px]">

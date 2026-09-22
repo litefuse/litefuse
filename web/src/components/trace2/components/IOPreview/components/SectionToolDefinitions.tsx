@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import {
   ToolCallDefinitionCard,
   type ToolDefinition,
@@ -20,6 +21,7 @@ export function SectionToolDefinitions({
   toolCallCounts,
   toolNameToDefinitionNumber,
 }: SectionToolDefinitionsProps) {
+  const { t } = useTranslation();
   if (tools.length === 0) {
     return null;
   }
@@ -28,7 +30,7 @@ export function SectionToolDefinitions({
     <div className="[&_.io-message-content]:px-2 [&_.io-message-header]:px-2">
       <div className="border-border mb-4 border-b pb-4">
         <div className="io-message-header px-1 py-1 text-sm font-medium capitalize">
-          Tools
+          {t("Tools")}
         </div>
         <ToolCallDefinitionCard
           tools={tools}

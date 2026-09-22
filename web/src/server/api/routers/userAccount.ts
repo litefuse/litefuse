@@ -7,6 +7,7 @@ import { TRPCError } from "@trpc/server";
 import { StringNoHTML } from "@langfuse/shared";
 import { Role, Prisma } from "@langfuse/shared/src/db";
 import type { PrismaClient } from "@langfuse/shared/src/db";
+import { SUPPORTED_LOCALES } from "@/src/features/i18n/config";
 
 const updateDisplayNameSchema = z.object({
   name: StringNoHTML.min(1, "Name cannot be empty").max(
@@ -91,6 +92,16 @@ export const userAccountRouter = createTRPCRouter({
         success: true,
         name: updatedUser.name,
       };
+    }),
+
+  updateLocale: authenticatedProcedure
+    .input(z.object({ locale: z.enum(SUPPORTED_LOCALES) }))
+    .mutation(async ({ input, ctx }) => {
+      await ctx.prisma.user.update({
+        where: { id: ctx.session.user.id },
+        data: { locale: input.locale },
+      });
+      return { success: true, locale: input.locale };
     }),
 
   delete: authenticatedProcedure.mutation(async ({ ctx }) => {

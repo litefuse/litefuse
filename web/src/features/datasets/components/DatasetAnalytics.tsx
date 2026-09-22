@@ -3,18 +3,20 @@ import { RESOURCE_METRICS } from "@/src/features/dashboard/lib/score-analytics-u
 import { usePostHogClientCapture } from "@/src/features/posthog-analytics/usePostHogClientCapture";
 import { MultiSelectKeyValues } from "@/src/features/scores/components/multi-select-key-values";
 
+import { useTranslation } from "react-i18next";
 export function DatasetAnalytics(props: {
   projectId: string;
   scoreOptions: { key: string; value: string }[];
   selectedMetrics: string[];
   setSelectedMetrics: (metrics: string[]) => void;
 }) {
+  const { t } = useTranslation();
   const capture = usePostHogClientCapture();
   return (
     <MultiSelectKeyValues
       className="max-w-fit focus:ring-0! focus:ring-offset-0!"
-      placeholder="Search..."
-      title="Charts"
+      placeholder={t("Search...")}
+      title={t("Charts")}
       variant="outline"
       hideClearButton
       showSelectedValueStrings={false}
@@ -35,14 +37,14 @@ export function DatasetAnalytics(props: {
       }}
       values={props.selectedMetrics}
       options={RESOURCE_METRICS}
-      groupedOptions={[{ label: "Scores", options: props.scoreOptions }]}
+      groupedOptions={[{ label: t("Scores"), options: props.scoreOptions }]}
       controlButtons={
         <DropdownMenuItem
           onSelect={() => {
             props.setSelectedMetrics([]);
           }}
         >
-          Hide all charts
+          {t("Hide all charts")}
         </DropdownMenuItem>
       }
     />

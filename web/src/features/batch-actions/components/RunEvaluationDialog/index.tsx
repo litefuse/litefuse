@@ -19,6 +19,7 @@ import { ConfirmationStep } from "./ConfirmationStep";
 import { CreateEvaluatorDialog } from "./CreateEvaluatorDialog";
 import { buildQueryWithSelectedIds } from "./utils";
 
+import { useTranslation } from "react-i18next";
 type RunEvaluationDialogProps = {
   projectId: string;
   selectedObservationIds: string[];
@@ -36,6 +37,7 @@ type RunEvaluationDialogProps = {
 type DialogStep = "select-evaluator" | "confirm";
 
 export function RunEvaluationDialog(props: RunEvaluationDialogProps) {
+  const { t } = useTranslation();
   const { projectId, selectedObservationIds, query, selectAll, totalCount } =
     props;
 
@@ -54,7 +56,7 @@ export function RunEvaluationDialog(props: RunEvaluationDialogProps) {
   const runEvaluationMutation =
     api.batchAction.runEvaluation.create.useMutation({
       onError: (error) => {
-        showErrorToast("Failed to schedule evaluation", error.message);
+        showErrorToast(t("Failed to schedule evaluation"), error.message);
       },
     });
 
@@ -118,11 +120,17 @@ export function RunEvaluationDialog(props: RunEvaluationDialogProps) {
     }
 
     showSuccessToast({
-      title: "Evaluation queued",
-      description: `Scheduled evaluation for ${displayCount} selected ${displayCount === 1 ? "observation" : "observations"} and ${selectedEvaluators.length} ${selectedEvaluators.length === 1 ? "evaluator" : "evaluators"}.`,
+      title: t("Evaluation queued"),
+      description: t(
+        "Scheduled evaluation for {{observations}} selected observations and {{evaluators}} evaluators.",
+        {
+          observations: displayCount,
+          evaluators: selectedEvaluators.length,
+        },
+      ),
       link: {
         href: `/project/${projectId}/settings/batch-actions`,
-        text: "View batch actions",
+        text: t("View batch actions"),
       },
     });
 
@@ -135,13 +143,12 @@ export function RunEvaluationDialog(props: RunEvaluationDialogProps) {
         <DialogContent className="flex max-h-[62vh] min-h-[38vh] max-w-2xl flex-col">
           <DialogHeader>
             <DialogTitle>
-              Evaluate {displayCount} observation
-              {displayCount === 1 ? "" : "s"}
+              {t("Evaluate {{count}} observation", { count: displayCount })}
             </DialogTitle>
             <DialogDescription>
               {step === "confirm"
-                ? "Review your evaluation configuration before running."
-                : "Select one or more observation-scoped evaluators."}
+                ? t("Review your evaluation configuration before running.")
+                : t("Select one or more observation-scoped evaluators.")}
             </DialogDescription>
           </DialogHeader>
 
@@ -181,7 +188,7 @@ export function RunEvaluationDialog(props: RunEvaluationDialogProps) {
                 disabled={runEvaluationMutation.isPending}
               >
                 <ChevronLeft className="mr-1 h-4 w-4" />
-                Back
+                {t("Back")}
               </Button>
             ) : (
               <div />
@@ -192,17 +199,18 @@ export function RunEvaluationDialog(props: RunEvaluationDialogProps) {
                 onClick={() => setStep("confirm")}
                 disabled={selectedEvaluators.length === 0}
               >
-                Continue{" "}
                 {selectedEvaluators.length > 0
-                  ? `with ${selectedEvaluators.length} evaluator(s)`
-                  : null}
+                  ? t("Continue with {{count}} evaluator(s)", {
+                      count: selectedEvaluators.length,
+                    })
+                  : t("Continue")}
               </Button>
             ) : (
               <Button
                 onClick={onSubmit}
                 loading={runEvaluationMutation.isPending}
               >
-                Run Evaluation
+                {t("Run Evaluation")}
               </Button>
             )}
           </DialogFooter>

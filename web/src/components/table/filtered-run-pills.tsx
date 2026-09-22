@@ -9,6 +9,9 @@ import { ListFilter } from "lucide-react";
 import React, { useMemo } from "react";
 import { type FilterCondition, type FilterState } from "@langfuse/shared";
 
+import { type TFunction } from "i18next";
+import { operatorLabelKey } from "@/src/features/filters/lib/operatorLabels";
+import { useTranslation } from "react-i18next";
 interface FilteredRunPillsProps {
   projectId: string;
   datasetId: string;
@@ -19,40 +22,43 @@ interface FilteredRunPillsProps {
   className?: string;
 }
 
-function operatorToText(operator: FilterCondition["operator"]): string {
+function operatorToText(
+  operator: FilterCondition["operator"],
+  t: TFunction,
+): string {
   switch (operator) {
     case "=":
-      return "equals";
+      return t("equals");
     case ">=":
-      return "greater than or equal to";
+      return t("greater than or equal to");
     case "<=":
-      return "less than or equal to";
+      return t("less than or equal to");
     case ">":
-      return "greater than";
+      return t("greater than");
     case "<":
-      return "less than";
+      return t("less than");
   }
-  return operator;
+  return t(operatorLabelKey(operator));
 }
 
 // Helper function to format filter information for display
-function formatFilterForPill(filter: FilterCondition) {
+function formatFilterForPill(filter: FilterCondition, t: TFunction) {
   const { operator, value } = filter;
 
   // Handle score filters (numberObject and categoryOptions with key)
   if (filter.type === "numberObject") {
     const valueStr = Array.isArray(value) ? value.join(", ") : String(value);
-    return `${filter.key} ${operatorToText(operator)} ${valueStr}`;
+    return `${filter.key} ${operatorToText(operator, t)} ${valueStr}`;
   }
 
   if (filter.type === "categoryOptions") {
     const valueStr = Array.isArray(value) ? value.join(", ") : String(value);
-    return `${filter.key} ${operatorToText(operator)} ${valueStr}`;
+    return `${filter.key} ${operatorToText(operator, t)} ${valueStr}`;
   }
 
   // Fallback for other filter types
   const valueStr = Array.isArray(value) ? value.join(", ") : String(value);
-  return `${filter.column} ${operatorToText(operator)} ${valueStr}`;
+  return `${filter.column} ${operatorToText(operator, t)} ${valueStr}`;
 }
 
 export function FilteredRunPills({
@@ -61,6 +67,7 @@ export function FilteredRunPills({
   filteredRuns,
   className,
 }: FilteredRunPillsProps) {
+  const { t } = useTranslation();
   // Get run names from the API
   const { data: runs } = api.datasets.baseRunDataByDatasetId.useQuery({
     projectId,
@@ -99,7 +106,7 @@ export function FilteredRunPills({
               >
                 <ListFilter className="mr-1 h-3 w-3" />
                 <div className="font-normal">
-                  {formatFilterForPill(item.filter)}
+                  {formatFilterForPill(item.filter, t)}
                 </div>
               </Badge>
             </HoverCardTrigger>
@@ -110,7 +117,7 @@ export function FilteredRunPills({
                 </div>
                 <div className="space-y-1">
                   <div className="bg-muted rounded-md px-2 py-1 text-sm">
-                    {formatFilterForPill(item.filter)}
+                    {formatFilterForPill(item.filter, t)}
                   </div>
                 </div>
               </div>

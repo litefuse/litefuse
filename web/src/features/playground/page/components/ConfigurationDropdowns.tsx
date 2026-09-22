@@ -17,7 +17,9 @@ import {
 import { Variables } from "./Variables";
 import { MessagePlaceholders } from "./MessagePlaceholders";
 
+import { useTranslation } from "react-i18next";
 export const ConfigurationDropdowns: React.FC = () => {
+  const { t } = useTranslation();
   const { containerRef, width, isVeryCompact, isCompact } =
     usePlaygroundWindowSize();
   const {
@@ -65,7 +67,7 @@ export const ConfigurationDropdowns: React.FC = () => {
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className="h-8 gap-2">
-              {getResponsiveContent("Tools", Wrench)}
+              {getResponsiveContent(t("Tools"), Wrench)}
               {toolsCount > 0 && (
                 <Badge variant="secondary" className="h-4 text-xs">
                   {toolsCount}
@@ -80,9 +82,9 @@ export const ConfigurationDropdowns: React.FC = () => {
             style={toolsPopoverWidth ? { width: toolsPopoverWidth } : undefined}
           >
             <div className="mb-3">
-              <h4 className="mb-1 text-sm font-medium">Tools</h4>
+              <h4 className="mb-1 text-sm font-medium">{t("Tools")}</h4>
               <p className="text-muted-foreground text-xs">
-                Configure tools for your model to use.
+                {t("Configure tools for your model to use.")}
               </p>
             </div>
             {toolsCount > 0 ? (
@@ -92,7 +94,7 @@ export const ConfigurationDropdowns: React.FC = () => {
             ) : (
               <div className="mb-3">
                 <p className="text-muted-foreground text-xs">
-                  No tools attached.
+                  {t("No tools attached.")}
                 </p>
               </div>
             )}
@@ -106,7 +108,7 @@ export const ConfigurationDropdowns: React.FC = () => {
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className="h-8 gap-2">
-              {getResponsiveContent("Schema", Braces)}
+              {getResponsiveContent(t("Schema"), Braces)}
               {hasSchema > 0 && (
                 <Badge variant="secondary" className="h-4 text-xs">
                   {hasSchema}
@@ -117,9 +119,11 @@ export const ConfigurationDropdowns: React.FC = () => {
           </PopoverTrigger>
           <PopoverContent className="w-80 p-4" align="start">
             <div className="mb-3">
-              <h4 className="mb-1 text-sm font-medium">Structured Output</h4>
+              <h4 className="mb-1 text-sm font-medium">
+                {t("Structured Output")}
+              </h4>
               <p className="text-muted-foreground text-xs">
-                Configure JSON schema for structured output.
+                {t("Configure JSON schema for structured output.")}
               </p>
             </div>
             {structuredOutputSchema ? (
@@ -129,7 +133,7 @@ export const ConfigurationDropdowns: React.FC = () => {
             ) : (
               <div className="mb-3">
                 <p className="text-muted-foreground text-xs">
-                  No schema provided.
+                  {t("No schema provided.")}
                 </p>
               </div>
             )}
@@ -143,7 +147,7 @@ export const ConfigurationDropdowns: React.FC = () => {
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className="h-8 gap-2">
-              {getResponsiveContent("Variables", Variable, "Vars")}
+              {getResponsiveContent(t("Variables"), Variable, t("Vars"))}
               {variablesCount > 0 && (
                 <Badge variant="secondary" className="h-4 text-xs">
                   {variablesCount}
@@ -155,10 +159,12 @@ export const ConfigurationDropdowns: React.FC = () => {
           <PopoverContent className="w-80 p-4" align="start">
             <div className="mb-3">
               <h4 className="mb-1 text-sm font-medium">
-                Variables & Message Placeholders
+                {t("Variables & Message Placeholders")}
               </h4>
               <p className="text-muted-foreground text-xs">
-                Configure variables and message placeholders for your prompts.
+                {t(
+                  "Configure variables and message placeholders for your prompts.",
+                )}
               </p>
             </div>
             {variablesCount > 0 ? (
@@ -168,12 +174,14 @@ export const ConfigurationDropdowns: React.FC = () => {
               >
                 <div className="space-y-4">
                   <div>
-                    <h5 className="mb-2 text-xs font-medium">Variables</h5>
+                    <h5 className="mb-2 text-xs font-medium">
+                      {t("Variables")}
+                    </h5>
                     <Variables />
                   </div>
                   <div>
                     <h5 className="mb-2 text-xs font-medium">
-                      Message Placeholders
+                      {t("Message Placeholders")}
                     </h5>
                     <MessagePlaceholders />
                   </div>
@@ -182,7 +190,7 @@ export const ConfigurationDropdowns: React.FC = () => {
             ) : (
               <div className="mb-3">
                 <p className="text-muted-foreground text-xs">
-                  No variables or message placeholders defined.
+                  {t("No variables or message placeholders defined.")}
                 </p>
               </div>
             )}

@@ -1,4 +1,5 @@
 import { StringParam, useQueryParam } from "use-query-params";
+import { useTranslation } from "react-i18next";
 import {
   Group,
   Separator,
@@ -47,6 +48,7 @@ export function useDesktopLayoutContext() {
 }
 
 export function TraceLayoutDesktop({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
   // Get current view mode from URL
   const [viewMode] = useQueryParam("view", StringParam);
   const isTimelineView = viewMode === "timeline";
@@ -127,9 +129,9 @@ TraceLayoutDesktop.NavigationPanel = function Navigation({
       id={RESIZABLE_PANEL_NAVIGATION_ID}
       panelRef={panelRef}
       collapsible={true}
-      collapsedSize="40px"
-      minSize="260px"
-      defaultSize="450px"
+      collapsedSize={40}
+      minSize={260}
+      defaultSize={450}
       onResize={() => {
         setIsNavigationPanelCollapsed(panelRef.current?.isCollapsed() ?? false);
       }}

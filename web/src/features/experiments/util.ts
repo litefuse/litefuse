@@ -1,10 +1,17 @@
+import { type TFunction } from "i18next";
+
 // Helper function to generate default experiment name
 export function generateDefaultExperimentName(
   promptName: string,
   promptVersion: number,
   datasetName: string,
+  t: TFunction,
 ): string {
-  return `Prompt ${promptName}-v${promptVersion} on dataset ${datasetName}`;
+  return t("Prompt {{prompt}}-v{{version}} on dataset {{dataset}}", {
+    prompt: promptName,
+    version: promptVersion,
+    dataset: datasetName,
+  });
 }
 
 // Helper function to generate default experiment description
@@ -12,8 +19,12 @@ export function generateDefaultExperimentDescription(
   promptName: string,
   promptVersion: number,
   datasetName: string,
+  t: TFunction,
 ): string {
-  return `Experiment run of prompt ${promptName}-v${promptVersion} on dataset ${datasetName}`;
+  return t(
+    "Experiment run of prompt {{prompt}}-v{{version}} on dataset {{dataset}}",
+    { prompt: promptName, version: promptVersion, dataset: datasetName },
+  );
 }
 
 // Helper function to generate dataset run name with timestamp

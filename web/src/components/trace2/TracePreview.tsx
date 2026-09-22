@@ -66,6 +66,7 @@ import {
 import { type WithStringifiedMetadata } from "@/src/utils/clientSideDomainTypes";
 import { resolveEvalExecutionMetadata } from "@/src/components/trace2/lib/resolve-metadata";
 
+import { useTranslation } from "react-i18next";
 const LOG_VIEW_CONFIRMATION_THRESHOLD = 150;
 const LOG_VIEW_DISABLED_THRESHOLD = 350;
 
@@ -92,6 +93,7 @@ export const TracePreview = ({
   showCommentButton?: boolean;
   precomputedCost: Decimal | undefined;
 }) => {
+  const { t } = useTranslation();
   const [selectedTab, setSelectedTab] = useQueryParam(
     "view",
     withDefault(StringParam, "preview"),
@@ -203,7 +205,7 @@ export const TracePreview = ({
             <span className="mb-0 ml-1 line-clamp-2 min-w-0 font-medium break-all md:break-normal md:wrap-break-word">
               {trace.name}
             </span>
-            <CopyIdsPopover idItems={[{ id: trace.id, name: "Trace ID" }]} />
+            <CopyIdsPopover idItems={[{ id: trace.id, name: t("Trace ID") }]} />
           </div>
           <div className="flex h-full flex-wrap content-start items-start justify-start gap-0.5 @2xl:mr-1 @2xl:justify-end">
             {viewType === "detailed" && (
@@ -252,7 +254,9 @@ export const TracePreview = ({
                   className="inline-flex"
                 >
                   <Badge>
-                    <span className="truncate">Session: {trace.sessionId}</span>
+                    <span className="truncate">
+                      {t("Session: {{value}}", { value: trace.sessionId })}
+                    </span>
                     <ExternalLinkIcon className="ml-1 h-3 w-3" />
                   </Badge>
                 </Link>
@@ -263,7 +267,9 @@ export const TracePreview = ({
                   className="inline-flex"
                 >
                   <Badge>
-                    <span className="truncate">User ID: {trace.userId}</span>
+                    <span className="truncate">
+                      {t("User ID: {{value}}", { value: trace.userId })}
+                    </span>
                     <ExternalLinkIcon className="ml-1 h-3 w-3" />
                   </Badge>
                 </Link>
@@ -275,21 +281,25 @@ export const TracePreview = ({
                 >
                   <Badge>
                     <span className="truncate">
-                      Target Trace: {targetTraceId}
+                      {t("Target Trace: {{value}}", { value: targetTraceId })}
                     </span>
                     <ExternalLinkIcon className="ml-1 h-3 w-3" />
                   </Badge>
                 </Link>
               ) : null}
               {trace.environment ? (
-                <Badge variant="tertiary">Env: {trace.environment}</Badge>
+                <Badge variant="tertiary">
+                  {t("Env: {{value}}", { value: trace.environment })}
+                </Badge>
               ) : null}
 
               {viewType === "detailed" && (
                 <>
                   {!!trace.latency && (
                     <Badge variant="tertiary">
-                      Latency: {formatIntervalSeconds(trace.latency)}
+                      {t("Latency: {{value}}", {
+                        value: formatIntervalSeconds(trace.latency),
+                      })}
                     </Badge>
                   )}
                   {totalCost && (
@@ -301,7 +311,9 @@ export const TracePreview = ({
                     >
                       <Badge variant="tertiary">
                         <span className="flex items-center gap-1">
-                          Total Cost: {usdFormatter(totalCost.toNumber())}
+                          {t("Total Cost: {{value}}", {
+                            value: usdFormatter(totalCost.toNumber()),
+                          })}
                           <InfoIcon className="h-3 w-3" />
                         </span>
                       </Badge>
@@ -318,10 +330,14 @@ export const TracePreview = ({
                   )}
 
                   {!!trace.release && (
-                    <Badge variant="tertiary">Release: {trace.release}</Badge>
+                    <Badge variant="tertiary">
+                      {t("Release: {{value}}", { value: trace.release })}
+                    </Badge>
                   )}
                   {!!trace.version && (
-                    <Badge variant="tertiary">Version: {trace.version}</Badge>
+                    <Badge variant="tertiary">
+                      {t("Version: {{value}}", { value: trace.version })}
+                    </Badge>
                   )}
                 </>
               )}
@@ -355,25 +371,36 @@ export const TracePreview = ({
           {viewType === "detailed" && (
             <TooltipProvider>
               <TabsBarList>
-                <TabsBarTrigger value="preview">Preview</TabsBarTrigger>
+                <TabsBarTrigger value="preview">{t("Preview")}</TabsBarTrigger>
                 {showLogViewTab && (
                   <TabsBarTrigger value="log" disabled={isLogViewDisabled}>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span>Log View</span>
+                        <span>{t("Log View")}</span>
                       </TooltipTrigger>
                       <TooltipContent className="text-xs">
                         {isLogViewDisabled
-                          ? `Log View is disabled for traces with more than ${LOG_VIEW_DISABLED_THRESHOLD} observations (this trace has ${observations.length})`
+                          ? t(
+                              "Log View is disabled for traces with more than {{limit}} observations (this trace has {{count}})",
+                              {
+                                limit: LOG_VIEW_DISABLED_THRESHOLD,
+                                count: observations.length,
+                              },
+                            )
                           : requiresConfirmation
-                            ? `Log View may be slow with ${observations.length} observations. Click to confirm.`
-                            : "Shows all observations concatenated. Great for quickly scanning through them. Nullish values are omitted."}
+                            ? t(
+                                "Log View may be slow with {{count}} observations. Click to confirm.",
+                                { count: observations.length },
+                              )
+                            : t(
+                                "Shows all observations concatenated. Great for quickly scanning through them. Nullish values are omitted.",
+                              )}
                       </TooltipContent>
                     </Tooltip>
                   </TabsBarTrigger>
                 )}
                 {showScoresTab && (
-                  <TabsBarTrigger value="scores">Scores</TabsBarTrigger>
+                  <TabsBarTrigger value="scores">{t("Scores")}</TabsBarTrigger>
                 )}
                 {selectedTab.includes("preview") && isPrettyViewAvailable && (
                   <>
@@ -390,13 +417,13 @@ export const TracePreview = ({
                           value="pretty"
                           className="h-fit px-1 text-xs"
                         >
-                          Formatted
+                          {t("Formatted")}
                         </TabsTrigger>
                         <TabsTrigger
                           value="json"
                           className="h-fit px-1 text-xs"
                         >
-                          JSON
+                          {t("JSON")}
                         </TabsTrigger>
                       </TabsList>
                     </Tabs>
@@ -408,7 +435,7 @@ export const TracePreview = ({
                           onCheckedChange={handleBetaToggle}
                         />
                         <span className="text-muted-foreground text-xs">
-                          Beta
+                          {t("Beta")}
                         </span>
                       </div>
                     )}
@@ -426,13 +453,13 @@ export const TracePreview = ({
                           value="pretty"
                           className="h-fit px-1 text-xs"
                         >
-                          Formatted
+                          {t("Formatted")}
                         </TabsTrigger>
                         <TabsTrigger
                           value="json"
                           className="h-fit px-1 text-xs"
                         >
-                          JSON
+                          {t("JSON")}
                         </TabsTrigger>
                       </TabsList>
                     </Tabs>
@@ -444,7 +471,7 @@ export const TracePreview = ({
                           onCheckedChange={handleBetaToggle}
                         />
                         <span className="text-muted-foreground text-xs">
-                          Beta
+                          {t("Beta")}
                         </span>
                       </div>
                     )}
@@ -506,7 +533,7 @@ export const TracePreview = ({
 
               {Array.isArray(trace.tags) && trace.tags.length > 0 && (
                 <>
-                  <div className="px-2 text-sm font-medium">{"Tags"}</div>
+                  <div className="px-2 text-sm font-medium">{t("Tags")}</div>
                   <div className="flex flex-wrap gap-x-1 gap-y-1 px-2">
                     <TagList selectedTags={trace.tags} isLoading={false} />
                   </div>
@@ -516,7 +543,7 @@ export const TracePreview = ({
               <div className="px-2">
                 <PrettyJsonView
                   key={trace.id + "-metadata"}
-                  title="Metadata"
+                  title={t("Metadata")}
                   json={trace.metadata}
                   media={
                     traceMedia.data?.filter((m) => m.field === "metadata") ?? []
@@ -563,7 +590,7 @@ export const TracePreview = ({
                   omittedFilter={["Trace ID"]}
                   traceId={trace.id}
                   hiddenColumns={["traceName", "jobConfigurationId", "userId"]}
-                  localStorageSuffix="TracePreview"
+                  localStorageSuffix={"TracePreview"}
                   disableUrlPersistence
                 />
               </div>
@@ -576,18 +603,22 @@ export const TracePreview = ({
       <AlertDialog open={showLogViewDialog} onOpenChange={setShowLogViewDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Sluggish Performance Warning</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t("Sluggish Performance Warning")}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This trace has {observations.length} observations. The log view
-              may be slow to load and interact with. Do you want to continue?
+              {t(
+                "This trace has {{count}} observations. The log view may be slow to load and interact with. Do you want to continue?",
+                { count: observations.length },
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setShowLogViewDialog(false)}>
-              Cancel
+              {t("Cancel")}
             </AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmLogView}>
-              Show Log View
+              {t("Show Log View")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

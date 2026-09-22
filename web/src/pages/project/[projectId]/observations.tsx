@@ -12,7 +12,9 @@ import { useV4Beta } from "@/src/features/events/hooks/useV4Beta";
 import ObservationsEventsTable from "@/src/features/events/components/EventsTable";
 import { useQueryProject } from "@/src/features/projects/hooks";
 
+import { useTranslation } from "react-i18next";
 export default function Generations() {
+  const { t } = useTranslation();
   const router = useRouter();
   const projectId = router.query.projectId as string;
   const { isBetaEnabled } = useV4Beta();
@@ -41,10 +43,11 @@ export default function Generations() {
   return (
     <Page
       headerProps={{
-        title: "Tracing",
+        title: t("Tracing"),
         help: {
-          description:
+          description: t(
             "An observation captures a single function call in an application. See docs to learn more.",
+          ),
           href: "https://litefuse.ai/docs/observability/data-model",
         },
         tabsProps: isBetaEnabled

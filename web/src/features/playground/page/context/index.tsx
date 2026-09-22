@@ -50,6 +50,7 @@ import {
 import { useSyncMessageSearchMessages } from "@/src/components/ChatMessages/MessageSearch";
 import { getFinalModelParams } from "@/src/utils/getFinalModelParams";
 
+import { useTranslation } from "react-i18next";
 type PlaygroundContextType = {
   windowId: string;
   promptVariables: PromptVariable[];
@@ -96,6 +97,7 @@ export const PlaygroundProvider: React.FC<PlaygroundProviderProps> = ({
   children,
   windowId,
 }) => {
+  const { t } = useTranslation();
   const effectiveWindowId = windowId || MULTI_WINDOW_CONFIG.DEFAULT_WINDOW_ID;
   const capture = usePostHogClientCapture();
   const projectId = useProjectIdFromURL();
@@ -438,7 +440,7 @@ export const PlaygroundProvider: React.FC<PlaygroundProviderProps> = ({
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "An error occurred";
-        showErrorToast("Error", errorMessage);
+        showErrorToast(t("Error"), errorMessage);
       } finally {
         setIsStreaming(false);
       }

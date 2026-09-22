@@ -20,6 +20,7 @@ import { type ViewVersion } from "@/src/features/query";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { useTranslation } from "react-i18next";
 export const ModelSelectorPopover = ({
   allModels,
   selectedModels,
@@ -35,6 +36,7 @@ export const ModelSelectorPopover = ({
   isAllSelected: boolean;
   handleSelectAll: () => void;
 }) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   return (
@@ -52,8 +54,11 @@ export const ModelSelectorPopover = ({
       </PopoverTrigger>
       <PopoverContent className="w-56 p-0">
         <InputCommand>
-          <InputCommandInput placeholder="Search models..." variant="bottom" />
-          <InputCommandEmpty>No model found.</InputCommandEmpty>
+          <InputCommandInput
+            placeholder={t("Search models...")}
+            variant="bottom"
+          />
+          <InputCommandEmpty>{t("No model found.")}</InputCommandEmpty>
           <InputCommandGroup>
             <InputCommandItem onSelect={handleSelectAll}>
               <Check
@@ -63,7 +68,7 @@ export const ModelSelectorPopover = ({
                 )}
               />
               <span>
-                <p className="font-semibold">Select All</p>
+                <p className="font-semibold">{t("Select All")}</p>
               </span>
             </InputCommandItem>
             <InputCommandSeparator className="my-1" />
@@ -88,7 +93,7 @@ export const ModelSelectorPopover = ({
                     )}
                   />
                   {!model.model || model.model === "" ? (
-                    <i>none</i>
+                    <i>{t("none")}</i>
                   ) : (
                     model.model
                   )}
@@ -113,6 +118,7 @@ export const useModelSelection = (
     queryId: string;
   },
 ) => {
+  const { t } = useTranslation();
   const allModels = useAllModels(
     projectId,
     globalFilterState,
@@ -128,8 +134,8 @@ export const useModelSelection = (
   const isAllSelected = selectedModels.length === allModels.length;
 
   const buttonText = isAllSelected
-    ? "All models"
-    : `${selectedModels.length} selected`;
+    ? t("All models")
+    : t("{{count}} selected", { count: selectedModels.length });
 
   const handleSelectAll = () => {
     setSelectedModels(isAllSelected ? [] : [...allModels.map((m) => m.model)]);

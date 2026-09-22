@@ -29,6 +29,7 @@ import { TracePanelNavigationHeader } from "./TracePanelNavigationHeader";
 import { TracePanelNavigationHiddenNotice } from "./TracePanelNavigationHiddenNotice";
 import { TraceFullscreenDialog } from "./TraceFullscreenDialog";
 
+import { useTranslation } from "react-i18next";
 export function TracePanelNavigationLayoutDesktop({
   children,
   secondaryContent,
@@ -36,6 +37,7 @@ export function TracePanelNavigationLayoutDesktop({
   children: ReactNode;
   secondaryContent?: ReactNode;
 }) {
+  const { t } = useTranslation();
   const { isNavigationPanelCollapsed, handleTogglePanel, shouldPulseToggle } =
     useDesktopLayoutContext();
 
@@ -61,10 +63,12 @@ export function TracePanelNavigationLayoutDesktop({
               <ResizablePanel defaultSize="40%" minSize="20%">
                 <div className="flex h-full flex-col overflow-hidden">
                   <div className="flex h-8 shrink-0 items-center justify-between border-b px-2">
-                    <span className="text-xs font-medium">Graph View</span>
+                    <span className="text-xs font-medium">
+                      {t("Graph View")}
+                    </span>
                     <TraceFullscreenDialog
-                      title="Graph View"
-                      triggerTitle="Open Graph fullscreen"
+                      title={t("Graph View")}
+                      triggerTitle={t("Open Graph fullscreen")}
                     >
                       {secondaryContent}
                     </TraceFullscreenDialog>

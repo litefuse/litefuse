@@ -6,6 +6,7 @@ import {
 } from "@/src/components/ui/tooltip";
 import { RagasLogoIcon } from "@/src/features/evals/components/ragas-logo";
 import { UserCircle2Icon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 function MaintainerIcon({ maintainer }: { maintainer: string }) {
   if (maintainer.includes("Ragas")) {
@@ -21,12 +22,13 @@ function MaintainerIcon({ maintainer }: { maintainer: string }) {
 }
 
 export function MaintainerTooltip({ maintainer }: { maintainer: string }) {
+  const { t } = useTranslation();
   return (
     <Tooltip>
       <TooltipTrigger>
         <MaintainerIcon maintainer={maintainer} />
       </TooltipTrigger>
-      <TooltipContent>{maintainer}</TooltipContent>
+      <TooltipContent>{t(maintainer)}</TooltipContent>
     </Tooltip>
   );
 }

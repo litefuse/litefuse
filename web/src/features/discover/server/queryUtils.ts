@@ -22,10 +22,9 @@ export function isForeignSplitTable(
   tableName: string,
   projectId: string,
 ): boolean {
-  const m =
-    /^(?:spans|traces_scalar|trace_metrics_agg)_([A-Za-z0-9]+)$/.exec(
-      tableName,
-    );
+  const m = /^(?:spans|traces_scalar|trace_metrics_agg)_([A-Za-z0-9]+)$/.exec(
+    tableName,
+  );
   return m !== null && m[1] !== projectId;
 }
 

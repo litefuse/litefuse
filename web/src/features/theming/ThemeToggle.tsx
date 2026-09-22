@@ -4,13 +4,15 @@ import { useTheme } from "next-themes";
 import { cn } from "@/src/utils/tailwind";
 import { usePostHogClientCapture } from "@/src/features/posthog-analytics/usePostHogClientCapture";
 
+import { useTranslation } from "react-i18next";
 export function ThemeToggle() {
+  const { t } = useTranslation();
   const { theme, setTheme } = useTheme();
   const capture = usePostHogClientCapture();
   return (
     <div className="flex items-center space-x-1">
-      <span className="mr-2">Theme</span>
-      <div title="Light mode">
+      <span className="mr-2">{t("Theme")}</span>
+      <div title={t("Light mode")}>
         <Sun
           className={cn(
             theme === "light" ? "text-primary-accent" : "",
@@ -25,7 +27,7 @@ export function ThemeToggle() {
           }}
         />
       </div>
-      <div title="Dark mode">
+      <div title={t("Dark mode")}>
         <Moon
           className={cn(
             theme === "dark" ? "text-primary-accent" : "",
@@ -40,7 +42,7 @@ export function ThemeToggle() {
           }}
         />
       </div>
-      <div title="System mode">
+      <div title={t("System mode")}>
         <Monitor
           className={cn(
             theme === "system" ? "text-primary-accent" : "",

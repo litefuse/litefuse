@@ -11,6 +11,7 @@ import {
 } from "../types";
 import { Button } from "@/src/components/ui/button";
 
+import { useTranslation } from "react-i18next";
 type TraceGraphCanvasProps = {
   graph: GraphCanvasData;
   selectedNodeName: string | null;
@@ -21,6 +22,7 @@ type TraceGraphCanvasProps = {
 };
 
 export const TraceGraphCanvas: React.FC<TraceGraphCanvasProps> = (props) => {
+  const { t } = useTranslation();
   const {
     graph: graphData,
     selectedNodeName,
@@ -437,7 +439,7 @@ export const TraceGraphCanvas: React.FC<TraceGraphCanvasProps> = (props) => {
   if (!graphData.nodes.length) {
     return (
       <div className="flex h-full items-center justify-center">
-        No graph data available
+        {t("No graph data available")}
       </div>
     );
   }
@@ -455,7 +457,7 @@ export const TraceGraphCanvas: React.FC<TraceGraphCanvasProps> = (props) => {
             variant="ghost"
             size="icon"
             className="dark:shadow-border p-1.5 shadow-md"
-            title="Zoom in"
+            title={t("Zoom in")}
           >
             <ZoomIn className="h-4 w-4" />
           </Button>
@@ -464,7 +466,7 @@ export const TraceGraphCanvas: React.FC<TraceGraphCanvasProps> = (props) => {
             variant="ghost"
             size="icon"
             className="dark:shadow-border p-1.5 shadow-md"
-            title="Zoom out"
+            title={t("Zoom out")}
           >
             <ZoomOut className="h-4 w-4" />
           </Button>
@@ -473,7 +475,7 @@ export const TraceGraphCanvas: React.FC<TraceGraphCanvasProps> = (props) => {
             variant="ghost"
             size="icon"
             className="dark:shadow-border p-1.5 shadow-md"
-            title="Reset view"
+            title={t("Reset view")}
           >
             <RotateCcw className="h-4 w-4" />
           </Button>

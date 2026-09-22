@@ -3,6 +3,7 @@ import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
 import { useState } from "react";
 
+import { useTranslation } from "react-i18next";
 type UsageDetailsEditorProps = {
   usageDetails: Record<string, number>;
   onChange: (usageDetails: Record<string, number>) => void;
@@ -14,6 +15,7 @@ export function UsageDetailsEditor({
   usageDetails,
   onChange,
 }: UsageDetailsEditorProps) {
+  const { t } = useTranslation();
   const [entries, setEntries] = useState<Array<{ key: string; value: number }>>(
     Object.entries(usageDetails).map(([key, value]) => ({ key, value })),
   );
@@ -59,17 +61,20 @@ export function UsageDetailsEditor({
   return (
     <div className="space-y-4">
       <div>
-        <div className="pb-2 text-sm font-medium">Usage Details (optional)</div>
+        <div className="pb-2 text-sm font-medium">
+          {t("Usage Details (optional)")}
+        </div>
         <div className="text-muted-foreground text-sm">
-          Add usage details to test pricing tier matching. Leave empty to match
-          the default tier.
+          {t(
+            "Add usage details to test pricing tier matching. Leave empty to match the default tier.",
+          )}
         </div>
       </div>
 
       {/* Template Buttons */}
       <div className="space-y-2">
         <div className="text-muted-foreground text-sm">
-          Prefill from template:
+          {t("Prefill from template:")}
         </div>
         <div className="flex gap-2">
           <Button
@@ -83,7 +88,7 @@ export function UsageDetailsEditor({
               })
             }
           >
-            OpenAI
+            {t("OpenAI")}
           </Button>
           <Button
             type="button"
@@ -97,7 +102,7 @@ export function UsageDetailsEditor({
               })
             }
           >
-            Anthropic
+            {t("Anthropic")}
           </Button>
         </div>
       </div>
@@ -106,14 +111,14 @@ export function UsageDetailsEditor({
       {entries.length > 0 ? (
         <div className="space-y-2 rounded-lg border p-3">
           <div className="grid grid-cols-[1fr_1fr_auto] gap-2 text-sm font-medium">
-            <div>Usage Type</div>
-            <div>Value</div>
+            <div>{t("Usage Type")}</div>
+            <div>{t("Value")}</div>
             <div className="w-10" />
           </div>
           {entries.map((entry, index) => (
             <div key={index} className="grid grid-cols-[1fr_1fr_auto] gap-2">
               <Input
-                placeholder="e.g. input"
+                placeholder={t("e.g. input")}
                 value={entry.key}
                 onChange={(e) => handleKeyChange(index, e.target.value)}
               />
@@ -145,7 +150,7 @@ export function UsageDetailsEditor({
         className="w-full"
       >
         <PlusCircle className="mr-2 h-4 w-4" />
-        Add Usage Type
+        {t("Add Usage Type")}
       </Button>
     </div>
   );

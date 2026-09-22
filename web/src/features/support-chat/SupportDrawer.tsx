@@ -15,6 +15,7 @@ import { SuccessSection } from "@/src/features/support-chat/SuccessSection";
 import { SupportFormSection } from "@/src/features/support-chat/SupportFormSection";
 import { cn } from "@/src/utils/tailwind";
 
+import { useTranslation } from "react-i18next";
 export const SupportDrawer = ({
   showCloseButton = true,
   className,
@@ -22,6 +23,7 @@ export const SupportDrawer = ({
   showCloseButton?: boolean;
   className?: string;
 }) => {
+  const { t } = useTranslation();
   const { open, setOpen } = useSupportDrawer();
   const [currentMode, setCurrentMode] = useState<"intro" | "form" | "success">(
     "intro",
@@ -43,7 +45,7 @@ export const SupportDrawer = ({
             <BreadcrumbList>
               {currentMode === "intro" ? (
                 <BreadcrumbItem>
-                  <BreadcrumbPage>Support</BreadcrumbPage>
+                  <BreadcrumbPage>{t("Support")}</BreadcrumbPage>
                 </BreadcrumbItem>
               ) : (
                 <>
@@ -54,7 +56,7 @@ export const SupportDrawer = ({
                         onClick={() => setCurrentMode("intro")}
                         className="text-foreground"
                       >
-                        Support
+                        {t("Support")}
                       </button>
                     </BreadcrumbLink>
                   </BreadcrumbItem>
@@ -62,7 +64,7 @@ export const SupportDrawer = ({
                     <Slash />
                   </BreadcrumbSeparator>
                   <BreadcrumbItem>
-                    <BreadcrumbPage>Email Engineer</BreadcrumbPage>
+                    <BreadcrumbPage>{t("Email Engineer")}</BreadcrumbPage>
                   </BreadcrumbItem>
                 </>
               )}
@@ -73,7 +75,7 @@ export const SupportDrawer = ({
               variant="ghost"
               size="icon"
               onClick={close}
-              aria-label="Close"
+              aria-label={t("Close")}
             >
               <X className="h-4 w-4" />
             </Button>

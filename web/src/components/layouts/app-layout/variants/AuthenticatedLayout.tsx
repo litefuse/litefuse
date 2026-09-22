@@ -1,3 +1,4 @@
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 /**
  * Authenticated layout variant
  * Full application layout with sidebar, navigation, support drawer, and payment banner
@@ -82,9 +83,10 @@ export function AuthenticatedLayout({
       avatar: user.image ?? "",
     },
     items: [
-      { name: "Account Settings", href: "/account/settings" },
-      { name: "Theme", onClick: () => {}, content: <ThemeToggle /> },
-      { name: "Sign out", onClick: onSignOut },
+      // NavUser translates `name`; "Theme" renders its own content instead.
+      { name: i18nKey("Account Settings"), href: "/account/settings" },
+      { name: i18nKey("Theme"), onClick: () => {}, content: <ThemeToggle /> },
+      { name: i18nKey("Sign out"), onClick: onSignOut },
     ],
   };
 

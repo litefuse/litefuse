@@ -6,6 +6,7 @@ import {
 } from "@/src/components/ui/card";
 import { Badge } from "@/src/components/ui/badge";
 
+import { useTranslation } from "react-i18next";
 type MatchedModelCardProps = {
   projectId: string;
   model: {
@@ -20,13 +21,14 @@ type MatchedModelCardProps = {
 export type { MatchedModelCardProps };
 
 export function MatchedModelCard({ model }: MatchedModelCardProps) {
+  const { t } = useTranslation();
   const isLangfuseModel = !model.projectId;
 
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-          Matched Model
+          {t("Matched Model")}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -36,13 +38,13 @@ export function MatchedModelCard({ model }: MatchedModelCardProps) {
           </span>
           {isLangfuseModel && (
             <Badge variant="secondary" className="text-xs">
-              Litefuse
+              {t("Litefuse")}
             </Badge>
           )}
         </div>
         <div className="space-y-1">
           <div className="text-muted-foreground text-xs font-medium">
-            Pattern:
+            {t("Pattern:")}
           </div>
           <code className="bg-muted/50 block rounded p-2 text-xs break-all">
             {model.matchPattern}

@@ -9,6 +9,7 @@ import { ScoreChartLegendContent } from "./ScoreChartLegendContent";
 import { compactNumberFormatter } from "@/src/utils/numbers";
 import { ScoreChartTooltip } from "../../lib/ScoreChartTooltip";
 
+import { useTranslation } from "react-i18next";
 interface NumericChartProps {
   distribution1: Array<{ binIndex: number; count: number }>;
   distribution2?: Array<{ binIndex: number; count: number }>;
@@ -32,6 +33,7 @@ export function ScoreDistributionNumericChart({
   score2Name,
   colors,
 }: NumericChartProps) {
+  const { t } = useTranslation();
   const isComparisonMode = Boolean(distribution2 && score2Name);
 
   // Transform data for Recharts

@@ -699,6 +699,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
               featureFlags: true,
               admin: true,
               v4BetaEnabled: true,
+              locale: true,
               organizationMemberships: {
                 include: {
                   organization: {
@@ -751,6 +752,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
                     image: dbUser.image,
                     admin: dbUser.admin,
                     v4BetaEnabled: dbUser.v4BetaEnabled,
+                    locale: dbUser.locale,
                     canCreateOrganizations: canCreateOrganizations(
                       dbUser.email,
                     ),

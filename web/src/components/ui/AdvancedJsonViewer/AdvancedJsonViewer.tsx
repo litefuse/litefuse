@@ -26,6 +26,8 @@ import { SimpleJsonViewer } from "./SimpleJsonViewer";
 import { VirtualizedJsonViewer } from "./VirtualizedJsonViewer";
 import { debugLog } from "./utils/debug";
 
+import { useTranslation } from "react-i18next";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 /**
  * AdvancedJsonViewer - Self-contained JSON viewer
  */
@@ -36,7 +38,7 @@ export function AdvancedJsonViewer({
   theme: userTheme,
   initialExpansion = true,
   enableSearch = true,
-  searchPlaceholder = "Search JSON...",
+  searchPlaceholder = i18nKey("Search JSON..."),
   searchQuery: controlledSearchQuery,
   onSearchQueryChange,
   currentMatchIndex: controlledCurrentMatchIndex,
@@ -53,6 +55,7 @@ export function AdvancedJsonViewer({
   scrollContainerRef,
   commentedPaths,
 }: AdvancedJsonViewerProps) {
+  const { t } = useTranslation();
   debugLog("[AdvancedJsonViewer] RENDER");
   // Resolve theme
   const theme = useJsonTheme(userTheme);
@@ -227,7 +230,7 @@ export function AdvancedJsonViewer({
   if (isLoading) {
     return (
       <div className={className} style={{ padding: "16px" }}>
-        <div className="text-muted-foreground text-sm">Loading...</div>
+        <div className="text-muted-foreground text-sm">{t("Loading...")}</div>
       </div>
     );
   }
@@ -237,7 +240,9 @@ export function AdvancedJsonViewer({
     const errorMessage = typeof error === "string" ? error : error.message;
     return (
       <div className={className} style={{ padding: "16px" }}>
-        <div className="text-destructive text-sm">Error: {errorMessage}</div>
+        <div className="text-destructive text-sm">
+          {t("Error: {{message}}", { message: errorMessage })}
+        </div>
       </div>
     );
   }
@@ -247,7 +252,7 @@ export function AdvancedJsonViewer({
     return (
       <div className={className} style={{ padding: "16px" }}>
         <div className="text-destructive text-sm">
-          Error building tree: {buildError}
+          {t("Error building tree: {{error}}", { error: buildError })}
         </div>
       </div>
     );
@@ -257,7 +262,9 @@ export function AdvancedJsonViewer({
   if (isBuilding && !tree) {
     return (
       <div className={className} style={{ padding: "16px" }}>
-        <div className="text-muted-foreground text-sm">Processing JSON...</div>
+        <div className="text-muted-foreground text-sm">
+          {t("Processing JSON...")}
+        </div>
       </div>
     );
   }

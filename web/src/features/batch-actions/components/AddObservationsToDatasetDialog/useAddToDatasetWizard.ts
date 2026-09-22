@@ -12,6 +12,7 @@ import type {
 } from "./types";
 import { wizardReducer, initialWizardState } from "./wizardReducer";
 
+import { useTranslation } from "react-i18next";
 export type UseAddToDatasetWizardProps = {
   projectId: string;
   selectedObservationIds: string[];
@@ -26,6 +27,7 @@ export type UseAddToDatasetWizardProps = {
 };
 
 export function useAddToDatasetWizard(props: UseAddToDatasetWizardProps) {
+  const { t } = useTranslation();
   const {
     projectId,
     selectedObservationIds,
@@ -270,44 +272,51 @@ export function useAddToDatasetWizard(props: UseAddToDatasetWizardProps) {
   const nextButtonLabel = useMemo(() => {
     switch (state.step) {
       case "select":
-        return "Continue";
+        return t("Continue");
       case "create":
         return state.createStep.isCreating
-          ? "Creating..."
-          : "Create & Continue";
+          ? t("Creating...")
+          : t("Create & Continue");
       case "input-mapping":
       case "output-mapping":
       case "metadata-mapping":
-        return "Next";
+        return t("Next");
       case "preview":
-        return state.submission.isSubmitting ? "Adding..." : "Add to Dataset";
+        return state.submission.isSubmitting
+          ? t("Adding...")
+          : t("Add to Dataset");
       default:
-        return "Continue";
+        return t("Continue");
     }
-  }, [state.step, state.createStep.isCreating, state.submission.isSubmitting]);
+  }, [
+    state.step,
+    state.createStep.isCreating,
+    state.submission.isSubmitting,
+    t,
+  ]);
 
   const dialogDescription = useMemo(() => {
     switch (state.step) {
       case "choice":
-        return "Choose where to add your observations";
+        return t("Choose where to add your observations");
       case "select":
-        return "Select an existing dataset";
+        return t("Select an existing dataset");
       case "create":
-        return "Create a new dataset";
+        return t("Create a new dataset");
       case "input-mapping":
-        return "Configure dataset item input mapping";
+        return t("Configure dataset item input mapping");
       case "output-mapping":
-        return "Configure dataset item expected output mapping";
+        return t("Configure dataset item expected output mapping");
       case "metadata-mapping":
-        return "Configure dataset item metadata mapping";
+        return t("Configure dataset item metadata mapping");
       case "preview":
-        return "Review and confirm your configuration";
+        return t("Review and confirm your configuration");
       case "status":
-        return "Your bulk action status";
+        return t("Your bulk action status");
       default:
         return "";
     }
-  }, [state.step]);
+  }, [state.step, t]);
 
   const showBackButton = state.step !== "choice" && state.step !== "status";
   const canClose = state.step !== "status";

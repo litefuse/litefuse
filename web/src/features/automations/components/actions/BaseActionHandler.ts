@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import { type UseFormReturn, type FieldValues } from "react-hook-form";
 import {
   type ActionCreate,
@@ -15,7 +16,11 @@ export interface BaseActionHandler<
   getDefaultValues(automation?: AutomationDomain): TFormData;
 
   // Validate the form data for this action type
-  validateFormData(formData: TFormData): {
+  // `t` is passed in because handlers are plain classes, not components.
+  validateFormData(
+    formData: TFormData,
+    t: TFunction,
+  ): {
     isValid: boolean;
     errors?: string[];
   };

@@ -30,6 +30,10 @@ import { useRouter } from "next/router";
 import { getSafeRedirectPath } from "@/src/utils/redirect";
 import useLocalStorage from "@/src/components/useLocalStorage";
 
+import { useTranslation } from "react-i18next";
+
+/** Example address shown in the field, identical in every language. */
+const EXAMPLE_EMAIL = "jsdoe@example.com";
 // Use the same getServerSideProps function as src/pages/auth/sign-in.tsx
 export { getServerSideProps } from "@/src/pages/auth/sign-in";
 
@@ -39,6 +43,7 @@ export default function SignIn({
   authProviders,
   runningOnHuggingFaceSpaces,
 }: PageProps) {
+  const { t } = useTranslation();
   useHuggingFaceRedirect(runningOnHuggingFaceSpaces);
   const { isLangfuseCloud, region } = useLangfuseCloudRegion();
   const router = useRouter();
@@ -104,7 +109,7 @@ export default function SignIn({
   return (
     <>
       <Head>
-        <title>Sign up | Litefuse</title>
+        <title>{t("Sign up | Litefuse")}</title>
         <meta
           name="description"
           content="Create an account, no credit card required."
@@ -115,12 +120,12 @@ export default function SignIn({
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <LangfuseIcon className="mx-auto" />
           <h2 className="text-primary mt-4 text-center text-2xl leading-9 font-bold tracking-tight">
-            Create new account
+            {t("Create new account")}
           </h2>
         </div>
         {isLangfuseCloud ? (
           <div className="text-center sm:mx-auto sm:w-full sm:max-w-[480px]">
-            No credit card required.
+            {t("No credit card required.")}
           </div>
         ) : null}
 
@@ -132,9 +137,9 @@ export default function SignIn({
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Name</FormLabel>
+                    <FormLabel>{t("Name")}</FormLabel>
                     <FormControl>
-                      <Input placeholder="Jane Doe" {...field} />
+                      <Input placeholder={t("Jane Doe")} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -145,10 +150,10 @@ export default function SignIn({
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>{t("Email")}</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="jsdoe@example.com"
+                        placeholder={EXAMPLE_EMAIL}
                         allowPasswordManager
                         autoComplete="email"
                         {...field}
@@ -163,7 +168,7 @@ export default function SignIn({
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>{t("Password")}</FormLabel>
                     <FormControl>
                       <PasswordInput {...field} />
                     </FormControl>
@@ -177,7 +182,7 @@ export default function SignIn({
                 loading={form.formState.isSubmitting}
                 data-testid="submit-email-password-sign-up-form"
               >
-                Sign up
+                {t("Sign up")}
               </Button>
               {formError ? (
                 <div className="text-destructive text-center text-sm font-medium">
@@ -188,21 +193,21 @@ export default function SignIn({
           </Form>
           <SSOButtons
             authProviders={authProviders}
-            action="sign up"
+            action={t("sign up")}
             lastUsedMethod={lastUsedAuthMethod}
             onProviderSelect={setLastUsedAuthMethod}
           />
           <p className="text-muted-foreground mt-10 text-center text-sm">
-            Already have an account?{" "}
+            {t("Already have an account?")}{" "}
             <Link
               href={`/auth/sign-in${router.asPath.includes("?") ? router.asPath.substring(router.asPath.indexOf("?")) : ""}`}
               className="text-primary-accent hover:text-hover-primary-accent leading-6 font-semibold"
             >
-              Sign in
+              {t("Sign in")}
             </Link>
           </p>
         </div>
-        <CloudPrivacyNotice action="creating an account" />
+        <CloudPrivacyNotice action={t("creating an account")} />
       </div>
     </>
   );

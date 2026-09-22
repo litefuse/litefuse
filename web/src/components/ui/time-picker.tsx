@@ -7,6 +7,7 @@ import { type Period } from "./time-picker-utils";
 import { getTimezoneDetails, getShortLocalTimezone } from "@/src/utils/dates";
 import { TimeIcon } from "@/src/components/ui/time-icon";
 import { cn } from "@/src/utils/tailwind";
+import { useTranslation } from "react-i18next";
 import {
   Tooltip,
   TooltipContent,
@@ -20,6 +21,7 @@ interface TimePickerProps {
 }
 
 export function TimePicker({ date, setDate, className }: TimePickerProps) {
+  const { t } = useTranslation();
   const getInitialPeriod = (date: Date | undefined): Period => {
     if (!date) return "AM";
     return date.getHours() >= 12 ? "PM" : "AM";

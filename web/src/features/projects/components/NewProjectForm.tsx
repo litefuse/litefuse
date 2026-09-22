@@ -17,6 +17,7 @@ import { useSession } from "next-auth/react";
 import { projectNameSchema } from "@/src/features/auth/lib/projectNameSchema";
 import { usePostHogClientCapture } from "@/src/features/posthog-analytics/usePostHogClientCapture";
 
+import { useTranslation } from "react-i18next";
 export const NewProjectForm = ({
   orgId,
   onSuccess,
@@ -24,6 +25,7 @@ export const NewProjectForm = ({
   orgId: string;
   onSuccess: (projectId: string) => void;
 }) => {
+  const { t } = useTranslation();
   const capture = usePostHogClientCapture();
   const { update: updateSession } = useSession();
 
@@ -75,10 +77,10 @@ export const NewProjectForm = ({
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Project name</FormLabel>
+              <FormLabel>{t("Project name")}</FormLabel>
               <FormControl>
                 <Input
-                  placeholder="my-llm-project"
+                  placeholder={t("my-llm-project")}
                   {...field}
                   data-testid="new-project-name-input"
                 />
@@ -88,7 +90,7 @@ export const NewProjectForm = ({
           )}
         />
         <Button type="submit" loading={createProjectMutation.isPending}>
-          Create
+          {t("Create")}
         </Button>
       </form>
     </Form>

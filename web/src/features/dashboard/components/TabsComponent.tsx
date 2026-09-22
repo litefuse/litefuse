@@ -2,6 +2,7 @@ import { usePostHogClientCapture } from "@/src/features/posthog-analytics/usePos
 import { cn } from "@/src/utils/tailwind";
 import { type ReactNode, useState } from "react";
 
+import { useTranslation } from "react-i18next";
 export type TabComponentProps = {
   tabs: {
     tabTitle: string;
@@ -10,13 +11,14 @@ export type TabComponentProps = {
 };
 
 export const TabComponent = ({ tabs }: TabComponentProps) => {
+  const { t } = useTranslation();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const capture = usePostHogClientCapture();
   return (
     <div>
       <div className="sm:hidden">
         <label htmlFor="tabs" className="sr-only">
-          Select a tab
+          {t("Select a tab")}
         </label>
         <select
           id="tabs"
@@ -26,7 +28,7 @@ export const TabComponent = ({ tabs }: TabComponentProps) => {
           onChange={(e) => setSelectedIndex(Number(e.target.selectedIndex))}
         >
           {tabs.map((tab) => (
-            <option key={tab.tabTitle}>{tab.tabTitle}</option>
+            <option key={tab.tabTitle}>{t(tab.tabTitle)}</option>
           ))}
         </select>
       </div>
@@ -34,7 +36,7 @@ export const TabComponent = ({ tabs }: TabComponentProps) => {
         <div className="border-border border-b">
           <nav
             className="-mb-px flex space-x-2 md:space-x-4 lg:space-x-6 xl:space-x-8"
-            aria-label="Tabs"
+            aria-label={t("Tabs")}
           >
             {tabs.map((tab, index) => (
               <a
@@ -53,7 +55,7 @@ export const TabComponent = ({ tabs }: TabComponentProps) => {
                   });
                 }}
               >
-                {tab.tabTitle}
+                {t(tab.tabTitle)}
               </a>
             ))}
           </nav>

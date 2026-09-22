@@ -14,6 +14,7 @@ import { env } from "@/src/env.mjs";
 import { GenerationOutput } from "./GenerationOutput";
 import { ChatMessages } from "@/src/components/ChatMessages";
 import { type MessagesContext } from "@/src/components/ChatMessages/types";
+import { useTranslation } from "react-i18next";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -21,6 +22,7 @@ import {
 } from "@/src/components/ui/resizable";
 
 export const Messages: React.FC<MessagesContext> = (props) => {
+  const { t } = useTranslation();
   return (
     <div className="flex h-full flex-col space-y-4 pt-2 pr-4">
       <ResizablePanelGroup orientation="vertical">
@@ -42,6 +44,7 @@ export const Messages: React.FC<MessagesContext> = (props) => {
 };
 
 const SubmitButton = () => {
+  const { t } = useTranslation();
   const { handleSubmit, isStreaming } = usePlaygroundContext();
   const defaultStreamingEnabled =
     env.NEXT_PUBLIC_LITEFUSE_PLAYGROUND_STREAMING_ENABLED_DEFAULT === "true";
@@ -59,7 +62,7 @@ const SubmitButton = () => {
         }}
         loading={isStreaming}
       >
-        <p>Submit</p>
+        <p>{t("Submit")}</p>
       </Button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -78,11 +81,11 @@ const SubmitButton = () => {
             onClick={(e) => e.preventDefault()}
           >
             <div className="flex flex-col">
-              <span className="font-medium">Stream responses</span>
+              <span className="font-medium">{t("Stream responses")}</span>
               <span className="text-muted-foreground text-xs">
                 {streamingEnabled
-                  ? "Real-time response streaming"
-                  : "Complete response at once"}
+                  ? t("Real-time response streaming")
+                  : t("Complete response at once")}
               </span>
             </div>
             <Switch

@@ -15,7 +15,9 @@ import { SupportOrUpgradePage } from "@/src/components/SupportOrUpgradePage";
 import { EvaluatorsOnboarding } from "@/src/components/onboarding/EvaluatorsOnboarding";
 import { ManageDefaultEvalModel } from "@/src/features/evals/components/manage-default-eval-model";
 
+import { useTranslation } from "react-i18next";
 export default function EvaluatorsPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const projectId = router.query.projectId as string;
   const capture = usePostHogClientCapture();
@@ -60,10 +62,11 @@ export default function EvaluatorsPage() {
     return (
       <Page
         headerProps={{
-          title: "LLM-as-a-Judge Evaluators",
+          title: t("LLM-as-a-Judge Evaluators"),
           help: {
-            description:
+            description: t(
               "Configure a Litefuse managed or custom evaluator to evaluate incoming traces.",
+            ),
             href: "https://litefuse.ai/docs/evaluation/evaluation-methods/llm-as-a-judge",
           },
         }}
@@ -78,10 +81,11 @@ export default function EvaluatorsPage() {
     <>
       <Page
         headerProps={{
-          title: "LLM-as-a-Judge Evaluators",
+          title: t("LLM-as-a-Judge Evaluators"),
           help: {
-            description:
+            description: t(
               "Configure a Litefuse managed or custom evaluator to evaluate incoming traces.",
+            ),
             href: "https://litefuse.ai/docs/evaluation/evaluation-methods/llm-as-a-judge",
           },
           tabsProps: {
@@ -102,7 +106,7 @@ export default function EvaluatorsPage() {
                 limitValue={countsQuery.data?.configActiveCount ?? 0}
                 limit={evaluatorLimit}
               >
-                Set up evaluator
+                {t("Set up evaluator")}
               </ActionButton>
             </>
           ),

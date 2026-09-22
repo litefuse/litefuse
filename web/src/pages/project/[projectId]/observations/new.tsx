@@ -10,7 +10,9 @@ import {
 } from "@/src/features/navigation/utils/tracing-tabs";
 import { useQueryProject } from "@/src/features/projects/hooks";
 
+import { useTranslation } from "react-i18next";
 export default function Events() {
+  const { t } = useTranslation();
   const router = useRouter();
   const projectId = router.query.projectId as string;
   const { project } = useQueryProject();
@@ -38,10 +40,11 @@ export default function Events() {
   return (
     <Page
       headerProps={{
-        title: "Tracing - Events Table (New)",
+        title: t("Tracing - Events Table (New)"),
         help: {
-          description:
-            "An observation captures a single function call in an application. This view uses the new ClickHouse events table.",
+          description: t(
+            "An observation captures a single function call in an application. This view uses the new events table.",
+          ),
           href: "https://litefuse.ai/docs/observability/data-model",
         },
         tabsProps: {

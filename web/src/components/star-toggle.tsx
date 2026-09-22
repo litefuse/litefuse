@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { usePostHogClientCapture } from "@/src/features/posthog-analytics/usePostHogClientCapture";
 import { trpcErrorToast } from "@/src/utils/trpcErrorToast";
 
+import { useTranslation } from "react-i18next";
 export function StarToggle({
   value,
   disabled = false,
@@ -21,6 +22,7 @@ export function StarToggle({
   size?: "icon" | "icon-xs";
   isLoading: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <Button
       variant="ghost"
@@ -31,7 +33,7 @@ export function StarToggle({
       }}
       disabled={disabled}
       loading={isLoading}
-      aria-label="bookmark"
+      aria-label={t("bookmark")}
     >
       <StarIcon
         className="h-4 w-4"

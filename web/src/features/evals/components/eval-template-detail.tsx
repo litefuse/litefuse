@@ -27,7 +27,9 @@ import {
 } from "@/src/components/ui/side-panel";
 import { LangfuseIcon } from "@/src/components/LangfuseLogo";
 
+import { useTranslation } from "react-i18next";
 export const EvalTemplateDetail = () => {
+  const { t } = useTranslation();
   const router = useRouter();
   const projectId = router.query.projectId as string;
   const templateId = router.query.id as string;
@@ -71,7 +73,7 @@ export const EvalTemplateDetail = () => {
         itemType: "EVALUATOR",
         breadcrumb: [
           {
-            name: "Evaluator Library",
+            name: t("Evaluator Library"),
             href: `/project/${router.query.projectId as string}/evals/templates`,
           },
         ],
@@ -101,7 +103,7 @@ export const EvalTemplateDetail = () => {
       }}
     >
       {allTemplates.isLoading || !allTemplates.data || !template.data ? (
-        <div className="p-3">Loading...</div>
+        <div className="p-3">{t("Loading...")}</div>
       ) : isEditing ? (
         <div className="overflow-y-auto p-3 pt-1">
           <EvalTemplateForm
@@ -123,10 +125,10 @@ export const EvalTemplateDetail = () => {
               setIsEditing={setIsEditing}
             />
           </div>
-          <SidePanel mobileTitle="Change history" id="change-history">
+          <SidePanel mobileTitle={t("Change history")} id="change-history">
             <SidePanelHeader>
               <SidePanelTitle className="text-base font-semibold">
-                Change history
+                {t("Change history")}
               </SidePanelTitle>
             </SidePanelHeader>
             <SidePanelContent>
@@ -182,6 +184,7 @@ export function EvalVersionDropdown(props: {
   defaultOption?: EvalTemplate;
   onSelect?: (template: EvalTemplate) => void;
 }) {
+  const { t } = useTranslation();
   const capture = usePostHogClientCapture();
   const handleSelect = (value: string) => {
     const selectedTemplate = props.options?.find(
@@ -200,13 +203,13 @@ export function EvalVersionDropdown(props: {
       defaultValue={props.defaultOption ? props.defaultOption.id : undefined}
     >
       <SelectTrigger className="w-[180px]">
-        <SelectValue placeholder="Version" />
+        <SelectValue placeholder={t("Version")} />
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
           {props.options?.map((template) => (
             <SelectItem key={template.id} value={template.id}>
-              v{template.version} - {template.createdAt.toLocaleDateString()}
+              {`v${template.version} - ${template.createdAt.toLocaleDateString()}`}
             </SelectItem>
           ))}
         </SelectGroup>
@@ -226,6 +229,7 @@ export function UpdateTemplate({
   setIsEditing: (isEditing: boolean) => void;
   isCustom: boolean;
 }) {
+  const { t } = useTranslation();
   const hasAccess = useHasProjectAccess({
     projectId,
     scope: "evalTemplate:CUD",
@@ -242,7 +246,7 @@ export function UpdateTemplate({
       <div className="flex items-center gap-2">
         <LangfuseIcon size={16} />
         <span className="text-muted-foreground text-sm font-medium">
-          View only
+          {t("View only")}
         </span>
       </div>
     );
@@ -250,7 +254,7 @@ export function UpdateTemplate({
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-sm font-medium">Edit mode</span>
+      <span className="text-sm font-medium">{t("Edit mode")}</span>
       <Switch
         checked={isEditing}
         onCheckedChange={handlePromptEdit}

@@ -8,6 +8,7 @@ import {
 import { ScoreChartLegendContent } from "./ScoreChartLegendContent";
 import { ScoreChartTooltip } from "../../lib/ScoreChartTooltip";
 
+import { useTranslation } from "react-i18next";
 interface BooleanChartProps {
   distribution1: Array<{ binIndex: number; count: number }>;
   distribution2?: Array<{ binIndex: number; count: number }>;
@@ -31,6 +32,7 @@ export function ScoreDistributionBooleanChart({
   score2Name,
   colors,
 }: BooleanChartProps) {
+  const { t } = useTranslation();
   const isComparisonMode = Boolean(distribution2 && score2Name);
 
   // Detect if we have namespaced category keys (e.g., "Color (annotation): True")

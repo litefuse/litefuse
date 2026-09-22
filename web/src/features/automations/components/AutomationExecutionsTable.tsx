@@ -10,6 +10,7 @@ import { formatDistanceToNow } from "date-fns";
 import { formatIntervalSeconds } from "@/src/utils/dates";
 import { useRowHeightLocalStorage } from "@/src/components/table/data-table-row-height-switch";
 
+import { useTranslation } from "react-i18next";
 type ActionExecutionRow = {
   id: string;
   status: string;
@@ -30,6 +31,7 @@ interface AutomationExecutionsTableProps {
 export const AutomationExecutionsTable: React.FC<
   AutomationExecutionsTableProps
 > = ({ projectId, automationId }) => {
+  const { t } = useTranslation();
   const [paginationState, setPaginationState] = useQueryParams({
     pageIndex: withDefault(NumberParam, 0),
     pageSize: withDefault(NumberParam, 50),
@@ -51,7 +53,7 @@ export const AutomationExecutionsTable: React.FC<
   const columns: LangfuseColumnDef<ActionExecutionRow>[] = [
     {
       accessorKey: "status",
-      header: "Status",
+      header: t("Status"),
       id: "status",
       cell: ({ row }) => {
         const status = row.getValue("status") as string;
@@ -60,7 +62,7 @@ export const AutomationExecutionsTable: React.FC<
     },
     {
       accessorKey: "startedAt",
-      header: "Started",
+      header: t("Started"),
       id: "startedAt",
       cell: ({ row }) => {
         const value = row.getValue("startedAt") as string | null;
@@ -80,7 +82,7 @@ export const AutomationExecutionsTable: React.FC<
     },
     {
       accessorKey: "duration",
-      header: "Duration",
+      header: t("Duration"),
       id: "duration",
       cell: ({ row }) => {
         const duration = row.getValue("duration") as number | null;
@@ -92,7 +94,7 @@ export const AutomationExecutionsTable: React.FC<
     },
     {
       accessorKey: "input",
-      header: "Input",
+      header: t("Input"),
       id: "input",
       cell: ({ row }) => {
         const value = row.getValue("input");
@@ -101,7 +103,7 @@ export const AutomationExecutionsTable: React.FC<
     },
     {
       accessorKey: "output",
-      header: "Output",
+      header: t("Output"),
       id: "output",
       cell: ({ row }) => {
         const value = row.getValue("output");
@@ -111,7 +113,7 @@ export const AutomationExecutionsTable: React.FC<
     },
     {
       accessorKey: "error",
-      header: "Error",
+      header: t("Error"),
       id: "error",
       size: 150,
       cell: ({ row }) => {
@@ -145,7 +147,9 @@ export const AutomationExecutionsTable: React.FC<
   if (isError) {
     return (
       <div className="py-4 text-center text-red-600">
-        Error loading execution history: {error?.message}
+        {t("Error loading execution history: {{error}}", {
+          error: error?.message,
+        })}
       </div>
     );
   }

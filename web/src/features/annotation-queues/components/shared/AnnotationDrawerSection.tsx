@@ -11,6 +11,7 @@ import { useSession } from "next-auth/react";
 import { AnnotationForm } from "@/src/features/scores/components/AnnotationForm";
 import { type WithStringifiedMetadata } from "@/src/utils/clientSideDomainTypes";
 
+import { useTranslation } from "react-i18next";
 interface AnnotationDrawerSectionProps {
   item: AnnotationQueueItem & {
     parentTraceId?: string | null;
@@ -25,6 +26,7 @@ interface AnnotationDrawerSectionProps {
 export const AnnotationDrawerSection: React.FC<
   AnnotationDrawerSectionProps
 > = ({ item, scoreTarget, scores, configs, environment }) => {
+  const { t } = useTranslation();
   const session = useSession();
 
   const isLockedByOtherUser = item.lockedByUserId !== session.data?.user?.id;
@@ -54,7 +56,9 @@ export const AnnotationDrawerSection: React.FC<
             <div className="border-dark-red bg-light-red flex items-center justify-center rounded-sm border p-1">
               <TriangleAlertIcon className="text-dark-red mr-1 h-4 w-4" />
               <span className="text-dark-red text-xs">
-                Currently edited by {item.lockedByUser.name}
+                {t("Currently edited by {{name}}", {
+                  name: item.lockedByUser.name,
+                })}
               </span>
             </div>
           ) : undefined
@@ -62,8 +66,9 @@ export const AnnotationDrawerSection: React.FC<
       />
       {hasNonAnnotationScores && (
         <div className="text-muted-foreground mt-4 text-xs">
-          API and eval scores visible when toggling on the detailed view. Add
-          manual annotations above.
+          {t(
+            "API and eval scores visible when toggling on the detailed view. Add manual annotations above.",
+          )}
         </div>
       )}
     </Card>

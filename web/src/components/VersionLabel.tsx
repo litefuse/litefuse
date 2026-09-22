@@ -26,7 +26,9 @@ import { isSelfHostedPlan, planLabels } from "@langfuse/shared";
 import { StatusBadge } from "@/src/components/layouts/status-badge";
 import { useLangfuseCloudRegion } from "@/src/features/organizations/hooks";
 
+import { useTranslation } from "react-i18next";
 export const VersionLabel = ({ className }: { className?: string }) => {
+  const { t } = useTranslation();
   const { isLangfuseCloud } = useLangfuseCloudRegion();
 
   const backgroundMigrationStatus = api.backgroundMigrations.status.useQuery(
@@ -107,14 +109,18 @@ export const VersionLabel = ({ className }: { className?: string }) => {
         {hasUpdate ? (
           <>
             <DropdownMenuLabel>
-              New {checkUpdate.data?.updateType} version:{" "}
-              {checkUpdate.data?.latestRelease}
+              {t("New {{type}} version: {{version}}", {
+                type: checkUpdate.data?.updateType,
+                version: checkUpdate.data?.latestRelease,
+              })}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
           </>
         ) : !isLangfuseCloud ? (
           <>
-            <DropdownMenuLabel>This is the latest release</DropdownMenuLabel>
+            <DropdownMenuLabel>
+              {t("This is the latest release")}
+            </DropdownMenuLabel>
             <DropdownMenuSeparator />
           </>
         ) : null}
@@ -133,14 +139,14 @@ export const VersionLabel = ({ className }: { className?: string }) => {
             target="_blank"
           >
             <Github size={16} className="mr-2" />
-            Releases
+            {t("Releases")}
           </Link>
         </DropdownMenuItem>
         {!isLangfuseCloud && (
           <DropdownMenuItem asChild>
             <Link href="/background-migrations">
               <ArrowUp10 size={16} className="mr-2" />
-              Background Migrations
+              {t("Background Migrations")}
               {showBackgroundMigrationStatus && (
                 <StatusBadge
                   type={backgroundMigrationStatus.data?.status.toLowerCase()}
@@ -154,13 +160,13 @@ export const VersionLabel = ({ className }: { className?: string }) => {
         <DropdownMenuItem asChild>
           <Link href="https://litefuse.ai/changelog" target="_blank">
             <Newspaper size={16} className="mr-2" />
-            Changelog
+            {t("Changelog")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="https://litefuse.ai/roadmap" target="_blank">
             <Map size={16} className="mr-2" />
-            Roadmap
+            {t("Roadmap")}
           </Link>
         </DropdownMenuItem>
         {!isLangfuseCloud && (
@@ -170,7 +176,7 @@ export const VersionLabel = ({ className }: { className?: string }) => {
               target="_blank"
             >
               <Info size={16} className="mr-2" />
-              Compare Versions
+              {t("Compare Versions")}
             </Link>
           </DropdownMenuItem>
         )}
@@ -183,7 +189,7 @@ export const VersionLabel = ({ className }: { className?: string }) => {
                 target="_blank"
               >
                 <HardDriveDownload size={16} className="mr-2" />
-                Update
+                {t("Update")}
               </Link>
             </DropdownMenuItem>
           </>

@@ -8,6 +8,7 @@ import { useSelectedUsers } from "@/src/features/annotation-queues/hooks/useSele
 import { showSuccessToast } from "@/src/features/notifications/showSuccessToast";
 import { useRef } from "react";
 
+import { useTranslation } from "react-i18next";
 interface UserAssignmentSectionProps {
   projectId: string;
   selectedUserIds: string[];
@@ -21,6 +22,7 @@ export const UserAssignmentSection = ({
   onChange,
   queueId,
 }: UserAssignmentSectionProps) => {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const hasQueueAssignmentsReadAccess = useHasProjectAccess({
     projectId: projectId,
@@ -45,8 +47,8 @@ export const UserAssignmentSection = ({
         utils.annotationQueueAssignments.invalidate();
         utils.annotationQueues.invalidate();
         showSuccessToast({
-          title: "Removed assignment",
-          description: "User removed from queue successfully",
+          title: t("Removed assignment"),
+          description: t("User removed from queue successfully"),
         });
       },
     });
@@ -99,7 +101,7 @@ export const UserAssignmentSection = ({
         searchResults={userSearch.searchResults}
         isLoading={userSearch.isLoading}
         disabled={!hasQueueAssignmentWriteAccess}
-        placeholder="Search users to add..."
+        placeholder={t("Search users to add...")}
         hasMoreResults={userSearch.hasMoreResults}
         getItemKey={(user) => user.id}
         onOpenChange={(open) => {
@@ -133,7 +135,7 @@ export const UserAssignmentSection = ({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-3">
                 <p className="truncate text-xs font-medium">
-                  {user.name || "Unnamed User"}
+                  {user.name || t("Unnamed User")}
                 </p>
                 <p className="text-muted-foreground truncate text-xs">
                   {user.email}
@@ -152,7 +154,9 @@ export const UserAssignmentSection = ({
         queueAssignmentsQuery.data?.totalCount > 0 && (
           <div className="space-y-2">
             <h4 className="text-muted-foreground text-sm">
-              Assigned to ({queueAssignmentsQuery.data?.totalCount})
+              {t("Assigned to ({{count}})", {
+                count: queueAssignmentsQuery.data?.totalCount,
+              })}
             </h4>
             <div className="bg-background max-h-32 overflow-y-auto rounded-md border">
               {queueAssignmentsQuery.data?.assignments.map(
@@ -162,7 +166,7 @@ export const UserAssignmentSection = ({
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-3">
                           <p className="truncate text-xs font-medium">
-                            {user.name || "Unnamed User"}
+                            {user.name || t("Unnamed User")}
                           </p>
                           <p className="text-muted-foreground truncate text-xs">
                             {user.email}
@@ -194,9 +198,11 @@ export const UserAssignmentSection = ({
                   <MoreHorizontal className="h-4 w-4" />
                   <div className="min-w-0 flex-1">
                     <p className="text-xs italic">
-                      {queueAssignmentsQuery.data.totalCount -
-                        queueAssignmentsQuery.data.assignments.length}{" "}
-                      more assigned users
+                      {t("{{count}} more assigned users", {
+                        count:
+                          queueAssignmentsQuery.data.totalCount -
+                          queueAssignmentsQuery.data.assignments.length,
+                      })}
                     </p>
                   </div>
                 </div>

@@ -17,6 +17,8 @@ import { useHasProjectAccess } from "@/src/features/rbac/utils/checkProjectAcces
 import { useDatasetItemValidation } from "../hooks/useDatasetItemValidation";
 import type { DatasetItemDomain } from "@langfuse/shared";
 import { DatasetItemFields } from "./DatasetItemFields";
+import { useTranslation } from "react-i18next";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 import {
   stringifyDatasetItemData,
   type DatasetSchema,
@@ -34,8 +36,9 @@ const formSchema = z.object({
       }
     },
     {
-      message:
+      message: i18nKey(
         "Invalid input. Please provide a JSON object or double-quoted string.",
+      ),
     },
   ),
   expectedOutput: z.string().refine(
@@ -49,8 +52,9 @@ const formSchema = z.object({
       }
     },
     {
-      message:
+      message: i18nKey(
         "Invalid input. Please provide a JSON object or double-quoted string.",
+      ),
     },
   ),
   metadata: z.string().refine(
@@ -64,8 +68,9 @@ const formSchema = z.object({
       }
     },
     {
-      message:
+      message: i18nKey(
         "Invalid input. Please provide a JSON object or double-quoted string.",
+      ),
     },
   ),
 });
@@ -85,6 +90,7 @@ export const EditDatasetItemDialog = ({
   datasetItem,
   dataset,
 }: EditDatasetItemDialogProps) => {
+  const { t } = useTranslation();
   const [formError, setFormError] = useState<string | null>(null);
   const hasAccess = useHasProjectAccess({
     projectId: projectId,
@@ -153,7 +159,7 @@ export const EditDatasetItemDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="xl">
         <DialogHeader>
-          <DialogTitle>Edit Dataset Item</DialogTitle>
+          <DialogTitle>{t("Edit Dataset Item")}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form
@@ -163,7 +169,7 @@ export const EditDatasetItemDialog = ({
             <DialogBody>
               {formError ? (
                 <p className="text-destructive mb-4">
-                  <span className="font-bold">Error:</span> {formError}
+                  <span className="font-bold">{t("Error:")}</span> {formError}
                 </p>
               ) : null}
               <DatasetItemFields
@@ -182,7 +188,7 @@ export const EditDatasetItemDialog = ({
                 onClick={() => onOpenChange(false)}
                 disabled={updateDatasetItemMutation.isPending}
               >
-                Cancel
+                {t("Cancel")}
               </Button>
               <Button
                 type="submit"
@@ -193,7 +199,7 @@ export const EditDatasetItemDialog = ({
                   (validation.hasSchemas && !validation.isValid)
                 }
               >
-                Save changes
+                {t("Save changes")}
               </Button>
             </DialogFooter>
           </form>

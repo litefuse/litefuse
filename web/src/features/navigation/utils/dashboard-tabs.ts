@@ -1,3 +1,4 @@
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 export const DASHBOARD_TABS = {
   DASHBOARDS: "dashboards",
   WIDGETS: "widgets",
@@ -8,12 +9,12 @@ export type DashboardTab = (typeof DASHBOARD_TABS)[keyof typeof DASHBOARD_TABS];
 export const getDashboardTabs = (projectId: string) => [
   {
     value: DASHBOARD_TABS.DASHBOARDS,
-    label: "Dashboards",
+    label: i18nKey("Dashboards"),
     href: `/project/${projectId}/dashboards`,
   },
   {
     value: DASHBOARD_TABS.WIDGETS,
-    label: "Widgets",
+    label: i18nKey("Widgets"),
     href: `/project/${projectId}/widgets`,
   },
 ];

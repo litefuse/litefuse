@@ -10,6 +10,7 @@ import { cn } from "@/src/utils/tailwind";
 import {
   useState,
   useCallback,
+  useMemo,
   type MutableRefObject,
   type RefObject,
 } from "react";
@@ -26,6 +27,8 @@ import {
 import { lightTheme } from "@/src/components/editor/light-theme";
 import { darkTheme } from "@/src/components/editor/dark-theme";
 
+import { type TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 // Global composition state tracker to prevent search updates during IME input
 // This is a WeakMap so it automatically garbage collects when editors are destroyed
 const compositionState = new WeakMap<EditorView, boolean>();
@@ -57,77 +60,83 @@ const promptLanguage = StreamLanguage.define({
 });
 
 // Linter for prompt variables
-const promptLinter = linter((view) => {
-  const diagnostics: Diagnostic[] = [];
-  const content = view.state.doc.toString();
+/**
+ * Built per language: CodeMirror renders `Diagnostic.message` itself, so the
+ * text has to be translated when the extension is created.
+ */
+const createPromptLinter = (t: TFunction) =>
+  linter((view) => {
+    const diagnostics: Diagnostic[] = [];
+    const content = view.state.doc.toString();
 
-  // Check for multiline variables
-  for (const match of content.matchAll(MULTILINE_VARIABLE_REGEX)) {
-    diagnostics.push({
-      from: match.index,
-      to: match.index + match[0].length,
-      severity: "error",
-      message: "Variables cannot span multiple lines",
-    });
-  }
-
-  // Check for unclosed variables
-  for (const match of content.matchAll(UNCLOSED_VARIABLE_REGEX)) {
-    diagnostics.push({
-      from: match.index,
-      to: match.index + 2,
-      severity: "error",
-      message: "Unclosed variable brackets",
-    });
-  }
-
-  // Check variable format
-  for (const match of content.matchAll(MUSTACHE_REGEX)) {
-    const variable = match[1];
-    if (!variable || variable.trim() === "") {
+    // Check for multiline variables
+    for (const match of content.matchAll(MULTILINE_VARIABLE_REGEX)) {
       diagnostics.push({
         from: match.index,
         to: match.index + match[0].length,
         severity: "error",
-        message: "Empty variable is not allowed",
-      });
-    } else if (!isValidVariableName(variable)) {
-      diagnostics.push({
-        from: match.index,
-        to: match.index + match[0].length,
-        severity: "error",
-        message:
-          "Variable must start with a letter and can only contain letters and underscores",
+        message: t("Variables cannot span multiple lines"),
       });
     }
-  }
 
-  // Check for malformed prompt dependency tags
-  for (const match of content.matchAll(PromptDependencyRegex)) {
-    const tagContent = match[0];
-    try {
-      const parsedTags = parsePromptDependencyTags(tagContent);
+    // Check for unclosed variables
+    for (const match of content.matchAll(UNCLOSED_VARIABLE_REGEX)) {
+      diagnostics.push({
+        from: match.index,
+        to: match.index + 2,
+        severity: "error",
+        message: t("Unclosed variable brackets"),
+      });
+    }
 
-      if (parsedTags.length === 0) {
+    // Check variable format
+    for (const match of content.matchAll(MUSTACHE_REGEX)) {
+      const variable = match[1];
+      if (!variable || variable.trim() === "") {
+        diagnostics.push({
+          from: match.index,
+          to: match.index + match[0].length,
+          severity: "error",
+          message: t("Empty variable is not allowed"),
+        });
+      } else if (!isValidVariableName(variable)) {
+        diagnostics.push({
+          from: match.index,
+          to: match.index + match[0].length,
+          severity: "error",
+          message: t(
+            "Variable must start with a letter and can only contain letters and underscores",
+          ),
+        });
+      }
+    }
+
+    // Check for malformed prompt dependency tags
+    for (const match of content.matchAll(PromptDependencyRegex)) {
+      const tagContent = match[0];
+      try {
+        const parsedTags = parsePromptDependencyTags(tagContent);
+
+        if (parsedTags.length === 0) {
+          diagnostics.push({
+            from: match.index,
+            to: match.index + match[0].length,
+            severity: "warning",
+            message: t("Malformed prompt dependency tag"),
+          });
+        }
+      } catch {
         diagnostics.push({
           from: match.index,
           to: match.index + match[0].length,
           severity: "warning",
-          message: "Malformed prompt dependency tag",
+          message: t("Invalid prompt dependency tag format"),
         });
       }
-    } catch {
-      diagnostics.push({
-        from: match.index,
-        to: match.index + match[0].length,
-        severity: "warning",
-        message: "Invalid prompt dependency tag format",
-      });
     }
-  }
 
-  return diagnostics;
-});
+    return diagnostics;
+  });
 
 // Create a language support instance that combines the language and its configuration
 const promptSupport = new LanguageSupport(promptLanguage);
@@ -251,6 +260,7 @@ export function CodeMirrorEditor({
   enableSearchKeymap?: boolean;
   onEditorMount?: () => void;
 }) {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const codeMirrorTheme = resolvedTheme === "dark" ? darkTheme : lightTheme;
   // used to disable linter when field is empty
@@ -273,6 +283,8 @@ export function CodeMirrorEditor({
     },
     [editorRef, onEditorMount],
   );
+
+  const promptLinter = useMemo(() => createPromptLinter(t), [t]);
 
   return (
     <CodeMirror

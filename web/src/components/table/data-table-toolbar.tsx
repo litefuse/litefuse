@@ -47,6 +47,7 @@ import {
 } from "@/src/components/ui/dropdown-menu";
 import { useDataTableControls } from "@/src/components/table/data-table-controls";
 import { MultiSelect as MultiSelectFilter } from "@/src/features/filters/components/multi-select";
+import { useTranslation } from "react-i18next";
 import {
   DataTableRefreshButton,
   type RefreshInterval,
@@ -152,6 +153,7 @@ export function DataTableToolbar<TData, TValue>({
   filterWithAI = false,
   viewModeToggle,
 }: DataTableToolbarProps<TData, TValue>) {
+  const { t } = useTranslation();
   const [searchString, setSearchString] = useState(
     searchConfig?.currentQuery ?? "",
   );
@@ -177,7 +179,9 @@ export function DataTableToolbar<TData, TValue>({
             ) : (
               <PanelLeftOpen className="h-4 w-4" />
             )}
-            <span>{controlsPanelOpen ? "Hide" : "Show"} filters</span>
+            <span>
+              {controlsPanelOpen ? t("Hide filters") : t("Show filters")}
+            </span>
             {filterState && filterState.length > 0 && (
               <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
                 {filterState.length}
@@ -222,8 +226,12 @@ export function DataTableToolbar<TData, TValue>({
                 autoFocus
                 placeholder={
                   searchConfig.tableAllowsFullTextSearch
-                    ? "Search..."
-                    : `Search (${searchConfig.metadataSearchFields?.join(", ")})`
+                    ? t("Search...")
+                    : t("Search ({{fields}})", {
+                        fields: searchConfig.metadataSearchFields
+                          ?.map((field) => t(field))
+                          .join("、"),
+                      })
                 }
                 value={searchString}
                 onChange={(event) => {
@@ -255,9 +263,9 @@ export function DataTableToolbar<TData, TValue>({
                       {searchConfig.tableAllowsFullTextSearch &&
                       (searchConfig.searchType ?? []).includes("content")
                         ? (searchConfig.customDropdownLabels?.fullText ??
-                          "Full Text")
+                          t("Full Text"))
                         : (searchConfig.customDropdownLabels?.metadata ??
-                          "IDs / Names")}
+                          t("IDs / Names"))}
                       <DocPopup
                         description={
                           searchConfig.tableAllowsFullTextSearch &&
@@ -265,15 +273,21 @@ export function DataTableToolbar<TData, TValue>({
                             "content",
                           ) ? (
                             <p className="text-primary text-xs font-normal">
-                              Searches in Input/Output and{" "}
-                              {searchConfig.metadataSearchFields?.join(", ")}.
+                              {t("Searches in Input/Output and {{fields}}.", {
+                                fields: searchConfig.metadataSearchFields
+                                  ?.map((field) => t(field))
+                                  .join("、"),
+                              })}
                               {!searchConfig.hidePerformanceWarning &&
-                                " For improved performance, please filter the table down."}
+                                ` ${t("For improved performance, please filter the table down.")}`}
                             </p>
                           ) : (
                             <p className="text-primary text-xs font-normal">
-                              Searches in{" "}
-                              {searchConfig.metadataSearchFields?.join(", ")}.
+                              {t("Searches in {{fields}}.", {
+                                fields: searchConfig.metadataSearchFields
+                                  ?.map((field) => t(field))
+                                  .join("、"),
+                              })}
                             </p>
                           )
                         }
@@ -306,14 +320,14 @@ export function DataTableToolbar<TData, TValue>({
                   >
                     <DropdownMenuRadioItem value="metadata">
                       {searchConfig.customDropdownLabels?.metadata ??
-                        "IDs / Names"}
+                        t("IDs / Names")}
                     </DropdownMenuRadioItem>
                     <DropdownMenuRadioItem
                       value="metadata_fulltext"
                       disabled={!searchConfig.tableAllowsFullTextSearch}
                     >
                       {searchConfig.customDropdownLabels?.fullText ??
-                        "Full Text"}
+                        t("Full Text")}
                     </DropdownMenuRadioItem>
                   </DropdownMenuRadioGroup>
                 </DropdownMenuContent>
@@ -340,8 +354,8 @@ export function DataTableToolbar<TData, TValue>({
         )}
         {environmentFilter && (
           <MultiSelectFilter
-            title="Environment"
-            label="Env"
+            title={t("Environment")}
+            label={t("Env")}
             values={environmentFilter.values}
             onValueChange={environmentFilter.onValueChange}
             options={environmentFilter.options}

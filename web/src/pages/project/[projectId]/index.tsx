@@ -39,6 +39,7 @@ import { useV4Beta } from "@/src/features/events/hooks/useV4Beta";
 import { type ViewVersion } from "@/src/features/query";
 import { useEnvironmentFilterOptionsCache } from "@/src/hooks/use-environment-filter-options-cache";
 import { NoDataOrLoading } from "@/src/components/NoDataOrLoading";
+import { useTranslation } from "react-i18next";
 import {
   DashboardQuerySchedulerProvider,
   getDashboardQuerySchedulerMaxConcurrent,
@@ -59,6 +60,7 @@ const HOME_DASHBOARD_CARD_IDS = {
 } as const;
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const router = useRouter();
   const projectId = router.query.projectId as string;
   const { timeRange, setTimeRange } = useDashboardDateRange();
@@ -201,7 +203,7 @@ export default function Dashboard() {
         withPadding
         scrollable
         headerProps={{
-          title: "Home",
+          title: t("Home"),
           actionButtonsLeft: (
             <>
               <TimeRangePicker
@@ -221,8 +223,8 @@ export default function Dashboard() {
                 }
               />
               <MultiSelect
-                title="Environment"
-                label="Env"
+                title={t("Environment")}
+                label={t("Env")}
                 values={selectedEnvironments}
                 onValueChange={useDebounce(setSelectedEnvironments)}
                 options={environmentOptions.map((env) => ({
@@ -241,8 +243,10 @@ export default function Dashboard() {
             <>
               {uiCustomization?.feedbackHref === undefined && (
                 <FeedbackButtonWrapper
-                  title="Request Chart"
-                  description="Your feedback matters! Let the Litefuse team know what additional data or metrics you'd like to see in your dashboard."
+                  title={t("Request Chart")}
+                  description={t(
+                    "Your feedback matters! Let the Litefuse team know what additional data or metrics you'd like to see in your dashboard.",
+                  )}
                   className="hidden lg:flex"
                 >
                   <Button
@@ -256,7 +260,7 @@ export default function Dashboard() {
                       className="text-primary group-hover:text-primary-accent hidden h-6 w-6 shrink-0 lg:block"
                       aria-hidden="true"
                     />
-                    Request Chart
+                    {t("Request Chart")}
                   </Button>
                 </FeedbackButtonWrapper>
               )}

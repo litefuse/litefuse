@@ -1,16 +1,19 @@
 import { env } from "@/src/env.mjs";
 
-export const CloudPrivacyNotice = ({ action }: { action: string }) =>
-  env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION !== undefined ? (
+import { useTranslation } from "react-i18next";
+export const CloudPrivacyNotice = ({ action }: { action: string }) => {
+  const { t } = useTranslation();
+  if (env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION === undefined) return null;
+  return (
     <div className="text-muted-foreground mx-auto mt-10 max-w-lg text-center text-xs">
-      By {action} you are agreeing to our{" "}
+      {t("By {{action}} you are agreeing to our", { action })}{" "}
       <a
         href="https://litefuse.ai/terms"
         target="_blank"
         rel="noopener noreferrer"
         className="italic"
       >
-        Terms and Conditions
+        {t("Terms and Conditions")}
       </a>
       ,{" "}
       <a
@@ -18,16 +21,17 @@ export const CloudPrivacyNotice = ({ action }: { action: string }) =>
         rel="noopener noreferrer"
         className="italic"
       >
-        Privacy Policy
+        {t("Privacy Policy")}
       </a>
-      , and{" "}
+      {t(", and")}{" "}
       <a
         href="https://litefuse.ai/cookie-policy"
         rel="noopener noreferrer"
         className="italic"
       >
-        Cookie Policy
+        {t("Cookie Policy")}
       </a>
-      . You also confirm that the entered data is accurate.
+      {t(". You also confirm that the entered data is accurate.")}
     </div>
-  ) : null;
+  );
+};

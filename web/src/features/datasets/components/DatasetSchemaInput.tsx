@@ -9,6 +9,7 @@ import {
 import { Switch } from "@/src/components/ui/switch";
 import { JSONSchemaEditor } from "@/src/components/JSONSchemaEditor";
 
+import { useTranslation } from "react-i18next";
 type DatasetSchemaInputProps = {
   label: string;
   description?: string;
@@ -26,6 +27,7 @@ export const DatasetSchemaInput: React.FC<DatasetSchemaInputProps> = ({
   onChange,
   disabled = false,
 }) => {
+  const { t } = useTranslation();
   // Track if schema enforcement is enabled based on whether value is empty
   const [isEnabled, setIsEnabled] = useState(value !== "");
 
@@ -58,7 +60,7 @@ export const DatasetSchemaInput: React.FC<DatasetSchemaInputProps> = ({
         <FormLabel>{label}</FormLabel>
         <div className="flex items-center gap-2">
           <span className="text-muted-foreground text-sm">
-            {isEnabled ? "Enabled" : "Disabled"}
+            {isEnabled ? t("Enabled") : t("Disabled")}
           </span>
           <Switch
             checked={isEnabled}

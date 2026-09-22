@@ -34,6 +34,7 @@ import {
 } from "@/src/features/query/validateQuery";
 import { LangfuseIcon } from "@/src/components/LangfuseLogo";
 
+import { useTranslation } from "react-i18next";
 export interface WidgetPlacement {
   id: string;
   widgetId: string;
@@ -63,6 +64,7 @@ export function DashboardWidget({
   dashboardOwner: "LANGFUSE" | "PROJECT";
   schedulerId?: string;
 }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const utils = api.useUtils();
   const { isBetaEnabled } = useV4Beta();
@@ -245,7 +247,7 @@ export function DashboardWidget({
                 // Objects / numbers / booleans are stringified to avoid React key issues
                 return String(val);
               })()
-            : formatMetricName(metricField),
+            : formatMetricName(metricField, t),
         metric: isHistogramChart
           ? metricValue // Keep as-is (JSON string) for HistogramChart
           : Array.isArray(metricValue)
@@ -254,7 +256,7 @@ export function DashboardWidget({
         time_dimension: item["time_dimension"],
       };
     });
-  }, [queryResult.data, widget.data]);
+  }, [queryResult.data, widget.data, t]);
 
   const handleEdit = () => {
     router.push(
@@ -271,7 +273,7 @@ export function DashboardWidget({
       });
     },
     onError: (e) => {
-      showErrorToast("Failed to clone widget", e.message);
+      showErrorToast(t("Failed to clone widget"), e.message);
     },
   });
   const handleCopy = () => {
@@ -284,7 +286,7 @@ export function DashboardWidget({
   };
 
   const handleDelete = () => {
-    if (onDeleteWidget && confirm("Please confirm deletion")) {
+    if (onDeleteWidget && confirm(t("Please confirm deletion"))) {
       onDeleteWidget(placement.id);
     }
   };
@@ -294,7 +296,7 @@ export function DashboardWidget({
       <div
         className={`bg-background flex items-center justify-center rounded-lg border p-4`}
       >
-        <div className="text-muted-foreground">Loading...</div>
+        <div className="text-muted-foreground">{t("Loading...")}</div>
       </div>
     );
   }
@@ -304,7 +306,7 @@ export function DashboardWidget({
       <div
         className={`bg-background flex items-center justify-center rounded-lg border p-4`}
       >
-        <div className="text-muted-foreground">Widget not found</div>
+        <div className="text-muted-foreground">{t("Widget not found")}</div>
       </div>
     );
   }
@@ -333,7 +335,7 @@ export function DashboardWidget({
                 <button
                   onClick={handleEdit}
                   className="text-muted-foreground hover:text-foreground hidden group-hover:block"
-                  aria-label="Edit widget"
+                  aria-label={t("Edit widget")}
                 >
                   <PencilIcon size={16} />
                 </button>
@@ -341,7 +343,7 @@ export function DashboardWidget({
                 <button
                   onClick={handleCopy}
                   className="text-muted-foreground hover:text-foreground hidden group-hover:block"
-                  aria-label="Copy widget"
+                  aria-label={t("Copy widget")}
                 >
                   <CopyIcon size={16} />
                 </button>
@@ -349,7 +351,7 @@ export function DashboardWidget({
               <button
                 onClick={handleDelete}
                 className="text-muted-foreground hover:text-destructive hidden group-hover:block"
-                aria-label="Delete widget"
+                aria-label={t("Delete widget")}
               >
                 <TrashIcon size={16} />
               </button>

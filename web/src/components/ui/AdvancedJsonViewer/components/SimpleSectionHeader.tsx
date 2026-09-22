@@ -1,6 +1,7 @@
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { useSectionContext } from "../contexts/SectionContext";
 
+import { useTranslation } from "react-i18next";
 export interface SimpleSectionHeaderProps {
   title: string;
   sectionKey: string;
@@ -17,6 +18,7 @@ export function SimpleSectionHeader({
   title,
   sectionKey,
 }: SimpleSectionHeaderProps) {
+  const { t } = useTranslation();
   const context = useSectionContext(sectionKey);
 
   return (
@@ -50,7 +52,7 @@ export function SimpleSectionHeader({
       </span>
       <span>{title}</span>
       <span style={{ marginLeft: "8px", color: "#6b7280", fontWeight: 400 }}>
-        {context.rowCount} rows
+        {t("{{count}} rows", { count: context.rowCount })}
       </span>
     </div>
   );

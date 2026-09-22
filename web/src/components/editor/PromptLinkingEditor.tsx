@@ -7,6 +7,7 @@ import useProjectIdFromURL from "@/src/hooks/useProjectIdFromURL";
 import { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { Plus } from "lucide-react";
 
+import { useTranslation } from "react-i18next";
 type PromptLinkingEditorProps = {
   value: string;
   onChange?: (value: string) => void;
@@ -22,6 +23,7 @@ export function PromptLinkingEditor({
   minHeight,
   className,
 }: PromptLinkingEditorProps) {
+  const { t } = useTranslation();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const projectId = useProjectIdFromURL();
   const editorRef = useRef<ReactCodeMirrorRef>(null);
@@ -71,7 +73,7 @@ export function PromptLinkingEditor({
         onClick={() => setIsDialogOpen(true)}
       >
         <Plus className="mr-2 h-4 w-4" />
-        <span className="text-xs">Add prompt reference</span>
+        <span className="text-xs">{t("Add prompt reference")}</span>
       </Button>
 
       {projectId && (

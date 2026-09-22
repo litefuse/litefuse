@@ -3,6 +3,7 @@ import { MappingModeSelector } from "./components/MappingModeSelector";
 import { CustomMappingEditor } from "./components/CustomMappingEditor";
 import { MappingPreviewPanel } from "./components/MappingPreviewPanel";
 import { DatasetSchemaHoverCard } from "@/src/features/datasets/components/DatasetSchemaHoverCard";
+import { useTranslation } from "react-i18next";
 import {
   extractSchemaFields,
   isObjectSchema,
@@ -25,6 +26,7 @@ export function MappingStep({
   schema,
   onValidationChange,
 }: MappingStepProps) {
+  const { t } = useTranslation();
   const hasSchema = schema !== null && schema !== undefined;
   const isObjectType = hasSchema && isObjectSchema(schema);
   const hasInitializedRef = useRef(false);
@@ -73,13 +75,13 @@ export function MappingStep({
   const getFullLabel = () => {
     switch (field) {
       case "input":
-        return "Full observation input";
+        return t("Full observation input");
       case "expectedOutput":
-        return "Full observation output";
+        return t("Full observation output");
       case "metadata":
-        return "Full observation metadata";
+        return t("Full observation metadata");
       default:
-        return `Full observation ${field}`;
+        return t("Full observation {{field}}", { field });
     }
   };
 
@@ -118,7 +120,7 @@ export function MappingStep({
         <div>
           <div className="flex items-center gap-2">
             <h3 className="grow text-lg font-semibold">
-              Dataset Item {fieldLabel}
+              {t("Dataset Item {{field}}", { field: fieldLabel })}
             </h3>
             {hasSchema && (
               <DatasetSchemaHoverCard
@@ -131,8 +133,10 @@ export function MappingStep({
             )}
           </div>
           <p className="text-muted-foreground text-sm">
-            Configure how observation data maps to the Dataset Item {fieldLabel}
-            .
+            {t(
+              "Configure how observation data maps to the Dataset Item {{field}}.",
+              { field: fieldLabel },
+            )}
           </p>
         </div>
 

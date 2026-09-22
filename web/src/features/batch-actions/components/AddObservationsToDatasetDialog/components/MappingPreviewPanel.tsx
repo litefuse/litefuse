@@ -7,6 +7,13 @@ import {
 } from "lucide-react";
 import { JSONView } from "@/src/components/ui/CodeJsonViewer";
 import { Skeleton } from "@/src/components/ui/skeleton";
+import { useTranslation } from "react-i18next";
+
+/** JSONPath root marker, not user-facing text. */
+const JSON_PATH_ROOT = "root";
+
+/** The JSON literal as rendered, not translatable text. */
+const NULL_LITERAL = "null";
 import type {
   FieldMappingConfig,
   SourceField,
@@ -42,6 +49,7 @@ export function MappingPreviewPanel({
   schema,
   onValidationChange,
 }: MappingPreviewPanelProps) {
+  const { t } = useTranslation();
   const hasSchema = schema !== null && schema !== undefined;
 
   // Compute source data to display
@@ -179,9 +187,9 @@ export function MappingPreviewPanel({
     return (
       <div className="space-y-4">
         <div>
-          <h3 className="text-sm font-semibold">Preview</h3>
+          <h3 className="text-sm font-semibold">{t("Preview")}</h3>
           <p className="text-muted-foreground text-xs">
-            Sample from first observation
+            {t("Sample from first observation")}
           </p>
         </div>
         <Skeleton className="h-32 w-full" />
@@ -194,14 +202,14 @@ export function MappingPreviewPanel({
     return (
       <div className="space-y-4">
         <div>
-          <h3 className="text-sm font-semibold">Preview</h3>
+          <h3 className="text-sm font-semibold">{t("Preview")}</h3>
           <p className="text-muted-foreground text-xs">
-            Sample from first observation
+            {t("Sample from first observation")}
           </p>
         </div>
         <div className="bg-muted/30 flex h-64 items-center justify-center rounded-md border p-4">
           <p className="text-muted-foreground text-sm">
-            No observation data available
+            {t("No observation data available")}
           </p>
         </div>
       </div>
@@ -211,16 +219,16 @@ export function MappingPreviewPanel({
   return (
     <div className="space-y-2">
       <div>
-        <h3 className="text-sm font-semibold">Preview</h3>
+        <h3 className="text-sm font-semibold">{t("Preview")}</h3>
         <p className="text-muted-foreground text-xs">
-          Sample from first observation
+          {t("Sample from first observation")}
         </p>
       </div>
 
       {/* Source data */}
       <div className="space-y-2">
         <p className="text-muted-foreground text-xs font-medium">
-          Source: {sourceLabel}
+          {t("Source: {{value}}", { value: sourceLabel })}
         </p>
         <div className="bg-muted/30 max-h-[21vh] overflow-auto rounded-md border">
           <JSONView json={sourceData} className="text-xs" />
@@ -236,7 +244,7 @@ export function MappingPreviewPanel({
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <p className="text-muted-foreground text-xs font-medium">
-            Result: Dataset Item {fieldLabel}
+            {t("Result: Dataset Item {{field}}", { field: fieldLabel })}
           </p>
           {/* Validation status indicator */}
           {config.mode !== "none" && (
@@ -261,7 +269,9 @@ export function MappingPreviewPanel({
           }`}
         >
           {config.mode === "none" ? (
-            <div className="text-muted-foreground p-3 text-xs italic">null</div>
+            <div className="text-muted-foreground p-3 text-xs italic">
+              {NULL_LITERAL}
+            </div>
           ) : (
             <JSONView json={resultData} className="text-xs" />
           )}
@@ -273,13 +283,15 @@ export function MappingPreviewPanel({
           validationResult.errors.length > 0 && (
             <div className="border-destructive/50 bg-destructive/10 max-h-[5vh] overflow-y-auto rounded-md border p-2">
               <p className="text-destructive mb-1 text-xs font-medium">
-                Schema validation errors:
+                {t("Schema validation errors:")}
               </p>
               <ul className="space-y-0.5">
                 {validationResult.errors.map((error, idx) => (
                   <li key={idx} className="text-destructive text-xs">
-                    <span className="font-mono">{error.path || "root"}</span>:{" "}
-                    {error.message}
+                    <span className="font-mono">
+                      {error.path || JSON_PATH_ROOT}
+                    </span>
+                    : {error.message}
                   </li>
                 ))}
               </ul>
@@ -290,7 +302,7 @@ export function MappingPreviewPanel({
         {jsonPathMisses.length > 0 && config.mode !== "none" && (
           <div className="max-h-[5vh] overflow-y-auto rounded-md border border-amber-500/50 bg-amber-50 p-2 dark:bg-amber-950/30">
             <p className="mb-1 text-xs font-medium text-amber-600 dark:text-amber-500">
-              JSON path warnings (preview observation):
+              {t("JSON path warnings (preview observation):")}
             </p>
             <ul className="space-y-0.5">
               {jsonPathMisses.map((miss, idx) => (
@@ -298,9 +310,13 @@ export function MappingPreviewPanel({
                   key={idx}
                   className="text-xs text-amber-600 dark:text-amber-500"
                 >
-                  <span className="font-mono">{miss.jsonPath}</span> did not
-                  match any data in {miss.sourceField}
-                  {miss.mappingKey ? ` (key: "${miss.mappingKey}")` : ""}
+                  {t("{{path}} did not match any data in {{field}}", {
+                    path: miss.jsonPath,
+                    field: miss.sourceField,
+                  })}
+                  {miss.mappingKey
+                    ? t(' (key: "{{key}}")', { key: miss.mappingKey })
+                    : ""}
                 </li>
               ))}
             </ul>

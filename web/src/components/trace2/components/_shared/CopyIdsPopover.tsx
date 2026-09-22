@@ -9,6 +9,7 @@ import {
 import { cn } from "@/src/utils/tailwind";
 import { copyTextToClipboard } from "@/src/utils/clipboard";
 
+import { useTranslation } from "react-i18next";
 interface IdItem {
   name: string;
   id: string;
@@ -21,6 +22,7 @@ export const CopyIdsPopover = ({
   idItems: IdItem[];
   className?: string;
 }) => {
+  const { t } = useTranslation();
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const handleCopy = (textToCopy: string) => {
@@ -34,7 +36,7 @@ export const CopyIdsPopover = ({
     return (
       <Button
         variant="ghost"
-        title="Copy ID"
+        title={t("Copy ID")}
         className={cn("h-fit p-1", className)}
         onClick={() => handleCopy(idItems[0].id)}
       >
@@ -53,7 +55,7 @@ export const CopyIdsPopover = ({
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
-          title="Copy ID"
+          title={t("Copy ID")}
           className={cn("h-fit px-1", className)}
         >
           <CopyIcon className="h-3 w-3" />

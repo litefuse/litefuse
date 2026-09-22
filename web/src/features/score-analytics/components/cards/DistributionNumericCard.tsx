@@ -12,6 +12,7 @@ import { useScoreAnalytics } from "../ScoreAnalyticsProvider";
 import { ScoreDistributionNumericChart } from "../charts/ScoreDistributionNumericChart";
 import { SamplingDetailsHoverCard } from "../SamplingDetailsHoverCard";
 
+import { useTranslation } from "react-i18next";
 type DistributionTab = "score1" | "score2" | "all" | "matched";
 
 /**
@@ -30,6 +31,7 @@ type DistributionTab = "score1" | "score2" | "all" | "matched";
  * - This ensures bin labels match the backend's binning strategy
  */
 export function DistributionNumericCard() {
+  const { t } = useTranslation();
   const { data, isLoading, params, getColorForScore } = useScoreAnalytics();
 
   const [activeTab, setActiveTab] = useState<DistributionTab>("all");
@@ -80,9 +82,13 @@ export function DistributionNumericCard() {
       return {
         distribution1Data: distribution.score1,
         distribution2Data: undefined,
-        description: `${statistics.score1.total.toLocaleString()} observations${
+        description: `${t("{{total}} observations", {
+          total: statistics.score1.total.toLocaleString(),
+        })}${
           statistics.score1.mean !== null
-            ? ` | Average: ${statistics.score1.mean.toFixed(3)}`
+            ? ` | ${t("Average: {{value}}", {
+                value: statistics.score1.mean.toFixed(3),
+              })}`
             : ""
         }`,
       };
@@ -102,7 +108,10 @@ export function DistributionNumericCard() {
         return {
           distribution1Data: score1Data,
           distribution2Data: undefined,
-          description: `${score1.name} - ${statistics.score1.total.toLocaleString()} observations`,
+          description: t("{{name}} - {{total}} observations", {
+            name: score1.name,
+            total: statistics.score1.total.toLocaleString(),
+          }),
         };
       case "score2":
         // Use individual distribution if available and non-empty, fallback to global distribution
@@ -114,19 +123,31 @@ export function DistributionNumericCard() {
         return {
           distribution1Data: score2Data,
           distribution2Data: undefined,
-          description: `${score2?.name ?? "Score 2"} - ${statistics.score2?.total.toLocaleString()} observations`,
+          description: t("{{name}} - {{total}} observations", {
+            name: score2?.name ?? t("Score 2"),
+            total: (statistics.score2?.total ?? 0).toLocaleString(),
+          }),
         };
       case "all":
         return {
           distribution1Data: distribution.score1,
           distribution2Data: distribution.score2,
-          description: `${score1.name} (${statistics.score1.total.toLocaleString()}) vs ${score2?.name} (${statistics.score2?.total.toLocaleString()})`,
+          description: t("{{name1}} ({{total1}}) vs {{name2}} ({{total2}})", {
+            name1: score1.name,
+            total1: statistics.score1.total.toLocaleString(),
+            name2: score2?.name,
+            total2: statistics.score2?.total.toLocaleString(),
+          }),
         };
       case "matched":
         return {
           distribution1Data: distribution.score1Matched,
           distribution2Data: distribution.score2Matched,
-          description: `${score1.name} vs ${score2?.name} - ${statistics.comparison?.matchedCount.toLocaleString()} matched`,
+          description: t("{{name1}} vs {{name2}} - {{total}} matched", {
+            name1: score1.name,
+            name2: score2?.name,
+            total: (statistics.comparison?.matchedCount ?? 0).toLocaleString(),
+          }),
         };
     }
   }, [data, activeTab, params]);
@@ -152,8 +173,8 @@ export function DistributionNumericCard() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Distribution</CardTitle>
-          <CardDescription>Loading chart...</CardDescription>
+          <CardTitle>{t("Distribution")}</CardTitle>
+          <CardDescription>{t("Loading chart...")}</CardDescription>
         </CardHeader>
         <CardContent className="flex h-[340px] flex-col items-center justify-center pl-0">
           <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
@@ -167,11 +188,11 @@ export function DistributionNumericCard() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Distribution</CardTitle>
-          <CardDescription>No data available</CardDescription>
+          <CardTitle>{t("Distribution")}</CardTitle>
+          <CardDescription>{t("No data available")}</CardDescription>
         </CardHeader>
         <CardContent className="text-muted-foreground flex h-[340px] flex-col items-center justify-center pl-0 text-sm">
-          Select a score to view distribution
+          {t("Select a score to view distribution")}
         </CardContent>
       </Card>
     );
@@ -209,7 +230,7 @@ export function DistributionNumericCard() {
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <CardTitle className="flex items-center gap-2">
-                Distribution
+                {t("Distribution")}
                 {data.samplingMetadata.isSampled && (
                   <SamplingDetailsHoverCard
                     samplingMetadata={data.samplingMetadata}
@@ -241,10 +262,10 @@ export function DistributionNumericCard() {
                   {truncateLabel(score2FullLabel)}
                 </TabsTrigger>
                 <TabsTrigger value="all" className="h-5 px-2 text-xs">
-                  all
+                  {t("all")}
                 </TabsTrigger>
                 <TabsTrigger value="matched" className="h-5 px-2 text-xs">
-                  matched
+                  {t("matched")}
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -277,7 +298,7 @@ export function DistributionNumericCard() {
           />
         ) : (
           <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
-            No distribution data available for the selected time range
+            {t("No distribution data available for the selected time range")}
           </div>
         )}
       </CardContent>

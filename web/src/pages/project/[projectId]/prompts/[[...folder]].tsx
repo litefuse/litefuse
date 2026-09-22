@@ -14,7 +14,9 @@ import { useQueryParams, StringParam } from "use-query-params";
 import React from "react";
 import { AutomationButton } from "@/src/features/automations/components/AutomationButton";
 
+import { useTranslation } from "react-i18next";
 export default function PromptsWithFolder() {
+  const { t } = useTranslation();
   const router = useRouter();
   const projectId = router.query.projectId as string;
   const routeSegments = router.query.folder;
@@ -82,10 +84,11 @@ export default function PromptsWithFolder() {
   return (
     <Page
       headerProps={{
-        title: "Prompts",
+        title: t("Prompts"),
         help: {
-          description:
+          description: t(
             "Manage and version your prompts in Litefuse. Edit and update them via the UI and SDK. Retrieve the production version via the SDKs. Learn more in the docs.",
+          ),
           href: "https://litefuse.ai/docs/prompt-management/get-started",
         },
         actionButtonsRight: (
@@ -102,7 +105,7 @@ export default function PromptsWithFolder() {
                 capture("prompts:new_form_open");
               }}
             >
-              New prompt
+              {t("New prompt")}
             </ActionButton>
           </>
         ),

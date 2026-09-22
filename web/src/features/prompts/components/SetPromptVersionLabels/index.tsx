@@ -27,6 +27,7 @@ import { isReservedPromptLabel } from "@/src/features/prompts/utils";
 import { TruncatedLabels } from "@/src/components/TruncatedLabels";
 import { cn } from "@/src/utils/tailwind";
 
+import { useTranslation } from "react-i18next";
 export function SetPromptVersionLabels({
   promptLabels,
   prompt,
@@ -44,6 +45,7 @@ export function SetPromptVersionLabels({
   showOnlyOnHover?: boolean;
   maxVisibleLabels?: number;
 }) {
+  const { t } = useTranslation();
   const projectId = useProjectIdFromURL();
   const utils = api.useUtils();
   const capture = usePostHogClientCapture();
@@ -98,7 +100,7 @@ export function SetPromptVersionLabels({
   const handleSubmitLabels = async () => {
     try {
       if (!projectId) {
-        alert("Project ID is missing");
+        alert(t("Project ID is missing"));
         return;
       }
 
@@ -183,7 +185,7 @@ export function SetPromptVersionLabels({
           />
           <Button
             variant="outline"
-            title="Add prompt label"
+            title={t("Add prompt label")}
             className={cn(
               "bg-muted-gray text-primary h-6 w-6",
               showOnlyOnHover && "opacity-0 group-hover:opacity-100",
@@ -204,16 +206,16 @@ export function SetPromptVersionLabels({
           onClick={(event) => event.stopPropagation()}
           className="flex flex-col"
         >
-          <h2 className="text-md mb-3 font-semibold">Prompt labels</h2>
+          <h2 className="text-md mb-3 font-semibold">{t("Prompt labels")}</h2>
           <h2 className="mb-3 text-xs">
-            Use labels to fetch prompts via SDKs. The{" "}
-            <strong>production</strong> labeled prompt will be served by
-            default.
+            {t("Use labels to fetch prompts via SDKs. The")}{" "}
+            <strong>{t("production")}</strong>{" "}
+            {t("labeled prompt will be served by default.")}
           </h2>
           <InputCommand className="mx-0 my-3 px-0">
             <InputCommandList className="max-h-full overflow-hidden">
               <InputCommandSeparator />
-              <InputCommandGroup heading="Promote to production?">
+              <InputCommandGroup heading={t("Promote to production?")}>
                 <LabelCommandItem
                   {...{
                     selectedLabels,
@@ -223,11 +225,11 @@ export function SetPromptVersionLabels({
                 />
               </InputCommandGroup>
               <InputCommandSeparator />
-              <InputCommandGroup heading="Custom labels">
+              <InputCommandGroup heading={t("Custom labels")}>
                 {/* Search + create input */}
                 <div className="px-2 pt-1 pb-2">
                   <Input
-                    placeholder="Search or create label…"
+                    placeholder={t("Search or create label…")}
                     value={searchValue}
                     onChange={(e) => setSearchValue(e.target.value)}
                     onKeyDown={(e) => {
@@ -255,8 +257,10 @@ export function SetPromptVersionLabels({
                       }
                     >
                       {filteredUnselectedCount > 0
-                        ? `Select all ${filteredUnselectedCount}`
-                        : "Select all"}
+                        ? t("Select all {{count}}", {
+                            count: filteredUnselectedCount,
+                          })
+                        : t("Select all")}
                     </button>
                     <span className="text-muted-foreground text-xs">·</span>
                     <button
@@ -277,7 +281,7 @@ export function SetPromptVersionLabels({
                         )
                       }
                     >
-                      Clear
+                      {t("Clear")}
                     </button>
                   </div>
                 )}
@@ -308,7 +312,7 @@ export function SetPromptVersionLabels({
                       onClick={handleCreateLabel}
                     >
                       <span className="truncate">
-                        Create a new label:{" "}
+                        {t("Create a new label:")}{" "}
                         <strong className="text-foreground">
                           {trimmedSearch}
                         </strong>
@@ -332,10 +336,10 @@ export function SetPromptVersionLabels({
             onClick={handleSubmitLabels}
           >
             {isPromotingToProduction
-              ? "Save and promote to production"
+              ? t("Save and promote to production")
               : isDemotingFromProduction
-                ? "Save and remove from production"
-                : "Save"}
+                ? t("Save and remove from production")
+                : t("Save")}
           </Button>
         </div>
       </PopoverContent>

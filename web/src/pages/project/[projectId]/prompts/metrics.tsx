@@ -22,6 +22,7 @@ import {
   PROMPT_TABS,
 } from "@/src/features/navigation/utils/prompt-tabs";
 import { useScoreColumns } from "@/src/features/scores/hooks/useScoreColumns";
+import { useTranslation } from "react-i18next";
 import {
   scoreFilters,
   addPrefixToScoreKeys,
@@ -82,6 +83,7 @@ function joinPromptCoreAndMetricData(
 export default function PromptVersionTable({
   promptName: promptNameProp,
 }: { promptName?: string } = {}) {
+  const { t } = useTranslation();
   const router = useRouter();
   const projectId = router.query.projectId as string;
   const promptName =
@@ -154,7 +156,7 @@ export default function PromptVersionTable({
     {
       accessorKey: "version",
       id: "version",
-      header: "Version",
+      header: t("Version"),
       isPinnedLeft: true,
       size: 80,
       cell: ({ row }) => {
@@ -170,7 +172,7 @@ export default function PromptVersionTable({
     {
       accessorKey: "labels",
       id: "labels",
-      header: "Labels",
+      header: t("Labels"),
       isPinnedLeft: true,
       size: 160,
       cell: ({ row }) => {
@@ -191,7 +193,7 @@ export default function PromptVersionTable({
     {
       accessorKey: "medianLatency",
       id: "medianLatency",
-      header: "Median latency",
+      header: t("Median latency"),
       size: 140,
       cell: ({ row }) => {
         const latency: number | undefined | null =
@@ -210,7 +212,7 @@ export default function PromptVersionTable({
     {
       accessorKey: "medianInputTokens",
       id: "medianInputTokens",
-      header: "Median input tokens",
+      header: t("Median input tokens"),
       size: 160,
       enableHiding: true,
       cell: ({ row }) => {
@@ -226,7 +228,7 @@ export default function PromptVersionTable({
     {
       accessorKey: "medianOutputTokens",
       id: "medianOutputTokens",
-      header: "Median output tokens",
+      header: t("Median output tokens"),
       size: 170,
       enableHiding: true,
       cell: ({ row }) => {
@@ -241,7 +243,7 @@ export default function PromptVersionTable({
     {
       accessorKey: "medianCost",
       id: "medianCost",
-      header: "Median cost",
+      header: t("Median cost"),
       size: 120,
       cell: ({ row }) => {
         const value: number | undefined | null = row.getValue("medianCost");
@@ -256,7 +258,7 @@ export default function PromptVersionTable({
     {
       accessorKey: "generationCount",
       id: "generationCount",
-      header: "Generations count",
+      header: t("Generations count"),
       size: 150,
       enableHiding: true,
       cell: ({ row }) => {
@@ -272,7 +274,7 @@ export default function PromptVersionTable({
     },
     {
       accessorKey: "traceScores",
-      header: "Trace Scores",
+      header: t("Trace Scores"),
       id: "traceScores",
       enableHiding: true,
       columns: traceScoreColumns,
@@ -284,7 +286,7 @@ export default function PromptVersionTable({
     },
     {
       accessorKey: "generationScores",
-      header: "Generation Scores",
+      header: t("Generation Scores"),
       id: "generationScores",
       enableHiding: true,
       columns: generationScoreColumns,
@@ -297,12 +299,13 @@ export default function PromptVersionTable({
     {
       accessorKey: "lastUsed",
       id: "lastUsed",
-      header: "Last used",
+      header: t("Last used"),
       enableHiding: true,
       size: 150,
       headerTooltip: {
-        description:
+        description: t(
           "The last time this prompt version was used in a generation. See docs for details on how to link generations/traces to prompt versions.",
+        ),
         href: "https://litefuse.ai/docs/prompt-management/get-started",
       },
       cell: ({ row }) => {
@@ -316,12 +319,13 @@ export default function PromptVersionTable({
     {
       accessorKey: "firstUsed",
       id: "firstUsed",
-      header: "First used",
+      header: t("First used"),
       size: 150,
       enableHiding: true,
       headerTooltip: {
-        description:
+        description: t(
           "The first time this prompt version was used in a generation. See docs for details on how to link generations/traces to prompt versions.",
+        ),
         href: "https://litefuse.ai/docs/prompt-management/get-started",
       },
       cell: ({ row }) => {
@@ -385,13 +389,14 @@ export default function PromptVersionTable({
         title: promptName,
         itemType: "PROMPT",
         help: {
-          description:
+          description: t(
             "You can use this prompt within your application through the Litefuse SDKs and integrations. Refer to the documentation for more information.",
+          ),
           href: "https://litefuse.ai/docs/prompt-management/get-started",
         },
         breadcrumb: [
           {
-            name: "Prompts",
+            name: t("Prompts"),
             href: `/project/${projectId}/prompts/`,
           },
           {

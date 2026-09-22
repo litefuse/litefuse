@@ -7,6 +7,7 @@ import {
 } from "@/src/components/ui/select";
 import type { SourceField } from "../types";
 
+import { useTranslation } from "react-i18next";
 type SourceFieldSelectorProps = {
   value: SourceField;
   onChange: (field: SourceField) => void;
@@ -18,6 +19,7 @@ export function SourceFieldSelector({
   onChange,
   disabled = false,
 }: SourceFieldSelectorProps) {
+  const { t } = useTranslation();
   return (
     <Select
       value={value}
@@ -28,9 +30,9 @@ export function SourceFieldSelector({
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="input">Input</SelectItem>
-        <SelectItem value="output">Output</SelectItem>
-        <SelectItem value="metadata">Metadata</SelectItem>
+        <SelectItem value="input">{t("Input")}</SelectItem>
+        <SelectItem value="output">{t("Output")}</SelectItem>
+        <SelectItem value="metadata">{t("Metadata")}</SelectItem>
       </SelectContent>
     </Select>
   );

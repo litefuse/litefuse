@@ -51,6 +51,7 @@ import { ReviewStep } from "./steps/ReviewStep";
 // Import step prop types
 import { PromptType } from "@langfuse/shared";
 
+import { useTranslation } from "react-i18next";
 export const MultiStepExperimentForm = ({
   projectId,
   setFormOpen,
@@ -79,6 +80,7 @@ export const MultiStepExperimentForm = ({
     runName: string;
   }) => Promise<void>;
 }) => {
+  const { t } = useTranslation();
   const capture = usePostHogClientCapture();
   const [activeStep, setActiveStep] = useState("prompt");
   const [selectedPromptName, setSelectedPromptName] = useState<string>(
@@ -99,11 +101,11 @@ export const MultiStepExperimentForm = ({
   );
 
   const steps = [
-    { id: "prompt", label: "Prompt & Model" },
-    { id: "dataset", label: "Dataset" },
-    { id: "evaluators", label: "Evaluators" },
-    { id: "details", label: "Experiment run details" },
-    { id: "review", label: "Review" },
+    { id: "prompt", label: t("Prompt & Model") },
+    { id: "dataset", label: t("Dataset") },
+    { id: "evaluators", label: t("Evaluators") },
+    { id: "details", label: t("Experiment run details") },
+    { id: "review", label: t("Review") },
   ];
 
   const hasEvalReadAccess = useHasProjectAccess({
@@ -217,8 +219,8 @@ export const MultiStepExperimentForm = ({
     onSuccess: handleExperimentSuccess ?? (() => {}),
     onError: (error) => {
       showErrorToast(
-        error.message || "Failed to trigger dataset run",
-        "Please try again.",
+        error.message || t("Failed to trigger dataset run"),
+        t("Please try again."),
       );
     },
     onSettled: handleExperimentSettled ?? (() => {}),
@@ -283,6 +285,7 @@ export const MultiStepExperimentForm = ({
       selectedPromptName,
       selectedPromptVersion,
       selectedDataset.name,
+      t,
     );
     form.setValue("name", defaultName);
 
@@ -290,6 +293,7 @@ export const MultiStepExperimentForm = ({
       selectedPromptName,
       selectedPromptVersion,
       selectedDataset.name,
+      t,
     );
     form.setValue("description", defaultDescription);
   }, [
@@ -298,6 +302,7 @@ export const MultiStepExperimentForm = ({
     datasetId,
     datasets.data,
     form,
+    t,
   ]);
 
   // Auto-generate run name when experiment name changes
@@ -426,18 +431,19 @@ export const MultiStepExperimentForm = ({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Run Experiment</DialogTitle>
+        <DialogTitle>{t("Run Experiment")}</DialogTitle>
         <DialogDescription>
-          Run an experiment to evaluate prompts and model configurations against
-          a dataset. See{" "}
+          {t(
+            "Run an experiment to evaluate prompts and model configurations against a dataset. See",
+          )}{" "}
           <Link
             href="https://litefuse.ai/docs/evaluation/dataset-runs/native-run"
             target="_blank"
             className="underline"
           >
-            documentation
+            {t("documentation")}
           </Link>{" "}
-          to learn more.
+          {t("to learn more.")}
         </DialogDescription>
       </DialogHeader>
       <Form {...form}>
@@ -535,7 +541,7 @@ export const MultiStepExperimentForm = ({
                 disabled={activeStep === "prompt"}
               >
                 <ChevronLeft className="mr-2 h-4 w-4" />
-                Previous
+                {t("Previous")}
               </Button>
 
               <div className="flex gap-2">
@@ -551,7 +557,7 @@ export const MultiStepExperimentForm = ({
                       }
                     }}
                   >
-                    Next
+                    {t("Next")}
                     <ChevronRight className="ml-2 h-4 w-4" />
                   </Button>
                 ) : (
@@ -564,7 +570,7 @@ export const MultiStepExperimentForm = ({
                     }
                     loading={form.formState.isSubmitting}
                   >
-                    Run Experiment
+                    {t("Run Experiment")}
                   </Button>
                 )}
               </div>

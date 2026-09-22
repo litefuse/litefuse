@@ -9,6 +9,7 @@ import { Skeleton } from "@/src/components/ui/skeleton";
 import { captureException } from "@sentry/nextjs";
 import { useSession } from "next-auth/react";
 
+import { useTranslation } from "react-i18next";
 /**
  * Implemented customLoader as we cannot whitelist user provided image domains
  * Security risks are taken care of by a validation in api.utilities.validateImgUrl
@@ -56,6 +57,7 @@ export const ResizableImage = ({
   isDefaultVisible?: boolean;
   shouldValidateImageSource?: boolean;
 }) => {
+  const { t } = useTranslation();
   const [isZoomedIn, setIsZoomedIn] = useState(true);
   const [hasFetchError, setHasFetchError] = useState(false);
   const [isImageVisible, setIsImageVisible] = useState(isDefaultVisible);
@@ -72,7 +74,9 @@ export const ResizableImage = ({
     return (
       <ImageErrorDisplay
         src={src}
-        displayError="Images not rendered on public traces and observations"
+        displayError={t(
+          "Images not rendered on public traces and observations",
+        )}
       />
     );
   }
@@ -80,12 +84,16 @@ export const ResizableImage = ({
   if (isValidImage.isLoading && isImageVisible) {
     return (
       <Skeleton className="h-8 w-1/2 items-center p-2 text-xs">
-        <span className="opacity-80">Loading image...</span>
+        <span className="opacity-80">{t("Loading image...")}</span>
       </Skeleton>
     );
   }
 
-  const displayError = `Cannot load image. ${src.includes("http") ? "Http images are not rendered in Litefuse for security reasons" : "Invalid image URL"}`;
+  const displayError = src.includes("http")
+    ? t(
+        "Cannot load image. Http images are not rendered in Litefuse for security reasons",
+      )
+    : t("Cannot load image. Invalid image URL");
 
   return (
     <div>
@@ -131,13 +139,13 @@ export const ResizableImage = ({
           ) : (
             <div className="bg-muted/30 text-muted-foreground/60 flex w-full items-center gap-2 rounded border border-dashed p-2 text-xs">
               <Button
-                title="Render image"
+                title={t("Render image")}
                 type="button"
                 size="sm"
                 variant="secondary"
                 onClick={() => setIsImageVisible(!isImageVisible)}
               >
-                Load Image
+                {t("Load Image")}
               </Button>
               <div className="flex min-w-0 flex-1 items-center overflow-hidden">
                 <Link

@@ -8,6 +8,7 @@ import { Cell, Label, Pie, PieChart as PieChartComponent } from "recharts";
 import { type ChartProps } from "@/src/features/widgets/chart-library/chart-props";
 import { compactNumberFormatter, numberFormatter } from "@/src/utils/numbers";
 
+import { useTranslation } from "react-i18next";
 /**
  * PieChart component
  * @param data - Data to be displayed. Expects an array of objects with dimension and metric properties.
@@ -28,6 +29,7 @@ export const PieChart: React.FC<ChartProps> = ({
   valueFormatter = compactNumberFormatter,
   subtleFill = false,
 }) => {
+  const { t } = useTranslation();
   // Calculate total metric value for center label
   const totalValue = useMemo(() => {
     return data.reduce((acc, curr) => acc + (curr.metric as number), 0);
@@ -98,7 +100,7 @@ export const PieChart: React.FC<ChartProps> = ({
                         y={(viewBox.cy || 0) + 24}
                         className="fill-muted-foreground"
                       >
-                        Total
+                        {t("Total")}
                       </tspan>
                     </text>
                   );

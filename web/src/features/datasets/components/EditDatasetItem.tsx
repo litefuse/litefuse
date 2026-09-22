@@ -19,6 +19,8 @@ import { useDatasetItemValidation } from "../hooks/useDatasetItemValidation";
 import type { DatasetItemDomain, Prisma } from "@langfuse/shared";
 import { DatasetItemFieldSchemaErrors } from "./DatasetItemFieldSchemaErrors";
 
+import { useTranslation } from "react-i18next";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 const formSchema = z.object({
   input: z.string().refine(
     (value) => {
@@ -31,8 +33,9 @@ const formSchema = z.object({
       }
     },
     {
-      message:
+      message: i18nKey(
         "Invalid input. Please provide a JSON object or double-quoted string.",
+      ),
     },
   ),
   expectedOutput: z.string().refine(
@@ -46,8 +49,9 @@ const formSchema = z.object({
       }
     },
     {
-      message:
+      message: i18nKey(
         "Invalid input. Please provide a JSON object or double-quoted string.",
+      ),
     },
   ),
   metadata: z.string().refine(
@@ -61,8 +65,9 @@ const formSchema = z.object({
       }
     },
     {
-      message:
+      message: i18nKey(
         "Invalid input. Please provide a JSON object or double-quoted string.",
+      ),
     },
   ),
 });
@@ -83,6 +88,7 @@ export const EditDatasetItem = ({
   datasetItem: DatasetItemDomain | null;
   dataset: Dataset | null;
 }) => {
+  const { t } = useTranslation();
   const [formError, setFormError] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const hasAccess = useHasProjectAccess({
@@ -174,7 +180,7 @@ export const EditDatasetItem = ({
           <div className="flex items-center justify-end gap-4">
             {formError ? (
               <p className="text-red text-center">
-                <span className="font-bold">Error:</span> {formError}
+                <span className="font-bold">{t("Error:")}</span> {formError}
               </p>
             ) : null}
             <Button
@@ -187,7 +193,7 @@ export const EditDatasetItem = ({
               }
               variant={hasChanges ? "default" : "ghost"}
             >
-              {hasChanges ? "Save changes" : "Saved"}
+              {hasChanges ? t("Save changes") : t("Saved")}
             </Button>
           </div>
           <div className="mt-4 flex-1 overflow-auto">
@@ -199,7 +205,7 @@ export const EditDatasetItem = ({
                   render={({ field }) => (
                     <FormItem>
                       <div className="flex items-center gap-2">
-                        <FormLabel>Input</FormLabel>
+                        <FormLabel>{t("Input")}</FormLabel>
                         {dataset?.inputSchema && (
                           <DatasetSchemaHoverCard
                             schema={dataset.inputSchema}
@@ -238,7 +244,7 @@ export const EditDatasetItem = ({
                   render={({ field }) => (
                     <FormItem>
                       <div className="flex items-center gap-2">
-                        <FormLabel>Expected output</FormLabel>
+                        <FormLabel>{t("Expected output")}</FormLabel>
                         {dataset?.expectedOutputSchema && (
                           <DatasetSchemaHoverCard
                             schema={dataset.expectedOutputSchema}
@@ -278,7 +284,7 @@ export const EditDatasetItem = ({
                 name="metadata"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Metadata</FormLabel>
+                    <FormLabel>{t("Metadata")}</FormLabel>
                     <FormControl>
                       <CodeMirrorEditor
                         mode="json"

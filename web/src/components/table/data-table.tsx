@@ -45,6 +45,12 @@ import isEqual from "lodash/isEqual";
 import { useRouter } from "next/router";
 import { useColumnSizing } from "@/src/components/table/hooks/useColumnSizing";
 
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
+
+// Sort direction glyphs, not translatable text.
+const SORT_ASCENDING_GLYPH = "▲";
+const SORT_DESCENDING_GLYPH = "▼";
 interface DataTableProps<TData, TValue> {
   columns: LangfuseColumnDef<TData, TValue>[];
   data: AsyncTableData<TData[]>;
@@ -166,6 +172,7 @@ export function DataTable<TData extends object, TValue>({
   tableName,
   getRowClassName,
 }: DataTableProps<TData, TValue>) {
+  const { t } = useTranslation();
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const rowheighttw = getRowHeightTailwindClass(rowHeight, customRowHeights);
   const capture = usePostHogClientCapture();
@@ -378,7 +385,7 @@ export function DataTable<TData extends object, TValue>({
                               />
                             )}
                             {orderBy?.column === columnDef.id
-                              ? renderOrderingIndicator(orderBy)
+                              ? renderOrderingIndicator(t, orderBy)
                               : null}
 
                             <div
@@ -458,13 +465,14 @@ export function DataTable<TData extends object, TValue>({
   );
 }
 
-function renderOrderingIndicator(orderBy?: OrderByState) {
+function renderOrderingIndicator(t: TFunction, orderBy?: OrderByState) {
   if (!orderBy) return null;
-  if (orderBy.order === "ASC") return <span className="ml-1">▲</span>;
+  if (orderBy.order === "ASC")
+    return <span className="ml-1">{SORT_ASCENDING_GLYPH}</span>;
   else
     return (
-      <span className="ml-1" title="Sort by this column">
-        ▼
+      <span className="ml-1" title={t("Sort by this column")}>
+        {SORT_DESCENDING_GLYPH}
       </span>
     );
 }
@@ -534,6 +542,7 @@ function TableBodyComponent<TData>({
   onRowClick,
   getRowClassName,
 }: TableBodyComponentProps<TData>) {
+  const { t } = useTranslation();
   return (
     <TableBody>
       {data.isLoading || !data.data ? (
@@ -542,7 +551,7 @@ function TableBodyComponent<TData>({
             colSpan={columns.length}
             className="content-start border-b text-center"
           >
-            Loading...
+            {t("Loading...")}
           </TableCell>
         </TableRow>
       ) : table.getRowModel().rows.length ? (
@@ -609,7 +618,7 @@ function TableBodyComponent<TData>({
             <div className="pointer-events-none absolute left-[50%] flex -translate-x-1/2 -translate-y-1/2 items-center justify-center text-center">
               {noResultsMessage ?? (
                 <>
-                  No results.{" "}
+                  {t("No results.")}{" "}
                   {help && (
                     <DocPopup description={help.description} href={help.href} />
                   )}

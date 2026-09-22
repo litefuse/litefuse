@@ -3,11 +3,13 @@ import { SidebarMenuButton } from "@/src/components/ui/sidebar";
 import useLocalStorage from "@/src/components/useLocalStorage";
 import Link from "next/link";
 import { usePostHogClientCapture } from "@/src/features/posthog-analytics/usePostHogClientCapture";
+import { useTranslation } from "react-i18next";
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const FIRST_SEEN_KEY = "book-a-call-first-seen";
 
 export const BookACallButton = () => {
+  const { t } = useTranslation();
   const capture = usePostHogClientCapture();
   const [firstSeen, setFirstSeen] = useLocalStorage<number | null>(
     FIRST_SEEN_KEY,
@@ -38,7 +40,7 @@ export const BookACallButton = () => {
         }}
       >
         <CalendarDays className="h-4 w-4" />
-        Book a call
+        {t("Book a call")}
       </Link>
     </SidebarMenuButton>
   );

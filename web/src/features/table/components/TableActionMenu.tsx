@@ -15,6 +15,7 @@ import {
 import { TableActionDialog } from "@/src/features/table/components/TableActionDialog";
 import { type BatchExportTableName } from "@langfuse/shared";
 
+import { useTranslation } from "react-i18next";
 type TableActionMenuProps = {
   projectId: string;
   actions: TableAction[];
@@ -35,6 +36,7 @@ export function TableActionMenu({
   tableName,
   onCustomAction,
 }: TableActionMenuProps) {
+  const { t } = useTranslation();
   const [selectedAction, setSelectedAction] = useState<TableAction | null>(
     null,
   );
@@ -59,7 +61,7 @@ export function TableActionMenu({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button>
-            Actions
+            {t("Actions")}
             <ChevronDown className="h-5 w-5" />
           </Button>
         </DropdownMenuTrigger>

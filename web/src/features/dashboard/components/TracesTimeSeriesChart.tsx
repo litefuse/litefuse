@@ -18,6 +18,8 @@ import { Chart } from "@/src/features/widgets/chart-library/Chart";
 import { timeSeriesToDataPoints } from "@/src/features/dashboard/lib/chart-data-adapters";
 import { useScheduledDashboardExecuteQuery } from "@/src/hooks/useDashboardQueryScheduler";
 
+import { useTranslation } from "react-i18next";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 export const TracesAndObservationsTimeSeriesChart = ({
   className,
   projectId,
@@ -39,6 +41,7 @@ export const TracesAndObservationsTimeSeriesChart = ({
   metricsVersion?: ViewVersion;
   schedulerId?: string;
 }) => {
+  const { t } = useTranslation();
   const isV2 = metricsVersion === "v2";
 
   const tracesQuery: QueryType = {
@@ -78,7 +81,7 @@ export const TracesAndObservationsTimeSeriesChart = ({
           ts: new Date(item.time_dimension as any).getTime(),
           values: [
             {
-              label: "Traces",
+              label: t("Traces"),
               value: Number(item.count_count),
             },
           ],
@@ -156,31 +159,31 @@ export const TracesAndObservationsTimeSeriesChart = ({
   const data = isV2
     ? [
         {
-          tabTitle: "Observations by Level",
+          tabTitle: i18nKey("Observations by Level"),
           data: transformedObservations,
           totalMetric: totalObservations,
-          metricDescription: `Observations tracked`,
+          metricDescription: t("Observations tracked"),
         },
       ]
     : [
         {
-          tabTitle: "Traces",
+          tabTitle: i18nKey("Traces"),
           data: transformedTraces,
           totalMetric: total,
-          metricDescription: `Traces tracked`,
+          metricDescription: t("Traces tracked"),
         },
         {
-          tabTitle: "Observations by Level",
+          tabTitle: i18nKey("Observations by Level"),
           data: transformedObservations,
           totalMetric: totalObservations,
-          metricDescription: `Observations tracked`,
+          metricDescription: t("Observations tracked"),
         },
       ];
 
   return (
     <DashboardCard
       className={className}
-      title={isV2 ? "Observations by time" : "Traces by time"}
+      title={isV2 ? t("Observations by time") : t("Traces by time")}
       isLoading={
         isLoading || observations.isPending || (!isV2 && traces.isPending)
       }
@@ -220,7 +223,9 @@ export const TracesAndObservationsTimeSeriesChart = ({
                       observations.isPending ||
                       (!isV2 && traces.isPending)
                     }
-                    description="Traces contain details about LLM applications and can be created using the SDK."
+                    description={t(
+                      "Traces contain details about LLM applications and can be created using the SDK.",
+                    )}
                     href="https://litefuse.ai/docs/observability/overview"
                   />
                 )}

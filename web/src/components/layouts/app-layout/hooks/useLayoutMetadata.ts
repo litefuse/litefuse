@@ -4,6 +4,7 @@
  */
 
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useLangfuseCloudRegion } from "@/src/features/organizations/hooks";
 import { env } from "@/src/env.mjs";
 import type { NavigationItem } from "@/src/components/layouts/utilities/routes";
@@ -14,7 +15,7 @@ import type { NavigationItem } from "@/src/components/layouts/utilities/routes";
  * - Region-specific favicon (dev vs production)
  * - Apple touch icon path
  *
- * @param activePathName - Title of the currently active navigation item
+ * @param activePathName - i18n key of the currently active navigation item
  * @param navigation - Full navigation array for finding active item
  * @returns Metadata object with title and icon paths
  */
@@ -22,13 +23,16 @@ export function useLayoutMetadata(
   activePathName: string | undefined,
   _navigation: NavigationItem[],
 ) {
+  const { t } = useTranslation();
   const { region } = useLangfuseCloudRegion();
 
   return useMemo(() => {
     const basePath = env.NEXT_PUBLIC_BASE_PATH ?? "";
 
     // Determine page title from active route
-    const title = activePathName ? `${activePathName} | Litefuse` : "Litefuse";
+    const title = activePathName
+      ? `${t(activePathName)} | Litefuse`
+      : "Litefuse";
 
     // Use dev favicon in DEV region for visual distinction
     // Using SVG for modern browsers with PNG fallback specified in sizes
@@ -42,5 +46,5 @@ export function useLayoutMetadata(
       favicon256Path: `${basePath}/icon256.png`,
       appleTouchIconPath: `${basePath}/apple-touch-icon.png`,
     };
-  }, [activePathName, region]);
+  }, [activePathName, region, t]);
 }

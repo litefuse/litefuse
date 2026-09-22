@@ -16,6 +16,12 @@ interface CategoricalFacet extends BaseFacet {
   type: "categorical";
   /** Optional function to render an icon next to filter option labels */
   renderIcon?: (value: string) => React.ReactNode;
+  /**
+   * Optional map from a raw option value to the i18n key of its label. Only
+   * for columns whose values are internal enums that the table cells already
+   * render as labels; values that also travel over the API stay verbatim.
+   */
+  formatLabel?: (value: string) => string;
 }
 
 interface BooleanFacet extends BaseFacet {

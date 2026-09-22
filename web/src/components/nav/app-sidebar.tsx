@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import * as React from "react";
 import { NavMain, type NavMainItem } from "@/src/components/nav/nav-main";
 import {
@@ -46,6 +47,7 @@ export function AppSidebar({
   userNavProps,
   ...props
 }: AppSidebarProps) {
+  const { t } = useTranslation();
   return (
     <Sidebar collapsible="icon" variant="sidebar" {...props}>
       <SidebarHeader>
@@ -72,6 +74,7 @@ export function AppSidebar({
 }
 
 const DemoBadge = () => {
+  const { t } = useTranslation();
   const router = useRouter();
   const { isLangfuseCloud } = useLangfuseCloudRegion();
   const routerProjectId = router.query.projectId as string | undefined;
@@ -88,13 +91,13 @@ const DemoBadge = () => {
 
   return (
     <SidebarGroup className="border-b">
-      <SidebarGroupLabel>Demo Project (view only)</SidebarGroupLabel>
+      <SidebarGroupLabel>{t("Demo Project (view only)")}</SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              tooltip="Use Demo App to create traces"
+              tooltip={t("Use Demo App to create traces")}
               variant="cta"
             >
               <Link
@@ -103,15 +106,18 @@ const DemoBadge = () => {
                 rel="noopener noreferrer"
               >
                 <ExternalLink className="h-4 w-4" />
-                <span>Use Demo App</span>
+                <span>{t("Use Demo App")}</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Your Litefuse Organizations">
+            <SidebarMenuButton
+              asChild
+              tooltip={t("Your Litefuse Organizations")}
+            >
               <Link href="/">
                 <Grid2X2 className="h-4 w-4" />
-                <span>Your Litefuse Orgs</span>
+                <span>{t("Your Litefuse Orgs")}</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

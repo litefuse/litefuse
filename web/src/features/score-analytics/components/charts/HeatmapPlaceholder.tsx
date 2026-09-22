@@ -1,11 +1,13 @@
 import { Skeleton } from "@/src/components/ui/skeleton";
 
+import { useTranslation } from "react-i18next";
 /**
  * HeatmapPlaceholder component displays a skeleton grid placeholder
  * when only one score is selected, indicating that a heatmap will appear
  * when a second score is selected.
  */
 export function HeatmapPlaceholder() {
+  const { t } = useTranslation();
   return (
     <div className="relative flex h-[300px] items-center justify-center">
       {/* Skeleton grid pattern (5x5) */}
@@ -22,7 +24,7 @@ export function HeatmapPlaceholder() {
       {/* Overlay message */}
       <div className="bg-background/90 relative z-10 rounded-lg px-6 py-4 text-center shadow-xs">
         <p className="text-muted-foreground text-sm">
-          Select a second score to view comparison heatmap
+          {t("Select a second score to view comparison heatmap")}
         </p>
       </div>
     </div>

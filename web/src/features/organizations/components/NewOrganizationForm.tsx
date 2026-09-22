@@ -27,11 +27,13 @@ import { usePostHogClientCapture } from "@/src/features/posthog-analytics/usePos
 import { SurveyName } from "@prisma/client";
 import { useLangfuseCloudRegion } from "@/src/features/organizations/hooks";
 
+import { useTranslation } from "react-i18next";
 export const NewOrganizationForm = ({
   onSuccess,
 }: {
   onSuccess: (orgId: string) => void;
 }) => {
+  const { t } = useTranslation();
   const { update: updateSession } = useSession();
 
   const form = useForm({
@@ -112,10 +114,10 @@ export const NewOrganizationForm = ({
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Organization name</FormLabel>
+              <FormLabel>{t("Organization name")}</FormLabel>
               <FormControl>
                 <Input
-                  placeholder="my-org"
+                  placeholder={t("my-org")}
                   {...field}
                   data-testid="new-org-name-input"
                 />
@@ -131,23 +133,25 @@ export const NewOrganizationForm = ({
               name="type"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Type</FormLabel>
+                  <FormLabel>{t("Type")}</FormLabel>
                   <FormDescription>
-                    What would best describe your organization?
+                    {t("What would best describe your organization?")}
                   </FormDescription>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger ref={field.ref}>
-                        <SelectValue placeholder="Please choose" />
+                        <SelectValue placeholder={t("Please choose")} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="Personal">Personal</SelectItem>
-                      <SelectItem value="Educational">Educational</SelectItem>
-                      <SelectItem value="Company">Company</SelectItem>
-                      <SelectItem value="Startup">Startup</SelectItem>
-                      <SelectItem value="Agency">Agency</SelectItem>
-                      <SelectItem value="N/A">N/A</SelectItem>
+                      <SelectItem value="Personal">{t("Personal")}</SelectItem>
+                      <SelectItem value="Educational">
+                        {t("Educational")}
+                      </SelectItem>
+                      <SelectItem value="Company">{t("Company")}</SelectItem>
+                      <SelectItem value="Startup">{t("Startup")}</SelectItem>
+                      <SelectItem value="Agency">{t("Agency")}</SelectItem>
+                      <SelectItem value="N/A">{t("N/A")}</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -160,14 +164,18 @@ export const NewOrganizationForm = ({
                 name="size"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{watchedType} size</FormLabel>
+                    <FormLabel>
+                      {t("{{type}} size", { type: watchedType })}
+                    </FormLabel>
                     <FormDescription>
-                      How many people are in your {watchedType}?
+                      {t("How many people are in your {{type}}?", {
+                        type: watchedType,
+                      })}
                     </FormDescription>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger ref={field.ref}>
-                          <SelectValue placeholder="Please choose" />
+                          <SelectValue placeholder={t("Please choose")} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -176,7 +184,7 @@ export const NewOrganizationForm = ({
                         <SelectItem value="50-99">50-99</SelectItem>
                         <SelectItem value="100-299">100-299</SelectItem>
                         <SelectItem value="More than 300">
-                          More than 300
+                          {t("More than 300")}
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -188,7 +196,7 @@ export const NewOrganizationForm = ({
           </>
         )}
         <Button type="submit" loading={createOrgMutation.isPending}>
-          Create
+          {t("Create")}
         </Button>
       </form>
     </Form>

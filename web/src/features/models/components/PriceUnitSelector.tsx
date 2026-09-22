@@ -13,10 +13,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/src/components/ui/select";
-import { PriceUnit } from "@/src/features/models/validation";
+import { PriceUnit, priceUnitLabels } from "@/src/features/models/validation";
 import { usePriceUnitMultiplier } from "@/src/features/models/hooks/usePriceUnitMultiplier";
 
+import { useTranslation } from "react-i18next";
 export const PriceUnitSelector = () => {
+  const { t } = useTranslation();
   const { priceUnit, setPriceUnit } = usePriceUnitMultiplier();
 
   return (
@@ -32,12 +34,12 @@ export const PriceUnitSelector = () => {
           onValueChange={(value: PriceUnit) => setPriceUnit(value)}
         >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select unit" />
+            <SelectValue placeholder={t("Select unit")} />
           </SelectTrigger>
           <SelectContent>
             {Object.values(PriceUnit).map((unit) => (
               <SelectItem key={unit} value={unit}>
-                {unit}
+                {t(priceUnitLabels[unit])}
               </SelectItem>
             ))}
           </SelectContent>

@@ -17,6 +17,7 @@ import { useJsonViewerLayout } from "./hooks/useJsonViewerLayout";
 import { pathArrayToJsonPath } from "./utils/pathUtils";
 import { useMonospaceCharWidth } from "./hooks/useMonospaceCharWidth";
 
+import { useTranslation } from "react-i18next";
 interface VirtualizedJsonViewerProps {
   tree: TreeState | null;
   expansionVersion: number; // Triggers re-render on expansion changes
@@ -54,6 +55,7 @@ export const VirtualizedJsonViewer = memo(function VirtualizedJsonViewer({
   totalLineCount,
   commentedPaths,
 }: VirtualizedJsonViewerProps) {
+  const { t } = useTranslation();
   const parentRef = useRef<HTMLDivElement>(null);
 
   // Measure actual monospace character width for accurate height estimation
@@ -254,7 +256,7 @@ export const VirtualizedJsonViewer = memo(function VirtualizedJsonViewer({
           className="text-muted-foreground flex items-center justify-center p-8"
           style={{ fontSize: theme.fontSize }}
         >
-          No data to display
+          {t("No data to display")}
         </div>
       )}
     </div>

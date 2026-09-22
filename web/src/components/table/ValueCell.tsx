@@ -6,6 +6,8 @@ import { copyTextToClipboard } from "@/src/utils/clipboard";
 import { Button } from "@/src/components/ui/button";
 import { Copy, Check } from "lucide-react";
 
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 const MAX_STRING_LENGTH_FOR_LINK_DETECTION = 1500;
 export const MAX_CELL_DISPLAY_CHARS = 2000;
 const SMALL_ARRAY_THRESHOLD = 5;
@@ -13,6 +15,10 @@ const ARRAY_PREVIEW_ITEMS = 3;
 const OBJECT_PREVIEW_KEYS = 2;
 const MONO_TEXT_CLASSES = "font-mono text-xs wrap-break-word";
 const PREVIEW_TEXT_CLASSES = "italic text-gray-500 dark:text-gray-400";
+
+// JSON literals as they appear in the data, never translated.
+const NULL_LITERAL = "null";
+const UNDEFINED_LITERAL = "undefined";
 
 function renderStringWithLinks(text: string): React.ReactNode {
   if (text.length >= MAX_STRING_LENGTH_FOR_LINK_DETECTION) {
@@ -59,9 +65,9 @@ function getValueType(value: unknown): JsonTableRow["type"] {
   return typeof value as JsonTableRow["type"];
 }
 
-function renderArrayValue(arr: unknown[]): JSX.Element {
+function renderArrayValue(arr: unknown[], t: TFunction): JSX.Element {
   if (arr.length === 0) {
-    return <span className={PREVIEW_TEXT_CLASSES}>empty list</span>;
+    return <span className={PREVIEW_TEXT_CLASSES}>{t("empty list")}</span>;
   }
 
   if (arr.length <= SMALL_ARRAY_THRESHOLD) {
@@ -99,18 +105,28 @@ function renderArrayValue(arr: unknown[]): JSX.Element {
       .join(", ");
     return (
       <span className={PREVIEW_TEXT_CLASSES}>
-        [{preview}, ...{arr.length - ARRAY_PREVIEW_ITEMS} more]
+        {t("[{{preview}}, ...{{count}} more]", {
+          preview,
+          count: arr.length - ARRAY_PREVIEW_ITEMS,
+        })}
       </span>
     );
   }
 }
 
-function renderObjectValue(obj: Record<string, unknown>): JSX.Element {
+function renderObjectValue(
+  obj: Record<string, unknown>,
+  t: TFunction,
+): JSX.Element {
   const keys = Object.keys(obj);
   if (keys.length === 0) {
-    return <span className={PREVIEW_TEXT_CLASSES}>empty object</span>;
+    return <span className={PREVIEW_TEXT_CLASSES}>{t("empty object")}</span>;
   }
-  return <span className={PREVIEW_TEXT_CLASSES}>{keys.length} items</span>;
+  return (
+    <span className={PREVIEW_TEXT_CLASSES}>
+      {t("{{count}} items", { count: keys.length })}
+    </span>
+  );
 }
 
 function getValueStringLength(value: unknown): number {
@@ -164,6 +180,7 @@ export const ValueCell = memo(
     expandedCells: Set<string>;
     toggleCellExpansion: (cellId: string) => void;
   }) => {
+    const { t } = useTranslation();
     const { value, type } = row.original;
     const cellId = `${row.id}-value`;
     const isCellExpanded = expandedCells.has(cellId);
@@ -223,7 +240,7 @@ export const ValueCell = memo(
           return {
             content: (
               <span className="text-gray-500 italic dark:text-gray-400">
-                null
+                {NULL_LITERAL}
               </span>
             ),
             needsTruncation: false,
@@ -232,7 +249,7 @@ export const ValueCell = memo(
           return {
             content: (
               <span className="text-gray-500 dark:text-gray-400">
-                undefined
+                {UNDEFINED_LITERAL}
               </span>
             ),
             needsTruncation: false,
@@ -241,7 +258,7 @@ export const ValueCell = memo(
           const arrayValue = value as unknown[];
           // Arrays always show previews, never truncate
           return {
-            content: renderArrayValue(arrayValue),
+            content: renderArrayValue(arrayValue, t),
             needsTruncation: false,
           };
         }
@@ -249,7 +266,7 @@ export const ValueCell = memo(
           const objectValue = value as Record<string, unknown>;
           // Objects always show previews, never truncate
           return {
-            content: renderObjectValue(objectValue),
+            content: renderObjectValue(objectValue, t),
             needsTruncation: false,
           };
         }
@@ -287,8 +304,10 @@ export const ValueCell = memo(
             }}
           >
             {isCellExpanded
-              ? "\n...collapse"
-              : `\n...expand (${getValueStringLength(value) - MAX_CELL_DISPLAY_CHARS} more characters)`}
+              ? `\n${t("...collapse")}`
+              : `\n${t("...expand ({{count}} more characters)", {
+                  count: getValueStringLength(value) - MAX_CELL_DISPLAY_CHARS,
+                })}`}
           </div>
         )}
 
@@ -298,8 +317,8 @@ export const ValueCell = memo(
           size="icon"
           className="bg-background/80 hover:bg-background absolute top-0 right-0 h-5 w-5 border p-0.5 opacity-0 shadow-xs transition-opacity duration-200 group-hover:opacity-100"
           onClick={handleCopy}
-          title="Copy value"
-          aria-label="Copy cell value"
+          title={t("Copy value")}
+          aria-label={t("Copy cell value")}
         >
           {showCopySuccess ? (
             <Check className="h-2.5 w-2.5 text-green-600" />

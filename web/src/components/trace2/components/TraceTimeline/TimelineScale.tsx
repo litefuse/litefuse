@@ -35,7 +35,7 @@ export function TimelineScale({
                 className="text-muted-foreground absolute left-2 text-xs"
                 title={`${timeValue.toFixed(2)}s`}
               >
-                {timeValue.toFixed(2)}s
+                {`${timeValue.toFixed(2)}s`}
               </span>
             </div>
           );

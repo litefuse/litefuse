@@ -21,23 +21,25 @@ import { useQueryProjectOrOrganization } from "@/src/features/projects/hooks";
 import { api } from "@/src/utils/api";
 import { type NavigationItem } from "@/src/components/layouts/utilities/routes";
 
+import { useTranslation } from "react-i18next";
 function MainNavigationGroup({
   navItems,
   onNavigate,
 }: {
-  navItems: Array<{ title: string; url: string }>;
+  navItems: Array<{ title: string; label: string; url: string }>;
   onNavigate: (item: { title: string; url: string }) => void;
 }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const capture = usePostHogClientCapture();
 
   return (
-    <CommandGroup heading="Main Navigation">
+    <CommandGroup heading={t("Main Navigation")}>
       {navItems.map((item) => (
         <CommandItem
           key={item.url}
           value={item.url}
-          keywords={[item.title]}
+          keywords={[item.title, item.label]}
           onSelect={() => {
             router.push(item.url);
             capture("cmd_k_menu:navigated", {
@@ -48,7 +50,7 @@ function MainNavigationGroup({
             onNavigate(item);
           }}
         >
-          {item.title}
+          {item.label}
         </CommandItem>
       ))}
     </CommandGroup>
@@ -56,6 +58,7 @@ function MainNavigationGroup({
 }
 
 function ProjectsGroup({ onNavigate }: { onNavigate: () => void }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const capture = usePostHogClientCapture();
   const { allProjectItems } = useNavigationItems();
@@ -65,7 +68,7 @@ function ProjectsGroup({ onNavigate }: { onNavigate: () => void }) {
   return (
     <>
       <CommandSeparator />
-      <CommandGroup heading="Projects">
+      <CommandGroup heading={t("Projects")}>
         {allProjectItems.map((item) => (
           <CommandItem
             key={item.url}
@@ -82,6 +85,7 @@ function ProjectsGroup({ onNavigate }: { onNavigate: () => void }) {
               onNavigate();
             }}
           >
+            {/* org / project names are user data, shown as they are */}
             {item.title}
           </CommandItem>
         ))}
@@ -91,6 +95,7 @@ function ProjectsGroup({ onNavigate }: { onNavigate: () => void }) {
 }
 
 function DashboardsGroup({ onNavigate }: { onNavigate: () => void }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const capture = usePostHogClientCapture();
   const { project } = useQueryProjectOrOrganization();
@@ -118,7 +123,7 @@ function DashboardsGroup({ onNavigate }: { onNavigate: () => void }) {
   return (
     <>
       <CommandSeparator />
-      <CommandGroup heading="Dashboards">
+      <CommandGroup heading={t("Dashboards")}>
         {dashboards.map((dashboard) => (
           <CommandItem
             key={dashboard.id}
@@ -149,6 +154,7 @@ function DashboardsGroup({ onNavigate }: { onNavigate: () => void }) {
 }
 
 function ProjectSettingsGroup({ onNavigate }: { onNavigate: () => void }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const capture = usePostHogClientCapture();
   const settingsPages = useProjectSettingsPages();
@@ -157,7 +163,12 @@ function ProjectSettingsGroup({ onNavigate }: { onNavigate: () => void }) {
   const projectSettingsItems = settingsPages
     .filter((page) => page.show !== false && !("href" in page))
     .map((page) => ({
+      // The English title is what analytics records; `label` is shown.
       title: `Project Settings > ${page.title}`,
+      label: t("{{section}} > {{page}}", {
+        section: t("Project Settings"),
+        page: t(page.title),
+      }),
       url: `/project/${project?.id}/settings${page.slug === "index" ? "" : `/${page.slug}`}`,
       keywords: page.cmdKKeywords || [],
     }));
@@ -167,12 +178,12 @@ function ProjectSettingsGroup({ onNavigate }: { onNavigate: () => void }) {
   return (
     <>
       <CommandSeparator />
-      <CommandGroup heading="Project Settings">
+      <CommandGroup heading={t("Project Settings")}>
         {projectSettingsItems.map((item) => (
           <CommandItem
             key={item.url}
-            value={item.title}
-            keywords={item.keywords}
+            value={item.label}
+            keywords={[...item.keywords, item.title]}
             onSelect={() => {
               router.push(item.url);
               capture("cmd_k_menu:navigated", {
@@ -183,7 +194,7 @@ function ProjectSettingsGroup({ onNavigate }: { onNavigate: () => void }) {
               onNavigate();
             }}
           >
-            {item.title}
+            {item.label}
           </CommandItem>
         ))}
       </CommandGroup>
@@ -192,6 +203,7 @@ function ProjectSettingsGroup({ onNavigate }: { onNavigate: () => void }) {
 }
 
 function OrganizationSettingsGroup({ onNavigate }: { onNavigate: () => void }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const capture = usePostHogClientCapture();
   const orgSettingsPages = useOrganizationSettingsPages();
@@ -200,7 +212,12 @@ function OrganizationSettingsGroup({ onNavigate }: { onNavigate: () => void }) {
   const orgSettingsItems = orgSettingsPages
     .filter((page) => page.show !== false && !("href" in page))
     .map((page) => ({
+      // The English title is what analytics records; `label` is shown.
       title: `Organization Settings > ${page.title}`,
+      label: t("{{section}} > {{page}}", {
+        section: t("Organization Settings"),
+        page: t(page.title),
+      }),
       url: `/organization/${organization?.id}/settings${page.slug === "index" ? "" : `/${page.slug}`}`,
       keywords: page.cmdKKeywords || [],
     }));
@@ -210,12 +227,12 @@ function OrganizationSettingsGroup({ onNavigate }: { onNavigate: () => void }) {
   return (
     <>
       <CommandSeparator />
-      <CommandGroup heading="Organization Settings">
+      <CommandGroup heading={t("Organization Settings")}>
         {orgSettingsItems.map((item) => (
           <CommandItem
             key={item.url}
-            value={item.title}
-            keywords={item.keywords}
+            value={item.label}
+            keywords={[...item.keywords, item.title]}
             onSelect={() => {
               router.push(item.url);
               capture("cmd_k_menu:navigated", {
@@ -226,7 +243,7 @@ function OrganizationSettingsGroup({ onNavigate }: { onNavigate: () => void }) {
               onNavigate();
             }}
           >
-            {item.title}
+            {item.label}
           </CommandItem>
         ))}
       </CommandGroup>
@@ -235,12 +252,18 @@ function OrganizationSettingsGroup({ onNavigate }: { onNavigate: () => void }) {
 }
 
 function AccountSettingsGroup({ onNavigate }: { onNavigate: () => void }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const capture = usePostHogClientCapture();
   const accountSettingsPages = useAccountSettingsPages();
 
   const accountSettingsItems = accountSettingsPages.map((page) => ({
+    // The English title is what analytics records; `label` is shown.
     title: `Account Settings > ${page.title}`,
+    label: t("{{section}} > {{page}}", {
+      section: t("Account Settings"),
+      page: t(page.title),
+    }),
     url: `/account/settings${page.slug === "index" ? "" : `/${page.slug}`}`,
     keywords: page.cmdKKeywords || [],
   }));
@@ -250,12 +273,12 @@ function AccountSettingsGroup({ onNavigate }: { onNavigate: () => void }) {
   return (
     <>
       <CommandSeparator />
-      <CommandGroup heading="Account Settings">
+      <CommandGroup heading={t("Account Settings")}>
         {accountSettingsItems.map((item) => (
           <CommandItem
             key={item.url}
-            value={item.title}
-            keywords={item.keywords}
+            value={item.label}
+            keywords={[...item.keywords, item.title]}
             onSelect={() => {
               router.push(item.url);
               capture("cmd_k_menu:navigated", {
@@ -266,7 +289,7 @@ function AccountSettingsGroup({ onNavigate }: { onNavigate: () => void }) {
               onNavigate();
             }}
           >
-            {item.title}
+            {item.label}
           </CommandItem>
         ))}
       </CommandGroup>
@@ -279,6 +302,7 @@ function CommandMenuComponent({
 }: {
   mainNavigation: NavigationItem[];
 }) {
+  const { t } = useTranslation();
   const { open, setOpen } = useCommandMenu();
   const capture = usePostHogClientCapture();
 
@@ -298,12 +322,17 @@ function CommandMenuComponent({
         // if the item has children, return the children and not the parent
         return item.items.map((child) => ({
           title: `${item.title} > ${child.title}`,
+          label: t("{{section}} > {{page}}", {
+            section: t(item.title),
+            page: t(child.title),
+          }),
           url: child.url,
         }));
       }
       return [
         {
           title: item.title,
+          label: t(item.title),
           url: item.url,
         },
       ];
@@ -346,12 +375,12 @@ function CommandMenuComponent({
       }}
     >
       <CommandInput
-        placeholder="Type a command or search..."
+        placeholder={t("Type a command or search...")}
         className="border-none focus:border-none focus:ring-0 focus:ring-transparent focus:outline-hidden"
         onValueChange={debouncedSearchChange}
       />
       <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
+        <CommandEmpty>{t("No results found.")}</CommandEmpty>
         <MainNavigationGroup navItems={navItems} onNavigate={handleNavigate} />
         <ProjectsGroup onNavigate={handleNavigate} />
         <DashboardsGroup onNavigate={handleNavigate} />

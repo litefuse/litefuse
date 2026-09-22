@@ -1,5 +1,7 @@
 import { cn } from "@/src/utils/tailwind";
 import { type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 
 const statusCategories = {
   active: ["production", "live", "active", "public"],
@@ -15,6 +17,42 @@ const statusCategories = {
 export type Status =
   (typeof statusCategories)[keyof typeof statusCategories][number];
 
+/**
+ * The badge renders the raw status value, so the label has to be looked up
+ * here. An unknown status falls back to the capitalised value, as before.
+ */
+const statusLabels: Record<string, string> = {
+  production: i18nKey("Production"),
+  live: i18nKey("Live"),
+  active: i18nKey("Active"),
+  public: i18nKey("Public"),
+  pending: i18nKey("Pending"),
+  waiting: i18nKey("Waiting"),
+  queued: i18nKey("Queued"),
+  delayed: i18nKey("Delayed"),
+  disabled: i18nKey("Disabled"),
+  inactive: i18nKey("Inactive"),
+  paused: i18nKey("Paused"),
+  completed: i18nKey("Completed"),
+  done: i18nKey("Done"),
+  finished: i18nKey("Finished"),
+  error: i18nKey("Error"),
+  failed: i18nKey("Failed"),
+  partial: i18nKey("Partial"),
+};
+
+/**
+ * The badge's label for a raw status value, as an i18n key. Sidebar filter
+ * facets over the same column use this so their options read like the badges.
+ */
+export const statusLabelKey = (status: string): string => {
+  const normalized = status?.toLowerCase() ?? "";
+  return (
+    statusLabels[normalized] ??
+    (status ? status[0].toUpperCase() + status.slice(1) : status)
+  );
+};
+
 export const StatusBadge = ({
   type,
   isLive = true,
@@ -28,6 +66,7 @@ export const StatusBadge = ({
   showText?: boolean;
   children?: ReactNode;
 }) => {
+  const { t } = useTranslation();
   let badgeColor = "bg-muted-gray text-primary";
   let dotColor = "bg-muted-foreground";
   let dotPingColor = "bg-muted-foreground";
@@ -85,7 +124,7 @@ export const StatusBadge = ({
           ></span>
         </span>
       )}
-      {showText && type && <span>{type[0].toUpperCase() + type.slice(1)}</span>}
+      {showText && type && <span>{t(statusLabelKey(type))}</span>}
       {children}
     </div>
   );

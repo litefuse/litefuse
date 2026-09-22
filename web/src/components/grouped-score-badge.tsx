@@ -15,6 +15,7 @@ import Link from "next/link";
 import useProjectIdFromURL from "@/src/hooks/useProjectIdFromURL";
 import { type WithStringifiedMetadata } from "@/src/utils/clientSideDomainTypes";
 
+import { useTranslation } from "react-i18next";
 const partitionScores = <
   T extends WithStringifiedMetadata<ScoreDomain> | LastUserScore,
 >(
@@ -59,6 +60,7 @@ const ScoreGroupBadge = <
   compact?: boolean;
   badgeClassName?: string;
 }) => {
+  const { t } = useTranslation();
   const projectId = useProjectIdFromURL();
 
   return (
@@ -96,7 +98,7 @@ const ScoreGroupBadge = <
                         target="_blank"
                       >
                         <ExternalLinkIcon className="h-3 w-3" />
-                        View execution trace
+                        {t("View execution trace")}
                       </Link>
                     )}
                 </HoverCardContent>

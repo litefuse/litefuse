@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { LoaderCircle } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/src/components/ui/avatar";
+import { useTranslation } from "react-i18next";
 import {
   Command,
   CommandEmpty,
@@ -32,6 +33,7 @@ export function MentionAutocomplete({
   onClose: _onClose,
   onSelectedIndexChange,
 }: MentionAutocompleteProps) {
+  const { t } = useTranslation();
   const selectedItemRef = useRef<HTMLDivElement>(null);
 
   // Scroll selected item into view
@@ -51,12 +53,12 @@ export function MentionAutocomplete({
     <div
       className="absolute right-0 bottom-full left-0 z-50 mb-1"
       role="region"
-      aria-label="User mention suggestions"
+      aria-label={t("User mention suggestions")}
     >
       <Command
         className="max-h-60 rounded-md border shadow-md"
         value={selectedUserId}
-        aria-label="Mention user autocomplete"
+        aria-label={t("Mention user autocomplete")}
       >
         <CommandList
           role="listbox"
@@ -69,17 +71,17 @@ export function MentionAutocomplete({
               aria-live="polite"
             >
               <LoaderCircle className="h-4 w-4 animate-spin" />
-              <span className="sr-only">Loading users...</span>
+              <span className="sr-only">{t("Loading users...")}</span>
             </div>
           )}
           {!isLoading && users.length === 0 && (
-            <CommandEmpty role="status">No users found</CommandEmpty>
+            <CommandEmpty role="status">{t("No users found")}</CommandEmpty>
           )}
           {!isLoading && users.length > 0 && (
             <>
               <CommandGroup>
                 {displayedUsers.map((user, index) => {
-                  const displayName = user.name || user.email || "User";
+                  const displayName = user.name || user.email || t("User");
                   const isSelected = index === selectedIndex;
                   return (
                     <CommandItem
@@ -99,7 +101,7 @@ export function MentionAutocomplete({
                       </Avatar>
                       <div className="text-foreground flex-1 overflow-hidden">
                         <div className="truncate font-medium">
-                          {user.name || "Unknown"}
+                          {user.name || t("Unknown")}
                         </div>
                         {user.email && (
                           <div className="text-muted-foreground truncate text-xs">
@@ -117,7 +119,7 @@ export function MentionAutocomplete({
                   role="status"
                   aria-live="polite"
                 >
-                  and {remainingCount} more...
+                  {t("and {{count}} more...", { count: remainingCount })}
                 </div>
               )}
             </>

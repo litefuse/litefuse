@@ -1,6 +1,7 @@
 import { Alert, AlertDescription, AlertTitle } from "@/src/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 
+import { useTranslation } from "react-i18next";
 type DatasetError = {
   datasetId: string;
   datasetName: string;
@@ -18,6 +19,7 @@ type DatasetItemSchemaErrorsProps = {
 export const DatasetItemSchemaErrors: React.FC<
   DatasetItemSchemaErrorsProps
 > = ({ errors }) => {
+  const { t } = useTranslation();
   if (errors.length === 0) return null;
 
   // Group errors by dataset
@@ -40,11 +42,11 @@ export const DatasetItemSchemaErrors: React.FC<
     <Alert variant="destructive" className="mt-4">
       <AlertCircle className="h-4 w-4" />
       <AlertTitle className="text-base font-semibold">
-        Schema Validation Failed
+        {t("Schema Validation Failed")}
       </AlertTitle>
       <AlertDescription className="mt-2 space-y-4">
         <p className="text-sm">
-          The data does not match the required schema for this dataset.
+          {t("The data does not match the required schema for this dataset.")}
         </p>
         {Object.entries(errorsByDataset).map(([datasetId, datasetErrors]) => (
           <div key={datasetId} className="space-y-3">
@@ -56,7 +58,7 @@ export const DatasetItemSchemaErrors: React.FC<
             {datasetErrors.errors.map((error, idx) => (
               <div key={idx} className="space-y-2">
                 <div className="text-sm font-semibold">
-                  {error.field === "input" ? "Input" : "Expected Output"}
+                  {error.field === "input" ? t("Input") : t("Expected Output")}
                 </div>
                 <ul className="ml-4 space-y-1.5 text-sm">
                   {error.errors.map((err, errIdx) => (

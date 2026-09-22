@@ -20,7 +20,6 @@
     "updated": "%TODAY%"
   },
   "includes": [
-
     {
       "type": "page",
       "name": "Discover",

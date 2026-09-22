@@ -25,6 +25,7 @@ import { RemoteExperimentUpsertForm } from "@/src/features/experiments/component
 import { RemoteExperimentTriggerModal } from "@/src/features/experiments/components/RemoteExperimentTriggerModal";
 import { Skeleton } from "@/src/components/ui/skeleton";
 
+import { useTranslation } from "react-i18next";
 export const CreateExperimentsForm = ({
   projectId,
   setFormOpen,
@@ -55,6 +56,7 @@ export const CreateExperimentsForm = ({
   }) => Promise<void>;
   showSDKRunInfoPage?: boolean;
 }) => {
+  const { t } = useTranslation();
   const capture = usePostHogClientCapture();
   const [showPromptForm, setShowPromptForm] = useState(false);
   const [showRemoteExperimentUpsertForm, setShowRemoteExperimentUpsertForm] =
@@ -98,16 +100,17 @@ export const CreateExperimentsForm = ({
     return (
       <>
         <DialogHeader>
-          <DialogTitle>Run Experiment</DialogTitle>
+          <DialogTitle>{t("Run Experiment")}</DialogTitle>
           <DialogDescription>
-            Experiments allow you to test iterations of your application or
-            prompt on a dataset. Learn more about experiments{" "}
+            {t(
+              "Experiments allow you to test iterations of your application or prompt on a dataset. Learn more about experiments",
+            )}{" "}
             <Link
               href="https://litefuse.ai/docs/evaluation/dataset-runs/datasets"
               target="_blank"
               className="underline"
             >
-              here
+              {t("here")}
             </Link>
             .
           </DialogDescription>
@@ -118,17 +121,19 @@ export const CreateExperimentsForm = ({
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Wand2 className="size-4" />
-                  via User Interface
+                  {t("via User Interface")}
                 </CardTitle>
                 <CardDescription>
-                  Test single prompts and model configurations via Litefuse UI.
+                  {t(
+                    "Test single prompts and model configurations via Litefuse UI.",
+                  )}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <ul className="text-muted-foreground list-disc space-y-2 pl-4 text-sm">
-                  <li>Compare prompt versions</li>
-                  <li>Compare model configurations</li>
-                  <li>No code required</li>
+                  <li>{t("Compare prompt versions")}</li>
+                  <li>{t("Compare model configurations")}</li>
+                  <li>{t("No code required")}</li>
                 </ul>
               </CardContent>
               <CardFooter className="mt-auto flex flex-row gap-2">
@@ -136,7 +141,7 @@ export const CreateExperimentsForm = ({
                   className="w-full"
                   onClick={() => setShowPromptForm(true)}
                 >
-                  Configure
+                  {t("Configure")}
                 </Button>
                 <Button
                   variant="outline"
@@ -147,7 +152,7 @@ export const CreateExperimentsForm = ({
                   }
                 >
                   <Link href="https://litefuse.ai/docs/evaluation/dataset-runs/native-run">
-                    View Docs
+                    {t("View Docs")}
                   </Link>
                 </Button>
               </CardFooter>
@@ -157,18 +162,19 @@ export const CreateExperimentsForm = ({
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Code2 className="size-4" />
-                  via SDK / API
+                  {t("via SDK / API")}
                 </CardTitle>
                 <CardDescription>
-                  Start any dataset run via the Litefuse SDKs. To configure runs
-                  via webhook, use the button below.
+                  {t(
+                    "Start any dataset run via the Litefuse SDKs. To configure runs via webhook, use the button below.",
+                  )}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <ul className="text-muted-foreground list-disc space-y-2 pl-4 text-sm">
-                  <li>Full control over dataset run execution</li>
-                  <li>Custom evaluation logic</li>
-                  <li>Integration with your codebase</li>
+                  <li>{t("Full control over dataset run execution")}</li>
+                  <li>{t("Custom evaluation logic")}</li>
+                  <li>{t("Integration with your codebase")}</li>
                 </ul>
               </CardContent>
               <CardFooter className="mt-auto flex flex-row gap-2">
@@ -178,7 +184,7 @@ export const CreateExperimentsForm = ({
                       className="rounded-r-none"
                       onClick={() => setShowRemoteExperimentTriggerModal(true)}
                     >
-                      Run
+                      {t("Run")}
                     </Button>
                     <Button
                       className="rounded-l-none rounded-r-md border-l-2 px-2"
@@ -202,13 +208,13 @@ export const CreateExperimentsForm = ({
                     href="https://litefuse.ai/docs/evaluation/dataset-runs/remote-run"
                     target="_blank"
                   >
-                    View Docs
+                    {t("View Docs")}
                   </Link>
                 </Button>
                 {!existingRemoteExperiment.data && (
                   <Button
                     variant="outline"
-                    title="Set up remote dataset run in UI trigger"
+                    title={t("Set up remote dataset run in UI trigger")}
                     className="h-8 w-8 shrink-0"
                     size="icon"
                     onClick={() => setShowRemoteExperimentUpsertForm(true)}

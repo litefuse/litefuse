@@ -21,6 +21,7 @@ import { api } from "@/src/utils/api";
 import { CopyIcon, ExternalLinkIcon, CheckIcon } from "lucide-react";
 import { copyTextToClipboard } from "@/src/utils/clipboard";
 
+import { useTranslation } from "react-i18next";
 type PromptSelectionDialogProps = {
   isOpen: boolean;
   onClose: () => void;
@@ -34,6 +35,7 @@ export function PromptSelectionDialog({
   onSelect,
   projectId,
 }: PromptSelectionDialogProps) {
+  const { t } = useTranslation();
   const [selectedPromptName, setSelectedPromptName] = useState<string>("");
   const [selectedTag, setSelectedTag] = useState<string>("");
   const [selectionType, setSelectionType] = useState<"version" | "label">(
@@ -110,18 +112,18 @@ export function PromptSelectionDialog({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add inline prompt reference</DialogTitle>
+          <DialogTitle>{t("Add inline prompt reference")}</DialogTitle>
         </DialogHeader>
         <DialogBody>
           <div className="flex flex-col gap-4">
             <p className="text-muted-foreground text-sm">
-              Referenced prompts are dynamically resolved and inserted when
-              fetched via API/SDK. This enables modular design—create complex
-              prompts from reusable, independently maintained components.
+              {t(
+                "Referenced prompts are dynamically resolved and inserted when fetched via API/SDK. This enables modular design—create complex prompts from reusable, independently maintained components.",
+              )}
             </p>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="prompt-name">Prompt name</Label>
+              <Label htmlFor="prompt-name">{t("Prompt name")}</Label>
               <Select
                 value={selectedPromptName}
                 onValueChange={(value) => {
@@ -130,7 +132,7 @@ export function PromptSelectionDialog({
                 }}
               >
                 <SelectTrigger id="prompt-name">
-                  <SelectValue placeholder="Select a text prompt" />
+                  <SelectValue placeholder={t("Select a text prompt")} />
                 </SelectTrigger>
                 <SelectContent>
                   {promptOptions?.map((prompt) => (
@@ -141,13 +143,13 @@ export function PromptSelectionDialog({
                 </SelectContent>
               </Select>
               <p className="text-muted-foreground text-xs">
-                Only text prompts can be referenced inline.
+                {t("Only text prompts can be referenced inline.")}
               </p>
             </div>
 
             {selectedPromptName && (
               <div className="flex flex-col gap-2">
-                <Label htmlFor="selection-type">Reference by</Label>
+                <Label htmlFor="selection-type">{t("Reference by")}</Label>
                 <Select
                   value={selectionType}
                   onValueChange={(value: "version" | "label") => {
@@ -156,11 +158,11 @@ export function PromptSelectionDialog({
                   }}
                 >
                   <SelectTrigger id="selection-type">
-                    <SelectValue placeholder="Select link type" />
+                    <SelectValue placeholder={t("Select link type")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="label">Label</SelectItem>
-                    <SelectItem value="version">Version</SelectItem>
+                    <SelectItem value="label">{t("Label")}</SelectItem>
+                    <SelectItem value="version">{t("Version")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -169,7 +171,7 @@ export function PromptSelectionDialog({
             {selectedPromptName && (
               <div className="flex flex-col gap-2">
                 <Label htmlFor="version-or-label">
-                  {selectionType === "version" ? "Version" : "Label"}
+                  {selectionType === "version" ? t("Version") : t("Label")}
                 </Label>
                 <div className="flex gap-2">
                   <Select
@@ -180,8 +182,8 @@ export function PromptSelectionDialog({
                       <SelectValue
                         placeholder={
                           selectionType === "version"
-                            ? "Select a version"
-                            : "Select a label"
+                            ? t("Select a version")
+                            : t("Select a label")
                         }
                       />
                     </SelectTrigger>
@@ -220,7 +222,7 @@ export function PromptSelectionDialog({
 
           {selectedTag && (
             <div className="space-y-2">
-              <Label>Tag preview</Label>
+              <Label>{t("Tag preview")}</Label>
               <div className="relative">
                 <div className="bg-muted rounded-md border p-3 pr-10 font-mono text-xs">
                   {selectedTag}
@@ -241,8 +243,10 @@ export function PromptSelectionDialog({
               </div>
               <p className="text-muted-foreground text-xs">
                 {onSelect
-                  ? "This tag will be inserted into the prompt content."
-                  : "This tag will be copied to clipboard to be then inserted into the prompt"}
+                  ? t("This tag will be inserted into the prompt content.")
+                  : t(
+                      "This tag will be copied to clipboard to be then inserted into the prompt",
+                    )}
               </p>
             </div>
           )}
@@ -250,10 +254,10 @@ export function PromptSelectionDialog({
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose}>
-            Cancel
+            {t("Cancel")}
           </Button>
           <Button type="button" onClick={handleConfirm} disabled={!selectedTag}>
-            {onSelect ? "Insert" : "Copy and close"}
+            {onSelect ? t("Insert") : t("Copy and close")}
           </Button>
         </DialogFooter>
       </DialogContent>

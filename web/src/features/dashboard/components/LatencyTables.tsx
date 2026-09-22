@@ -17,6 +17,7 @@ import {
 } from "@/src/features/query";
 import { useScheduledDashboardExecuteQuery } from "@/src/hooks/useDashboardQueryScheduler";
 
+import { useTranslation } from "react-i18next";
 export const LatencyTables = ({
   projectId,
   globalFilterState,
@@ -34,6 +35,7 @@ export const LatencyTables = ({
   metricsVersion?: ViewVersion;
   schedulerId?: string;
 }) => {
+  const { t } = useTranslation();
   const generationsLatenciesQuery: QueryType = {
     view: "observations",
     dimensions: [{ field: "name" }],
@@ -206,18 +208,19 @@ export const LatencyTables = ({
     <>
       <DashboardCard
         className="col-span-1 xl:col-span-2"
-        title="Trace latency percentiles"
+        title={t("Trace latency percentiles")}
         isLoading={isLoading || tracesLatencies.isPending}
       >
         <DashboardTable
           headers={[
-            "Trace Name",
-            <RightAlignedCell key="p50">p50</RightAlignedCell>,
-            <RightAlignedCell key="p90">p90</RightAlignedCell>,
+            t("Trace Name"),
+            <RightAlignedCell key="p50">{"p50"}</RightAlignedCell>,
+            <RightAlignedCell key="p90">{"p90"}</RightAlignedCell>,
             <RightAlignedCell key="p95">
-              p95<span className="ml-1">▼</span>
+              {"p95"}
+              <span className="ml-1">▼</span>
             </RightAlignedCell>,
-            <RightAlignedCell key="p99">p99</RightAlignedCell>,
+            <RightAlignedCell key="p99">{"p99"}</RightAlignedCell>,
           ]}
           rows={generateLatencyData(tracesLatencies.data)}
           isLoading={isLoading || tracesLatencies.isPending}
@@ -226,18 +229,19 @@ export const LatencyTables = ({
       </DashboardCard>
       <DashboardCard
         className="col-span-1 xl:col-span-2"
-        title="Generation latency percentiles"
+        title={t("Generation latency percentiles")}
         isLoading={isLoading || generationsLatencies.isPending}
       >
         <DashboardTable
           headers={[
-            "Generation Name",
-            <RightAlignedCell key="p50">p50</RightAlignedCell>,
-            <RightAlignedCell key="p90">p90</RightAlignedCell>,
+            t("Generation Name"),
+            <RightAlignedCell key="p50">{"p50"}</RightAlignedCell>,
+            <RightAlignedCell key="p90">{"p90"}</RightAlignedCell>,
             <RightAlignedCell key="p95">
-              p95<span className="ml-1">▼</span>
+              {"p95"}
+              <span className="ml-1">▼</span>
             </RightAlignedCell>,
-            <RightAlignedCell key="p99">p99</RightAlignedCell>,
+            <RightAlignedCell key="p99">{"p99"}</RightAlignedCell>,
           ]}
           rows={generateLatencyData(generationsLatencies.data)}
           isLoading={isLoading || generationsLatencies.isPending}
@@ -246,18 +250,19 @@ export const LatencyTables = ({
       </DashboardCard>
       <DashboardCard
         className="col-span-1 xl:col-span-2"
-        title="Observation latency percentiles"
+        title={t("Observation latency percentiles")}
         isLoading={isLoading || observationsLatencies.isPending}
       >
         <DashboardTable
           headers={[
-            "Observation",
-            <RightAlignedCell key="p50">p50</RightAlignedCell>,
-            <RightAlignedCell key="p90">p90</RightAlignedCell>,
+            t("Observation"),
+            <RightAlignedCell key="p50">{"p50"}</RightAlignedCell>,
+            <RightAlignedCell key="p90">{"p90"}</RightAlignedCell>,
             <RightAlignedCell key="p95">
-              p95<span className="ml-1">▼</span>
+              {"p95"}
+              <span className="ml-1">▼</span>
             </RightAlignedCell>,
-            <RightAlignedCell key="p99">p99</RightAlignedCell>,
+            <RightAlignedCell key="p99">{"p99"}</RightAlignedCell>,
           ]}
           rows={generateLatencyData(observationsLatencies.data)}
           isLoading={isLoading || observationsLatencies.isPending}

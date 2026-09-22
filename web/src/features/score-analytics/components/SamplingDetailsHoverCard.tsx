@@ -5,6 +5,7 @@ import {
 } from "@/src/components/ui/hover-card";
 import { Info } from "lucide-react";
 
+import { useTranslation } from "react-i18next";
 interface SamplingMetadata {
   samplingRate: number;
   preflightEstimates?: {
@@ -25,6 +26,7 @@ export function SamplingDetailsHoverCard({
   mode = "two",
   showLabel = false,
 }: SamplingDetailsHoverCardProps) {
+  const { t } = useTranslation();
   return (
     <HoverCard>
       <HoverCardTrigger asChild>
@@ -34,9 +36,9 @@ export function SamplingDetailsHoverCard({
               ? "text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
               : "hover:bg-muted-foreground/10 inline-flex h-4 w-4 items-center justify-center rounded-full"
           }
-          aria-label="View sampling details"
+          aria-label={t("View sampling details")}
         >
-          {showLabel && <span>Sampled Data</span>}
+          {showLabel && <span>{t("Sampled Data")}</span>}
           <Info
             className={showLabel ? "h-3 w-3" : "text-muted-foreground h-3 w-3"}
           />
@@ -46,12 +48,16 @@ export function SamplingDetailsHoverCard({
         <div className="space-y-3">
           <div>
             <h4 className="mb-2 text-sm font-semibold">
-              {mode === "single" ? "Estimated Score Count" : "Estimated Scores"}
+              {mode === "single"
+                ? t("Estimated Score Count")
+                : t("Estimated Scores")}
             </h4>
             <dl className="space-y-1 text-sm">
               {mode === "single" ? (
                 <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Total Scores:</dt>
+                  <dt className="text-muted-foreground">
+                    {t("Total Scores:")}
+                  </dt>
                   <dd className="font-medium">
                     ~
                     {samplingMetadata.preflightEstimates?.score1Count.toLocaleString()}
@@ -60,14 +66,14 @@ export function SamplingDetailsHoverCard({
               ) : (
                 <>
                   <div className="flex justify-between">
-                    <dt className="text-muted-foreground">Score 1:</dt>
+                    <dt className="text-muted-foreground">{t("Score 1:")}</dt>
                     <dd className="font-medium">
                       ~
                       {samplingMetadata.preflightEstimates?.score1Count.toLocaleString()}
                     </dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-muted-foreground">Score 2:</dt>
+                    <dt className="text-muted-foreground">{t("Score 2:")}</dt>
                     <dd className="font-medium">
                       ~
                       {samplingMetadata.preflightEstimates?.score2Count.toLocaleString()}
@@ -75,7 +81,7 @@ export function SamplingDetailsHoverCard({
                   </div>
                   <div className="flex justify-between">
                     <dt className="text-muted-foreground">
-                      Estimated Matches:
+                      {t("Estimated Matches:")}
                     </dt>
                     <dd className="font-medium">
                       ~
@@ -88,21 +94,25 @@ export function SamplingDetailsHoverCard({
           </div>
 
           <div>
-            <h4 className="mb-2 text-sm font-semibold">Query Optimizations</h4>
+            <h4 className="mb-2 text-sm font-semibold">
+              {t("Query Optimizations")}
+            </h4>
             <dl className="space-y-1 text-sm">
               <div className="flex justify-between">
-                <dt className="text-muted-foreground">Sampling:</dt>
+                <dt className="text-muted-foreground">{t("Sampling:")}</dt>
                 <dd className="font-medium">
-                  {(samplingMetadata.samplingRate * 100).toFixed(1)}%
-                  (hash-based)
+                  {t("{{rate}}% (hash-based)", {
+                    rate: (samplingMetadata.samplingRate * 100).toFixed(1),
+                  })}
                 </dd>
               </div>
             </dl>
           </div>
 
           <p className="text-muted-foreground text-xs">
-            Hash-based sampling ensures consistent, repeatable results while
-            maintaining statistical accuracy.
+            {t(
+              "Hash-based sampling ensures consistent, repeatable results while maintaining statistical accuracy.",
+            )}
           </p>
         </div>
       </HoverCardContent>

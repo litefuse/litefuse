@@ -5,12 +5,14 @@ import Page from "@/src/components/layouts/page";
 import { ActionButton } from "@/src/components/ActionButton";
 import { PlusIcon } from "lucide-react";
 import { DashboardWidgetTable } from "@/src/features/widgets";
+import { useTranslation } from "react-i18next";
 import {
   getDashboardTabs,
   DASHBOARD_TABS,
 } from "@/src/features/navigation/utils/dashboard-tabs";
 
 export default function Widgets() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { projectId } = router.query as { projectId: string };
   const capture = usePostHogClientCapture();
@@ -22,9 +24,9 @@ export default function Widgets() {
   return (
     <Page
       headerProps={{
-        title: "Widgets",
+        title: t("Widgets"),
         help: {
-          description: "Manage and create widgets for your dashboard.",
+          description: t("Manage and create widgets for your dashboard."),
           href: "https://litefuse.ai/docs/metrics/features/custom-dashboards",
         },
         tabsProps: {
@@ -41,7 +43,7 @@ export default function Widgets() {
               capture("dashboard:new_widget_form_open");
             }}
           >
-            New widget
+            {t("New widget")}
           </ActionButton>
         ),
       }}

@@ -10,12 +10,16 @@ import { HoverCardPortal } from "@radix-ui/react-hover-card";
 import Link from "next/link";
 import { usePostHogClientCapture } from "@/src/features/posthog-analytics/usePostHogClientCapture";
 
+import { i18nKey } from "@/src/features/i18n/i18nKey";
+import { useTranslation } from "react-i18next";
 const BUTTON_STATE_MESSAGES = {
-  limitReached: (current: number, max: number) =>
-    `You have reached the limit (${current}/${max}) for this resource at your current plan. Upgrade your plan to increase the limit.`,
-  noAccess:
+  limitReached: i18nKey(
+    "You have reached the limit ({{current}}/{{max}}) for this resource at your current plan. Upgrade your plan to increase the limit.",
+  ),
+  noAccess: i18nKey(
     "You do not have access to this resource, please ask your admin to grant you access.",
-  entitlement: "This feature is not available in your current plan.",
+  ),
+  entitlement: i18nKey("This feature is not available in your current plan."),
 } as const;
 
 interface ActionButtonProps extends ButtonProps {
@@ -53,6 +57,7 @@ export const ActionButton = React.forwardRef<
   },
   ref,
 ) {
+  const { t } = useTranslation();
   const capture = usePostHogClientCapture();
   const hasReachedLimit =
     typeof limit === "number" &&
@@ -62,14 +67,17 @@ export const ActionButton = React.forwardRef<
     disabled || !hasAccess || !hasEntitlement || hasReachedLimit;
 
   const getMessage = () => {
-    if (!hasAccess) return BUTTON_STATE_MESSAGES.noAccess;
-    if (!hasEntitlement) return BUTTON_STATE_MESSAGES.entitlement;
+    if (!hasAccess) return t(BUTTON_STATE_MESSAGES.noAccess);
+    if (!hasEntitlement) return t(BUTTON_STATE_MESSAGES.entitlement);
     if (
       hasReachedLimit &&
       typeof limit === "number" &&
       limitValue !== undefined
     ) {
-      return BUTTON_STATE_MESSAGES.limitReached(limitValue, limit);
+      return t(BUTTON_STATE_MESSAGES.limitReached, {
+        current: limitValue,
+        max: limit,
+      });
     }
     return null;
   };

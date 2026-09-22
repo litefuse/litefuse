@@ -8,6 +8,7 @@ import { CommandItem } from "@/src/components/ui/command";
 import { SetPromptVersionLabels } from "@/src/features/prompts/components/SetPromptVersionLabels";
 import { CommentCountIcon } from "@/src/features/comments/CommentCountIcon";
 
+import { useTranslation } from "react-i18next";
 const PromptHistoryTraceNode = (props: {
   index: number;
   prompt: RouterOutputs["prompts"]["allVersions"]["promptVersions"][number];
@@ -19,6 +20,7 @@ const PromptHistoryTraceNode = (props: {
   totalCount: number;
   commentCounts?: Map<string, number>;
 }) => {
+  const { t } = useTranslation();
   const [isHovered, setIsHovered] = useState(false);
   const [isPromptDiffOpen, setIsPromptDiffOpen] = useState(false);
   const [isLabelPopoverOpen, setIsLabelPopoverOpen] = useState(false);
@@ -145,8 +147,10 @@ const PromptHistoryTraceNode = (props: {
                 </div>
               )}
               <div className="text-muted-foreground flex flex-wrap gap-1 text-xs">
-                {prompt.createdAt.toLocaleString()} by{" "}
-                {prompt.creator || prompt.createdBy}
+                {t("{{time}} by {{author}}", {
+                  time: prompt.createdAt.toLocaleString(),
+                  author: prompt.creator || prompt.createdBy,
+                })}
               </div>
             </div>
             <div className="flex flex-row justify-end space-x-1">

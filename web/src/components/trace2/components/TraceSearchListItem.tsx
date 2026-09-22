@@ -13,6 +13,7 @@ import { cn } from "@/src/utils/tailwind";
 import { useTraceData } from "../contexts/TraceDataContext";
 import { formatIntervalSeconds } from "@/src/utils/dates";
 
+import { useTranslation } from "react-i18next";
 interface TraceSearchListItemProps {
   item: TraceSearchListItem;
   isSelected: boolean;
@@ -26,6 +27,7 @@ export function TraceSearchListItem({
   onSelect,
   onHover,
 }: TraceSearchListItemProps) {
+  const { t } = useTranslation();
   const { node, parentTotalCost, parentTotalDuration } = item;
   const { comments } = useTraceData();
 
@@ -59,9 +61,12 @@ export function TraceSearchListItem({
         {/* Temporal and depth context - only show for observations (not TRACE root) */}
         {node.type !== "TRACE" && (
           <div className="text-muted-foreground/70 text-xs">
-            depth {node.depth} • +{traceRelativeTime}
+            {t("depth {{depth}} • +{{time}}", {
+              depth: node.depth,
+              time: traceRelativeTime,
+            })}
             {parentRelativeTime !== null &&
-              ` • +${parentRelativeTime} from parent`}
+              ` ${t("• +{{time}} from parent", { time: parentRelativeTime })}`}
           </div>
         )}
       </div>

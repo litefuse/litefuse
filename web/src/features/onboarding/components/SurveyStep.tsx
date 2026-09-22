@@ -12,6 +12,7 @@ import { Label } from "@/src/components/ui/label";
 import type { Control, Path } from "react-hook-form";
 import type { SurveyQuestion, SurveyFormData } from "../lib/surveyTypes";
 
+import { useTranslation } from "react-i18next";
 const AUTO_ADVANCE_DELAY = 300;
 
 interface SurveyStepProps {
@@ -27,6 +28,7 @@ export function SurveyStep({
   onAutoAdvance,
   isLast = false,
 }: SurveyStepProps) {
+  const { t } = useTranslation();
   const fieldName = question.id as keyof SurveyFormData;
 
   const handleAutoAdvanceWithTimeout = (selectedValue?: string) => {
@@ -52,7 +54,7 @@ export function SurveyStep({
         render={({ field }) => (
           <FormItem className="flex flex-col gap-2">
             <FormLabel className="text-xl font-semibold">
-              {question.question}
+              {t(question.question)}
             </FormLabel>
             <FormControl>
               <RadioGroup
@@ -74,7 +76,7 @@ export function SurveyStep({
                     className="border-border hover:bg-muted/50 flex flex-1 cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm leading-none font-medium transition-colors peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
                     <RadioGroupItem value={option} id={option} />
-                    <span className="flex-1">{option}</span>
+                    <span className="flex-1">{t(option)}</span>
                   </Label>
                 ))}
               </RadioGroup>
@@ -95,14 +97,21 @@ export function SurveyStep({
         render={({ field }) => (
           <FormItem className="flex flex-col gap-2">
             <FormLabel className="text-xl font-semibold">
-              {question.question}
+              {t(question.question)}
             </FormLabel>
             <FormControl>
               {question.id === "referralSource" ? (
-                <Input placeholder={question.placeholder} {...field} />
+                <Input
+                  placeholder={
+                    question.placeholder ? t(question.placeholder) : undefined
+                  }
+                  {...field}
+                />
               ) : (
                 <Textarea
-                  placeholder={question.placeholder}
+                  placeholder={
+                    question.placeholder ? t(question.placeholder) : undefined
+                  }
                   className="min-h-[170px] resize-none"
                   {...field}
                 />

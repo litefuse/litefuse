@@ -13,6 +13,7 @@ import {
 } from "@/src/features/media/validation";
 import { File, Image as ImageIcon, Volume2 } from "lucide-react";
 
+import { useTranslation } from "react-i18next";
 export const LangfuseMediaView = ({
   mediaReferenceString,
   mediaAPIReturnValue,
@@ -22,6 +23,7 @@ export const LangfuseMediaView = ({
   mediaAPIReturnValue?: MediaReturnType;
   asFileIcon?: boolean;
 }) => {
+  const { t } = useTranslation();
   let mediaData: { id: string; type: MediaContentType } | null = null;
 
   const projectId = useProjectIdFromURL();
@@ -49,10 +51,12 @@ export const LangfuseMediaView = ({
   if (!mediaData)
     return (
       <div className="flex items-center gap-2">
-        <span title="Invalid Litefuse Media Tag">
+        <span title={t("Invalid Litefuse Media Tag")}>
           <ImageOff className="h-4 w-4" />
         </span>
-        <span className="truncate text-sm">Invalid Litefuse Media Tag</span>
+        <span className="truncate text-sm">
+          {t("Invalid Litefuse Media Tag")}
+        </span>
       </div>
     );
 
@@ -144,23 +148,25 @@ function FileViewer({
 }
 
 function AudioPlayer({ src }: { src?: string }) {
+  const { t } = useTranslation();
   if (!src) return null;
 
   return (
     <audio controls className="w-full" preload="metadata">
       <source src={src} />
-      Your browser does not support the audio element.
+      {t("Your browser does not support the audio element.")}
     </audio>
   );
 }
 
 function VideoPlayer({ src }: { src?: string }) {
+  const { t } = useTranslation();
   if (!src) return null;
 
   return (
     <video controls className="w-full" preload="metadata" playsInline>
       <source src={src} />
-      Your browser does not support the video element.
+      {t("Your browser does not support the video element.")}
     </video>
   );
 }

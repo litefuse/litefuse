@@ -15,6 +15,9 @@ import { AlertTriangle, ExternalLinkIcon, RefreshCcw } from "lucide-react";
 import Link from "next/link";
 import { Fragment } from "react";
 
+import { useTranslation } from "react-i18next";
+import { type TFunction } from "i18next";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 type EvaluatorPausedCalloutProps = {
   projectId: string;
   evalConfig: Pick<
@@ -25,33 +28,36 @@ type EvaluatorPausedCalloutProps = {
   };
 };
 
-const DEFAULT_BLOCK_MESSAGE =
-  "This evaluator is paused until its configuration is fixed and reactivated.";
+const DEFAULT_BLOCK_MESSAGE = i18nKey(
+  "This evaluator is paused until its configuration is fixed and reactivated.",
+);
 
 function getResolutionActionLabel(params: {
   blockReason: EvaluatorBlockReason;
   templateId?: string | null;
+  t: TFunction;
 }) {
-  const { blockReason, templateId } = params;
+  const { blockReason, templateId, t } = params;
 
   if (
     blockReason === EvaluatorBlockReason.LLM_CONNECTION_AUTH_INVALID ||
     blockReason === EvaluatorBlockReason.LLM_CONNECTION_MISSING
   ) {
-    return "Open LLM connections";
+    return t("Open LLM connections");
   }
 
   if (templateId) {
-    return "Open evaluator template";
+    return t("Open evaluator template");
   }
 
-  return "Open evaluators";
+  return t("Open evaluators");
 }
 
 export function EvaluatorPausedCallout({
   projectId,
   evalConfig,
 }: EvaluatorPausedCalloutProps) {
+  const { t } = useTranslation();
   const utils = api.useUtils();
   const calloutId = `eval-config-paused-${evalConfig.id}`;
 
@@ -59,12 +65,12 @@ export function EvaluatorPausedCallout({
     onSuccess: async () => {
       await utils.evals.invalidate();
       showSuccessToast({
-        title: "Evaluator reactivated",
-        description: "The evaluator is active again.",
+        title: t("Evaluator reactivated"),
+        description: t("The evaluator is active again."),
       });
     },
     onError: (error) => {
-      showErrorToast("Reactivation failed", error.message);
+      showErrorToast(t("Reactivation failed"), error.message);
     },
   });
 
@@ -83,8 +89,9 @@ export function EvaluatorPausedCallout({
   const resolutionActionLabel = getResolutionActionLabel({
     blockReason,
     templateId: evalConfig.evalTemplate?.id,
+    t,
   });
-  const blockMessage = evalConfig.blockMessage ?? DEFAULT_BLOCK_MESSAGE;
+  const blockMessage = t(evalConfig.blockMessage ?? DEFAULT_BLOCK_MESSAGE);
   const blockedAt = new Date(evalConfig.blockedAt);
   const blockedAtLabel = Number.isNaN(blockedAt.getTime())
     ? null
@@ -102,18 +109,18 @@ export function EvaluatorPausedCallout({
 
         <div className="min-w-0 flex-1">
           <h3 className="text-foreground text-base leading-5 font-medium">
-            Evaluator paused
+            {t("Evaluator paused")}
           </h3>
 
           <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-2 text-sm leading-5">
             <span className="text-muted-foreground font-medium">
-              {blockMetadata.shortLabel}
+              {t(blockMetadata.shortLabel)}
             </span>
             {blockedAtLabel ? (
               <Fragment>
                 <span className="bg-border h-1 w-1 rounded-full" />
                 <span title={blockedAt.toLocaleString()}>
-                  Paused {blockedAtLabel}
+                  {t("Paused {{when}}", { when: blockedAtLabel })}
                 </span>
               </Fragment>
             ) : null}
@@ -151,7 +158,7 @@ export function EvaluatorPausedCallout({
               className="h-8 px-3"
             >
               <RefreshCcw className="mr-1.5 h-3.5 w-3.5" />
-              Reactivate
+              {t("Reactivate")}
             </Button>
           </div>
         </div>

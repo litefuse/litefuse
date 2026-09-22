@@ -11,6 +11,7 @@ import { EvaluatorPausedCallout } from "@/src/features/evals/components/evaluato
 import { type EvaluatorExecutionStatusCount } from "@langfuse/shared";
 import { useLazyEvaluatorExecutionCounts } from "@/src/features/evals/hooks/useLazyEvaluatorExecutionCounts";
 
+import { useTranslation } from "react-i18next";
 const JobExecutionCounts = ({
   isLoading,
   jobExecutionCounts,
@@ -27,6 +28,7 @@ const JobExecutionCounts = ({
 };
 
 export const EvaluatorDetail = () => {
+  const { t } = useTranslation();
   const router = useRouter();
   const projectId = router.query.projectId as string;
   const evaluatorId = router.query.evaluatorId as string;
@@ -60,11 +62,11 @@ export const EvaluatorDetail = () => {
     allTemplates.isLoading ||
     !allTemplates.data
   ) {
-    return <div className="p-3">Loading...</div>;
+    return <div className="p-3">{t("Loading...")}</div>;
   }
 
   if (evaluator.data && evaluator.data.evalTemplate === null) {
-    return <div>Evaluator not found</div>;
+    return <div>{t("Evaluator not found")}</div>;
   }
 
   const existingEvaluator =
@@ -85,11 +87,11 @@ export const EvaluatorDetail = () => {
       headerProps={{
         title: evaluator.data
           ? `${evaluator.data.scoreName}: ${evaluator.data.id}`
-          : "Loading...",
+          : t("Loading..."),
         itemType: "EVALUATOR",
         breadcrumb: [
           {
-            name: "LLM-as-a-Judge Evaluators",
+            name: t("LLM-as-a-Judge Evaluators"),
             href: `/project/${router.query.projectId as string}/evals`,
           },
         ],

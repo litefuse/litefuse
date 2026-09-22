@@ -1,13 +1,15 @@
+import { useTranslation } from "react-i18next";
 interface Statistic {
   name: string;
   stat: string;
 }
 
 export default function StatsCards({ stats }: { stats: Statistic[] }) {
+  const { t } = useTranslation();
   return (
     <div>
       <h3 className="text-primary text-base leading-6 font-semibold">
-        Model configuration
+        {t("Model configuration")}
       </h3>
       <dl className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-4">
         {stats.map((item) => (

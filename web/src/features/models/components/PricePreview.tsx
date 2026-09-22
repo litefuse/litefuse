@@ -3,11 +3,13 @@ import Decimal from "decimal.js";
 import { PriceMapSchema } from "@/src/features/models/validation";
 import { getMaxDecimals } from "@/src/features/models/utils";
 
+import { useTranslation } from "react-i18next";
 export function PricePreview({
   prices,
 }: {
   prices: Record<string, number | undefined>;
 }) {
+  const { t } = useTranslation();
   const parsedPrices = PriceMapSchema.safeParse(prices);
 
   const getMaxDecimalsForPriceGroup = (
@@ -28,17 +30,17 @@ export function PricePreview({
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <h4 className="text-muted-foreground text-sm font-medium">
-            Price Preview
+            {t("Price Preview")}
           </h4>
         </div>
 
         {parsedPrices.success ? (
           <div className="space-y-2">
             <div className="border-border text-muted-foreground grid grid-cols-[2fr_1fr_1fr_1fr] gap-2 border-b pb-2 text-xs font-medium">
-              <span>Usage Type</span>
-              <span className="text-right">per unit</span>
-              <span className="text-right">per 1K</span>
-              <span className="text-right">per 1M</span>
+              <span>{t("Usage Type")}</span>
+              <span className="text-right">{t("per unit")}</span>
+              <span className="text-right">{t("per 1K")}</span>
+              <span className="text-right">{t("per 1M")}</span>
             </div>
 
             {Object.entries(parsedPrices.data)
@@ -72,7 +74,7 @@ export function PricePreview({
           </div>
         ) : (
           <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">
-            Invalid price entries. Please check your input format.
+            {t("Invalid price entries. Please check your input format.")}
           </div>
         )}
       </div>

@@ -14,7 +14,9 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { decomposeAggregateScoreKey } from "@/src/features/scores/lib/aggregateScores";
 
+import { useTranslation } from "react-i18next";
 export const AnnotationPanel = ({ projectId }: { projectId: string }) => {
+  const { t } = useTranslation();
   const [hasCommentDraft, setHasCommentDraft] = useState(false);
   const { activeCell, clearActiveCell } = useActiveCell();
 
@@ -74,7 +76,9 @@ export const AnnotationPanel = ({ projectId }: { projectId: string }) => {
                   onClick={() => {
                     if (hasCommentDraft)
                       toast.error(
-                        "Please save or discard your comment before proceeding",
+                        t(
+                          "Please save or discard your comment before proceeding",
+                        ),
                       );
                     else clearActiveCell();
                   }}
@@ -85,8 +89,9 @@ export const AnnotationPanel = ({ projectId }: { projectId: string }) => {
             />
             {hasNonAnnotationScores && (
               <div className="text-muted-foreground mt-4 text-xs">
-                API and eval scores visible on left. Add manual annotations
-                above.
+                {t(
+                  "API and eval scores visible on left. Add manual annotations above.",
+                )}
               </div>
             )}
           </>

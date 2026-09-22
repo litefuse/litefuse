@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/src/components/ui/card";
 import { cn } from "@/src/utils/tailwind";
 import { diffLines as calculateDiffLines, diffWords } from "diff";
 
+import { useTranslation } from "react-i18next";
 type DiffSegmentPart = {
   value: string;
   type?: "unchanged" | "removed" | "added" | "empty";
@@ -98,6 +99,7 @@ const DiffViewer: React.FC<DiffViewerProps> = ({
   newSubLabel,
   className,
 }) => {
+  const { t } = useTranslation();
   const [diffLines, setDiffLines] = useState<{
     left: DiffSegment[];
     right: DiffSegment[];
@@ -192,7 +194,9 @@ const DiffViewer: React.FC<DiffViewerProps> = ({
   };
 
   if (oldString === newString) {
-    return <div className="text-muted-foreground text-sm">No changes</div>;
+    return (
+      <div className="text-muted-foreground text-sm">{t("No changes")}</div>
+    );
   }
 
   return (

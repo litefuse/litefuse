@@ -10,6 +10,7 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { type UniqueIdentifier } from "@dnd-kit/core";
 import type { CsvColumnPreview } from "@/src/features/datasets/lib/csv/types";
 
+import { useTranslation } from "react-i18next";
 type ImportCardProps = {
   title: string;
   columns: CsvColumnPreview[];
@@ -98,6 +99,7 @@ export function ImportCard({
   schemaKeys,
   schemaKeyMapping,
 }: ImportCardProps) {
+  const { t } = useTranslation();
   const { setNodeRef, isOver } = useDroppable({
     id,
   });
@@ -137,7 +139,7 @@ export function ImportCard({
           <>
             {columns.length === 0 && id !== "unmapped" ? (
               <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
-                Drag columns here
+                {t("Drag columns here")}
               </div>
             ) : (
               columns.map((column) => (

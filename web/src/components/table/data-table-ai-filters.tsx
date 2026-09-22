@@ -14,6 +14,7 @@ import { useHasOrganizationAccess } from "@/src/features/rbac/utils/checkOrganiz
 import { api } from "@/src/utils/api";
 import { type FilterState } from "@langfuse/shared";
 
+import { useTranslation } from "react-i18next";
 interface DataTableAIFiltersProps {
   onFiltersGenerated: (filters: FilterState) => void;
 }
@@ -21,6 +22,7 @@ interface DataTableAIFiltersProps {
 export function DataTableAIFilters({
   onFiltersGenerated,
 }: DataTableAIFiltersProps) {
+  const { t } = useTranslation();
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiError, setAiError] = useState<string | null>(null);
   const projectId = useProjectIdFromURL();
@@ -70,10 +72,11 @@ export function DataTableAIFilters({
     return (
       <div className="flex flex-col gap-3">
         <p className="text-muted-foreground text-sm">
-          AI-powered filters use natural language to generate deterministic
-          filters.
+          {t(
+            "AI-powered filters use natural language to generate deterministic filters.",
+          )}
           {!hasAdminAccess &&
-            " Ask your organization administrator to enable AI features in organization settings."}
+            ` ${t("Ask your organization administrator to enable AI features in organization settings.")}`}
         </p>
         {hasAdminAccess && organization?.id && (
           <Button
@@ -87,7 +90,7 @@ export function DataTableAIFilters({
             size="sm"
             className="w-fit"
           >
-            Enable in Organization Settings
+            {t("Enable in Organization Settings")}
             <ExternalLink className="ml-2 h-4 w-4" />
           </Button>
         )}
@@ -99,7 +102,7 @@ export function DataTableAIFilters({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
-        <span className="text-sm font-medium">Filter with AI</span>
+        <span className="text-sm font-medium">{t("Filter with AI")}</span>
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -107,8 +110,9 @@ export function DataTableAIFilters({
             </TooltipTrigger>
             <TooltipContent>
               <p className="text-xs">
-                We convert natural language into deterministic filters which you
-                can adjust afterwards
+                {t(
+                  "We convert natural language into deterministic filters which you can adjust afterwards",
+                )}
               </p>
             </TooltipContent>
           </Tooltip>
@@ -121,7 +125,7 @@ export function DataTableAIFilters({
           setAiPrompt(e.target.value);
           if (aiError) setAiError(null);
         }}
-        placeholder="Describe the filters you want to apply..."
+        placeholder={t("Describe the filters you want to apply...")}
         className="min-h-[80px] resize-none"
         disabled={createFilterMutation.isPending}
         onKeyDown={(e) => {
@@ -143,7 +147,7 @@ export function DataTableAIFilters({
         disabled={createFilterMutation.isPending || !aiPrompt.trim()}
         className="w-fit"
       >
-        {createFilterMutation.isPending ? "Loading..." : "Generate"}
+        {createFilterMutation.isPending ? t("Loading...") : t("Generate")}
       </Button>
       {aiError && (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">

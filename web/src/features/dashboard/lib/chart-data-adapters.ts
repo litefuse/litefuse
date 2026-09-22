@@ -1,3 +1,4 @@
+import { getRuntimeLocale } from "@/src/features/i18n/runtimeLocale";
 /**
  * Adapters that transform data prepared for tremor-v4-chart to the recharts chart library data format.
  * This can be removed once we have converted all data API calls to the DataPoint format that recharts expects.
@@ -22,36 +23,36 @@ function convertDate(
 
   switch (dateTrunc) {
     case "minute":
-      return parsedDate.toLocaleTimeString("en-US", {
+      return parsedDate.toLocaleTimeString(getRuntimeLocale(), {
         hour: "numeric",
         minute: "2-digit",
       });
     case "hour":
       if (minutes && minutes <= 24 * 60) {
-        return parsedDate.toLocaleString("en-US", {
+        return parsedDate.toLocaleString(getRuntimeLocale(), {
           month: "numeric",
           day: "numeric",
           hour: "numeric",
         });
       }
-      return parsedDate.toLocaleString("en-US", {
+      return parsedDate.toLocaleString(getRuntimeLocale(), {
         month: "numeric",
         day: "numeric",
         hour: "numeric",
       });
     case "day":
     case "week":
-      return parsedDate.toLocaleDateString("en-US", {
+      return parsedDate.toLocaleDateString(getRuntimeLocale(), {
         month: "short",
         day: "numeric",
       });
     case "month":
-      return parsedDate.toLocaleDateString("en-US", {
+      return parsedDate.toLocaleDateString(getRuntimeLocale(), {
         month: "short",
         year: "numeric",
       });
     default:
-      return parsedDate.toLocaleDateString("en-US", {
+      return parsedDate.toLocaleDateString(getRuntimeLocale(), {
         month: "numeric",
         day: "numeric",
       });

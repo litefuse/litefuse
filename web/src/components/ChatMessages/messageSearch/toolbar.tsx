@@ -15,7 +15,9 @@ import { cn } from "@/src/utils/tailwind";
 
 import { useMessageSearch } from "./context";
 
+import { useTranslation } from "react-i18next";
 export function MessageSearchToolbar({ className }: { className?: string }) {
+  const { t } = useTranslation();
   const {
     isOpen,
     openRequestCount,
@@ -47,10 +49,10 @@ export function MessageSearchToolbar({ className }: { className?: string }) {
         size="sm"
         className={cn("h-8 gap-2", className)}
         onClick={openSearch}
-        aria-label="Find in messages"
+        aria-label={t("Find in messages")}
       >
         <Search className="h-3.5 w-3.5" />
-        <span className="hidden lg:inline">Find</span>
+        <span className="hidden lg:inline">{t("Find")}</span>
       </Button>
     );
   }
@@ -72,7 +74,7 @@ export function MessageSearchToolbar({ className }: { className?: string }) {
         ref={inputRef}
         value={queryInput}
         onChange={(event) => setQueryInput(event.target.value)}
-        placeholder="Find in messages"
+        placeholder={t("Find in messages")}
         className="h-6 min-w-40 border-0 px-1 text-xs shadow-none focus-visible:ring-0 sm:min-w-56"
         onKeyDown={(event) => {
           if (event.key === "Enter") {
@@ -99,20 +101,20 @@ export function MessageSearchToolbar({ className }: { className?: string }) {
       </div>
       <IconButton
         icon={ChevronUp}
-        label="Previous result"
+        label={t("Previous result")}
         onClick={previousMatch}
         disabled={matches.length === 0}
       />
       <IconButton
         icon={ChevronDown}
-        label="Next result"
+        label={t("Next result")}
         onClick={nextMatch}
         disabled={matches.length === 0}
       />
       <div className="text-muted-foreground hidden max-w-48 truncate px-1 text-xs lg:block">
-        {activeMatch?.locationLabel ?? "No matches"}
+        {activeMatch?.locationLabel ?? t("No matches")}
       </div>
-      <IconButton icon={X} label="Close search" onClick={closeSearch} />
+      <IconButton icon={X} label={t("Close search")} onClick={closeSearch} />
     </div>
   );
 }

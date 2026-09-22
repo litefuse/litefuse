@@ -4,7 +4,9 @@ import Link from "next/link";
 import { SidebarMenuButton } from "@/src/components/ui/sidebar";
 import { useLangfuseCloudRegion } from "@/src/features/organizations/hooks";
 
+import { useTranslation } from "react-i18next";
 export function CloudStatusMenu() {
+  const { t } = useTranslation();
   const { isLangfuseCloud } = useLangfuseCloudRegion();
   const { data, isLoading } = api.cloudStatus.getStatus.useQuery(undefined, {
     refetchOnMount: false,
@@ -27,7 +29,7 @@ export function CloudStatusMenu() {
   }
 
   return (
-    <SidebarMenuButton asChild tooltip="Status">
+    <SidebarMenuButton asChild tooltip={t("Status")}>
       <Link
         href="https://status.litefuse.ai"
         target="_blank"
@@ -45,7 +47,7 @@ export function CloudStatusMenu() {
             )}
           ></span>
         </div>
-        Status
+        {t("Status")}
       </Link>
     </SidebarMenuButton>
   );

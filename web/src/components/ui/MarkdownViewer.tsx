@@ -39,6 +39,10 @@ import DOMPurify from "dompurify";
 import { MENTION_USER_PREFIX } from "@/src/features/comments/lib/mentionParser";
 import { useCollapsibleSystemPrompt } from "@/src/hooks/useCollapsibleSystemPrompt";
 import { Button } from "@/src/components/ui/button";
+import { useTranslation } from "react-i18next";
+
+/** Format marker for an inline data URI, not prose. */
+const BASE64_DATA_URI_LABEL = "<Base64 data URI>";
 import {
   getPromptReferenceMarkdownHref,
   getPromptReferenceMarkdownLabel,
@@ -231,6 +235,7 @@ function MarkdownRenderer({
   className?: string;
   customCodeHeaderClassName?: string;
 }) {
+  const { t } = useTranslation();
   const promptReferenceProjectId = usePromptReferenceProjectId();
 
   // Try to parse markdown content
@@ -416,7 +421,7 @@ function MarkdownRenderer({
       <>
         <div className="text-muted-foreground flex items-center gap-1 text-xs">
           <Info className="h-3 w-3" />
-          Markdown parsing failed. Displaying raw JSON.
+          {t("Markdown parsing failed. Displaying raw JSON.")}
         </div>
         <JSONView json={markdown} className="min-w-0" />
       </>
@@ -442,6 +447,7 @@ const parseOpenAIContentParts = (
 export function MarkdownView({
   markdown,
   title,
+  titleKey,
   titleIcon,
   customCodeHeaderClassName,
   audio,
@@ -452,6 +458,12 @@ export function MarkdownView({
 }: {
   markdown: string | z.infer<typeof OpenAIContentSchema>;
   title?: string;
+  /**
+   * Locale-independent role used to pick the panel background ("Input",
+   * "Output", "assistant", "system", ...). The visible `title` is translated,
+   * so it must never be compared against; pass this alongside it.
+   */
+  titleKey?: string;
   titleIcon?: React.ReactNode;
   customCodeHeaderClassName?: string;
   audio?: OpenAIOutputAudioType;
@@ -461,6 +473,9 @@ export function MarkdownView({
   /** Content to render between header and main content (e.g., thinking blocks) */
   afterHeader?: React.ReactNode;
 }) {
+  const { t } = useTranslation();
+  // The visible title is translated, so the role has to come from titleKey.
+  const panelRole = titleKey ?? title;
   const capture = usePostHogClientCapture();
   const { resolvedTheme: theme } = useTheme();
   const { setIsMarkdownEnabled } = useMarkdownContext();
@@ -507,10 +522,12 @@ export function MarkdownView({
       <div
         className={cn(
           "io-message-content grid grid-flow-row gap-2 px-1 py-2",
-          title === "assistant" || title === "Output" || title === "Model"
+          panelRole === "assistant" ||
+            panelRole === "Output" ||
+            panelRole === "Model"
             ? "bg-accent-light-green"
             : "",
-          title === "system" || title === "Input"
+          panelRole === "system" || panelRole === "Input"
             ? "bg-primary-foreground"
             : "",
           className,
@@ -534,8 +551,8 @@ export function MarkdownView({
                 className="w-fit text-xs underline"
               >
                 {isCollapsed
-                  ? "Expand system prompt"
-                  : "Collapse system prompt"}
+                  ? t("Expand system prompt")
+                  : t("Collapse system prompt")}
               </Button>
             )}
           </>
@@ -561,7 +578,7 @@ export function MarkdownView({
                 />
               ) : (
                 <div className="grid grid-cols-[auto_1fr] items-center gap-2">
-                  <span title="<Base64 data URI>" className="h-4 w-4">
+                  <span title={BASE64_DATA_URI_LABEL} className="h-4 w-4">
                     <ImageOff className="h-4 w-4" />
                   </span>
                   <span className="truncate text-sm">
@@ -592,7 +609,7 @@ export function MarkdownView({
       {media && media.length > 0 && (
         <>
           <div className="text-muted-foreground mx-3 border-t px-2 py-1 text-xs">
-            Media
+            {t("Media")}
           </div>
           <div className="flex flex-wrap gap-2 p-4 pt-1">
             {media.map((m) => (

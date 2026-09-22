@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/src/components/ui/tabs";
 import useLocalStorage from "@/src/components/useLocalStorage";
 import { useState } from "react";
 
+import { useTranslation } from "react-i18next";
 // Tool definition extracted from messages
 export interface ToolDefinition {
   name: string;
@@ -36,6 +37,7 @@ export function ToolCallDefinitionCard({
   toolNameToDefinitionNumber,
   className,
 }: ToolCallDefinitionCardProps) {
+  const { t } = useTranslation();
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [currentView, setCurrentView] = useLocalStorage<"formatted" | "json">(
     "toolCallPillViewPreference",
@@ -55,10 +57,10 @@ export function ToolCallDefinitionCard({
         const toolDefinitionNumber = toolNameToDefinitionNumber?.get(tool.name);
         const statusText =
           callCount === 0
-            ? "not called"
+            ? t("not called")
             : callCount === 1
-              ? "called"
-              : `called ${callCount}x`;
+              ? t("called")
+              : t("called {{count}}x", { count: callCount });
 
         return (
           <div
@@ -122,7 +124,7 @@ export function ToolCallDefinitionCard({
                         value="formatted"
                         className="h-fit px-1 text-xs"
                       >
-                        Formatted
+                        {t("Formatted")}
                       </TabsTrigger>
                       <TabsTrigger value="json" className="h-fit px-1 text-xs">
                         JSON
@@ -138,7 +140,7 @@ export function ToolCallDefinitionCard({
                     {tool.description && (
                       <div>
                         <div className="text-muted-foreground mb-1.5 text-xs font-medium">
-                          Description
+                          {t("Description")}
                         </div>
                         <div className="text-foreground text-sm">
                           {tool.description}
@@ -150,7 +152,7 @@ export function ToolCallDefinitionCard({
                     {tool.parameters && (
                       <div>
                         <div className="text-muted-foreground mb-1.5 text-xs font-medium">
-                          Parameters
+                          {t("Parameters")}
                         </div>
                         <PrettyJsonView
                           json={tool.parameters}
@@ -163,7 +165,7 @@ export function ToolCallDefinitionCard({
                     {/* Show message if no additional details */}
                     {!tool.description && !tool.parameters && (
                       <div className="text-muted-foreground text-sm">
-                        No additional details available
+                        {t("No additional details available")}
                       </div>
                     )}
                   </div>

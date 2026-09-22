@@ -4,6 +4,7 @@ import { Button } from "@/src/components/ui/button";
 import { Alert, AlertDescription } from "@/src/components/ui/alert";
 import { api } from "@/src/utils/api";
 
+import { useTranslation } from "react-i18next";
 interface AutomationFailureBannerProps {
   projectId: string;
   automationId: string;
@@ -12,6 +13,7 @@ interface AutomationFailureBannerProps {
 export const AutomationFailureBanner: React.FC<
   AutomationFailureBannerProps
 > = ({ projectId, automationId }) => {
+  const { t } = useTranslation();
   const [dismissed, setDismissed] = React.useState(false);
 
   const { data: failureData } =
@@ -30,12 +32,15 @@ export const AutomationFailureBanner: React.FC<
       <AlertDescription className="flex items-center justify-between">
         <div className="flex-1">
           <strong>
-            This automation was automatically disabled due to at least{" "}
-            {failureData.count} consecutive webhook failures.
+            {t(
+              "This automation was automatically disabled due to at least {{count}} consecutive webhook failures.",
+              { count: failureData.count },
+            )}
           </strong>
           <div className="mt-2 text-sm">
-            Check the execution history below, fix any issues with your webhook
-            endpoint, then reactivate the automation.
+            {t(
+              "Check the execution history below, fix any issues with your webhook endpoint, then reactivate the automation.",
+            )}
           </div>
         </div>
         <Button

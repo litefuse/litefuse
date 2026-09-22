@@ -11,6 +11,7 @@ import { useRouter } from "next/router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { useTranslation } from "react-i18next";
 type BillingSettingsProps = { orgId: string };
 type PurchasablePlan = "cloud:pro";
 
@@ -47,6 +48,7 @@ function formatDate(value: Date | string | null | undefined) {
 }
 
 export function BillingSettings({ orgId }: BillingSettingsProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const utils = api.useUtils();
   const [pendingPlan, setPendingPlan] = useState<PurchasablePlan | null>(null);
@@ -87,7 +89,7 @@ export function BillingSettings({ orgId }: BillingSettingsProps) {
     onSuccess: async () => {
       setPendingPlan(null);
       await refresh();
-      toast.success("Billing plan updated.");
+      toast.success(t("Billing plan updated."));
     },
     onError: () => setPendingPlan(null),
   });
@@ -97,7 +99,7 @@ export function BillingSettings({ orgId }: BillingSettingsProps) {
       portalTabRef.current = null;
 
       if (!portalTab || portalTab.closed) {
-        toast.error("The billing portal tab was closed. Please try again.");
+        toast.error(t("The billing portal tab was closed. Please try again."));
         return;
       }
 
@@ -121,7 +123,7 @@ export function BillingSettings({ orgId }: BillingSettingsProps) {
   if (billingStatus.isLoading) {
     return (
       <div className="flex flex-col gap-6">
-        <Header title="Billing" />
+        <Header title={t("Billing")} />
         <Skeleton className="h-32 w-full" />
         <Skeleton className="h-48 w-full" />
       </div>
@@ -153,13 +155,13 @@ export function BillingSettings({ orgId }: BillingSettingsProps) {
 
   const openPortal = () => {
     if (!hasCustomer) {
-      toast.error("No Stripe customer exists for this organization yet.");
+      toast.error(t("No Stripe customer exists for this organization yet."));
       return;
     }
 
     const portalTab = window.open("about:blank", "_blank");
     if (!portalTab) {
-      toast.error("Allow pop-ups to open the billing portal.");
+      toast.error(t("Allow pop-ups to open the billing portal."));
       return;
     }
 
@@ -170,66 +172,74 @@ export function BillingSettings({ orgId }: BillingSettingsProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <Header title="Billing" />
+      <Header title={t("Billing")} />
 
       {router.query.checkout === "success" ? (
         <Alert>
           <CreditCard className="h-4 w-4" />
-          <AlertTitle>Checkout completed</AlertTitle>
+          <AlertTitle>{t("Checkout completed")}</AlertTitle>
           <AlertDescription>
-            Stripe will confirm the subscription by webhook shortly.
+            {t("Stripe will confirm the subscription by webhook shortly.")}
           </AlertDescription>
         </Alert>
       ) : null}
       {router.query.checkout === "cancelled" ? (
         <Alert>
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Checkout cancelled</AlertTitle>
-          <AlertDescription>No billing changes were made.</AlertDescription>
+          <AlertTitle>{t("Checkout cancelled")}</AlertTitle>
+          <AlertDescription>
+            {t("No billing changes were made.")}
+          </AlertDescription>
         </Alert>
       ) : null}
       {isPastDue ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Payment needs attention</AlertTitle>
+          <AlertTitle>{t("Payment needs attention")}</AlertTitle>
           <AlertDescription>
-            Paid access remains enabled during Stripe&apos;s recovery period.
-            Update the payment method to avoid a downgrade.
+            {t(
+              "Paid access remains enabled during Stripe's recovery period. Update the payment method to avoid a downgrade.",
+            )}
           </AlertDescription>
         </Alert>
       ) : null}
       {usage?.state === "BLOCKED" ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Developer usage limit reached</AlertTitle>
+          <AlertTitle>{t("Developer usage limit reached")}</AlertTitle>
           <AlertDescription>
-            New ingestion is paused until the next billing cycle or an upgrade.
+            {t(
+              "New ingestion is paused until the next billing cycle or an upgrade.",
+            )}
           </AlertDescription>
         </Alert>
       ) : null}
       {!data?.isCloudBillingConfigured ? (
         <Alert>
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Stripe is not configured</AlertTitle>
+          <AlertTitle>{t("Stripe is not configured")}</AlertTitle>
           <AlertDescription>
-            Configure the Stripe price and webhook variables to enable checkout.
+            {t(
+              "Configure the Stripe price and webhook variables to enable checkout.",
+            )}
           </AlertDescription>
         </Alert>
       ) : null}
       {configurationIssues.length > 0 ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Stripe price configuration is invalid</AlertTitle>
+          <AlertTitle>{t("Stripe price configuration is invalid")}</AlertTitle>
           <AlertDescription>{configurationIssues.join(" ")}</AlertDescription>
         </Alert>
       ) : null}
       {isManualPlanOverride ? (
         <Alert>
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Billing is managed manually</AlertTitle>
+          <AlertTitle>{t("Billing is managed manually")}</AlertTitle>
           <AlertDescription>
-            Contact support to change this organization&apos;s plan or billing
-            details.
+            {t(
+              "Contact support to change this organization's plan or billing details.",
+            )}
           </AlertDescription>
         </Alert>
       ) : null}
@@ -237,20 +247,23 @@ export function BillingSettings({ orgId }: BillingSettingsProps) {
       <section className="bg-background rounded-lg border">
         <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h3 className="text-base font-semibold">Current plan</h3>
+            <h3 className="text-base font-semibold">{t("Current plan")}</h3>
             <p className="text-muted-foreground text-sm">
-              Billing and included units are shared by every project in this
-              organization.
+              {t(
+                "Billing and included units are shared by every project in this organization.",
+              )}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Badge variant={plan === "cloud:developer" ? "secondary" : "success"}>
+            <Badge
+              variant={plan === "cloud:developer" ? "secondary" : "success"}
+            >
               {planLabels[plan as Plan]}
             </Badge>
             {status ? (
               <Badge variant={isPastDue ? "warning" : "outline-solid"}>
                 {data?.stripe.cancelAtPeriodEnd
-                  ? "Cancels at period end"
+                  ? t("Cancels at period end")
                   : (statusCopy[status] ?? status)}
               </Badge>
             ) : null}
@@ -261,23 +274,38 @@ export function BillingSettings({ orgId }: BillingSettingsProps) {
             <div className="mb-2 flex justify-between text-sm">
               <span>
                 {numberFormatter.format(usage?.currentUnits ?? 0)} /{" "}
-                {numberFormatter.format(usage?.includedUnits ?? 100_000)} units
+                {t("{{amount}} units", {
+                  amount: numberFormatter.format(
+                    usage?.includedUnits ?? 100_000,
+                  ),
+                })}
               </span>
-              <span>Resets {formatDate(data?.billingCycle.end)}</span>
+              <span>
+                {t("Resets {{date}}", {
+                  date: formatDate(data?.billingCycle.end),
+                })}
+              </span>
             </div>
             <Progress value={usagePercent} />
             {usage?.reportedUnits !== null &&
             usage?.reportedUnits !== undefined ? (
               <p className="text-muted-foreground mt-2 text-xs">
-                Reported to Stripe:{" "}
-                {numberFormatter.format(usage.reportedUnits)} units · Pending:{" "}
-                {numberFormatter.format(usage.pendingUnits ?? 0)} units
+                {t(
+                  "Reported to Stripe: {{reported}} units · Pending: {{pending}} units",
+                  {
+                    reported: numberFormatter.format(usage.reportedUnits),
+                    pending: numberFormatter.format(usage.pendingUnits ?? 0),
+                  },
+                )}
               </p>
             ) : null}
             {(usage?.overageUnits ?? 0) > 0 ? (
               <p className="text-muted-foreground mt-2 text-xs">
-                Estimated overage before discounts:{" "}
-                {currencyFormatter.format(usage?.estimatedOverageUsd ?? 0)}
+                {t("Estimated overage before discounts: {{amount}}", {
+                  amount: currencyFormatter.format(
+                    usage?.estimatedOverageUsd ?? 0,
+                  ),
+                })}
               </p>
             ) : null}
           </div>
@@ -292,7 +320,7 @@ export function BillingSettings({ orgId }: BillingSettingsProps) {
             }
           >
             <ExternalLink className="mr-2 h-4 w-4" />
-            Payment methods & invoices
+            {t("Payment methods & invoices")}
           </Button>
         </div>
       </section>
@@ -300,11 +328,13 @@ export function BillingSettings({ orgId }: BillingSettingsProps) {
       {data?.stripe.scheduledPlan ? (
         <Alert>
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Scheduled billing change</AlertTitle>
+          <AlertTitle>{t("Scheduled billing change")}</AlertTitle>
           <AlertDescription className="flex flex-wrap items-center gap-3">
             <span>
-              {planLabels[data.stripe.scheduledPlan]} begins on{" "}
-              {formatDate(data.stripe.currentPeriodEnd)}.
+              {t("{{plan}} begins on {{date}}.", {
+                plan: planLabels[data.stripe.scheduledPlan],
+                date: formatDate(data.stripe.currentPeriodEnd),
+              })}
             </span>
             <Button
               size="sm"
@@ -312,7 +342,7 @@ export function BillingSettings({ orgId }: BillingSettingsProps) {
               onClick={() => clearScheduleMutation.mutate({ orgId })}
               loading={clearScheduleMutation.isPending}
             >
-              Keep current plan
+              {t("Keep current plan")}
             </Button>
           </AlertDescription>
         </Alert>
@@ -320,19 +350,21 @@ export function BillingSettings({ orgId }: BillingSettingsProps) {
 
       <section className="grid gap-4 lg:grid-cols-3">
         <PlanCard
-          title="Developer"
-          price="Free"
-          description="For individual projects and proofs of concept."
+          title={t("Developer")}
+          price={t("Free")}
+          description={t("For individual projects and proofs of concept.")}
           features={["100k units each month", "30 days data access", "2 users"]}
           current={plan === "cloud:developer"}
         />
         <PlanCard
-          title="Pro"
-          price="$199 / month"
-          description="For projects that need scale and longer history."
+          title={t("Pro")}
+          price={t("$199 / month")}
+          description={t("For projects that need scale and longer history.")}
           features={proFeatures}
           current={plan === "cloud:pro"}
-          actionLabel={hasSubscription ? "Switch to Pro" : "Upgrade to Pro"}
+          actionLabel={
+            hasSubscription ? t("Switch to Pro") : t("Upgrade to Pro")
+          }
           onAction={() => selectPlan("cloud:pro")}
           loading={pendingPlan === "cloud:pro"}
           disabled={!availablePlans.has("cloud:pro") || isManualPlanOverride}
@@ -341,9 +373,13 @@ export function BillingSettings({ orgId }: BillingSettingsProps) {
 
       {hasSubscription && !isManualPlanOverride ? (
         <section className="bg-background rounded-lg border p-4">
-          <h3 className="text-sm font-semibold">Subscription lifecycle</h3>
+          <h3 className="text-sm font-semibold">
+            {t("Subscription lifecycle")}
+          </h3>
           <p className="text-muted-foreground mb-4 text-sm">
-            Cancellation takes effect at the end of the current billing period.
+            {t(
+              "Cancellation takes effect at the end of the current billing period.",
+            )}
           </p>
           {data?.stripe.cancelAtPeriodEnd ? (
             <Button
@@ -351,7 +387,7 @@ export function BillingSettings({ orgId }: BillingSettingsProps) {
               onClick={() => reactivateMutation.mutate({ orgId })}
               loading={reactivateMutation.isPending}
             >
-              Reactivate subscription
+              {t("Reactivate subscription")}
             </Button>
           ) : (
             <Button
@@ -359,7 +395,7 @@ export function BillingSettings({ orgId }: BillingSettingsProps) {
               onClick={() => cancelMutation.mutate({ orgId })}
               loading={cancelMutation.isPending}
             >
-              Cancel at period end
+              {t("Cancel at period end")}
             </Button>
           )}
         </section>
@@ -380,12 +416,15 @@ function PlanCard(props: {
   loading?: boolean;
   disabled?: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <article className="bg-background flex flex-col rounded-lg border p-4">
       <div className="mb-4">
         <div className="flex items-center justify-between gap-2">
           <h3 className="font-semibold">{props.title}</h3>
-          {props.current ? <Badge variant="success">Current</Badge> : null}
+          {props.current ? (
+            <Badge variant="success">{t("Current")}</Badge>
+          ) : null}
         </div>
         <p className="mt-1 text-lg font-semibold">{props.price}</p>
         <p className="text-muted-foreground mt-1 text-sm">

@@ -1,3 +1,4 @@
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 import {
   extractValueFromObject,
   type BatchActionQuery,
@@ -27,6 +28,9 @@ export function stringifyPreviewValue(value: unknown): string {
   }
 }
 
+/** Returned in place of a preview; the caller translates it. */
+export const TEMPLATE_HAS_NO_PROMPT = i18nKey("Template has no prompt.");
+
 export function renderPromptPreviewFromObservation(params: {
   prompt: string | null | undefined;
   variableMapping: ObservationVariableMapping[];
@@ -35,7 +39,7 @@ export function renderPromptPreviewFromObservation(params: {
   const { prompt, variableMapping, observation } = params;
 
   if (!prompt) {
-    return "Template has no prompt.";
+    return TEMPLATE_HAS_NO_PROMPT;
   }
 
   const variableValues = new Map<string, string>();

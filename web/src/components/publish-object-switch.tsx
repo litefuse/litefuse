@@ -15,6 +15,7 @@ import { type RouterInput } from "@/src/utils/types";
 import { CheckIcon, Globe, Link, Share2 } from "lucide-react";
 import { useState } from "react";
 
+import { useTranslation } from "react-i18next";
 export const PublishTraceSwitch = (props: {
   traceId: string;
   projectId: string;
@@ -22,6 +23,7 @@ export const PublishTraceSwitch = (props: {
   isPublic: boolean;
   size?: "icon" | "icon-xs";
 }) => {
+  const { t } = useTranslation();
   const { isBetaEnabled } = useV4Beta();
   const capture = usePostHogClientCapture();
   const hasAccess = useHasProjectAccess({
@@ -124,6 +126,7 @@ export const PublishSessionSwitch = (props: {
   isPublic: boolean;
   size?: "icon" | "icon-xs";
 }) => {
+  const { t } = useTranslation();
   const capture = usePostHogClientCapture();
   const hasAccess = useHasProjectAccess({
     projectId: props.projectId,
@@ -168,6 +171,7 @@ const Base = (props: {
   disabled?: boolean;
   size?: "icon" | "icon-xs";
 }) => {
+  const { t } = useTranslation();
   const [isCopied, setIsCopied] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -216,23 +220,25 @@ const Base = (props: {
             {props.isPublic ? (
               <>
                 <Label className="text-base capitalize">
-                  {props.itemName} Shared
+                  {t("{{item}} Shared", { item: props.itemName })}
                 </Label>
                 <span className="text-muted-foreground text-sm">
-                  This {props.itemName} is public. Anyone with the link can view
-                  this {props.itemName}.
+                  {t(
+                    "This {{item}} is public. Anyone with the link can view this {{item}}.",
+                    { item: props.itemName },
+                  )}
                 </span>
                 <div className="mr-2 flex items-center justify-end gap-2 text-sm">
                   <Button variant="outline" size="sm" onClick={copyUrl}>
                     {isCopied ? (
                       <>
                         <CheckIcon size={12} className="mr-1" />
-                        Copied
+                        {t("Copied")}
                       </>
                     ) : (
                       <>
                         <Link size={12} className="mr-1" />
-                        Copy
+                        {t("Copy")}
                       </>
                     )}
                   </Button>
@@ -242,18 +248,20 @@ const Base = (props: {
                     loading={props.isLoading}
                     onClick={handleOnClick}
                   >
-                    Unshare
+                    {t("Unshare")}
                   </Button>
                 </div>
               </>
             ) : (
               <>
                 <Label className="text-base capitalize">
-                  {props.itemName} Private
+                  {t("{{item}} Private", { item: props.itemName })}
                 </Label>
                 <span className="text-muted-foreground text-sm">
-                  This {props.itemName} is private. Only authorized project
-                  members can view this {props.itemName}.
+                  {t(
+                    "This {{item}} is private. Only authorized project members can view this {{item}}.",
+                    { item: props.itemName },
+                  )}
                 </span>
                 <div className="mr-2 flex items-center justify-end gap-2 text-sm">
                   <Button
@@ -262,7 +270,7 @@ const Base = (props: {
                     loading={props.isLoading}
                     onClick={handleOnClick}
                   >
-                    Share
+                    {t("Share")}
                   </Button>
                 </div>
               </>

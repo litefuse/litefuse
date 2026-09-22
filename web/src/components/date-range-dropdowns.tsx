@@ -31,6 +31,7 @@ import {
 } from "@/src/components/ui/hover-card";
 import { HoverCardPortal } from "@radix-ui/react-hover-card";
 
+import { useTranslation } from "react-i18next";
 type BaseDateRangeDropdownProps<T> = {
   selectedOption: T;
   options: readonly T[];
@@ -44,15 +45,16 @@ const BaseDateRangeDropdown = <T extends string>({
   limitedOptions,
   onSelectionChange,
 }: BaseDateRangeDropdownProps<T>) => {
+  const { t } = useTranslation();
   return (
     <Select value={selectedOption} onValueChange={onSelectionChange}>
       <SelectTrigger className="hover:bg-accent hover:text-accent-foreground w-fit font-medium focus:ring-0 focus:ring-offset-0">
-        <SelectValue placeholder="Select">
+        <SelectValue placeholder={t("Select")}>
           <div className="flex items-center gap-2">
             <span className="bg-muted w-10 rounded px-1.5 py-0.5 text-center text-xs">
               {getAbbreviatedTimeRange(selectedOption)}
             </span>
-            <span>{getTimeRangeLabel(selectedOption)}</span>
+            <span>{t(getTimeRangeLabel(selectedOption))}</span>
           </div>
         </SelectValue>
       </SelectTrigger>
@@ -73,7 +75,7 @@ const BaseDateRangeDropdown = <T extends string>({
                 <span className="bg-muted w-10 rounded px-1.5 py-0.5 text-center text-xs">
                   {getAbbreviatedTimeRange(item)}
                 </span>
-                <span>{getTimeRangeLabel(item)}</span>
+                <span>{t(getTimeRangeLabel(item))}</span>
               </div>
             </SelectItem>
           );
@@ -86,7 +88,7 @@ const BaseDateRangeDropdown = <T extends string>({
               </HoverCardTrigger>
               <HoverCardPortal>
                 <HoverCardContent className="w-60 text-sm" side="right">
-                  This time range is not available in your current plan.
+                  {t("This time range is not available in your current plan.")}
                 </HoverCardContent>
               </HoverCardPortal>
             </HoverCard>

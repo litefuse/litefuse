@@ -212,10 +212,6 @@ const nextConfig = {
       shimBase,
       "grafana-runtime.ts",
     );
-    config.resolve.alias["react-i18next"] = path.resolve(
-      shimBase,
-      "react-i18next.ts",
-    );
     config.resolve.alias["jotai-location"] = path.resolve(
       shimBase,
       "jotai-location.ts",

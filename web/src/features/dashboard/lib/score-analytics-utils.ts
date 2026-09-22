@@ -1,3 +1,4 @@
+import { getRuntimeLocale } from "@/src/features/i18n/runtimeLocale";
 import { type DashboardDateRangeAggregationOption } from "@/src/utils/date-range-utils";
 import { type DatabaseRow } from "@/src/server/api/services/sqlInterface";
 import {
@@ -7,19 +8,20 @@ import {
 } from "@/src/features/scores/types";
 import { type RouterOutputs } from "@/src/utils/api";
 
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 export const RESOURCE_METRICS = [
   {
     key: "latency",
     value: "Latency",
     objectKey: "avgLatency",
-    label: "Latency (s)",
+    label: i18nKey("Latency (s)"),
     maxFractionDigits: 2,
   },
   {
     key: "cost",
     value: "Cost",
     objectKey: "avgTotalCost",
-    label: "Average Total Cost ($)",
+    label: i18nKey("Average Total Cost ($)"),
     maxFractionDigits: 5,
   },
 ];
@@ -98,7 +100,7 @@ export function padChartData(chartData: HistogramBin[]) {
 
 // categorical score analytics helpers
 function convertDateToStringTimestamp(date: Date): string {
-  return date.toLocaleDateString("en-US", {
+  return date.toLocaleDateString(getRuntimeLocale(), {
     year: "2-digit",
     month: "numeric",
     day: "numeric",

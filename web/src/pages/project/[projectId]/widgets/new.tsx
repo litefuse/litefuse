@@ -15,7 +15,9 @@ import { useState } from "react";
 import { useV4Beta } from "@/src/features/events/hooks/useV4Beta";
 import { getDefaultView } from "@/src/features/widgets/utils";
 
+import { useTranslation } from "react-i18next";
 export default function NewWidget() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { projectId, dashboardId } = router.query as {
     projectId: string;
@@ -26,8 +28,8 @@ export default function NewWidget() {
   const createWidgetMutation = api.dashboardWidgets.create.useMutation({
     onSuccess: (data) => {
       showSuccessToast({
-        title: "Widget created successfully",
-        description: "Your widget has been created.",
+        title: t("Widget created successfully"),
+        description: t("Your widget has been created."),
       });
 
       if (dashboardId) {
@@ -40,7 +42,7 @@ export default function NewWidget() {
       }
     },
     onError: (error) => {
-      showErrorToast("Failed to save widget", error.message);
+      showErrorToast(t("Failed to save widget"), error.message);
     },
   });
 
@@ -57,7 +59,7 @@ export default function NewWidget() {
     minVersion: number;
   }) => {
     if (!widgetData.name.trim()) {
-      showErrorToast("Error", "Widget name is required");
+      showErrorToast(t("Error"), t("Widget name is required"));
       return;
     }
 
@@ -87,9 +89,9 @@ export default function NewWidget() {
     <Page
       withPadding
       headerProps={{
-        title: "New Widget",
+        title: t("New Widget"),
         help: {
-          description: "Create a new widget",
+          description: t("Create a new widget"),
         },
       }}
     >

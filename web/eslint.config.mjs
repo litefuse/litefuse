@@ -1,5 +1,6 @@
 import nextConfig from "@repo/eslint-config/next";
 import { tableRoutingRule } from "@repo/eslint-config/base";
+import { i18nRuleBlock } from "./eslint.i18n.rules.mjs";
 
 export default [
   ...nextConfig,
@@ -11,6 +12,8 @@ export default [
     "src/pages/api/**/*.ts",
     "src/server/**/*.ts",
   ]),
+
+  i18nRuleBlock,
 
   // Restrict react-icons imports
   {

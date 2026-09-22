@@ -5,6 +5,7 @@ import { IOTableCell } from "@/src/components/ui/IOTableCell";
 import { useTrpcError } from "@/src/hooks/useTrpcError";
 import { NotFoundCard } from "@/src/features/datasets/components/NotFoundCard";
 
+import { useTranslation } from "react-i18next";
 export const DatasetItemIOCell = ({
   projectId,
   datasetId,
@@ -67,6 +68,7 @@ export const TraceObservationIOCell = ({
   fromTimestamp: Date;
   singleLine?: boolean;
 }) => {
+  const { t } = useTranslation();
   // Subtract 1 day from the fromTimestamp as a buffer in case the trace happened before the run
   const fromTimestampModified = new Date(
     fromTimestamp.getTime() - 24 * 60 * 60 * 1000,

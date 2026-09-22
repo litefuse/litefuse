@@ -29,6 +29,7 @@ import { User as UserIcon } from "lucide-react";
 import { useRouter } from "next/router";
 import { LangfuseIcon } from "@/src/components/LangfuseLogo";
 
+import { useTranslation } from "react-i18next";
 type DashboardTableRow = {
   id: string;
   name: string;
@@ -45,6 +46,7 @@ function CloneDashboardButton({
   dashboardId: string;
   projectId: string;
 }) {
+  const { t } = useTranslation();
   const utils = api.useUtils();
   const hasAccess = useHasProjectAccess({ projectId, scope: "dashboards:CUD" });
   const capture = usePostHogClientCapture();
@@ -54,12 +56,12 @@ function CloneDashboardButton({
       void utils.dashboard.invalidate();
       capture("dashboard:clone_dashboard");
       showSuccessToast({
-        title: "Dashboard cloned",
-        description: "The dashboard has been cloned successfully",
+        title: t("Dashboard cloned"),
+        description: t("The dashboard has been cloned successfully"),
       });
     },
     onError: (e) => {
-      showErrorToast("Failed to clone dashboard", e.message);
+      showErrorToast(t("Failed to clone dashboard"), e.message);
     },
   });
 
@@ -83,7 +85,7 @@ function CloneDashboardButton({
       onClick={handleCloneDashboard}
     >
       <Copy className="mr-2 h-4 w-4" />
-      Clone
+      {t("Clone")}
     </Button>
   );
 }
@@ -99,6 +101,7 @@ function EditDashboardButton({
   dashboardName: string;
   dashboardDescription: string;
 }) {
+  const { t } = useTranslation();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const hasAccess = useHasProjectAccess({ projectId, scope: "dashboards:CUD" });
 
@@ -111,7 +114,7 @@ function EditDashboardButton({
         onClick={() => setIsDialogOpen(true)}
       >
         <Edit className="mr-2 h-4 w-4" />
-        Edit
+        {t("Edit")}
       </Button>
 
       <EditDashboardDialog
@@ -127,6 +130,7 @@ function EditDashboardButton({
 }
 
 export function DashboardTable() {
+  const { t } = useTranslation();
   const projectId = useProjectIdFromURL() as string;
   const { setDetailPageList } = useDetailPageLists();
   const router = useRouter();
@@ -170,7 +174,7 @@ export function DashboardTable() {
   const columnHelper = createColumnHelper<DashboardTableRow>();
   const dashboardColumns = [
     columnHelper.accessor("name", {
-      header: "Name",
+      header: t("Name"),
       id: "name",
       enableSorting: true,
       size: 200,
@@ -185,7 +189,7 @@ export function DashboardTable() {
       },
     }),
     columnHelper.accessor("description", {
-      header: "Description",
+      header: t("Description"),
       id: "description",
       size: 300,
       cell: (row) => {
@@ -194,23 +198,23 @@ export function DashboardTable() {
     }),
     columnHelper.display({
       id: "ownerTag",
-      header: "Owner",
+      header: t("Owner"),
       size: 80,
       cell: (row) => {
         return row.row.original.owner === "LANGFUSE" ? (
           <span className="flex items-center gap-1 px-2 py-0.5 text-xs">
             <LangfuseIcon size={12} className="h-3 w-3" />
-            Litefuse
+            {t("Litefuse")}
           </span>
         ) : (
           <span className="flex gap-1 px-2 py-0.5 text-xs">
-            <UserIcon className="h-3 w-3" /> Project
+            <UserIcon className="h-3 w-3" /> {t("Project")}
           </span>
         );
       },
     }),
     columnHelper.accessor("createdAt", {
-      header: "Created At",
+      header: t("Created At"),
       id: "createdAt",
       enableSorting: true,
       size: 150,
@@ -220,7 +224,7 @@ export function DashboardTable() {
       },
     }),
     columnHelper.accessor("updatedAt", {
-      header: "Updated At",
+      header: t("Updated At"),
       id: "updatedAt",
       enableSorting: true,
       size: 150,
@@ -231,7 +235,7 @@ export function DashboardTable() {
     }),
     columnHelper.display({
       id: "actions",
-      header: "Actions",
+      header: t("Actions"),
       size: 70,
       cell: (row) => {
         const id = row.row.original.id;

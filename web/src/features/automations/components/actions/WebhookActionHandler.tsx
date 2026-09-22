@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import React from "react";
 import { type UseFormReturn } from "react-hook-form";
 import { type BaseActionHandler } from "./BaseActionHandler";
@@ -100,14 +101,17 @@ export class WebhookActionHandler
     };
   }
 
-  validateFormData(formData: WebhookActionFormData): {
+  validateFormData(
+    formData: WebhookActionFormData,
+    t: TFunction,
+  ): {
     isValid: boolean;
     errors?: string[];
   } {
     const errors: string[] = [];
 
     if (!formData.webhook?.url) {
-      errors.push("Webhook URL is required");
+      errors.push(t("Webhook URL is required"));
     }
 
     // Validate headers
@@ -118,14 +122,26 @@ export class WebhookActionHandler
         // Only validate non-empty headers
         if (header.name.trim() || header.value.trim()) {
           if (!header.name.trim()) {
-            errors.push(`Header ${index + 1}: Name cannot be empty`);
+            errors.push(
+              t("Header {{index}}: Name cannot be empty", { index: index + 1 }),
+            );
           }
           if (!header.value.trim() && !header.isSecret) {
-            errors.push(`Header ${index + 1}: Value cannot be empty`);
+            errors.push(
+              t("Header {{index}}: Value cannot be empty", {
+                index: index + 1,
+              }),
+            );
           }
           if (header.wasSecret !== header.isSecret && !header.value.trim()) {
             errors.push(
-              `Header ${index + 1}: A value must be provided when making a header ${header.wasSecret ? "public" : "secret"}`,
+              t(
+                "Header {{index}}: A value must be provided when making a header {{visibility}}",
+                {
+                  index: index + 1,
+                  visibility: header.wasSecret ? t("public") : t("secret"),
+                },
+              ),
             );
           }
 
@@ -135,7 +151,10 @@ export class WebhookActionHandler
             defaultHeaderKeys.includes(header.name.trim().toLowerCase())
           ) {
             errors.push(
-              `Header ${index + 1}: "${header.name}" is automatically added by Litefuse and cannot be customized`,
+              t(
+                'Header {{index}}: "{{name}}" is automatically added by Litefuse and cannot be customized',
+                { index: index + 1, name: header.name },
+              ),
             );
           }
         }

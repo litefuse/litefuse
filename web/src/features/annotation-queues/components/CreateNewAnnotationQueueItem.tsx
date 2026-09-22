@@ -17,6 +17,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useState, useCallback } from "react";
 
+import { useTranslation } from "react-i18next";
 export const CreateNewAnnotationQueueItem = ({
   projectId,
   objectId,
@@ -30,6 +31,7 @@ export const CreateNewAnnotationQueueItem = ({
   variant?: ButtonProps["variant"];
   size?: ButtonProps["size"];
 }) => {
+  const { t } = useTranslation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const session = useSession();
   const hasAccess = useHasProjectAccess({
@@ -61,7 +63,12 @@ export const CreateNewAnnotationQueueItem = ({
           });
         } else {
           const confirmRemoval = confirm(
-            `Are you sure you want to remove this item from the queue "${queueName}"?`,
+            t(
+              'Are you sure you want to remove this item from the queue "{{queue}}"?',
+              {
+                queue: queueName,
+              },
+            ),
           );
           if (confirmRemoval) {
             await removeFromQueueMutation.mutateAsync({
@@ -137,7 +144,7 @@ export const CreateNewAnnotationQueueItem = ({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        <DropdownMenuLabel>In queue(s)</DropdownMenuLabel>
+        <DropdownMenuLabel>{t("In queue(s)")}</DropdownMenuLabel>
         {queues.data?.queues.length ? (
           queues.data?.queues.map((queue) => (
             <DropdownMenuCheckboxItem
@@ -170,7 +177,7 @@ export const CreateNewAnnotationQueueItem = ({
               event.stopPropagation();
             }}
           >
-            No queues defined
+            {t("No queues defined")}
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
@@ -182,7 +189,7 @@ export const CreateNewAnnotationQueueItem = ({
           <div>
             <ExternalLink className="mr-2 h-4 w-4" />
             <Link href={`/project/${projectId}/annotation-queues`}>
-              Manage queues
+              {t("Manage queues")}
             </Link>
           </div>
         </DropdownMenuItem>

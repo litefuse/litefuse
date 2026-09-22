@@ -14,6 +14,7 @@ import { useHasProjectAccess } from "@/src/features/rbac/utils/checkProjectAcces
 import { type Prisma } from "@langfuse/shared";
 import { usePostHogClientCapture } from "@/src/features/posthog-analytics/usePostHogClientCapture";
 
+import { useTranslation } from "react-i18next";
 interface BaseDatasetButtonProps {
   mode: "create" | "update" | "delete";
   projectId: string;
@@ -53,6 +54,7 @@ export const DatasetActionButton = forwardRef<
   HTMLButtonElement,
   DatasetActionButtonProps
 >((props, ref) => {
+  const { t } = useTranslation();
   const capture = usePostHogClientCapture();
   const [open, setOpen] = useState(false);
   const hasAccess = useHasProjectAccess({
@@ -98,7 +100,7 @@ export const DatasetActionButton = forwardRef<
               ) : (
                 <LockIcon className="mr-2 h-4 w-4" aria-hidden="true" />
               )}
-              Edit
+              {t("Edit")}
             </Button>
           )
         ) : props.mode === "delete" ? (
@@ -120,7 +122,7 @@ export const DatasetActionButton = forwardRef<
             ) : (
               <LockIcon className="mr-2 h-4 w-4" aria-hidden="true" />
             )}
-            Delete
+            {t("Delete")}
           </Button>
         ) : (
           <Button
@@ -136,7 +138,7 @@ export const DatasetActionButton = forwardRef<
             ) : (
               <LockIcon className="mr-1.5 -ml-0.5 h-3 w-3" aria-hidden="true" />
             )}
-            New dataset
+            {t("New dataset")}
           </Button>
         )}
       </DialogTrigger>
@@ -144,15 +146,16 @@ export const DatasetActionButton = forwardRef<
         <DialogHeader>
           <DialogTitle className="mb-4">
             {props.mode === "create"
-              ? "Create new dataset"
+              ? t("Create new dataset")
               : props.mode === "delete"
-                ? "Please confirm"
-                : "Update dataset"}
+                ? t("Please confirm")
+                : t("Update dataset")}
           </DialogTitle>
           {props.mode === "delete" && (
             <DialogDescription className="text-md p-0">
-              This action cannot be undone and removes all the data associated
-              with this dataset.
+              {t(
+                "This action cannot be undone and removes all the data associated with this dataset.",
+              )}
             </DialogDescription>
           )}
         </DialogHeader>

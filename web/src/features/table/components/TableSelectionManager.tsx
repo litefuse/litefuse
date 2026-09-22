@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-table";
 import { useSelectAll } from "@/src/features/table/hooks/useSelectAll";
 
+import { useTranslation } from "react-i18next";
 interface TableSelectionManagerProps {
   projectId: string;
   tableName: string;
@@ -17,6 +18,7 @@ export function TableSelectionManager<TData>({
   tableName,
   setSelectedRows,
 }: TableSelectionManagerProps) {
+  const { t } = useTranslation();
   const { setSelectAll } = useSelectAll(projectId, tableName);
 
   return {
@@ -43,7 +45,7 @@ export function TableSelectionManager<TData>({
                 setSelectAll(false);
               }
             }}
-            aria-label="Select all"
+            aria-label={t("Select all")}
             className="opacity-60"
           />
         </div>
@@ -60,7 +62,7 @@ export function TableSelectionManager<TData>({
               row.toggleSelected(!!value);
               if (!value) setSelectAll(false);
             }}
-            aria-label="Select row"
+            aria-label={t("Select row")}
             className="opacity-60"
           />
         </div>

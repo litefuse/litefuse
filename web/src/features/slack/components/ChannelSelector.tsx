@@ -19,6 +19,7 @@ import {
 import { Alert, AlertDescription } from "@/src/components/ui/alert";
 import { api } from "@/src/utils/api";
 
+import { useTranslation } from "react-i18next";
 /**
  * Represents a Slack channel
  */
@@ -84,6 +85,7 @@ export const ChannelSelector: React.FC<ChannelSelectorProps> = ({
   filterChannels,
   showRefreshButton = true,
 }) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -180,7 +182,7 @@ export const ChannelSelector: React.FC<ChannelSelectorProps> = ({
         <div className="flex items-center gap-2">
           <Select disabled>
             <SelectTrigger>
-              <SelectValue placeholder="Loading channels..." />
+              <SelectValue placeholder={t("Loading channels...")} />
             </SelectTrigger>
           </Select>
           {showRefreshButton && (
@@ -200,7 +202,7 @@ export const ChannelSelector: React.FC<ChannelSelectorProps> = ({
         <div className="flex items-center gap-2">
           <Select disabled>
             <SelectTrigger>
-              <SelectValue placeholder="Error loading channels" />
+              <SelectValue placeholder={t("Error loading channels")} />
             </SelectTrigger>
           </Select>
           {showRefreshButton && (
@@ -211,8 +213,9 @@ export const ChannelSelector: React.FC<ChannelSelectorProps> = ({
         </div>
         <Alert>
           <AlertDescription>
-            Failed to load channels. Please check your Slack connection and try
-            again.
+            {t(
+              "Failed to load channels. Please check your Slack connection and try again.",
+            )}
           </AlertDescription>
         </Alert>
       </div>
@@ -242,15 +245,15 @@ export const ChannelSelector: React.FC<ChannelSelectorProps> = ({
           <PopoverContent className="w-full p-0" align="start">
             <Command shouldFilter={false}>
               <CommandInput
-                placeholder="Search channels..."
+                placeholder={t("Search channels...")}
                 value={searchValue}
                 onValueChange={setSearchValue}
               />
               <CommandList>
                 <CommandEmpty>
                   {searchValue
-                    ? "No channels match your search."
-                    : "No channels available."}
+                    ? t("No channels match your search.")
+                    : t("No channels available.")}
                 </CommandEmpty>
                 <CommandGroup>
                   {filteredChannels.map((channel) => (
@@ -286,8 +289,11 @@ export const ChannelSelector: React.FC<ChannelSelectorProps> = ({
       {/* Channel stats */}
       {channelsData?.channels && (
         <div className="text-muted-foreground text-xs">
-          {filteredChannels.length} of {channelsData.channels.length} channels
-          {memberOnly && " (member only)"}
+          {t("{{shown}} of {{total}} channels", {
+            shown: filteredChannels.length,
+            total: channelsData.channels.length,
+          })}
+          {memberOnly && ` ${t("(member only)")}`}
         </div>
       )}
     </div>

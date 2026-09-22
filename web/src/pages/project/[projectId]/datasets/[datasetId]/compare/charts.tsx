@@ -41,7 +41,9 @@ import {
 } from "@/src/features/navigation/utils/dataset-run-compare-tabs";
 import { NoDataOrLoading } from "@/src/components/NoDataOrLoading";
 
+import { useTranslation } from "react-i18next";
 export default function DatasetCompare() {
+  const { t } = useTranslation();
   const router = useRouter();
   const capture = usePostHogClientCapture();
   const projectId = router.query.projectId as string;
@@ -85,14 +87,16 @@ export default function DatasetCompare() {
   return (
     <Page
       headerProps={{
-        title: `Compare runs: ${dataset.data?.name ?? datasetId}`,
+        title: t("Compare runs: {{name}}", {
+          name: dataset.data?.name ?? datasetId,
+        }),
         tabsProps: {
           tabs: getDatasetRunCompareTabs(projectId, datasetId),
           activeTab: DATASET_RUN_COMPARE_TABS.CHARTS,
         },
         breadcrumb: [
           {
-            name: "Datasets",
+            name: t("Datasets"),
             href: `/project/${projectId}/datasets`,
           },
           {
@@ -101,7 +105,7 @@ export default function DatasetCompare() {
           },
         ],
         help: {
-          description: "Compare your dataset runs side by side",
+          description: t("Compare your dataset runs side by side"),
         },
         actionButtonsRight: (
           <>
@@ -117,7 +121,9 @@ export default function DatasetCompare() {
                   onClick={() => capture("dataset_run:new_form_open")}
                 >
                   <FlaskConical className="h-4 w-4" />
-                  <span className="ml-2 hidden md:block">New experiment</span>
+                  <span className="ml-2 hidden md:block">
+                    {t("New experiment")}
+                  </span>
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-h-[90vh] overflow-y-auto">
@@ -135,9 +141,9 @@ export default function DatasetCompare() {
             </Dialog>
             <MultiSelectKeyValues
               key="select-runs"
-              title="Runs"
+              title={t("Runs")}
               showSelectedValueStrings={false}
-              placeholder="Select runs to compare"
+              placeholder={t("Select runs to compare")}
               className="w-fit"
               variant="outline"
               hideClearButton
@@ -196,8 +202,12 @@ export default function DatasetCompare() {
                   const scoreData = scoreKeyToData.get(key);
                   const title = scoreData
                     ? `${getScoreDataTypeIcon(scoreData.dataType)} ${scoreData.name} (${scoreData.source.toLowerCase()})`
-                    : (RESOURCE_METRICS.find((metric) => metric.key === key)
-                        ?.label ?? key);
+                    : (() => {
+                        const metric = RESOURCE_METRICS.find(
+                          (m) => m.key === key,
+                        );
+                        return metric ? t(metric.label) : key;
+                      })();
 
                   // TODO: remove when revamping the datasets api for it to directly return ms
                   const valueFormatter =
@@ -274,8 +284,8 @@ export default function DatasetCompare() {
             ) : (
               <span className="text-muted-foreground -mt-2 text-sm">
                 {Boolean(chartDataMap?.size)
-                  ? "All charts hidden. Enable them in the Charts dropdown."
-                  : "Select more than one run to generate charts."}
+                  ? t("All charts hidden. Enable them in the Charts dropdown.")
+                  : t("Select more than one run to generate charts.")}
               </span>
             )}
           </div>
@@ -291,14 +301,14 @@ export default function DatasetCompare() {
           <SidePanelContent className="overflow-y-auto p-1">
             <div className="w-full space-y-4">
               <div>
-                <SubHeaderLabel title="Description" />
+                <SubHeaderLabel title={t("Description")} />
                 <span className="text-muted-foreground text-sm">
-                  {dataset.data?.description ?? "No description"}
+                  {dataset.data?.description ?? t("No description")}
                 </span>
               </div>
               {dataset.data?.metadata && (
                 <div>
-                  <SubHeaderLabel title="Metadata" />
+                  <SubHeaderLabel title={t("Metadata")} />
                   <MarkdownJsonView content={dataset.data?.metadata} />
                 </div>
               )}

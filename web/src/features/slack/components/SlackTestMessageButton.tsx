@@ -6,6 +6,7 @@ import { showSuccessToast } from "@/src/features/notifications/showSuccessToast"
 import { showErrorToast } from "@/src/features/notifications/showErrorToast";
 import { type SlackChannel } from "./ChannelSelector";
 
+import { useTranslation } from "react-i18next";
 /**
  * Props for the SlackTestMessageButton component
  */
@@ -50,17 +51,20 @@ export const SlackTestMessageButton: React.FC<SlackTestMessageButtonProps> = ({
   showText = true,
   hasAccess = true,
 }) => {
+  const { t } = useTranslation();
   // Test message mutation
   const testMessageMutation = api.slack.sendTestMessage.useMutation({
     onSuccess: () => {
       showSuccessToast({
-        title: "Test Message Sent",
-        description: "Test message sent successfully to the selected channel.",
+        title: t("Test Message Sent"),
+        description: t(
+          t("Test message sent successfully to the selected channel."),
+        ),
       });
       onSuccess?.();
     },
     onError: (error) => {
-      showErrorToast("Failed to Send Test Message", error.message);
+      showErrorToast(t("Failed to Send Test Message"), error.message);
       onError?.(new Error(error.message));
     },
   });
@@ -95,7 +99,7 @@ export const SlackTestMessageButton: React.FC<SlackTestMessageButtonProps> = ({
       {testMessageMutation.isPending ? (
         <>
           <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-          {showText && <span>Sending...</span>}
+          {showText && <span>{t("Sending...")}</span>}
         </>
       ) : (
         <>

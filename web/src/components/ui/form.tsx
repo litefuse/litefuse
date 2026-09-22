@@ -13,6 +13,7 @@ import {
 import { cn } from "@/src/utils/tailwind";
 import { Label } from "@/src/components/ui/label";
 
+import { useTranslation } from "react-i18next";
 const Form = FormProvider;
 
 type FormFieldContextValue<
@@ -143,8 +144,12 @@ const FormMessage = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, children, ...props }, ref) => {
+  const { t } = useTranslation();
   const { error, formMessageId } = useFormField();
-  const body = error ? String(error.message) : children;
+  // Validation messages are authored as i18n keys in the zod schemas, so they
+  // are translated here rather than at every schema definition, which is
+  // module scope and has no hook.
+  const body = error ? t(String(error.message)) : children;
 
   if (!body) {
     return null;

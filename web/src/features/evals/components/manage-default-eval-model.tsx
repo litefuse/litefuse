@@ -5,6 +5,7 @@ import { cn } from "@/src/utils/tailwind";
 import { Check, Pencil, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 
+import { useTranslation } from "react-i18next";
 export function ManageDefaultEvalModel({
   projectId,
   setUpMessage,
@@ -18,6 +19,7 @@ export function ManageDefaultEvalModel({
   showEditButton?: boolean;
   className?: string;
 }) {
+  const { t } = useTranslation();
   const hasDefaultModelReadAccess = useHasProjectAccess({
     projectId,
     scope: "evalDefaultModel:read",
@@ -48,8 +50,10 @@ export function ManageDefaultEvalModel({
             className,
           )}
         >
-          {"Current default model: "}
-          {defaultModel.provider} / {defaultModel.model}
+          {t("Current default model: {{provider}} / {{model}}", {
+            provider: defaultModel.provider,
+            model: defaultModel.model,
+          })}
         </span>
       ) : (
         <span
@@ -59,7 +63,7 @@ export function ManageDefaultEvalModel({
             className,
           )}
         >
-          {setUpMessage ?? "No default model set"}
+          {setUpMessage ?? t("No default model set")}
         </span>
       )}
       {showEditButton && (

@@ -1,6 +1,7 @@
 import React from "react";
 import { CommandItem } from "cmdk";
 
+import { useTranslation } from "react-i18next";
 type TagItemCreateProps = {
   inputValue: string;
   options: string[];
@@ -12,6 +13,7 @@ const TagItemCreate = ({
   options,
   onSelect,
 }: TagItemCreateProps) => {
+  const { t } = useTranslation();
   const hasNoOption = !options
     .map((value) => value.toLowerCase())
     .includes(inputValue.toLowerCase());
@@ -27,7 +29,7 @@ const TagItemCreate = ({
       className="text-muted-foreground hover:bg-secondary/80 flex min-h-8 cursor-pointer items-center rounded-sm px-3 py-1 text-sm"
       onSelect={onSelect}
     >
-      Create new tag: &quot;{inputValue.trim()}&quot;
+      {t('Create new tag: "{{name}}"', { name: inputValue.trim() })}
     </CommandItem>
   );
 };

@@ -3,6 +3,7 @@ import { showSuccessToast } from "@/src/features/notifications/showSuccessToast"
 import { showErrorToast } from "@/src/features/notifications/showErrorToast";
 import { type DefaultViewScope } from "@langfuse/shared/src/server";
 
+import { useTranslation } from "react-i18next";
 interface UseDefaultViewMutationsProps {
   tableName: string;
   projectId: string;
@@ -12,6 +13,7 @@ export function useDefaultViewMutations({
   tableName,
   projectId,
 }: UseDefaultViewMutationsProps) {
+  const { t } = useTranslation();
   const utils = api.useUtils();
 
   const setAsDefault = api.TableViewPresets.setAsDefault.useMutation({
@@ -24,14 +26,16 @@ export function useDefaultViewMutations({
         projectId,
         viewName: tableName,
       });
-      const scopeLabel = variables.scope === "user" ? "your" : "project";
       showSuccessToast({
-        title: "Default view set",
-        description: `Set as ${scopeLabel} default`,
+        title: t("Default view set"),
+        description:
+          variables.scope === "user"
+            ? t("Set as your default")
+            : t("Set as project default"),
       });
     },
     onError: (error) => {
-      showErrorToast("Failed to set default", error.message);
+      showErrorToast(t("Failed to set default"), error.message);
     },
   });
 
@@ -45,14 +49,16 @@ export function useDefaultViewMutations({
         projectId,
         viewName: tableName,
       });
-      const scopeLabel = variables.scope === "user" ? "Your" : "Project";
       showSuccessToast({
-        title: "Default cleared",
-        description: `${scopeLabel} default view cleared`,
+        title: t("Default cleared"),
+        description:
+          variables.scope === "user"
+            ? t("Your default view cleared")
+            : t("Project default view cleared"),
       });
     },
     onError: (error) => {
-      showErrorToast("Failed to clear default", error.message);
+      showErrorToast(t("Failed to clear default"), error.message);
     },
   });
 

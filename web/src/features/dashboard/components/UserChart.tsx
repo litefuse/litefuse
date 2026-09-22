@@ -17,6 +17,8 @@ import { barListToDataPoints } from "@/src/features/dashboard/lib/chart-data-ada
 import { traceViewQuery } from "@/src/features/dashboard/lib/dashboard-utils";
 import { useScheduledDashboardExecuteQuery } from "@/src/hooks/useDashboardQueryScheduler";
 
+import { useTranslation } from "react-i18next";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 type BarChartDataPoint = {
   name: string;
   value: number;
@@ -41,6 +43,7 @@ export const UserChart = ({
   metricsVersion?: ViewVersion;
   schedulerId?: string;
 }) => {
+  const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const maxNumberOfEntries = { collapsed: 5, expanded: 20 } as const;
 
@@ -170,7 +173,7 @@ export const UserChart = ({
 
   const data = [
     {
-      tabTitle: "Token cost",
+      tabTitle: i18nKey("Token cost"),
       data: isExpanded
         ? transformedCost.slice(0, maxNumberOfEntries.expanded)
         : transformedCost.slice(0, maxNumberOfEntries.collapsed),
@@ -179,7 +182,7 @@ export const UserChart = ({
       formatter: localUsdFormatter,
     },
     {
-      tabTitle: "Count of Traces",
+      tabTitle: i18nKey("Count of Traces"),
       data: isExpanded
         ? transformedNumberOfTraces.slice(0, maxNumberOfEntries.expanded)
         : transformedNumberOfTraces.slice(0, maxNumberOfEntries.collapsed),
@@ -193,7 +196,7 @@ export const UserChart = ({
   return (
     <DashboardCard
       className={className}
-      title="User consumption"
+      title={t("User consumption")}
       isLoading={isLoading || user.isPending}
     >
       <TabComponent
@@ -236,7 +239,9 @@ export const UserChart = ({
                 ) : (
                   <NoDataOrLoading
                     isLoading={isLoading || user.isPending}
-                    description="Consumption per user is tracked by passing their ids on traces."
+                    description={t(
+                      "Consumption per user is tracked by passing their ids on traces.",
+                    )}
                     href="https://litefuse.ai/docs/observability/features/users"
                   />
                 )}
@@ -252,8 +257,8 @@ export const UserChart = ({
         maxLength={maxNumberOfEntries.collapsed}
         expandText={
           transformedCost.length > maxNumberOfEntries.expanded
-            ? `Show top ${maxNumberOfEntries.expanded}`
-            : "Show all"
+            ? t("Show top {{count}}", { count: maxNumberOfEntries.expanded })
+            : t("Show all")
         }
       />
     </DashboardCard>

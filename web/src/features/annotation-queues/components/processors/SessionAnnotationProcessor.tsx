@@ -14,6 +14,7 @@ import { Separator } from "@/src/components/ui/separator";
 import Link from "next/link";
 import { Card } from "@/src/components/ui/card";
 
+import { useTranslation } from "react-i18next";
 interface SessionAnnotationProcessorProps {
   item: AnnotationQueueItem & {
     parentTraceId?: string | null;
@@ -30,6 +31,7 @@ const PAGE_SIZE = 10;
 export const SessionAnnotationProcessor: React.FC<
   SessionAnnotationProcessorProps
 > = ({ item, data, configs, projectId }) => {
+  const { t } = useTranslation();
   const [visibleTraces, setVisibleTraces] = useState(PAGE_SIZE);
   const [currentTraceIndex, setCurrentTraceIndex] = useState(1);
 
@@ -74,13 +76,16 @@ export const SessionAnnotationProcessor: React.FC<
               {item.objectId}
             </span>
             <CopyIdsPopover
-              idItems={[{ id: item.objectId, name: "Session ID" }]}
+              idItems={[{ id: item.objectId, name: t("Session ID") }]}
             />
           </div>
           {data?.traces && (
             <div className="flex items-center">
               <Badge variant="outline" className="text-xs">
-                Trace {currentTraceIndex} / {data.traces.length}
+                {t("Trace {{current}} / {{total}}", {
+                  current: currentTraceIndex,
+                  total: data.traces.length,
+                })}
               </Badge>
             </div>
           )}
@@ -89,10 +94,12 @@ export const SessionAnnotationProcessor: React.FC<
           <div className="flex max-w-full min-w-0 shrink flex-col">
             <div className="flex max-w-full min-w-0 flex-wrap items-center gap-1">
               {data.environment && (
-                <Badge variant="tertiary">Env: {data.environment}</Badge>
+                <Badge variant="tertiary">
+                  {t("Env: {{value}}", { value: data.environment })}
+                </Badge>
               )}
               <Badge variant="outline">
-                Total traces: {data?.traces.length}
+                {t("Total traces: {{count}}", { count: data?.traces.length })}
               </Badge>
             </div>
           </div>
@@ -116,7 +123,11 @@ export const SessionAnnotationProcessor: React.FC<
                     href={`/project/${projectId}/traces/${trace.id}`}
                     className="text-xs hover:underline"
                   >
-                    Trace: {trace.name} ({trace.id})&nbsp;↗
+                    {t("Trace: {{name}} ({{id}})", {
+                      name: trace.name,
+                      id: trace.id,
+                    })}
+                    &nbsp;↗
                   </Link>
                   <div className="text-muted-foreground text-xs">
                     {trace.timestamp.toLocaleString()}

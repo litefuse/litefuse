@@ -5,6 +5,7 @@ import { Check, Copy } from "lucide-react";
 import { type FC, memo, useState } from "react";
 import { Highlight, themes } from "prism-react-renderer";
 
+import { useTranslation } from "react-i18next";
 interface Props {
   language: string;
   value: string;
@@ -44,6 +45,7 @@ export const programmingLanguages: languageMap = {
 };
 
 const CodeBlock: FC<Props> = memo(({ language, value, theme, className }) => {
+  const { t } = useTranslation();
   const [isCopied, setIsCopied] = useState(false);
   const handleCopy = () => {
     setIsCopied(true);
@@ -72,7 +74,7 @@ const CodeBlock: FC<Props> = memo(({ language, value, theme, className }) => {
             ) : (
               <Copy className="h-3 w-3" />
             )}
-            <span className="sr-only">Copy code</span>
+            <span className="sr-only">{t("Copy code")}</span>
           </Button>
         </div>
       </div>

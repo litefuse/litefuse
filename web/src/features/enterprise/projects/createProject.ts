@@ -8,7 +8,10 @@ import {
 import { projectNameSchema } from "@/src/features/auth/lib/projectNameSchema";
 import { projectRetentionSchema } from "@/src/features/auth/lib/projectRetentionSchema";
 import { hasEntitlementBasedOnPlan } from "@/src/features/entitlements/server/hasEntitlement";
-import { getDefaultScoreConfigsForProject, RETENTION_FLOOR_DAYS } from "@langfuse/shared";
+import {
+  getDefaultScoreConfigsForProject,
+  RETENTION_FLOOR_DAYS,
+} from "@langfuse/shared";
 
 /**
  * Create a project (POST /api/public/projects).

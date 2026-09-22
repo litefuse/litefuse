@@ -27,7 +27,9 @@ import { useHasOrganizationAccess } from "@/src/features/rbac/utils/checkOrganiz
 import { showSuccessToast } from "@/src/features/notifications/showSuccessToast"; // Import success toast function
 import { env } from "@/src/env.mjs";
 
+import { useTranslation } from "react-i18next";
 export function DeleteOrganizationButton() {
+  const { t } = useTranslation();
   const capture = usePostHogClientCapture();
 
   const organization = useQueryOrganization();
@@ -36,7 +38,9 @@ export function DeleteOrganizationButton() {
 
   const formSchema = z.object({
     name: z.string().includes(confirmMessage, {
-      message: `Please confirm with "${confirmMessage}"`,
+      message: t('Please confirm with "{{value}}"', {
+        value: confirmMessage,
+      }),
     }),
   });
 
@@ -63,8 +67,8 @@ export function DeleteOrganizationButton() {
       });
       capture("organization_settings:delete_organization");
       showSuccessToast({
-        title: "Organization Deleted",
-        description: "The organization has been successfully deleted.",
+        title: t("Organization Deleted"),
+        description: t("The organization has been successfully deleted."),
       });
       await new Promise((resolve) => setTimeout(resolve, 5000)); // Delay for 5 seconds
       window.location.href = env.NEXT_PUBLIC_BASE_PATH ?? "/"; // Browser reload to refresh jwt
@@ -77,18 +81,22 @@ export function DeleteOrganizationButton() {
     <Dialog>
       <DialogTrigger asChild>
         <Button variant="destructive-secondary" disabled={!hasAccess}>
-          Delete Organization
+          {t("Delete Organization")}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">
-            Delete Organization
+            {t("Delete Organization")}
           </DialogTitle>
           <DialogDescription>
             {hasProjects
-              ? "You can only delete an organization if it has no projects associated with it. Please delete or transfer all projects first. Deleting projects may take a few minutes."
-              : `To confirm, type "${confirmMessage}" in the input box `}
+              ? t(
+                  "You can only delete an organization if it has no projects associated with it. Please delete or transfer all projects first. Deleting projects may take a few minutes.",
+                )
+              : t('To confirm, type "{{value}}" in the input box', {
+                  value: confirmMessage,
+                })}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -117,7 +125,7 @@ export function DeleteOrganizationButton() {
                 disabled={hasProjects}
                 className="w-full"
               >
-                Delete Organization
+                {t("Delete Organization")}
               </Button>
             </DialogFooter>
           </form>

@@ -31,6 +31,8 @@ import {
 } from "@/src/hooks/useEnvironmentFilter";
 import { Badge } from "@/src/components/ui/badge";
 
+import { Trans, useTranslation } from "react-i18next";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 type RowData = {
   userId: string;
   environment?: string;
@@ -42,6 +44,7 @@ type RowData = {
 };
 
 export default function UsersPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const projectId = router.query.projectId as string;
   const { isBetaEnabled } = useV4Beta();
@@ -81,22 +84,23 @@ export default function UsersPage() {
   return (
     <Page
       headerProps={{
-        title: "Users",
+        title: t("Users"),
         help: {
           description: (
             <>
-              Attribute data in Litefuse to a user by adding a userId to your
-              traces. See{" "}
-              <a
-                href="https://litefuse.ai/docs/observability/features/users"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="decoration-primary/30 hover:decoration-primary underline"
-                onClick={(e) => e.stopPropagation()}
-              >
-                docs
-              </a>{" "}
-              to learn more.
+              <Trans
+                i18nKey="Attribute data in Litefuse to a user by adding a userId to your traces. See <0>docs</0> to learn more."
+                components={[
+                  <a
+                    key="0"
+                    href="https://litefuse.ai/docs/observability/features/users"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="decoration-primary/30 hover:decoration-primary underline"
+                    onClick={(e) => e.stopPropagation()}
+                  />,
+                ]}
+              />
             </>
           ),
           href: "https://litefuse.ai/docs/observability/features/users",
@@ -115,6 +119,7 @@ export default function UsersPage() {
 }
 
 const UsersTable = ({ isBetaEnabled }: { isBetaEnabled: boolean }) => {
+  const { t } = useTranslation();
   const router = useRouter();
   const projectId = router.query.projectId as string;
 
@@ -284,10 +289,11 @@ const UsersTable = ({ isBetaEnabled }: { isBetaEnabled: boolean }) => {
     {
       accessorKey: "userId",
       enableColumnFilter: true,
-      header: "User ID",
+      header: t("User ID"),
       headerTooltip: {
-        description:
+        description: t(
           "The unique identifier for the user that was logged in Litefuse. See docs for more details on how to set this up.",
+        ),
         href: "https://litefuse.ai/docs/observability/features/users",
       },
       size: 150,
@@ -305,7 +311,7 @@ const UsersTable = ({ isBetaEnabled }: { isBetaEnabled: boolean }) => {
     },
     {
       accessorKey: "environment",
-      header: "Environment",
+      header: t("Environment"),
       id: "environment",
       size: 150,
       enableHiding: true,
@@ -323,9 +329,9 @@ const UsersTable = ({ isBetaEnabled }: { isBetaEnabled: boolean }) => {
     },
     {
       accessorKey: "firstEvent",
-      header: "First Event",
+      header: t("First Event"),
       headerTooltip: {
-        description: "The earliest trace recorded for this user.",
+        description: t("The earliest trace recorded for this user."),
       },
       size: 150,
       cell: ({ row }) => {
@@ -338,9 +344,9 @@ const UsersTable = ({ isBetaEnabled }: { isBetaEnabled: boolean }) => {
     },
     {
       accessorKey: "lastEvent",
-      header: "Last Event",
+      header: t("Last Event"),
       headerTooltip: {
-        description: "The latest trace recorded for this user.",
+        description: t("The latest trace recorded for this user."),
       },
       size: 150,
       cell: ({ row }) => {
@@ -353,10 +359,11 @@ const UsersTable = ({ isBetaEnabled }: { isBetaEnabled: boolean }) => {
     },
     {
       accessorKey: "totalEvents",
-      header: "Total Events",
+      header: t("Total Events"),
       headerTooltip: {
-        description:
+        description: t(
           "Total number of events for the user, includes traces and observations. See data model for more details.",
+        ),
         href: "https://litefuse.ai/docs/observability/data-model",
       },
       size: 120,
@@ -370,10 +377,11 @@ const UsersTable = ({ isBetaEnabled }: { isBetaEnabled: boolean }) => {
     },
     {
       accessorKey: "totalTokens",
-      header: "Total Tokens",
+      header: t("Total Tokens"),
       headerTooltip: {
-        description:
+        description: t(
           "Total number of tokens used for the user across all generations.",
+        ),
         href: "https://litefuse.ai/docs/model-usage-and-cost",
       },
       size: 120,
@@ -387,9 +395,9 @@ const UsersTable = ({ isBetaEnabled }: { isBetaEnabled: boolean }) => {
     },
     {
       accessorKey: "totalCost",
-      header: "Total Cost",
+      header: t("Total Cost"),
       headerTooltip: {
-        description: "Total cost for the user across all generations.",
+        description: t("Total cost for the user across all generations."),
         href: "https://litefuse.ai/docs/model-usage-and-cost",
       },
       size: 120,
@@ -413,7 +421,7 @@ const UsersTable = ({ isBetaEnabled }: { isBetaEnabled: boolean }) => {
         timeRange={timeRange}
         setTimeRange={setTimeRange}
         searchConfig={{
-          metadataSearchFields: ["User ID"],
+          metadataSearchFields: [i18nKey("User ID")],
           updateQuery: setSearchQuery,
           currentQuery: searchQuery ?? undefined,
           tableAllowsFullTextSearch: false,
@@ -441,23 +449,23 @@ const UsersTable = ({ isBetaEnabled }: { isBetaEnabled: boolean }) => {
               : {
                   isLoading: false,
                   isError: false,
-                  data: userRowData.rows?.map((t) => {
+                  data: userRowData.rows?.map((row) => {
                     return {
-                      userId: t.id,
-                      environment: t.environment ?? undefined,
+                      userId: row.id,
+                      environment: row.environment ?? undefined,
                       firstEvent:
-                        t.firstTrace?.toLocaleString() ?? "No event yet",
+                        row.firstTrace?.toLocaleString() ?? t("No event yet"),
                       lastEvent:
-                        t.lastTrace?.toLocaleString() ?? "No event yet",
+                        row.lastTrace?.toLocaleString() ?? t("No event yet"),
                       totalEvents: compactNumberFormatter(
                         isBetaEnabled
-                          ? Number(t.totalObservations ?? 0)
-                          : Number(t.totalTraces ?? 0) +
-                              Number(t.totalObservations ?? 0),
+                          ? Number(row.totalObservations ?? 0)
+                          : Number(row.totalTraces ?? 0) +
+                              Number(row.totalObservations ?? 0),
                       ),
-                      totalTokens: compactNumberFormatter(t.totalTokens ?? 0),
+                      totalTokens: compactNumberFormatter(row.totalTokens ?? 0),
                       totalCost: usdFormatter(
-                        t.sumCalculatedTotalCost ?? 0,
+                        row.sumCalculatedTotalCost ?? 0,
                         2,
                         2,
                       ),

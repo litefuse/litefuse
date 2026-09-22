@@ -1,6 +1,7 @@
 import { type Flag } from "@/src/features/feature-flags/types";
 import { type SessionContextValue, useSession } from "next-auth/react";
 
+import { useTranslation } from "react-i18next";
 const isAdminOrExperimentalFeatures = (
   session: SessionContextValue,
 ): boolean => {
@@ -25,6 +26,7 @@ export const FeatureFlagToggle = (props: {
   whenDisabled?: React.ReactNode;
   whenLoading?: React.ReactNode;
 }) => {
+  const { t } = useTranslation();
   const session = useSession();
 
   if (isAdminOrExperimentalFeatures(session)) return props.whenEnabled ?? <></>;
@@ -32,7 +34,7 @@ export const FeatureFlagToggle = (props: {
   const isEnabled = isWhitelistedForFeature(session, props.featureFlag);
 
   if (session.status === "loading") {
-    return props.whenLoading ?? <div>Loading ...</div>;
+    return props.whenLoading ?? <div>{t("Loading ...")}</div>;
   }
 
   return isEnabled
