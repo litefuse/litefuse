@@ -12,8 +12,36 @@ import {
   LangfuseNotFoundError,
   UnauthorizedError,
   ForbiddenError,
+  OBSERVATION_FIELD_GROUPS,
 } from "@langfuse/shared";
-import { encrypt } from "@langfuse/shared/encryption";
+import { upsertBlobStorageIntegration } from "@/src/features/blobstorage-integration/service";
+
+type BlobStorageIntegrationResponseInput = Omit<
+  BlobStorageIntegrationResponseType,
+  "id" | "exportFieldGroups" | "compressed"
+> & {
+  secretAccessKey?: string | null;
+  exportFieldGroups?: string[] | null;
+  compressed?: boolean | null;
+};
+
+function toBlobStorageIntegrationResponse(
+  integration: BlobStorageIntegrationResponseInput,
+): BlobStorageIntegrationResponseType {
+  const { secretAccessKey: _secretAccessKey, ...safeIntegration } = integration;
+  return {
+    id: safeIntegration.projectId,
+    ...safeIntegration,
+    exportFieldGroups:
+      safeIntegration.exportFieldGroups?.filter(
+        (group): group is (typeof OBSERVATION_FIELD_GROUPS)[number] =>
+          OBSERVATION_FIELD_GROUPS.includes(
+            group as (typeof OBSERVATION_FIELD_GROUPS)[number],
+          ),
+      ) ?? null,
+    compressed: safeIntegration.compressed ?? true,
+  };
+}
 
 export default withMiddlewares({
   GET: handleGetBlobStorageIntegrations,
@@ -70,28 +98,7 @@ async function handleGetBlobStorageIntegrations(
 
   // Transform to API response format, exclude secretAccessKey
   const responseData: BlobStorageIntegrationResponseType[] = integrations.map(
-    (integration) => ({
-      id: integration.projectId, // Using projectId as ID since it's the primary key
-      projectId: integration.projectId,
-      type: integration.type,
-      bucketName: integration.bucketName,
-      endpoint: integration.endpoint,
-      region: integration.region,
-      accessKeyId: integration.accessKeyId,
-      prefix: integration.prefix,
-      exportFrequency: integration.exportFrequency,
-      enabled: integration.enabled,
-      forcePathStyle: integration.forcePathStyle,
-      fileType: integration.fileType,
-      exportMode: integration.exportMode,
-      exportStartDate: integration.exportStartDate,
-      nextSyncAt: integration.nextSyncAt,
-      lastSyncAt: integration.lastSyncAt,
-      lastError: integration.lastError,
-      lastErrorAt: integration.lastErrorAt,
-      createdAt: integration.createdAt,
-      updatedAt: integration.updatedAt,
-    }),
+    toBlobStorageIntegrationResponse,
   );
 
   return res.status(200).json({
@@ -146,56 +153,28 @@ async function handleUpsertBlobStorageIntegration(
     throw new LangfuseNotFoundError("Project not found");
   }
 
-  // Prepare data for database
-  const dbData = {
+  const integration = await upsertBlobStorageIntegration({
+    prisma,
     projectId: validatedData.projectId,
-    type: validatedData.type,
-    bucketName: validatedData.bucketName,
-    endpoint: validatedData.endpoint || null,
-    region: validatedData.region,
-    accessKeyId: validatedData.accessKeyId || null,
-    secretAccessKey: validatedData.secretAccessKey
-      ? encrypt(validatedData.secretAccessKey)
-      : null,
-    prefix: validatedData.prefix,
-    exportFrequency: validatedData.exportFrequency,
-    enabled: validatedData.enabled,
-    forcePathStyle: validatedData.forcePathStyle,
-    fileType: validatedData.fileType,
-    exportMode: validatedData.exportMode,
-    exportStartDate: validatedData.exportStartDate || null,
-  };
-
-  // Upsert the integration (create or update)
-  const integration = await prisma.blobStorageIntegration.upsert({
-    where: { projectId: validatedData.projectId },
-    update: dbData,
-    create: dbData,
+    data: {
+      type: validatedData.type,
+      bucketName: validatedData.bucketName,
+      endpoint: validatedData.endpoint || null,
+      region: validatedData.region,
+      accessKeyId: validatedData.accessKeyId || null,
+      secretAccessKey: validatedData.secretAccessKey ?? null,
+      prefix: validatedData.prefix,
+      exportFrequency: validatedData.exportFrequency,
+      enabled: validatedData.enabled,
+      forcePathStyle: validatedData.forcePathStyle,
+      fileType: validatedData.fileType,
+      exportMode: validatedData.exportMode,
+      exportStartDate: validatedData.exportStartDate || null,
+      exportSource: validatedData.exportSource,
+      exportFieldGroups: validatedData.exportFieldGroups,
+      compressed: validatedData.compressed,
+    },
   });
 
-  // Transform to API response format, exclude secretAccessKey
-  const responseData: BlobStorageIntegrationResponseType = {
-    id: integration.projectId, // Using projectId as ID since it's the primary key
-    projectId: integration.projectId,
-    type: integration.type,
-    bucketName: integration.bucketName,
-    endpoint: integration.endpoint,
-    region: integration.region,
-    accessKeyId: integration.accessKeyId,
-    prefix: integration.prefix,
-    exportFrequency: integration.exportFrequency,
-    enabled: integration.enabled,
-    forcePathStyle: integration.forcePathStyle,
-    fileType: integration.fileType,
-    exportMode: integration.exportMode,
-    exportStartDate: integration.exportStartDate,
-    nextSyncAt: integration.nextSyncAt,
-    lastSyncAt: integration.lastSyncAt,
-    lastError: integration.lastError,
-    lastErrorAt: integration.lastErrorAt,
-    createdAt: integration.createdAt,
-    updatedAt: integration.updatedAt,
-  };
-
-  return res.status(200).json(responseData);
+  return res.status(200).json(toBlobStorageIntegrationResponse(integration));
 }
