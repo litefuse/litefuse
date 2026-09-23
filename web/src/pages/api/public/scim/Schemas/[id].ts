@@ -1,17 +1,25 @@
 import { ApiAuthService } from "@/src/features/public-api/server/apiAuth";
 import { cors, runMiddleware } from "@/src/features/public-api/server/cors";
-import { userSchemaDeclaration } from "@/src/features/public-api/server/scimDiscovery";
+import {
+  USER_SCHEMA_URN,
+  userSchemaDeclaration,
+  writeNotFound,
+} from "@/src/features/public-api/server/scimDiscovery";
 import { prisma } from "@langfuse/shared/src/db";
 import { logger, redis } from "@langfuse/shared/src/server";
 
 import { type NextApiRequest, type NextApiResponse } from "next";
 
 /**
- * `GET /api/public/scim/Schemas` - the attribute schema of the User resource.
+ * `GET /api/public/scim/Schemas/{urn}` - one schema on its own.
  *
- * The declaration itself lives in `scimDiscovery.ts` because
- * `/Schemas/{urn}` serves the same object on its own; this handler is only the
- * collection envelope plus the discovery-endpoint authentication.
+ * `/Schemas` advertises this path as the `meta.location` of every entry it
+ * returns, so it has to answer with the same declaration. The `{urn}` segment
+ * carries colons (`urn:ietf:params:scim:schemas:core:2.0:User`), which are legal
+ * in a path segment; Next.js hands the parameter over already percent-decoded,
+ * so a client may send either form.
+ *
+ * Authentication is the discovery one (organization-scoped key, no plan gate).
  */
 export default async function handler(
   req: NextApiRequest,
@@ -21,7 +29,7 @@ export default async function handler(
 
   if (req.method !== "GET") {
     logger.error(
-      `Method not allowed for ${req.method} on /api/public/scim/Schemas`,
+      `Method not allowed for ${req.method} on /api/public/scim/Schemas/[id]`,
     );
     return res.status(405).json({
       schemas: ["urn:ietf:params:scim:api:messages:2.0:Error"],
@@ -57,10 +65,14 @@ export default async function handler(
     });
   }
 
-  // Return the schemas
-  return res.status(200).json({
-    schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
-    totalResults: 1,
-    Resources: [userSchemaDeclaration()],
-  });
+  const id = typeof req.query.id === "string" ? req.query.id : "";
+  // Only the one schema this service declares is addressable. The value in the
+  // path is the schema's `id`, i.e. its URN, so it is compared verbatim (a URN's
+  // URN-specific string is case sensitive).
+  if (id !== USER_SCHEMA_URN) {
+    logger.warn(`SCIM schema not found: ${id}`);
+    return writeNotFound(res, `Schema ${id} not found`);
+  }
+
+  return res.status(200).json(userSchemaDeclaration());
 }

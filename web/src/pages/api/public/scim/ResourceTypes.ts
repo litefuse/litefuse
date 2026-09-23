@@ -1,5 +1,6 @@
 import { ApiAuthService } from "@/src/features/public-api/server/apiAuth";
 import { cors, runMiddleware } from "@/src/features/public-api/server/cors";
+import { userResourceType } from "@/src/features/public-api/server/scimDiscovery";
 import { prisma } from "@langfuse/shared/src/db";
 import { logger, redis } from "@langfuse/shared/src/server";
 
@@ -49,24 +50,11 @@ export default async function handler(
     });
   }
 
-  // Return the resource types
+  // Return the resource types. The declaration is shared with
+  // `/ResourceTypes/{id}`, which serves the same object on its own.
   return res.status(200).json({
     schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
     totalResults: 1,
-    Resources: [
-      {
-        schemas: ["urn:ietf:params:scim:schemas:core:2.0:ResourceType"],
-        id: "User",
-        name: "User",
-        endpoint: "/api/public/scim/Users",
-        description: "User Account",
-        schema: "urn:ietf:params:scim:schemas:core:2.0:User",
-        schemaExtensions: [],
-        meta: {
-          resourceType: "ResourceType",
-          location: "/api/public/scim/ResourceTypes/User",
-        },
-      },
-    ],
+    Resources: [userResourceType()],
   });
 }
