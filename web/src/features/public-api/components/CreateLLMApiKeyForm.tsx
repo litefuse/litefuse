@@ -15,14 +15,24 @@ import {
   FormMessage,
 } from "@/src/components/ui/form";
 import { Input } from "@/src/components/ui/input";
+import { Label } from "@/src/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/src/components/ui/select";
 import { Switch } from "@/src/components/ui/switch";
+import {
+  CUSTOM_PRESET_ID,
+  getLlmProviderPreset,
+  groupLlmProviderPresets,
+  inferLlmProviderPresetId,
+  type LlmProviderPreset,
+} from "@/src/features/llm-api-key/providerPresets";
 import { api } from "@/src/utils/api";
 import { cn } from "@/src/utils/tailwind";
 import { usePostHogClientCapture } from "@/src/features/posthog-analytics/usePostHogClientCapture";
@@ -177,10 +187,44 @@ export function CreateLLMApiKeyForm({
     adapter === LLMAdapter.Anthropic ||
     adapter === LLMAdapter.GoogleAIStudio;
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: "customModels",
   });
+
+  // Which provider preset is currently selected. "custom" keeps the previous
+  // behaviour where the user configures adapter/baseURL/model names by hand.
+  const [presetId, setPresetId] = useState<string>(() =>
+    mode === "update" && existingKey
+      ? inferLlmProviderPresetId({
+          adapter: existingKey.adapter,
+          baseURL: existingKey.baseURL,
+        })
+      : CUSTOM_PRESET_ID,
+  );
+
+  const selectedPreset: LlmProviderPreset | undefined =
+    getLlmProviderPreset(presetId);
+
+  const applyPreset = (nextPresetId: string) => {
+    setPresetId(nextPresetId);
+
+    const preset = getLlmProviderPreset(nextPresetId);
+
+    if (!preset) return;
+
+    form.setValue("adapter", preset.adapter, { shouldValidate: true });
+    form.setValue("provider", preset.provider, { shouldValidate: true });
+    form.setValue("baseURL", preset.baseURL, { shouldValidate: true });
+    form.setValue("withDefaultModels", preset.withDefaultModels);
+    replace(preset.customModels.map((value) => ({ value })));
+
+    // Model names live behind the advanced settings toggle, so open it when the
+    // preset ships an explicit model list.
+    if (!preset.withDefaultModels) {
+      setShowAdvancedSettings(true);
+    }
+  };
 
   const {
     fields: headerFields,
@@ -386,6 +430,61 @@ export function CreateLLMApiKeyForm({
         }}
       >
         <DialogBody>
+          {/* Provider preset (create mode only; update mode locks adapter+provider) */}
+          {mode === "create" && (
+            <div className="space-y-2">
+              <Label>Provider preset</Label>
+              <p className="text-muted-foreground text-sm">
+                Prefills the adapter, base URL and model names for a provider.
+                Choose “Custom” to configure the connection entirely by hand.
+              </p>
+              <Select value={presetId} onValueChange={applyPreset}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a provider" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[50vh]">
+                  <SelectItem value={CUSTOM_PRESET_ID}>
+                    Custom (configure manually)
+                  </SelectItem>
+                  {groupLlmProviderPresets().map(
+                    ({ group, label, presets }) => (
+                      <SelectGroup key={group}>
+                        <SelectLabel>{label}</SelectLabel>
+                        {presets.map((preset) => (
+                          <SelectItem key={preset.id} value={preset.id}>
+                            {preset.label}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ),
+                  )}
+                </SelectContent>
+              </Select>
+              {selectedPreset && (
+                <p className="text-muted-foreground text-sm">
+                  {selectedPreset.note ? `${selectedPreset.note} ` : ""}
+                  <a
+                    href={selectedPreset.docsUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline"
+                  >
+                    Docs
+                  </a>
+                  {" · "}
+                  <a
+                    href={selectedPreset.apiKeyUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline"
+                  >
+                    Get an API key
+                  </a>
+                </p>
+              )}
+            </div>
+          )}
+
           {/* LLM adapter */}
           <FormField
             control={form.control}
@@ -397,9 +496,15 @@ export function CreateLLMApiKeyForm({
                   {t("Schema that is accepted at that provider endpoint.")}
                 </FormDescription>
                 <Select
-                  defaultValue={field.value}
+                  // Controlled, not defaultValue: selecting a provider preset
+                  // writes the adapter through form.setValue, which an
+                  // uncontrolled Select would not reflect.
+                  value={field.value}
                   onValueChange={(value) => {
                     field.onChange(value as LLMAdapter);
+                    // Manual adapter edits leave the preset context, so fall
+                    // back to "custom" instead of showing a stale preset.
+                    setPresetId(CUSTOM_PRESET_ID);
                     form.setValue(
                       "baseURL",
                       getCustomizedBaseURL(value as LLMAdapter),

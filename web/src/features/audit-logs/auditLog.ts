@@ -1,5 +1,6 @@
 import {
   prisma as _prisma,
+  type Prisma,
   type Role,
   AuditLogRecordType,
 } from "@langfuse/shared/src/db";
@@ -77,7 +78,14 @@ type AuditLog = {
     }
 );
 
-export async function auditLog(log: AuditLog, prisma?: typeof _prisma) {
+/**
+ * `prisma` is the client to write with. Pass a transaction client to have the
+ * entry commit or roll back together with the change it describes.
+ */
+export async function auditLog(
+  log: AuditLog,
+  prisma?: Prisma.TransactionClient | typeof _prisma,
+) {
   const meta =
     "session" in log
       ? {

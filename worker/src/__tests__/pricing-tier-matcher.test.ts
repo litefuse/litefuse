@@ -211,16 +211,19 @@ describe("default-model-prices.json", () => {
     }
   });
 
-  it("should correctly match claude-sonnet-4-5 model with tiered pricing", () => {
-    const claudeModel = defaultModelPrices.find(
-      (m) => m.id === "c5qmrqolku82tra3vgdixmys",
+  it("should correctly match gemini-2.5-pro with tiered pricing", () => {
+    // gemini-2.5-pro is one of the two default models that still legitimately
+    // ships a second (>200K prompt) tier. Claude Sonnet 4.5/4.6 no longer do:
+    // Anthropic publishes a single rate card for those (4.6+ get the full 1M
+    // context at standard pricing), see docs/model-pricing-verification.md.
+    const geminiModel = defaultModelPrices.find(
+      (m) => m.modelName === "gemini-2.5-pro",
     );
-    expect(claudeModel).toBeDefined();
-    expect(claudeModel!.modelName).toBe("claude-sonnet-4-5-20250929");
-    expect(claudeModel!.pricingTiers.length).toBe(2);
+    expect(geminiModel).toBeDefined();
+    expect(geminiModel!.pricingTiers.length).toBe(2);
 
     // Convert to PricingTierWithPrices format
-    const tiers: PricingTierWithPrices[] = claudeModel!.pricingTiers.map(
+    const tiers: PricingTierWithPrices[] = geminiModel!.pricingTiers.map(
       (tier) => ({
         id: tier.id,
         name: tier.name,
@@ -241,7 +244,7 @@ describe("default-model-prices.json", () => {
     });
     expect(standardResult).not.toBeNull();
     expect(standardResult?.pricingTierName).toBe("Standard");
-    expect(standardResult?.prices.input.toNumber()).toBe(0.000003);
+    expect(standardResult?.prices.input.toNumber()).toBe(0.00000125);
 
     // Test large context pricing (input > 200K)
     const largeContextResult = matchPricingTier(tiers, {
@@ -250,7 +253,24 @@ describe("default-model-prices.json", () => {
     });
     expect(largeContextResult).not.toBeNull();
     expect(largeContextResult?.pricingTierName).toBe("Large Context");
-    expect(largeContextResult?.prices.input.toNumber()).toBe(0.000006);
+    expect(largeContextResult?.prices.input.toNumber()).toBe(0.0000025);
+  });
+
+  it("should ship a single tier for models with one official rate card", () => {
+    // Regression guard for the verification in
+    // docs/model-pricing-verification.md: these models must not carry a
+    // >200K/context or other non-official tier.
+    for (const modelName of [
+      "claude-sonnet-4-5-20250929",
+      "claude-sonnet-4-6",
+      "claude-opus-5",
+      "claude-sonnet-5",
+      "claude-haiku-4-5",
+    ]) {
+      const model = defaultModelPrices.find((m) => m.modelName === modelName);
+      expect(model, `${modelName} should be in the price table`).toBeDefined();
+      expect(model!.pricingTiers.length, `${modelName} tiers`).toBe(1);
+    }
   });
 });
 
