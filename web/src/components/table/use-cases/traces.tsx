@@ -1,3 +1,4 @@
+import { tracePreviewKey } from "@/src/features/traces/lib/tracePreview";
 import { StarTraceToggle } from "@/src/components/star-toggle";
 import { DataTable } from "@/src/components/table/data-table";
 import { DataTableToolbar } from "@/src/components/table/data-table-toolbar";
@@ -98,9 +99,10 @@ export type TracesTableRow = {
   bookmarked: boolean;
   timestamp: Date;
   name: string;
-  // i/o and metadata not set explicitly, but fetched from the server from the cell
+  // I/O and metadata previews are fetched once per page, not per cell.
   input?: unknown;
   output?: unknown;
+  previewLoading?: boolean;
   levelCounts: {
     errorCount?: bigint;
     warningCount?: bigint;
@@ -230,11 +232,12 @@ export default function TracesTable({
     void Promise.all([
       utils.traces.all.invalidate(),
       utils.traces.metrics.invalidate(),
+      utils.traces.batchPreviews.invalidate({ projectId }),
       utils.traces.countAll.invalidate(),
       utils.traces.filterOptions.invalidate(),
       utils.projects.environmentFilterOptions.invalidate(),
     ]);
-  }, [utils]);
+  }, [utils, projectId]);
 
   const { timeRange, setTimeRange } = useTableDateRange(projectId);
 
@@ -663,14 +666,10 @@ export default function TracesTable({
       id: "input",
       size: 400,
       cell: ({ row }) => {
-        const traceId: TracesTableRow["id"] = row.getValue("id");
-        const traceTimestamp: TracesTableRow["timestamp"] =
-          row.getValue("timestamp");
         return (
           <TracesDynamicCell
-            traceId={traceId}
-            projectId={projectId}
-            timestamp={new Date(traceTimestamp)}
+            data={row.original.input}
+            isLoading={row.original.previewLoading ?? false}
             col="input"
             singleLine={rowHeight === "s"}
           />
@@ -684,14 +683,10 @@ export default function TracesTable({
       id: "output",
       size: 400,
       cell: ({ row }) => {
-        const traceId: TracesTableRow["id"] = row.getValue("id");
-        const traceTimestamp: TracesTableRow["timestamp"] =
-          row.getValue("timestamp");
         return (
           <TracesDynamicCell
-            traceId={traceId}
-            projectId={projectId}
-            timestamp={new Date(traceTimestamp)}
+            data={row.original.output}
+            isLoading={row.original.previewLoading ?? false}
             col="output"
             singleLine={rowHeight === "s"}
           />
@@ -883,14 +878,10 @@ export default function TracesTable({
         href: "https://litefuse.ai/docs/observability/features/metadata",
       },
       cell: ({ row }) => {
-        const traceId: TracesTableRow["id"] = row.getValue("id");
-        const traceTimestamp: TracesTableRow["timestamp"] =
-          row.getValue("timestamp");
         return (
           <TracesDynamicCell
-            traceId={traceId}
-            projectId={projectId}
-            timestamp={new Date(traceTimestamp)}
+            data={row.original.metadata}
+            isLoading={row.original.previewLoading ?? false}
             col="metadata"
             singleLine={rowHeight === "s"}
           />
@@ -1254,6 +1245,37 @@ export default function TracesTable({
       columns,
     );
 
+  const needsPreviews = ["input", "output", "metadata"].some(
+    (column) => columnVisibility[column] !== false,
+  );
+  const previewInput = useMemo(
+    () => ({
+      projectId,
+      traces: (traces.data?.traces ?? []).map(({ id, timestamp }) => ({
+        id,
+        timestamp,
+      })),
+      includeMetadata: columnVisibility.metadata !== false,
+    }),
+    [projectId, traces.data?.traces, columnVisibility.metadata],
+  );
+  const tracePreviews = api.traces.batchPreviews.useQuery(previewInput, {
+    enabled: needsPreviews && previewInput.traces.length > 0,
+    refetchOnMount: false,
+    staleTime: 60 * 1000,
+    trpc: { context: { batchPreview: true } },
+  });
+  const previewsById = useMemo(
+    () =>
+      new Map(
+        (tracePreviews.data ?? []).map((preview) => [
+          tracePreviewKey(preview),
+          preview,
+        ]),
+      ),
+    [tracePreviews.data],
+  );
+
   const [columnOrder, setColumnOrder] = useColumnOrder<TracesTableRow>(
     `traceColumnOrder-${projectId}${hideControls ? "-hideControl" : "-showControls"}`,
     columns,
@@ -1311,7 +1333,17 @@ export default function TracesTable({
   const rows = useMemo(() => {
     return traces.isSuccess
       ? (traceRowData?.rows?.map((trace) => {
+          const preview = previewsById.get(
+            tracePreviewKey({
+              id: trace.id,
+              day: trace.timestamp.toISOString().slice(0, 10),
+            }),
+          );
           return {
+            input: preview?.input,
+            output: preview?.output,
+            metadata: preview?.metadata,
+            previewLoading: tracePreviews.isPending && !tracePreviews.isError,
             bookmarked: trace.bookmarked,
             id: trace.id,
             timestamp: trace.timestamp,
@@ -1352,7 +1384,13 @@ export default function TracesTable({
           };
         }) ?? [])
       : [];
-  }, [traces.isSuccess, traceRowData?.rows]);
+  }, [
+    traces.isSuccess,
+    traceRowData?.rows,
+    previewsById,
+    tracePreviews.isPending,
+    tracePreviews.isError,
+  ]);
 
   return (
     <DataTableControlsProvider tableName={traceFilterConfig.tableName}>
@@ -1488,37 +1526,19 @@ export default function TracesTable({
 }
 
 const TracesDynamicCell = ({
-  traceId,
-  projectId,
-  timestamp,
+  data,
+  isLoading,
   col,
   singleLine = false,
 }: {
-  traceId: string;
-  projectId: string;
-  timestamp: Date;
+  data: unknown;
+  isLoading: boolean;
   col: "input" | "output" | "metadata";
   singleLine?: boolean;
 }) => {
-  const trace = api.traces.byId.useQuery(
-    { traceId, projectId, timestamp, verbosity: "compact" },
-    {
-      refetchOnMount: false, // prevents refetching loops
-      staleTime: 60 * 1000, // 1 minute
-      meta: { silentHttpCodes: [404] },
-    },
-  );
-
-  const data =
-    col === "output"
-      ? trace.data?.output
-      : col === "input"
-        ? trace.data?.input
-        : trace.data?.metadata;
-
   return (
     <MemoizedIOTableCell
-      isLoading={trace.isPending}
+      isLoading={isLoading}
       data={data}
       className={cn(
         col === "output" && "bg-accent-light-green",

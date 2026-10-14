@@ -15,6 +15,8 @@ export const config = {
 
 // export API handler
 export default createNextApiHandler({
+  // Permit POST queries for bounded page-preview batches (large ID lists).
+  allowMethodOverride: true,
   router: appRouter,
   createContext: createTRPCContext,
   onError: ({ path, error }) => {

@@ -42,6 +42,8 @@ Use root [AGENTS.md](../AGENTS.md) for monorepo-level rules.
 - Typecheck: `pnpm --filter web run typecheck`
 - Server tests: `pnpm --filter web run test --testPathPatterns="<pattern>"`
 - Client tests: `pnpm --filter web run test-client --testPathPatterns="<pattern>"`
+- Offline list-preview and observation peek-loading regressions: `pnpm --filter web run test:previews`
+  (mocked external services; no database setup or global teardown).
 - E2E tests: `pnpm --filter web run test:e2e`
 - Build: `pnpm --filter web run build`
 

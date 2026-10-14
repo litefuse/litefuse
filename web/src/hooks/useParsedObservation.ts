@@ -13,8 +13,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useEffect } from "react";
-import { api } from "@/src/utils/api";
-import { useV4Beta } from "@/src/features/events/hooks/useV4Beta";
+import { useObservationContent } from "@/src/components/trace2/api/useObservationContent";
 import {
   type ObservationReturnTypeWithMetadata,
   type ObservationReturnType,
@@ -194,37 +193,13 @@ export function useParsedObservation({
   startTime,
   baseObservation,
 }: UseParsedObservationParams) {
-  const { isBetaEnabled } = useV4Beta();
-
-  // Step 1a: Fetch raw observation data from observations table (beta OFF)
-  const observationQuery = api.observations.byId.useQuery(
-    {
+  const { isBetaEnabled, observationQuery, eventsQuery } =
+    useObservationContent({
       observationId,
       traceId,
       projectId,
       startTime,
-    },
-    {
-      enabled: !isBetaEnabled,
-      staleTime: 5 * 60 * 1000, // 5 minutes
-    },
-  );
-
-  // Step 1b: Fetch raw observation data from events table (beta ON)
-  const eventsQuery = api.events.batchIO.useQuery(
-    {
-      projectId,
-      observations: [{ id: observationId, traceId }],
-      minStartTime: startTime ?? new Date(0),
-      maxStartTime: startTime ?? new Date(),
-      truncated: false,
-    },
-    {
-      enabled: isBetaEnabled,
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      select: (data) => data[0], // Extract single result from batch
-    },
-  );
+    });
 
   const mergedObservation = useMemo(() => {
     if (isBetaEnabled) {

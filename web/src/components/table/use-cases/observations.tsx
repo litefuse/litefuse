@@ -1,4 +1,8 @@
 import { api } from "@/src/utils/api";
+import {
+  getObservationPreviewReferences,
+  observationPreviewKey,
+} from "@/src/features/observations/lib/observationBatchPreview";
 import { DataTable } from "@/src/components/table/data-table";
 import { DataTableToolbar } from "@/src/components/table/data-table-toolbar";
 import {
@@ -91,7 +95,8 @@ export type ObservationsTableRow = {
   startTime: Date;
   type: ObservationType;
   name?: string;
-  // i/o and metadata not set explicitly, but fetched from the server from the cell
+  // Compact previews are fetched once for the current page.
+  previewLoading?: boolean;
   input?: unknown;
   output?: unknown;
   level?: ObservationLevelType;
@@ -200,9 +205,10 @@ export default function ObservationsTable({
       utils.generations.all.invalidate(),
       utils.generations.countAll.invalidate(),
       utils.generations.filterOptions.invalidate(),
+      utils.observations.batchPreviews.invalidate({ projectId }),
       utils.projects.environmentFilterOptions.invalidate(),
     ]);
-  }, [utils]);
+  }, [utils, projectId]);
   const { searchQuery, searchType, setSearchQuery, setSearchType } =
     useFullTextSearch();
 
@@ -646,14 +652,10 @@ export default function ObservationsTable({
       id: "input",
       size: 300,
       cell: ({ row }) => {
-        const observationId: string = row.getValue("id");
-        const traceId: string = row.getValue("traceId");
         return (
           <GenerationsDynamicCell
-            observationId={observationId}
-            traceId={traceId}
-            projectId={projectId}
-            startTime={row.getValue("startTime")}
+            data={row.original.input}
+            isLoading={row.original.previewLoading ?? false}
             col="input"
             singleLine={rowHeight === "s"}
           />
@@ -667,14 +669,10 @@ export default function ObservationsTable({
       header: t("Output"),
       size: 300,
       cell: ({ row }) => {
-        const observationId: string = row.getValue("id");
-        const traceId: string = row.getValue("traceId");
         return (
           <GenerationsDynamicCell
-            observationId={observationId}
-            traceId={traceId}
-            projectId={projectId}
-            startTime={row.getValue("startTime")}
+            data={row.original.output}
+            isLoading={row.original.previewLoading ?? false}
             col="output"
             singleLine={rowHeight === "s"}
           />
@@ -953,14 +951,10 @@ export default function ObservationsTable({
         href: "https://litefuse.ai/docs/observability/features/metadata",
       },
       cell: ({ row }) => {
-        const observationId: string = row.getValue("id");
-        const traceId: string = row.getValue("traceId");
         return (
           <GenerationsDynamicCell
-            observationId={observationId}
-            traceId={traceId}
-            projectId={projectId}
-            startTime={row.getValue("startTime")}
+            data={row.original.metadata}
+            isLoading={row.original.previewLoading ?? false}
             col="metadata"
             singleLine={rowHeight === "s"}
           />
@@ -1209,6 +1203,40 @@ export default function ObservationsTable({
     columns,
   );
 
+  const previewReferences = useMemo(
+    () => getObservationPreviewReferences(generations.data?.generations ?? []),
+    [generations.data],
+  );
+  const previewsEnabled =
+    previewReferences.length > 0 &&
+    ["input", "output", "metadata"].some(
+      (column) => columnVisibility[column] !== false,
+    );
+  const previews = api.observations.batchPreviews.useQuery(
+    {
+      projectId,
+      observations: previewReferences,
+      includeMetadata: columnVisibility.metadata !== false,
+    },
+    {
+      enabled: previewsEnabled,
+      refetchOnMount: false,
+      staleTime: 60 * 1000,
+      trpc: { context: { batchPreview: true } },
+    },
+  );
+  const previewByKey = useMemo(
+    () =>
+      new Map(
+        (previews.data ?? []).map((preview) => [
+          observationPreviewKey(preview),
+          preview,
+        ]),
+      ),
+    [previews.data],
+  );
+  const previewsLoading = previewsEnabled && previews.isPending;
+
   const peekNavigationProps = usePeekNavigation({
     queryParams: ["observation", "display", "timestamp", "traceId"],
     paramsToMirrorPeekValue: ["observation"],
@@ -1245,14 +1273,28 @@ export default function ObservationsTable({
       itemType: "TRACE",
       customTitlePrefix: "Observation ID:",
       detailNavigationKey: "observations",
-      children: <PeekViewObservationDetail projectId={projectId} />,
+      children: (
+        <PeekViewObservationDetail
+          projectId={projectId}
+          observationReferences={previewReferences}
+        />
+      ),
       ...peekNavigationProps,
     };
-  }, [projectId, peekNavigationProps, hideControls]);
+  }, [projectId, peekNavigationProps, hideControls, previewReferences]);
 
   const rows: ObservationsTableRow[] = useMemo(() => {
     return generations.isSuccess
       ? generations.data.generations.map((generation) => {
+          const preview = generation.traceId
+            ? previewByKey.get(
+                observationPreviewKey({
+                  id: generation.id,
+                  traceId: generation.traceId,
+                  startTime: generation.startTime,
+                }),
+              )
+            : undefined;
           // Ensure traceTags is always an array, similar to traces solution
           const processedTraceTags = (() => {
             if (Array.isArray(generation.traceTags)) {
@@ -1276,6 +1318,10 @@ export default function ObservationsTable({
 
           return {
             id: generation.id,
+            input: preview?.input,
+            output: preview?.output,
+            metadata: preview?.metadata,
+            previewLoading: Boolean(generation.traceId) && previewsLoading,
             traceId: generation.traceId ?? undefined,
             type: generation.type ?? undefined,
             traceName: generation.traceName ?? "",
@@ -1314,7 +1360,7 @@ export default function ObservationsTable({
           };
         })
       : [];
-  }, [generations]);
+  }, [generations, previewByKey, previewsLoading]);
 
   return (
     <DataTableControlsProvider tableName={observationFilterConfig.tableName}>
@@ -1527,46 +1573,19 @@ export default function ObservationsTable({
 }
 
 const GenerationsDynamicCell = ({
-  traceId,
-  observationId,
-  projectId,
-  startTime,
+  data,
+  isLoading,
   col,
   singleLine = false,
 }: {
-  traceId: string;
-  observationId: string;
-  projectId: string;
-  startTime?: Date;
+  data: unknown;
+  isLoading: boolean;
   col: "input" | "output" | "metadata";
   singleLine: boolean;
 }) => {
-  const observation = api.observations.byId.useQuery(
-    {
-      observationId,
-      traceId,
-      projectId,
-      startTime,
-      verbosity: "compact",
-    },
-    {
-      enabled: typeof traceId === "string" && typeof observationId === "string",
-      refetchOnMount: false, // prevents refetching loops
-      staleTime: 60 * 1000, // 1 minute
-      meta: { silentHttpCodes: [404] },
-    },
-  );
-
-  const data =
-    col === "output"
-      ? observation.data?.output
-      : col === "input"
-        ? observation.data?.input
-        : observation.data?.metadata;
-
   return (
     <MemoizedIOTableCell
-      isLoading={observation.isPending}
+      isLoading={isLoading}
       data={data}
       className={cn(
         col === "output" && "bg-accent-light-green",
