@@ -46,7 +46,7 @@ export async function deleteOrgMembership(
   });
 
   return res.status(200).json({
-    message: "Membership deleted successfully",
+    message: "Organization membership removed",
     userId: parsed.data.userId,
   });
 }

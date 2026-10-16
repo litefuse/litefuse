@@ -4,9 +4,16 @@ import { logger, redis } from "@langfuse/shared/src/server";
 import { auditLog } from "@/src/features/audit-logs/auditLog";
 import { ApiAuthService } from "@/src/features/public-api/server/apiAuth";
 
+/** Answer used whenever the addressed key cannot be resolved. */
+const API_KEY_NOT_FOUND_ERROR = "API key not found";
+
+/** Acknowledgement body of a successful delete. */
+const DELETE_SUCCEEDED_BODY = { success: true };
+
 /**
- * Delete an organization-level API key.
- * Instance-admin entry: DELETE /api/admin/organizations/{id}/apiKeys/{keyId}
+ * Delete an organization-level API key (instance-admin entry).
+ *
+ * DELETE /api/admin/organizations/{id}/apiKeys/{keyId}
  */
 export async function deleteOrgApiKey(
   req: NextApiRequest,
@@ -20,17 +27,16 @@ export async function deleteOrgApiKey(
   });
 
   if (!apiKey) {
-    return res.status(404).json({ error: "API key not found" });
+    return res.status(404).json({ error: API_KEY_NOT_FOUND_ERROR });
   }
 
-  const deleted = await new ApiAuthService(prisma, redis).deleteApiKey(
-    apiKeyId,
-    orgId,
-    "ORGANIZATION",
-  );
+  const apiAuth = new ApiAuthService(prisma, redis);
+  const removed = await apiAuth.deleteApiKey(apiKeyId, orgId, "ORGANIZATION");
 
-  if (!deleted) {
-    return res.status(500).json({ error: "Failed to delete API key" });
+  if (!removed) {
+    return res.status(500).json({
+      error: "The API key could not be removed.",
+    });
   }
 
   await auditLog({
@@ -41,7 +47,7 @@ export async function deleteOrgApiKey(
     action: "delete",
   });
 
-  logger.info(`Deleted API key ${apiKeyId} for organization ${orgId}`);
+  logger.info(`Removed API key ${apiKeyId} from organization ${orgId}`);
 
-  return res.status(200).json({ success: true });
+  return res.status(200).json(DELETE_SUCCEEDED_BODY);
 }

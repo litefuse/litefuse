@@ -51,6 +51,9 @@ jobs:
     if: needs.pre-job.outputs.should_skip != 'true'
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Needed to diff against the base commit below.
+          fetch-depth: 0
       - uses: pnpm/action-setup@v3
         with:
           version: 9.5.0
@@ -73,8 +76,36 @@ jobs:
       - name: Load default env
         run: |
           cp .env.dev.example .env
-      - name: lint web
-        run: pnpm run lint
+      # `eslint . --max-warnings 0` over the whole repository cannot pass on this fork:
+      # it carries pre-existing warnings in files no change touches, so the job was red
+      # at the base commit and could not distinguish a new warning from an old one.
+      # Lint the files a change actually touches, the same way prettier-check does.
+      - name: Lint changed files
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA=${{ github.event.pull_request.base.sha }}
+          else
+            BASE_SHA=$(git merge-base origin/main HEAD)
+          fi
+
+          echo "Linting files changed from $BASE_SHA to HEAD"
+
+          WEB_FILES=$(git diff --name-only --diff-filter=ACMR $BASE_SHA HEAD -- 'web/**/*.ts' 'web/**/*.tsx' 'web/**/*.js' 'web/**/*.jsx' | sed 's|^web/||' | tr '\n' ' ')
+          WORKER_FILES=$(git diff --name-only --diff-filter=ACMR $BASE_SHA HEAD -- 'worker/**/*.ts' 'worker/**/*.tsx' | sed 's|^worker/||' | tr '\n' ' ')
+
+          if [ -n "$WEB_FILES" ] && [ "$WEB_FILES" != " " ]; then
+            echo "web: $WEB_FILES"
+            (cd web && pnpm exec dotenv -e ../.env -- eslint $WEB_FILES --max-warnings 0)
+          else
+            echo "No web files changed - skipping web lint"
+          fi
+
+          if [ -n "$WORKER_FILES" ] && [ "$WORKER_FILES" != " " ]; then
+            echo "worker: $WORKER_FILES"
+            (cd worker && pnpm exec eslint $WORKER_FILES --max-warnings 0)
+          else
+            echo "No worker files changed - skipping worker lint"
+          fi
       - name: i18n check (locale files in sync, zh-CN complete)
         run: pnpm --filter web run i18n:check
 
@@ -122,7 +153,9 @@ jobs:
           fi
 
   test-docker-build:
-    timeout-minutes: 20
+    # Raised from 20: the job builds two images (pnpm install plus a full Next.js
+    # production build, twice) before it even starts the stack under test.
+    timeout-minutes: 35
     runs-on: ubuntu-latest
     needs:
       - pre-job

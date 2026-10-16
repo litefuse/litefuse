@@ -13,7 +13,11 @@ import { ApiAuthService } from "@/src/features/public-api/server/apiAuth";
 
 /**
  * Delete a project (DELETE /api/public/projects/{id}).
- * Invalidate cached keys → delete project-level keys → soft-delete the project → audit log → enqueue async deletion.
+ *
+ * The order matters: cached keys are dropped first (otherwise they would stay
+ * valid), project scoped keys are removed from Postgres, the project itself is
+ * only soft deleted, the change is audited, and the actual data removal is
+ * handed over to the worker.
  */
 export async function deleteProject(
   req: NextApiRequest,
@@ -22,18 +26,17 @@ export async function deleteProject(
   scope: ApiAccessScope,
 ) {
   try {
-    // API keys need to be deleted from cache. Otherwise, they will still be valid.
-    await new ApiAuthService(prisma, redis).invalidateCachedProjectApiKeys(
-      projectId,
-    );
+    const apiKeys = new ApiAuthService(prisma, redis);
 
-    // Delete API keys from DB
+    await apiKeys.invalidateCachedProjectApiKeys(projectId);
+
     await prisma.apiKey.deleteMany({
       where: { projectId, scope: "PROJECT" },
     });
 
-    // Mark project as deleted (constrained by id + orgId to prevent cross-organization access)
-    const project = await prisma.project.update({
+    // Soft delete, constrained by id + orgId so that no other organization's
+    // project can be reached through this route.
+    const removedProject = await prisma.project.update({
       where: { id: projectId, orgId: scope.orgId },
       data: { deletedAt: new Date() },
     });
@@ -44,33 +47,30 @@ export async function deleteProject(
       projectId,
       resourceType: "project",
       resourceId: projectId,
-      before: project,
+      before: removedProject,
       action: "delete",
     });
 
-    const projectDeleteQueue = ProjectDeleteQueue.getInstance();
-    if (!projectDeleteQueue) {
-      logger.error("ProjectDeleteQueue is not available");
+    const deletionQueue = ProjectDeleteQueue.getInstance();
+    if (!deletionQueue) {
+      logger.error("Project delete queue is unavailable");
       return res.status(500).json({ message: "Internal server error" });
     }
 
-    await projectDeleteQueue.add(QueueJobs.ProjectDelete, {
+    await deletionQueue.add(QueueJobs.ProjectDelete, {
       timestamp: new Date(),
       id: randomUUID(),
-      payload: {
-        projectId,
-        orgId: scope.orgId,
-      },
+      payload: { projectId, orgId: scope.orgId },
       name: QueueJobs.ProjectDelete,
     });
 
     return res.status(202).json({
       success: true,
       message:
-        "Project deletion has been initiated and is being processed asynchronously",
+        "The project is queued for deletion and will be removed in the background.",
     });
   } catch (error) {
-    logger.error("Failed to delete project", error);
+    logger.error("Could not delete the project", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 }

@@ -1,6 +1,6 @@
 import { type Plan } from "@langfuse/shared";
 import { type CloudConfigSchema } from "@langfuse/shared";
-import { resolveSelfHostedPlan } from "@/src/features/enterprise/plan/resolvePlan";
+import { resolveSelfHostedPlan } from "@/src/features/entitlements/server/resolveSelfHostedPlan";
 
 /**
  * Get the plan of the organization based on the cloud configuration. Used to add this plan to the organization object in JWT via NextAuth.
