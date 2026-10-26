@@ -1,7 +1,7 @@
-import { LLMAdapter } from "@langfuse/shared";
+import { LLMAdapter, typeSafeModels } from "@langfuse/shared";
 
 /**
- * Provider presets for the "LLM Connections" settings page.
+ * Provider presets for the "Model Connections" settings page.
  *
  * Each preset fills the connection form (adapter + provider name + base URL +
  * model list) so users do not have to look up the OpenAI/Anthropic-compatible
@@ -12,13 +12,16 @@ import { LLMAdapter } from "@langfuse/shared";
  * connection is stored (see `web/src/features/llm-api-key/server/router.ts`).
  * Keep the first model a valid, cheap, generally available model ID.
  *
- * Every `baseURL` here was read from the vendor's own documentation; the
- * sources are listed in `docs/model-pricing-verification.md`
- * (section "预设清单"). Providers whose endpoint could not be confirmed from
+ * Every `baseURL` here was read from the vendor's own documentation.
+ * Providers whose endpoint could not be confirmed from
  * official docs (Groq, Mistral, Volcengine Ark/Doubao, 01.AI/Yi, iFlytek
  * Spark) are intentionally absent — configure those with the "Custom" option.
  */
-export type LlmProviderPresetGroup = "international" | "china" | "local";
+export type LlmProviderPresetGroup =
+  | "international"
+  | "china"
+  | "local"
+  | "decision-model";
 
 export type LlmProviderPreset = {
   /** Stable id, also used in analytics events. */
@@ -42,6 +45,13 @@ export type LlmProviderPreset = {
   apiKeyUrl: string;
   /** Short hint shown under the preset selector. */
   note?: string;
+  /**
+   * Only for decision-model presets: which System One upstream the form should
+   * show. Presets whose base URL carries the tenant (Azure Foundry, Alibaba)
+   * pick "custom" so the base URL field is visible; the gateway presets pick
+   * their gateway. Defaults to the upstream inferred from `baseURL`.
+   */
+  typeSafeUpstream?: "typesafe" | "vercel-ai-gateway" | "openrouter" | "custom";
 };
 
 export const CUSTOM_PRESET_ID = "custom";
@@ -145,6 +155,225 @@ export const llmProviderPresets: LlmProviderPreset[] = [
     note: "Ollama ignores the API key, so any non-empty string works; replace the model with one you have pulled.",
   },
 
+  // ------------------------------------------- Decision models (Jev/TypeSafe)
+  {
+    id: "typesafe-decision-model",
+    label: "TypeSafe / Jev (decision models)",
+    group: "decision-model",
+    typeSafeUpstream: "typesafe",
+    adapter: LLMAdapter.TypeSafe,
+    provider: "TypeSafe",
+    // Empty means "no gateway": the TypeSafe decision-model client defaults to
+    // https://api.typesafe.ai/v1. The connection form turns this into the
+    // upstream picker (TypeSafe / Vercel AI Gateway / OpenRouter / Custom).
+    baseURL: "",
+    withDefaultModels: false,
+    customModels: [...typeSafeModels],
+    docsUrl: "https://typesafe.ai",
+    apiKeyUrl: "https://typesafe.ai",
+    note: "Decision model for evaluators, not a text model. Jev is TypeSafe's own System One model; the gateway and vendor presets below reach the same API.",
+  },
+  {
+    id: "microsoft-decision-1-azure",
+    label: "Microsoft-Decision-1 (Azure Foundry)",
+    group: "decision-model",
+    typeSafeUpstream: "custom",
+    adapter: LLMAdapter.TypeSafe,
+    provider: "Azure",
+    // The host carries the Foundry resource, so the user supplies it. The
+    // connection stores it without /systemone; the client appends that, and
+    // authenticates with the `api-key` header Azure expects.
+    baseURL: "",
+    withDefaultModels: false,
+    customModels: ["microsoft-decision-1"],
+    docsUrl:
+      "https://learn.microsoft.com/en-us/azure/foundry/foundry-models/how-to/use-foundry-models-microsoft-decision",
+    apiKeyUrl: "https://ai.azure.com",
+    note: "Set the base URL to https://<resource>.cognitiveservices.azure.com/providers/microsoft/v1 and use the deployment name as the model that the evaluator picks. Azure is authenticated with the api-key header.",
+  },
+  {
+    id: "microsoft-decision-1-openrouter",
+    label: "Microsoft-Decision-1 (OpenRouter)",
+    group: "decision-model",
+    typeSafeUpstream: "openrouter",
+    adapter: LLMAdapter.TypeSafe,
+    provider: "OpenRouter",
+    baseURL: "https://openrouter.ai/api/v1",
+    withDefaultModels: false,
+    customModels: ["microsoft/microsoft-decision-1"],
+    docsUrl: "https://openrouter.ai/microsoft/microsoft-decision-1",
+    apiKeyUrl: "https://openrouter.ai/settings/keys",
+    note: "Routed and billed through OpenRouter, so no Azure deployment is needed.",
+  },
+  {
+    id: "liquid-d1-openrouter",
+    label: "Liquid AI d1 (OpenRouter)",
+    group: "decision-model",
+    typeSafeUpstream: "openrouter",
+    adapter: LLMAdapter.TypeSafe,
+    provider: "OpenRouter",
+    baseURL: "https://openrouter.ai/api/v1",
+    withDefaultModels: false,
+    customModels: ["liquid/d1-ultra", "liquid/d1"],
+    docsUrl: "https://openrouter.ai/liquid/d1-ultra-20261015",
+    apiKeyUrl: "https://openrouter.ai/settings/keys",
+    note: "Liquid's decision model exposes the same System One API, so the evaluator behaves like Jev. A self-hosted vLLM deployment (LiquidAI/d1-3B) works through the Custom upstream instead.",
+  },
+  {
+    id: "openrouter-decision-models",
+    label: "OpenRouter (all verified decision models)",
+    group: "decision-model",
+    typeSafeUpstream: "openrouter",
+    adapter: LLMAdapter.TypeSafe,
+    provider: "OpenRouter",
+    baseURL: "https://openrouter.ai/api/v1",
+    withDefaultModels: false,
+    // Every OpenRouter decision model verified against our System One client
+    // (see decision-model-e2e.mjs). `openai/gpt-6-luna-decisions` is absent: the
+    // provider refuses it over OpenRouter (403 provider ToS) and needs an
+    // official OpenAI connection instead.
+    customModels: [
+      "typesafe/jev-1.14",
+      "typesafe/jev-1.13",
+      "perplexity/pplx-decider-v1.2",
+      "perplexity/pplx-decider-flash-v1.2",
+      "perplexity/pplx-decider-latest",
+      "perplexity/pplx-decider-flash-latest",
+      "respan/span-02",
+      "respan/span-01",
+      "respan/span-01-lite",
+      "respan/span-01-lite:free",
+      "liquid/d1-ultra",
+      "liquid/d1",
+      "scaledown/classify-1",
+      "nace-ai/drex-v2.0",
+      "nace-ai/drex-v1.5",
+      "microsoft/microsoft-decision-1",
+      "cloudflare/clef-omni",
+      "cloudflare/clef",
+      "cloudflare/clef-flash",
+      "upstage/solar-decide",
+      "upstage/solar-decide-flash",
+      "togethercomputer/tev1-4b-experimental",
+      "inception/mercury-decide",
+      "inception/mercury-decide:free",
+      "jaredpalmer/kev-4b",
+    ],
+    docsUrl: "https://openrouter.ai/models",
+    apiKeyUrl: "https://openrouter.ai/settings/keys",
+    note: "Pick any model in the list. ScaleDown needs a text state and Respan span-01 a chat state; both are adapted automatically. Respan span-01 answers yes/no questions only, and the evaluator form enforces that.",
+  },
+  {
+    id: "openai-decision-model",
+    label: "OpenAI Decisions (gpt-6-luna)",
+    group: "decision-model",
+    adapter: LLMAdapter.OpenAI,
+    provider: "OpenAI",
+    // OpenAI serves its decision model at /v1/decisions on the regular API host;
+    // the client appends /decisions to this base URL.
+    baseURL: "https://api.openai.com/v1",
+    withDefaultModels: false,
+    customModels: ["gpt-6-luna"],
+    docsUrl: "https://developers.openai.com/api/docs/guides/decisions",
+    apiKeyUrl: "https://platform.openai.com/api-keys",
+    note: "OpenAI's own Decisions API (public beta). It is not the System One protocol: the evaluator form is the same, but this connection can only answer decision-model evaluators. You can also reuse an existing OpenAI connection if it lists gpt-6-luna.",
+  },
+  {
+    id: "perplexity-decider",
+    label: "Perplexity Decider (official)",
+    group: "decision-model",
+    typeSafeUpstream: "custom",
+    adapter: LLMAdapter.TypeSafe,
+    provider: "Perplexity",
+    // Same request/response schema as System One, served at /v1/decisions
+    // instead of /v1/systemone; the client appends /decisions for this host.
+    baseURL: "https://api.perplexity.ai/v1",
+    withDefaultModels: false,
+    customModels: [
+      "pplx-decider-v1.2",
+      "pplx-decider-flash-v1.2",
+      "pplx-decider-latest",
+      "pplx-decider-flash-latest",
+    ],
+    docsUrl: "https://docs.perplexity.ai/api-reference/decisions-post",
+    apiKeyUrl: "https://www.perplexity.ai/settings/api",
+    note: "Perplexity's own Decisions API. The client calls /v1/decisions for this host, so no path editing is needed. Images in the state are supported.",
+  },
+  {
+    id: "upstage-solar-decide",
+    label: "Upstage Solar Decide (official)",
+    group: "decision-model",
+    typeSafeUpstream: "custom",
+    adapter: LLMAdapter.TypeSafe,
+    provider: "Upstage",
+    baseURL: "https://api.upstage.ai/v1",
+    withDefaultModels: false,
+    customModels: ["solar-decide", "solar-decide-flash"],
+    docsUrl: "https://console.upstage.ai/docs/models/solar-decide",
+    apiKeyUrl: "https://console.upstage.ai/api-keys",
+    note: "Served as a System One endpoint on Solar Mini 4, so every question type works. The flash variant is the cheaper model.",
+  },
+  {
+    id: "liquid-d1",
+    label: "Liquid AI d1 (official)",
+    group: "decision-model",
+    typeSafeUpstream: "custom",
+    adapter: LLMAdapter.TypeSafe,
+    provider: "Liquid AI",
+    baseURL: "https://api.liquid.ai/v1",
+    withDefaultModels: false,
+    customModels: ["d1", "d1-ultra"],
+    docsUrl: "https://docs.liquid.ai",
+    apiKeyUrl: "https://dashboard.liquid.ai",
+    note: "Liquid's own API. d1-ultra is the larger model; d1 costs less. Self-hosted vLLM deployments use the Custom upstream instead.",
+  },
+  {
+    id: "inception-mercury-decide",
+    label: "Inception Mercury Decide (official)",
+    group: "decision-model",
+    typeSafeUpstream: "custom",
+    adapter: LLMAdapter.TypeSafe,
+    provider: "Inception",
+    baseURL: "https://api.inceptionlabs.ai/v1",
+    withDefaultModels: false,
+    customModels: ["mercury-decide"],
+    docsUrl: "https://docs.inceptionlabs.ai",
+    apiKeyUrl: "https://platform.inceptionlabs.ai",
+    note: "Inception serves the decision endpoint next to its chat models on the same host.",
+  },
+  {
+    id: "cloudflare-clef",
+    label: "Cloudflare Clef (official)",
+    group: "decision-model",
+    typeSafeUpstream: "custom",
+    adapter: LLMAdapter.TypeSafe,
+    provider: "Cloudflare",
+    // Account-scoped host, so the user supplies the account id.
+    baseURL: "",
+    withDefaultModels: false,
+    customModels: ["clef", "clef-flash"],
+    docsUrl: "https://developers.cloudflare.com/workers-ai/models/clef/",
+    apiKeyUrl: "https://dash.cloudflare.com/profile/api-tokens",
+    note: "Set the base URL to https://api.cloudflare.com/client/v4/accounts/<account id>/ai/v1; the model is the short name (clef or clef-flash). clef-omni is only reachable through OpenRouter.",
+  },
+  {
+    id: "alibaba-bailian-decision",
+    label: "Alibaba Bailian decision model",
+    group: "decision-model",
+    typeSafeUpstream: "custom",
+    adapter: LLMAdapter.TypeSafe,
+    provider: "Alibaba",
+    // Workspace-scoped host, so the user supplies it.
+    baseURL: "",
+    withDefaultModels: false,
+    customModels: ["decision-model-preview"],
+    docsUrl:
+      "https://www.alibabacloud.com/help/en/model-studio/decision-model-api",
+    apiKeyUrl:
+      "https://bailian.console.aliyun.com/cn-beijing/model/settings/api-key",
+    note: "Set the base URL to https://<workspace>.<region>.maas.aliyuncs.com/compatible-mode/v1 and keep the model at decision-model-preview.",
+  },
+
   // ------------------------------------------------------------------- China
   {
     id: "deepseek",
@@ -173,7 +402,7 @@ export const llmProviderPresets: LlmProviderPreset[] = [
   },
   {
     id: "zhipu-glm",
-    label: "智谱 GLM (国内站)",
+    label: "Zhipu GLM (China)",
     group: "china",
     adapter: LLMAdapter.OpenAI,
     provider: "Zhipu",
@@ -185,7 +414,7 @@ export const llmProviderPresets: LlmProviderPreset[] = [
   },
   {
     id: "zhipu-glm-anthropic",
-    label: "智谱 GLM (国内站, Anthropic 兼容)",
+    label: "Zhipu GLM (China, Anthropic-compatible)",
     group: "china",
     adapter: LLMAdapter.Anthropic,
     provider: "Zhipu",
@@ -197,7 +426,7 @@ export const llmProviderPresets: LlmProviderPreset[] = [
   },
   {
     id: "zai-glm-intl",
-    label: "Z.AI GLM (国际站)",
+    label: "Z.AI GLM (International)",
     group: "china",
     adapter: LLMAdapter.OpenAI,
     provider: "ZAI",
@@ -209,7 +438,7 @@ export const llmProviderPresets: LlmProviderPreset[] = [
   },
   {
     id: "minimax-cn",
-    label: "MiniMax 国内站 (OpenAI 兼容)",
+    label: "MiniMax (China, OpenAI-compatible)",
     group: "china",
     adapter: LLMAdapter.OpenAI,
     provider: "MiniMax",
@@ -222,7 +451,7 @@ export const llmProviderPresets: LlmProviderPreset[] = [
   },
   {
     id: "minimax-cn-anthropic",
-    label: "MiniMax 国内站 (Anthropic 兼容)",
+    label: "MiniMax (China, Anthropic-compatible)",
     group: "china",
     adapter: LLMAdapter.Anthropic,
     provider: "MiniMax",
@@ -236,7 +465,7 @@ export const llmProviderPresets: LlmProviderPreset[] = [
   },
   {
     id: "minimax-intl",
-    label: "MiniMax 国际站 (OpenAI 兼容)",
+    label: "MiniMax (International, OpenAI-compatible)",
     group: "china",
     adapter: LLMAdapter.OpenAI,
     provider: "MiniMax",
@@ -249,7 +478,7 @@ export const llmProviderPresets: LlmProviderPreset[] = [
   },
   {
     id: "minimax-intl-anthropic",
-    label: "MiniMax 国际站 (Anthropic 兼容)",
+    label: "MiniMax (International, Anthropic-compatible)",
     group: "china",
     adapter: LLMAdapter.Anthropic,
     provider: "MiniMax",
@@ -263,7 +492,7 @@ export const llmProviderPresets: LlmProviderPreset[] = [
   },
   {
     id: "moonshot-kimi",
-    label: "Moonshot / Kimi (国内站)",
+    label: "Moonshot / Kimi (China)",
     group: "china",
     adapter: LLMAdapter.OpenAI,
     provider: "Moonshot",
@@ -275,7 +504,7 @@ export const llmProviderPresets: LlmProviderPreset[] = [
   },
   {
     id: "moonshot-kimi-anthropic",
-    label: "Moonshot / Kimi (国内站, Anthropic 兼容)",
+    label: "Moonshot / Kimi (China, Anthropic-compatible)",
     group: "china",
     adapter: LLMAdapter.Anthropic,
     provider: "Moonshot",
@@ -287,7 +516,7 @@ export const llmProviderPresets: LlmProviderPreset[] = [
   },
   {
     id: "moonshot-kimi-intl",
-    label: "Moonshot / Kimi (国际站)",
+    label: "Moonshot / Kimi (International)",
     group: "china",
     adapter: LLMAdapter.OpenAI,
     provider: "Moonshot",
@@ -299,7 +528,7 @@ export const llmProviderPresets: LlmProviderPreset[] = [
   },
   {
     id: "qwen-dashscope",
-    label: "阿里云百炼 Qwen (DashScope)",
+    label: "Alibaba Cloud Bailian Qwen (DashScope)",
     group: "china",
     adapter: LLMAdapter.OpenAI,
     provider: "Qwen",
@@ -314,7 +543,7 @@ export const llmProviderPresets: LlmProviderPreset[] = [
   },
   {
     id: "qwen-dashscope-anthropic",
-    label: "阿里云百炼 Qwen (Anthropic 兼容)",
+    label: "Alibaba Cloud Bailian Qwen (Anthropic-compatible)",
     group: "china",
     adapter: LLMAdapter.Anthropic,
     provider: "Qwen",
@@ -328,7 +557,7 @@ export const llmProviderPresets: LlmProviderPreset[] = [
   },
   {
     id: "tencent-tokenhub",
-    label: "腾讯混元 / TokenHub",
+    label: "Tencent Hunyuan / TokenHub",
     group: "china",
     adapter: LLMAdapter.OpenAI,
     provider: "Tencent",
@@ -341,7 +570,7 @@ export const llmProviderPresets: LlmProviderPreset[] = [
   },
   {
     id: "baidu-qianfan",
-    label: "百度千帆 ERNIE",
+    label: "Baidu Qianfan ERNIE",
     group: "china",
     adapter: LLMAdapter.OpenAI,
     provider: "Baidu",
@@ -353,7 +582,7 @@ export const llmProviderPresets: LlmProviderPreset[] = [
   },
   {
     id: "stepfun",
-    label: "阶跃星辰 StepFun",
+    label: "StepFun",
     group: "china",
     adapter: LLMAdapter.OpenAI,
     provider: "StepFun",
@@ -365,7 +594,7 @@ export const llmProviderPresets: LlmProviderPreset[] = [
   },
   {
     id: "baichuan",
-    label: "百川智能 Baichuan",
+    label: "Baichuan",
     group: "china",
     adapter: LLMAdapter.OpenAI,
     provider: "Baichuan",
@@ -381,9 +610,12 @@ export const presetGroups: Array<{
   value: LlmProviderPresetGroup;
   label: string;
 }> = [
-  { value: "international", label: "国际厂商" },
-  { value: "china", label: "国内厂商" },
-  { value: "local", label: "本地部署" },
+  { value: "international", label: "International providers" },
+  { value: "china", label: "China providers" },
+  // Decision models are their own family: they do not generate text, so they
+  // cannot sit next to the chat-completion providers.
+  { value: "decision-model", label: "Decision models" },
+  { value: "local", label: "Local / self-hosted" },
 ];
 
 export function getLlmProviderPreset(

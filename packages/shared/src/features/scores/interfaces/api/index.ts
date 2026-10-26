@@ -3,3 +3,7 @@ export * from "./v1/validation";
 export * from "./v1/endpoints";
 export * from "./v2/validation";
 export * from "./v2/endpoints";
+// LITEFUSE PORT (upstream Langfuse 4.56.0): scores API v3 contract.
+export * from "./v3/schemas";
+export * from "./v3/endpoints";
+export * from "./v3/validation";

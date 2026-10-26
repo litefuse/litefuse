@@ -666,7 +666,7 @@ export default function ScoresTable({
         return typeof value === "string" ? (
           <>
             <TableLink
-              path={`/project/${projectId}/evals/${value}`}
+              path={`/project/${projectId}/evals/legacy/${value}`}
               value={value}
             />
           </>

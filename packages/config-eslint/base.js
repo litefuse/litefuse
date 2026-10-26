@@ -5,7 +5,7 @@ import turboConfig from "eslint-config-turbo/flat";
 import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended";
 import "eslint-plugin-only-warn";
 
-// Table-split guard (docs/project-per-table-*.md, Stage 0.7): inside the
+// Table-split guard (Stage 0.7): inside the
 // query-building layer the two per-project logical tables must never appear as
 // a bare telemetry table in any read/write SQL clause — it has to be
 // routed through tableFor(projectId, "...") so a split project reads its own

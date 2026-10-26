@@ -1,0 +1,45 @@
+import { parseTraceTimestampFromQuery } from "@/src/fns/parseTraceTimestampFromQuery/parseTraceTimestampFromQuery";
+
+/**
+ * The trace-peek URL comes in two dialects, and links cross the v4-beta
+ * boundary between users:
+ *
+ * - v3 `TracesTable`:  `peek=<trace id>`, `timestamp=<trace timestamp>`
+ * - v4 `EventsTable`:  `peek=<observation id>`, `traceId=<trace id>`,
+ *                      `timestamp=<observation startTime>`
+ *
+ * Both peek readers resolve their query input through this one helper so each
+ * accepts the other dialect's URLs:
+ *
+ * - trace reader (v3): a `traceId` param marks a v4-generated URL — prefer it
+ *   over `peek`, and drop the timestamp: it is an observation startTime, and
+ *   `traces.byIdWithObservationsAndScores` would use it as the trace-timestamp
+ *   filter, 404ing long traces.
+ * - observation reader (v4): a missing `traceId` param marks a v3-generated
+ *   URL — fall back to `peek` as the trace id. The v3 timestamp is the trace
+ *   timestamp, a safe lookup anchor, so it is kept in both cases.
+ *
+ * Copied from upstream for the evaluators v2 migration (the copied peek path
+ * passes `expandConfig.reader` and resolves URLs through this helper).
+ */
+export function resolvePeekTraceParams({
+  reader,
+  peek,
+  traceId,
+  timestamp,
+}: {
+  reader: "trace" | "observation";
+  peek?: string;
+  traceId?: string;
+  timestamp?: string | string[];
+}): { traceId?: string; timestamp?: Date } {
+  // A `traceId` param on the trace reader marks a v4-generated URL.
+  const dropTimestamp = reader === "trace" && !!traceId;
+
+  return {
+    traceId: traceId ?? peek,
+    timestamp: dropTimestamp
+      ? undefined
+      : parseTraceTimestampFromQuery(timestamp),
+  };
+}

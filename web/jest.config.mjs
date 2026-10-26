@@ -8,7 +8,14 @@ const createJestConfig = nextJest({
 
 const clientTestConfig = {
   displayName: "client",
-  testMatch: ["/**/*.clienttest.[jt]s?(x)"],
+  // NOTE (Litefuse): upstream writes these patterns with a LEADING SLASH
+  // (`/**/*.clienttest.[jt]s?(x)`). A leading slash makes micromatch treat the
+  // pattern as an absolute path, which only resolves on POSIX: on Windows the
+  // absolute paths are `D:\...`, so every pattern matched ZERO files and the
+  // whole client suite silently ran nothing (`--listTests` printed 0, and 115
+  // with the patterns below). Dropping the leading slash matches the same files
+  // on both platforms.
+  testMatch: ["**/*.clienttest.[jt]s?(x)"],
   testEnvironment: "jest-environment-jsdom",
   testEnvironmentOptions: { globalsCleanup: "on" },
   // Components call useTranslation() without a provider, so the default
@@ -19,7 +26,7 @@ const clientTestConfig = {
 const serverTestConfig = {
   displayName: "server",
   testPathIgnorePatterns: ["__e2e__"],
-  testMatch: ["/**/server/**/*.servertest.[jt]s?(x)"],
+  testMatch: ["**/server/**/*.servertest.[jt]s?(x)"],
   testEnvironment: "jest-environment-node",
   testEnvironmentOptions: { globalsCleanup: "on" },
   setupFilesAfterEnv: ["<rootDir>/src/__tests__/after-teardown.ts"],
@@ -28,7 +35,7 @@ const serverTestConfig = {
 
 const endToEndServerTestConfig = {
   displayName: "e2e-server",
-  testMatch: ["/**/*.servertest.[jt]s?(x)"],
+  testMatch: ["**/*.servertest.[jt]s?(x)"],
   testPathIgnorePatterns: ["__tests__"],
   testEnvironment: "jest-environment-node",
   testEnvironmentOptions: { globalsCleanup: "on" },

@@ -75,7 +75,7 @@ export function ManageDefaultEvalModel({
           disabled={!hasDefaultModelWriteAccess}
         >
           <Link
-            href={`/project/${projectId}/evals/default-model`}
+            href={`/project/${projectId}/evals/legacy/default-model`}
             target="_blank"
           >
             <Pencil

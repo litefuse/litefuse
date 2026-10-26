@@ -23,6 +23,10 @@ const INTERVAL_DELAY_MS = HOUR_MS + 5 * 60 * 1000;
 
 export type MeteringSegment = { start: Date; end: Date };
 
+function createStripeClient(secretKey: string): Stripe {
+  return new Stripe(secretKey);
+}
+
 export function buildMeteringSegments(params: {
   intervalStart: Date;
   intervalEnd: Date;
@@ -61,7 +65,7 @@ export async function processCloudUsageMetering(job?: Job) {
   const initialLastRun = new Date(
     Date.now() - ((Date.now() % HOUR_MS) + HOUR_MS),
   );
-  const cron = await prisma.cronJobs.upsert({
+  const cronState = await prisma.cronJobs.upsert({
     where: { name: CLOUD_USAGE_METERING_CRON_NAME },
     create: {
       name: CLOUD_USAGE_METERING_CRON_NAME,
@@ -71,31 +75,31 @@ export async function processCloudUsageMetering(job?: Job) {
     update: {},
   });
   if (
-    !cron.lastRun ||
-    cron.lastRun.getTime() + INTERVAL_DELAY_MS > Date.now()
+    !cronState.lastRun ||
+    cronState.lastRun.getTime() + INTERVAL_DELAY_MS > Date.now()
   ) {
     return { processedOrganizations: 0, units: 0, caughtUp: true };
   }
   const processingLeaseCutoff = new Date(Date.now() - 30 * 60 * 1000);
   if (
-    cron.state === "processing" &&
-    cron.jobStartedAt &&
-    cron.jobStartedAt > processingLeaseCutoff
+    cronState.state === "processing" &&
+    cronState.jobStartedAt &&
+    cronState.jobStartedAt > processingLeaseCutoff
   ) {
     return { processedOrganizations: 0, units: 0, caughtUp: false };
   }
   const claimed = await prisma.cronJobs.updateMany({
     where: {
       name: CLOUD_USAGE_METERING_CRON_NAME,
-      state: cron.state,
-      jobStartedAt: cron.jobStartedAt,
+      state: cronState.state,
+      jobStartedAt: cronState.jobStartedAt,
     },
     data: { state: "processing", jobStartedAt: new Date() },
   });
   if (claimed.count !== 1)
     return { processedOrganizations: 0, units: 0, caughtUp: false };
 
-  const start = cron.lastRun;
+  const start = cronState.lastRun;
   const end = new Date(start.getTime() + HOUR_MS);
   try {
     const organizations = (
@@ -125,16 +129,14 @@ export async function processCloudUsageMetering(job?: Job) {
     const projectIds = organizations.flatMap((organization) =>
       Array.from(organization.projectIds),
     );
-    const [traceCounts, observationCounts, scoreCounts] = await Promise.all([
-      getTraceCountsByProjectInCreationInterval({ start, end, projectIds }),
-      getObservationCountsByProjectInCreationInterval({
-        start,
-        end,
-        projectIds,
-      }),
-      getScoreCountsByProjectInCreationInterval({ start, end, projectIds }),
+    const countWindow = { start, end, projectIds };
+    const counts = await Promise.all([
+      getTraceCountsByProjectInCreationInterval(countWindow),
+      getObservationCountsByProjectInCreationInterval(countWindow),
+      getScoreCountsByProjectInCreationInterval(countWindow),
     ]);
-    const stripe = new Stripe(env.STRIPE_SECRET_KEY);
+    const [traceCounts, observationCounts, scoreCounts] = counts;
+    const stripeClient = createStripeClient(env.STRIPE_SECRET_KEY);
     let totalUnits = 0;
 
     for (let index = 0; index < organizations.length; index += 1) {
@@ -206,7 +208,7 @@ export async function processCloudUsageMetering(job?: Job) {
         if (backup.submittedAt) continue;
         await backOff(
           () =>
-            stripe.billing.meterEvents.create({
+            stripeClient.billing.meterEvents.create({
               event_name: BILLING_METER_EVENT_NAME,
               identifier: billingMeterIdentifier(org.id, segment.start),
               // Stripe assigns an event at the boundary to the new period.

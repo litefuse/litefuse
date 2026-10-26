@@ -9,6 +9,9 @@ export enum TableViewPresetTableName {
   Sessions = "sessions",
   SessionDetail = "session-detail",
   Datasets = "datasets",
+  // Added for the evaluators v2 migration; same values as upstream.
+  Evaluators = "evaluators-v2",
+  EvaluationRules = "evaluation-rules-v2",
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

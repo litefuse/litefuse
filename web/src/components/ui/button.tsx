@@ -50,6 +50,11 @@ export interface ButtonProps
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   loading?: boolean;
+  /**
+   * LITEFUSE ADDITION: label rendered next to the spinner while `loading` is
+   * set. Optional, so every existing caller renders exactly as before.
+   */
+  loadingText?: React.ReactNode;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -60,6 +65,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       size,
       asChild = false,
       loading = false,
+      loadingText,
       disabled,
       onClick,
       children,
@@ -70,14 +76,26 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const Comp = asChild ? Slot : "button";
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={cn(
+          buttonVariants({ variant, size, className }),
+          loading && loadingText && "gap-2",
+        )}
         ref={ref}
         disabled={disabled || loading}
         onClick={loading || disabled ? undefined : onClick}
         {...props}
         type={props.type || "button"}
       >
-        {loading ? <Spinner /> : children}
+        {loading ? (
+          <>
+            {/* `inline` gives the spinner a real box next to a label; without a
+                label we keep the historical full-button spinner untouched. */}
+            <Spinner inline={Boolean(loadingText)} />
+            {loadingText}
+          </>
+        ) : (
+          children
+        )}
       </Comp>
     );
   },
@@ -86,9 +104,15 @@ Button.displayName = "Button";
 
 export { Button, buttonVariants };
 
-function Spinner() {
+function Spinner({ inline = false }: { inline?: boolean }) {
   return (
-    <div className="flex h-1/2 items-center justify-center">
+    <div
+      className={
+        inline
+          ? "flex h-4 w-4 shrink-0 items-center justify-center"
+          : "flex h-1/2 items-center justify-center"
+      }
+    >
       <Loader2 className="h-full w-full animate-spin" />
     </div>
   );

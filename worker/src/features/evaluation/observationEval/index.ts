@@ -9,5 +9,8 @@ export {
 export type {
   ObservationForEval,
   ObservationEvalConfig,
+  ObservationEvalRule,
+  ObservationEvalAssignment,
+  EvaluationRuleWithAssignments,
   ObservationEvalSchedulerDeps,
 } from "./types";

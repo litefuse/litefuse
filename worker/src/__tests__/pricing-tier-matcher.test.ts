@@ -215,7 +215,7 @@ describe("default-model-prices.json", () => {
     // gemini-2.5-pro is one of the two default models that still legitimately
     // ships a second (>200K prompt) tier. Claude Sonnet 4.5/4.6 no longer do:
     // Anthropic publishes a single rate card for those (4.6+ get the full 1M
-    // context at standard pricing), see docs/model-pricing-verification.md.
+    // context at standard pricing).
     const geminiModel = defaultModelPrices.find(
       (m) => m.modelName === "gemini-2.5-pro",
     );
@@ -257,9 +257,8 @@ describe("default-model-prices.json", () => {
   });
 
   it("should ship a single tier for models with one official rate card", () => {
-    // Regression guard for the verification in
-    // docs/model-pricing-verification.md: these models must not carry a
-    // >200K/context or other non-official tier.
+    // Regression guard: these models must not carry a >200K/context or other
+    // non-official tier.
     for (const modelName of [
       "claude-sonnet-4-5-20250929",
       "claude-sonnet-4-6",

@@ -370,6 +370,14 @@ export async function fetchLLMCompletion(
           }
         : {}),
     });
+  } else if (modelParams.adapter === LLMAdapter.TypeSafe) {
+    // Decision-model (Jev) connections are never text models: they are executed by
+    // the decision-model evaluator. Fail loudly instead of sending a
+    // text-completion request that the upstream API would reject anyway.
+    // (Upstream has the same branch in its AI-SDK resolver.)
+    throw new Error(
+      "TypeSafe decision models cannot generate text; use a decision-model evaluator",
+    );
   } else {
     const _exhaustiveCheck: never = modelParams.adapter;
     throw new Error(
@@ -520,10 +528,23 @@ export async function fetchLLMCompletion(
       isRetryable = false;
     }
 
+    // LITEFUSE ADDITION. The client timeout is ours (`timeout: timeoutMs` above),
+    // so the error it raises has to be recognised here: `LLMCompletionError`
+    // drops the cause and `getLLMErrorInfo` needs to report the `timeout` kind
+    // (upstream reads native AI SDK errors and gets that for free). Both shapes
+    // occur — the SDK's own `APIConnectionTimeoutError` / undici's
+    // `HeadersTimeoutError`, or a plain error the SDK renders as "Request timed
+    // out." (already listed as a non-retryable pattern above). Without this a
+    // timeout was indistinguishable from a generic HTTP 500.
+    const isTimeout =
+      (e instanceof Error && e.name.includes("Timeout")) ||
+      message.includes("Request timed out");
+
     throw new LLMCompletionError({
       message,
       responseStatusCode,
       isRetryable,
+      isTimeout,
     });
   } finally {
     await processTracedEvents();

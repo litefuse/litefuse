@@ -80,9 +80,8 @@ export class OtelIngestionQueue {
             // cap a long Doris outage silently evicts the OLDEST failed jobs
             // once the cap fills (~33min at 50 files/s) — the job pointer
             // (the only automatic recovery handle) evaporates. 7 days gives
-            // the DLQ redrive + age guard + reconciliation chain room to act
-            // (review: removeOnFail eviction). Must stay > the failed-age
-            // alert threshold + ops SLA (design §6.4).
+            // the DLQ redrive + age guard + reconciliation chain room to act.
+            // Must stay > the failed-age alert threshold + ops SLA.
             removeOnFail: { age: 7 * 24 * 3600 },
             attempts: 6,
             backoff: {

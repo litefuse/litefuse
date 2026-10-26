@@ -53,14 +53,14 @@ export const resolveDorisProjectTableTargets = async (params: {
   }));
 };
 
-const isMissingSplitTableReadError = (e: unknown): boolean => {
+export const isMissingSplitTableReadError = (e: unknown): boolean => {
   const message = e instanceof Error ? e.message : String(e);
   return /does not exist|unknown table|table.*not found|TableNotFound/i.test(
     message,
   );
 };
 
-const logMissingReadTarget = (
+export const logMissingReadTarget = (
   logicalTable: CrossProjectDorisLogicalTable,
   physicalTable: string,
 ): void => {

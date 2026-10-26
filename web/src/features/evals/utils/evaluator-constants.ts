@@ -77,7 +77,10 @@ export const DEFAULT_OBSERVATION_FILTER_WHEN_REMAPPING = [
   {
     column: "parentObservationId",
     operator: "is null" as const,
-    value: "",
+    // LITEFUSE NOTE: `as const` is required — without it the empty string widens
+    // to `string`, which the `null` filter variant (value: "") rejects when this
+    // constant is used as a `FilterState`.
+    value: "" as const,
     type: "null" as const,
   },
 ];

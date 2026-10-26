@@ -82,3 +82,18 @@ export const mapLegacyToModernTarget = (
     return EvalTargetObject.EXPERIMENT;
   return legacyTarget as EvalTargetObjectType;
 };
+
+// ── Added for the evaluators v2 migration (copied from upstream) ─────────────
+/**
+ * Whether a legacy evaluator needs the user to act: it must be actively
+ * evaluating new data. Inactive or backfill-only (EXISTING) legacy evaluators
+ * keep working and need no action, so they get no label.
+ */
+export const requiresLegacyMigrationAction = (evaluator: {
+  targetObject: string;
+  status: string;
+  timeScope: string[];
+}): boolean =>
+  isLegacyEvalTarget(evaluator.targetObject) &&
+  evaluator.status === "ACTIVE" &&
+  evaluator.timeScope.includes("NEW");

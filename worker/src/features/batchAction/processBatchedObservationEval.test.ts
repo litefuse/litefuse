@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { EvalTargetObject, JobConfigState } from "@langfuse/shared";
-import { type ObservationEvalConfig } from "../evaluation/observationEval";
+import {
+  type EvaluationRuleWithAssignments,
+  type ObservationEvalConfig,
+} from "../evaluation/observationEval";
 
 vi.mock("@langfuse/shared/src/db", () => ({
   prisma: {
@@ -78,10 +81,161 @@ describe("processBatchedObservationEval", () => {
     expect(scheduleObservationEvals).toHaveBeenCalledWith(
       expect.objectContaining({
         configs: evaluators,
+        // A batch run is user-authorized: the executor must not cancel it just
+        // because the rule was deactivated after the batch was queued.
+        executionMode: "MANUAL",
       }),
     );
     expect(
       (prisma.batchAction.update as Mock).mock.calls.length,
     ).toBeGreaterThan(0);
+  });
+
+  it("schedules evaluator v2 rules addressed directly by a batch run", async () => {
+    const projectId = "project-1";
+    const batchActionId = "batch-action-1";
+
+    // The shape `handleBatchActionJob` synthesizes for `evalVersion: "v2"`:
+    // ruleless, one assignment per evaluator, match-all filter and sampling 1.
+    const evaluators: EvaluationRuleWithAssignments[] = [
+      {
+        id: "rule-1",
+        ruleId: null,
+        projectId,
+        filter: [],
+        sampling: { toNumber: () => 1 } as ObservationEvalConfig["sampling"],
+        status: JobConfigState.ACTIVE,
+        targetObject: EvalTargetObject.EVENT,
+        assignments: [
+          {
+            id: "evaluator-1",
+            evaluatorId: "evaluator-1",
+            variableMapping: null,
+            evaluator: {
+              id: "evaluator-1",
+              projectId,
+              type: "LLM_AS_JUDGE",
+            },
+          },
+        ],
+      },
+    ];
+
+    const observationStream = (async function* () {
+      yield {
+        span_id: "obs-1",
+        trace_id: "trace-1",
+        project_id: projectId,
+        parent_span_id: null,
+        type: "GENERATION",
+        name: "test",
+        usage_details: {},
+        cost_details: {},
+        provided_usage_details: {},
+        provided_cost_details: {},
+        tags: [],
+        input: "input",
+        output: "output",
+        metadata: {},
+      };
+    })();
+
+    await processBatchedObservationEval({
+      projectId,
+      batchActionId,
+      evaluators,
+      evaluatorLabels: ["Quality judge"],
+      observationStream,
+    });
+
+    expect(scheduleObservationEvals).toHaveBeenCalledWith(
+      expect.objectContaining({
+        configs: evaluators,
+        executionMode: "MANUAL",
+      }),
+    );
+  });
+
+  // Upstream's numeric `toolCalls` filter is a count; our spans table stores the
+  // `tool_calls`/`tool_call_names` arrays, so the stream projection derives the
+  // count from `tool_call_names` (mirrors upstream's batch processor).
+  it("derives tool_call_count from tool_call_names in batch records", async () => {
+    const projectId = "project-1";
+    const batchActionId = "batch-action-2";
+
+    const evaluators: ObservationEvalConfig[] = [
+      {
+        id: "config-1",
+        projectId,
+        filter: [],
+        sampling: { toNumber: () => 1 } as ObservationEvalConfig["sampling"],
+        evalTemplateId: "template-1",
+        scoreName: "quality",
+        targetObject: EvalTargetObject.EVENT,
+        variableMapping: [],
+        status: JobConfigState.ACTIVE,
+        blockedAt: null,
+      },
+    ];
+
+    const rowWithToolCalls: Record<string, unknown> = {
+      span_id: "obs-2",
+      trace_id: "trace-2",
+      project_id: projectId,
+      parent_span_id: null,
+      type: "GENERATION",
+      name: "tool-test",
+      usage_details: {},
+      cost_details: {},
+      provided_usage_details: {},
+      provided_cost_details: {},
+      tags: [],
+      input: "input",
+      output: "output",
+      metadata: {},
+      tool_call_names: ["search", "calculator", "fetch"],
+    };
+
+    const rowWithoutToolCalls: Record<string, unknown> = {
+      span_id: "obs-3",
+      trace_id: "trace-3",
+      project_id: projectId,
+      parent_span_id: null,
+      type: "GENERATION",
+      name: "no-tool-test",
+      usage_details: {},
+      cost_details: {},
+      provided_usage_details: {},
+      provided_cost_details: {},
+      tags: [],
+      input: "input",
+      output: "output",
+      metadata: {},
+    };
+
+    const observationStream = (async function* () {
+      yield rowWithToolCalls;
+      yield rowWithoutToolCalls;
+    })();
+
+    await processBatchedObservationEval({
+      projectId,
+      batchActionId,
+      evaluators,
+      observationStream,
+    });
+
+    expect(scheduleObservationEvals).toHaveBeenCalledTimes(2);
+
+    const firstCall = (scheduleObservationEvals as Mock).mock.calls[0][0];
+    expect(firstCall.observation.tool_call_count).toBe(3);
+    expect(firstCall.observation.tool_call_names).toEqual([
+      "search",
+      "calculator",
+      "fetch",
+    ]);
+
+    const secondCall = (scheduleObservationEvals as Mock).mock.calls[1][0];
+    expect(secondCall.observation.tool_call_count).toBe(0);
   });
 });

@@ -27,6 +27,14 @@ vi.mock("@langfuse/shared/src/db", async () => {
       jobConfiguration: {
         findFirst: vi.fn(),
       },
+      // LITEFUSE ADDITION (evaluators v2): a job whose `jobConfigurationId` is a
+      // rule id resolves through these tables instead.
+      evaluationRuleEvaluatorAssignment: {
+        findFirst: vi.fn(),
+      },
+      evaluator: {
+        findFirst: vi.fn(),
+      },
     },
   };
 });
@@ -34,6 +42,14 @@ vi.mock("@langfuse/shared/src/db", async () => {
 // Mock executeLLMAsJudgeEvaluation
 vi.mock("../../evalService", () => ({
   executeLLMAsJudgeEvaluation: vi.fn(),
+}));
+
+// Mock the v2-native executors: these tests assert dispatch, not execution.
+vi.mock("../../v2LlmEvaluatorExecution", () => ({
+  runV2LlmEvaluatorEvaluation: vi.fn(),
+}));
+vi.mock("../../v2DecisionModelExecution", () => ({
+  runV2DecisionModelEvaluation: vi.fn(),
 }));
 
 // Mock logger
@@ -53,6 +69,8 @@ vi.mock("@langfuse/shared/src/server", async () => {
 
 import { prisma } from "@langfuse/shared/src/db";
 import { executeLLMAsJudgeEvaluation } from "../../evalService";
+import { runV2LlmEvaluatorEvaluation } from "../../v2LlmEvaluatorExecution";
+import { runV2DecisionModelEvaluation } from "../../v2DecisionModelExecution";
 
 describe("processObservationEval", () => {
   const projectId = "test-project-123";
@@ -89,7 +107,7 @@ describe("processObservationEval", () => {
   });
 
   describe("job configuration lookup", () => {
-    it("should throw UnrecoverableError when job configuration is not found", async () => {
+    it("cancels the job when neither a legacy config nor a v2 assignment resolves", async () => {
       const job = createMockJobExecution({
         id: jobExecutionId,
         projectId,
@@ -98,18 +116,29 @@ describe("processObservationEval", () => {
       });
       (prisma.jobExecution.findFirst as Mock).mockResolvedValue(job);
       (prisma.jobConfiguration.findFirst as Mock).mockResolvedValue(null);
+      (
+        prisma.evaluationRuleEvaluatorAssignment.findFirst as Mock
+      ).mockResolvedValue(null);
 
       const deps = createMockProcessorDeps();
 
-      await expect(
-        processObservationEval({ event: baseEvent, deps }),
-      ).rejects.toThrow(UnrecoverableError);
-      await expect(
-        processObservationEval({ event: baseEvent, deps }),
-      ).rejects.toThrow("Job configuration or template not found");
+      await processObservationEval({ event: baseEvent, deps });
+
+      // No configuration anywhere: the job is cancelled rather than retried
+      // forever, and nothing is downloaded or executed.
+      expect(prisma.jobExecution.update).toHaveBeenCalledWith({
+        where: { id: job.id, projectId },
+        data: {
+          status: JobExecutionStatus.CANCELLED,
+          endTime: expect.any(Date),
+        },
+      });
+      expect(deps.downloadObservationFromS3).not.toHaveBeenCalled();
+      expect(executeLLMAsJudgeEvaluation).not.toHaveBeenCalled();
+      expect(runV2LlmEvaluatorEvaluation).not.toHaveBeenCalled();
     });
 
-    it("should throw UnrecoverableError when evalTemplate is null", async () => {
+    it("cancels the job when the config has no template and no v2 assignment exists", async () => {
       const job = createMockJobExecution({
         id: jobExecutionId,
         projectId,
@@ -126,12 +155,22 @@ describe("processObservationEval", () => {
       (prisma.jobConfiguration.findFirst as Mock).mockResolvedValue(
         configWithoutTemplate,
       );
+      (
+        prisma.evaluationRuleEvaluatorAssignment.findFirst as Mock
+      ).mockResolvedValue(null);
 
       const deps = createMockProcessorDeps();
 
-      await expect(
-        processObservationEval({ event: baseEvent, deps }),
-      ).rejects.toThrow(UnrecoverableError);
+      await processObservationEval({ event: baseEvent, deps });
+
+      expect(prisma.jobExecution.update).toHaveBeenCalledWith({
+        where: { id: job.id, projectId },
+        data: {
+          status: JobExecutionStatus.CANCELLED,
+          endTime: expect.any(Date),
+        },
+      });
+      expect(executeLLMAsJudgeEvaluation).not.toHaveBeenCalled();
     });
 
     it("should cancel the job when the evaluator is blocked", async () => {
@@ -166,6 +205,107 @@ describe("processObservationEval", () => {
       });
       expect(deps.downloadObservationFromS3).not.toHaveBeenCalled();
       expect(executeLLMAsJudgeEvaluation).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("evaluator v2 jobs", () => {
+    /**
+     * A v2 job has no `job_configurations` row: it resolves through the rule's
+     * assignment to the evaluator's current version.
+     */
+    function mockV2Assignment(
+      evaluatorType: "LLM_AS_JUDGE" | "DECISION_MODEL",
+    ) {
+      (prisma.jobConfiguration.findFirst as Mock).mockResolvedValue(null);
+      (
+        prisma.evaluationRuleEvaluatorAssignment.findFirst as Mock
+      ).mockResolvedValue({
+        id: "assignment-1",
+        variableMapping: [
+          { templateVariable: "output", selectedColumnId: "output" },
+        ],
+        evaluationRule: { id: "rule-1", status: "ACTIVE" },
+        evaluator: {
+          id: "evaluator-1",
+          name: "Observation judge",
+          type: evaluatorType,
+          blockedAt: null,
+          versions: [
+            {
+              id: "version-1",
+              version: 1,
+              prompt: "Judge {{output}}",
+              promptMessages: [{ role: "user", content: "Judge {{output}}" }],
+              vars: ["output"],
+              provider: "openai",
+              model: "gpt-4o-mini",
+              modelParams: null,
+              variableMapping: [
+                { templateVariable: "output", selectedColumnId: "output" },
+              ],
+              outputDefinition:
+                evaluatorType === "LLM_AS_JUDGE" ? { dataType: "NUMERIC" } : null,
+              questions: null,
+            },
+          ],
+        },
+      });
+    }
+
+    it("dispatches an LLM-judge v2 job to the v2 executor", async () => {
+      const job = createMockJobExecution({
+        id: jobExecutionId,
+        projectId,
+        status: JobExecutionStatus.PENDING,
+        jobConfigurationId: "rule-1",
+      });
+      (prisma.jobExecution.findFirst as Mock).mockResolvedValue(job);
+      mockV2Assignment("LLM_AS_JUDGE");
+
+      const deps = createMockProcessorDeps();
+
+      await processObservationEval({ event: baseEvent, deps });
+
+      expect(executeLLMAsJudgeEvaluation).not.toHaveBeenCalled();
+      expect(runV2DecisionModelEvaluation).not.toHaveBeenCalled();
+      expect(runV2LlmEvaluatorEvaluation).toHaveBeenCalledTimes(1);
+      expect(runV2LlmEvaluatorEvaluation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectId,
+          jobExecutionId,
+          evaluatorId: "evaluator-1",
+          evaluationRuleId: "rule-1",
+          scoreName: "Observation judge",
+          extractedVariables: [
+            { var: "output", value: expect.any(String) },
+          ],
+        }),
+      );
+    });
+
+    it("dispatches a decision-model v2 job to the decision-model executor", async () => {
+      const job = createMockJobExecution({
+        id: jobExecutionId,
+        projectId,
+        status: JobExecutionStatus.PENDING,
+        jobConfigurationId: "rule-1",
+      });
+      (prisma.jobExecution.findFirst as Mock).mockResolvedValue(job);
+      mockV2Assignment("DECISION_MODEL");
+
+      const deps = createMockProcessorDeps();
+
+      await processObservationEval({ event: baseEvent, deps });
+
+      expect(runV2LlmEvaluatorEvaluation).not.toHaveBeenCalled();
+      expect(runV2DecisionModelEvaluation).toHaveBeenCalledTimes(1);
+      expect(runV2DecisionModelEvaluation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          evaluatorId: "evaluator-1",
+          evaluationRuleId: "rule-1",
+          scoreName: "Observation judge",
+        }),
+      );
     });
   });
 

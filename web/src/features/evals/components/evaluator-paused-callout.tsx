@@ -43,7 +43,7 @@ function getResolutionActionLabel(params: {
     blockReason === EvaluatorBlockReason.LLM_CONNECTION_AUTH_INVALID ||
     blockReason === EvaluatorBlockReason.LLM_CONNECTION_MISSING
   ) {
-    return t("Open LLM connections");
+    return t("Open model connections");
   }
 
   if (templateId) {

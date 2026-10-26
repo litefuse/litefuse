@@ -5,7 +5,7 @@ import { logger, traceException } from "@langfuse/shared/src/server";
 import {
   createObservationEvalSchedulerDeps,
   scheduleObservationEvals,
-  type ObservationEvalConfig,
+  type ObservationEvalRule,
 } from "../evaluation/observationEval";
 
 const BATCH_SIZE = 500;
@@ -15,10 +15,19 @@ const MAX_ERROR_LOG_LINES = 20;
 export async function processBatchedObservationEval(params: {
   projectId: string;
   batchActionId: string;
-  evaluators: ObservationEvalConfig[];
+  /** Legacy job configurations or evaluator v2 rules (see the batch handler). */
+  evaluators: ObservationEvalRule[];
+  /** Display names for the run log; v2 entries carry no `scoreName`. */
+  evaluatorLabels?: string[];
   observationStream: AsyncIterable<Record<string, unknown>>;
 }): Promise<void> {
-  const { projectId, batchActionId, evaluators, observationStream } = params;
+  const {
+    projectId,
+    batchActionId,
+    evaluators,
+    evaluatorLabels,
+    observationStream,
+  } = params;
   const limit = pLimit(CONCURRENCY_LIMIT);
   const schedulerDeps = createObservationEvalSchedulerDeps();
 
@@ -44,11 +53,26 @@ export async function processBatchedObservationEval(params: {
     const results = await Promise.allSettled(
       batch.map((record) =>
         limit(async () => {
-          const observation = observationForEvalSchema.parse(record);
+          // Derived (no storage counterpart): upstream's numeric `toolCalls`
+          // filter is the tool-call count, and `tool_call_names` is
+          // authoritative for count and order. The batch stream carries the
+          // arrays, not a count, so the projection derives it here — same
+          // derivation as the live OTel path and the v2 test-run path.
+          const toolCallNames = Array.isArray(record.tool_call_names)
+            ? record.tool_call_names
+            : [];
+          const observation = observationForEvalSchema.parse({
+            ...record,
+            tool_call_count: toolCallNames.length,
+          });
           await scheduleObservationEvals({
             observation,
             configs: evaluators,
             schedulerDeps,
+            // A manual run is authorized by the user's own selection: the
+            // executor must not cancel it because the rule was deactivated after
+            // the batch was queued.
+            executionMode: "MANUAL",
           });
         }),
       ),
@@ -103,9 +127,18 @@ export async function processBatchedObservationEval(params: {
         ? BatchActionStatus.Failed
         : BatchActionStatus.Partial;
 
+  // LITEFUSE NOTE: a v2 rule entry carries no `scoreName` (the executor resolves
+  // the evaluator at pickup), so the caller passes display labels. Legacy entries
+  // still have `scoreName`, which is used as the fallback.
+  const evaluatorNames =
+    evaluatorLabels ??
+    evaluators.map((evaluator) =>
+      "scoreName" in evaluator ? evaluator.scoreName : evaluator.id,
+    );
+
   const errorSummary =
     errors.length > 0
-      ? `${failedCount} observations failed while scheduling ${evaluators.length} evaluator(s): ${evaluators.map((evaluator) => evaluator.scoreName).join(", ")}.\n${errors.join("\n")}`
+      ? `${failedCount} observations failed while scheduling ${evaluators.length} evaluator(s): ${evaluatorNames.join(", ")}.\n${errors.join("\n")}`
       : null;
 
   await prisma.batchAction.update({

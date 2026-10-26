@@ -340,4 +340,80 @@ describe("createDorisFilterFromFilterState", () => {
       expect(result[2]).toBeInstanceOf(NumberFilter);
     });
   });
+
+  describe("emptyEqualsNull column flag", () => {
+    // `parent_span_id` is the real-world case: migration 0037 stores `''` for
+    // root rows, while upstream's dialect asks for `IS NULL`. The mapping spells
+    // the alias inline (as `mapEventsTable.ts` does), so no queryPrefix.
+    const emptyEqualsNullMappings: UiColumnMappings = [
+      {
+        uiTableName: "Parent Observation ID",
+        uiTableId: "parentObservationId",
+        tableName: "observations",
+        select: "o.parent_span_id",
+        emptyEqualsNull: true,
+      },
+      {
+        uiTableName: "Name",
+        uiTableId: "name",
+        tableName: "traces",
+        select: "name",
+        queryPrefix: "t",
+      },
+    ] as const;
+
+    it("should carry the flag into the NullFilter predicate", () => {
+      const filters: FilterCondition[] = [
+        {
+          column: "parentObservationId",
+          operator: "is null",
+          type: "null",
+          value: "" as const,
+        },
+      ];
+      const [filter] = createDorisFilterFromFilterState(
+        filters,
+        emptyEqualsNullMappings,
+      );
+      expect(filter).toBeInstanceOf(NullFilter);
+      expect(filter.apply().query).toBe(
+        "(o.parent_span_id IS NULL OR o.parent_span_id = '')",
+      );
+    });
+
+    it("should carry the flag into the StringFilter predicate", () => {
+      const filters: FilterCondition[] = [
+        {
+          column: "parentObservationId",
+          operator: "contains",
+          value: "",
+          type: "string",
+        },
+      ];
+      const [filter] = createDorisFilterFromFilterState(
+        filters,
+        emptyEqualsNullMappings,
+      );
+      expect(filter).toBeInstanceOf(StringFilter);
+      expect(filter.apply().query).toBe(
+        "(o.parent_span_id IS NULL OR o.parent_span_id = '')",
+      );
+    });
+
+    it("should keep unflagged columns byte-identical", () => {
+      const filters: FilterCondition[] = [
+        {
+          column: "name",
+          operator: "is null",
+          type: "null",
+          value: "" as const,
+        },
+      ];
+      const [filter] = createDorisFilterFromFilterState(
+        filters,
+        emptyEqualsNullMappings,
+      );
+      expect(filter.apply().query).toBe("t.name is null");
+    });
+  });
 });

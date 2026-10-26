@@ -255,6 +255,16 @@ export class DorisClient {
         password: this.config.password,
         waitForConnections: true,
         connectionLimit: this.config.maxOpenConnections,
+        // LITEFUSE ADDITION: mysql2 only starts its idle-connection reaper when
+        // maxIdle < connectionLimit (mysql2/lib/base/pool.js). Without it a pool
+        // grows to connectionLimit and holds every socket forever, so web
+        // (several bundles, one pool each) + worker exhausted Doris' per-user cap
+        // (`max_user_connections` = 100 for root) and every telemetry query
+        // failed with "Reach limit of connections" — which surfaced as a 500 on
+        // the Scores page and an empty table. Keeping a couple of warm
+        // connections per pool still avoids reconnecting on every query.
+        maxIdle: Math.min(2, Math.max(1, this.config.maxOpenConnections - 1)),
+        idleTimeout: 60000,
         queueLimit: 0,
         enableKeepAlive: true,
         keepAliveInitialDelay: 0,

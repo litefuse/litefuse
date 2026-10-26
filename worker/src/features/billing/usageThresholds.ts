@@ -27,14 +27,14 @@ async function notifyUsageState(params: {
   state: Exclude<UsageState, null>;
   resetDate: Date;
 }) {
-  const members = await prisma.organizationMembership.findMany({
+  const adminMemberships = await prisma.organizationMembership.findMany({
     where: { orgId: params.orgId, role: { in: [Role.OWNER, Role.ADMIN] } },
     select: { user: { select: { email: true } } },
   });
   const emails = [
     ...new Set(
-      members
-        .map((member) => member.user.email)
+      adminMemberships
+        .map((membership) => membership.user.email)
         .filter((email): email is string => Boolean(email)),
     ),
   ];
@@ -101,19 +101,23 @@ export async function processUsageThresholds(referenceDate = new Date()) {
     const previousState = org.cloudFreeTierUsageThresholdState as UsageState;
 
     if (paid && previousState === null) continue;
+
+    // Paid organizations drop the free-tier threshold state; everyone else
+    // gets the freshly computed usage window and state.
+    const paidReset = { cloudFreeTierUsageThresholdState: null };
+    const developerUpdate = {
+      cloudCurrentCycleUsage: usage,
+      cloudBillingCycleUpdatedAt: referenceDate,
+      cloudFreeTierUsageThresholdState: state,
+    };
+
     const updated = await prisma.organization.updateMany({
       where: {
         id: org.id,
         updatedAt: org.updatedAt,
         cloudBillingCycleAnchor: org.cloudBillingCycleAnchor,
       },
-      data: paid
-        ? { cloudFreeTierUsageThresholdState: null }
-        : {
-            cloudCurrentCycleUsage: usage,
-            cloudBillingCycleUpdatedAt: referenceDate,
-            cloudFreeTierUsageThresholdState: state,
-          },
+      data: paid ? paidReset : developerUpdate,
     });
     if (updated.count !== 1) {
       logger.info("Skipping stale Developer usage threshold result", {

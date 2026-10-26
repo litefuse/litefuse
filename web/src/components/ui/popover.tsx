@@ -30,4 +30,70 @@ PopoverContent.displayName = PopoverPrimitive.Content.displayName;
 
 const PopoverClose = PopoverPrimitive.Close;
 
-export { Popover, PopoverTrigger, PopoverContent, PopoverClose };
+// ── Added for the evaluators v2 migration (copied from upstream) ─────────────
+const PopoverAnchor = PopoverPrimitive.Anchor;
+
+/**
+ * Owns popover open state while callers retain trigger and content presentation.
+ * Use the supplied Trigger to preserve Radix behavior.
+ */
+type PopoverControllerProps = {
+  align: React.ComponentProps<typeof PopoverContent>["align"];
+  children: (control: {
+    disabled: boolean;
+    isOpen: boolean;
+    openPopover: () => void;
+    Anchor: typeof PopoverAnchor;
+    Trigger: typeof PopoverTrigger;
+  }) => React.ReactNode;
+  contentClassName: string;
+  disabled: boolean;
+  modal: boolean;
+  onOpenChange?: (isOpen: boolean) => void;
+  renderContent: (control: { closePopover: () => void }) => React.ReactNode;
+};
+
+const PopoverController = ({
+  align,
+  children,
+  contentClassName,
+  disabled,
+  modal,
+  onOpenChange,
+  renderContent,
+}: PopoverControllerProps) => {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const handleOpenChange = (nextIsOpen: boolean) => {
+    if (nextIsOpen && disabled) return;
+
+    setIsOpen(nextIsOpen);
+    onOpenChange?.(nextIsOpen);
+  };
+
+  return (
+    <Popover modal={modal} open={isOpen} onOpenChange={handleOpenChange}>
+      {children({
+        disabled,
+        isOpen,
+        openPopover: () => handleOpenChange(true),
+        Anchor: PopoverAnchor,
+        Trigger: PopoverTrigger,
+      })}
+      <PopoverContent
+        align={align}
+        className={contentClassName}
+        onClick={(event) => event.stopPropagation()}
+      >
+        {renderContent({ closePopover: () => setIsOpen(false) })}
+      </PopoverContent>
+    </Popover>
+  );
+};
+export {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverClose,
+  PopoverAnchor,
+  PopoverController,
+};

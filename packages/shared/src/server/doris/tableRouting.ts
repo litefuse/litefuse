@@ -3,10 +3,10 @@ import { splitProjectInCache } from "./tableSplitCache";
 import { ensureProjectSplitDesignated } from "./dorisProjectTableSplitControl";
 
 /**
- * Per-project table split routing (design docs/project-per-table-*.md).
+ * Per-project table split routing.
  *
  * THREE functions, each one concern, none named `shard` (that word stays
- * reserved for BullMQ queue sharding — design §4.2d):
+ * reserved for BullMQ queue sharding):
  *   - isSplitProject(pid): are this project's split tables LIVE?
  *   - tableFor(pid, logical): the PHYSICAL table name to read/write.
  *   - laneFor(pid): the grouping-key (Redis pending lane) a file registers into.

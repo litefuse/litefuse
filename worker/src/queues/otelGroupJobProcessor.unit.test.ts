@@ -238,7 +238,7 @@ describe("processOtelGroupJob (core EO semantics)", () => {
 
     await processOtelGroupJob(payload, deps);
     // spans_<pid> was skipped by the FE (dedupedByLabel), but the partial
-    // C6 crash (scalar never written) is only distinguishable via the
+    // crash (scalar never written) is only distinguishable via the
     // ledger — absent ledger means the scalar load must proceed.
     expect(loads.map((l) => l.table)).toEqual([
       "spans_p1",
@@ -350,7 +350,7 @@ describe("processOtelGroupJob (split targets)", () => {
   });
 });
 
-// Stage 1 review #4: the traces_scalar load must have the SAME missing-table
+// Stage 1: the traces_scalar load must have the SAME missing-table
 // three-way as spans. Without it, a scalar table lost AFTER go-live (ops
 // DROP / rebuild window / replica loss) means events commit, the scalar load
 // throws uncaught, and the job retries to the DLQ forever — events in, scalar

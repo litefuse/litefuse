@@ -340,7 +340,7 @@ if (env.QUEUE_CONSUMER_OTEL_INGESTION_QUEUE_IS_ENABLED === "true") {
         // label converges but wastes a full group of work), and
         // maxStalledCount=1 sends a job whose worker died twice STRAIGHT to
         // failed, bypassing the whole attempts/backoff envelope (the stalled
-        // counter is lifetime-cumulative and never reset; review M5).
+        // counter is lifetime-cumulative and never reset).
         maxStalledCount: 3,
         lockDuration: 90_000,
         stalledInterval: 60_000,
@@ -351,7 +351,7 @@ if (env.QUEUE_CONSUMER_OTEL_INGESTION_QUEUE_IS_ENABLED === "true") {
   // Otel grouper (exactly-once pipeline): resident candidate loop, elects a
   // per-shard leader via Redis lease. Tied to the CONSUMER gate — it runs
   // whenever this worker consumes the otel queue, draining the pending backlog
-  // independently of the web-side registration (design §3.2 / review B2).
+  // independently of the web-side registration.
   otelGrouper = new OtelGrouper();
   void otelGrouper.start();
 }

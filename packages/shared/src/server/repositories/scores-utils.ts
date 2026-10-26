@@ -20,8 +20,13 @@ export const _handleGetScoreById = async ({
   scoreScope: "traces_only" | "all";
   scoreDataTypes?: readonly ScoreDataTypeType[];
 }): Promise<ScoreDomain | undefined> => {
+  // `metadata` is re-selected as JSON: Doris renders a MAP<TEXT,TEXT> column by
+  // concatenating its raw values without escaping quotes, which made every map
+  // holding nested JSON invalid JSON for `parseMetadataCHRecordToDomain` (it
+  // silently degraded to `{}`). The duplicate column name resolves to the
+  // JSON-typed one, which mysql2 already parses into an object.
   const query = `
-      SELECT *
+      SELECT *, to_json(metadata) AS metadata
       FROM scores s
       WHERE s.project_id = {projectId: String}
       AND s.id = {scoreId: String}
@@ -66,7 +71,7 @@ export const _handleGetScoresByIds = async ({
   dataTypes?: readonly ScoreDataTypeType[];
 }): Promise<ScoreDomain[]> => {
   const query = `
-      SELECT *
+      SELECT *, to_json(metadata) AS metadata
       FROM scores s
       WHERE s.project_id = {projectId: String}
       AND s.id IN ({scoreId: Array(String)})

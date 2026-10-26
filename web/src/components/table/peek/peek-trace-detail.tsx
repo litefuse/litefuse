@@ -59,3 +59,24 @@ export const PeekViewTraceDetail = ({ projectId }: { projectId: string }) => {
     />
   );
 };
+
+// ── Added for the evaluators v2 migration (adapter, not an upstream copy) ────
+// Upstream's TablePeekViewTraceDetail is a thin wrapper: their \`TablePeekView\` shell
+// around \`TraceDetailBody\`. We do not have that shell — our PeekViewTraceDetail
+// renders the peek itself — so this accepts the props the evaluator pages spread and
+// delegates to ours.
+//
+// Props that are ACCEPTED AND IGNORED (they configure upstream's shell, not the
+// peek content): the \`PeekNavigation\` fields (openPeek/closePeek/isPeekOpen/...),
+// \`itemType\`, \`detailNavigationKey\`, \`layout\` and the expand config. Consequence:
+// the peek renders and its data loads, but shell-level behaviours that depend on
+// them (keyboard row navigation between peeks, expanding to the full trace page from
+// the peek header) do not. Recorded as an evaluator-page wiring item.
+//
+// Replacement suggestion: bring our own peek shell up to the newer contract, or
+// port upstream's TablePeekView, then drop the ignore-list above.
+export const TablePeekViewTraceDetail = ({
+  projectId,
+}: {
+  projectId: string;
+} & Record<string, unknown>) => <PeekViewTraceDetail projectId={projectId} />;

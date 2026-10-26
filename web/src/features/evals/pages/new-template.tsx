@@ -27,7 +27,7 @@ export default function NewTemplatesPage() {
         breadcrumb: [
           {
             name: t("Evaluators"),
-            href: `/project/${projectId}/evals/templates`,
+            href: `/project/${projectId}/evals/legacy/templates`,
           },
         ],
       }}

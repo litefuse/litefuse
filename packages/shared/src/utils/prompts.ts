@@ -1,3 +1,5 @@
+import { parseUnknownToString } from "../features/evals/utilities";
+
 /**
  * Client-safe utility functions for prompt handling
  */
@@ -22,4 +24,36 @@ export function extractPlaceholderNames(messages: PromptMessage[]): string[] {
         msg.type === "placeholder" && typeof msg.name === "string",
     )
     .map((msg) => msg.name);
+}
+
+// ── Added for the evaluators v2 migration (copied from upstream) ─────────────
+export function compileTemplateString(
+  template: string,
+  context: Record<string, unknown>,
+) {
+  try {
+    return template.replace(/{{\s*([\w.]+)\s*}}/g, (match, key: string) => {
+      if (!(key in context)) return match;
+
+      const value = context[key];
+      return value === undefined || value === null ? "" : String(value);
+    });
+  } catch {
+    return template;
+  }
+}
+
+export function compileEvalPrompt(params: {
+  templatePrompt: string;
+  variables: Array<{ var: string; value: unknown }>;
+}) {
+  return compileTemplateString(
+    params.templatePrompt,
+    Object.fromEntries(
+      params.variables.map(({ var: key, value }) => [
+        key,
+        parseUnknownToString(value),
+      ]),
+    ),
+  );
 }

@@ -7,6 +7,11 @@ export const V4_BETA_ENABLED_POSTHOG_PROPERTY = "v4BetaEnabled";
 // Exported to silence @typescript-eslint/no-unused-vars v8 warning
 // (used for type extraction via typeof, which is a legitimate pattern)
 export const events = {
+  // The shared table peek panel (opened via the `peek` URL param). Props carry
+  // `routePattern` (the Next.js route pattern, never a concrete URL) so opens
+  // can be sliced by surface without leaking ids. Copied from upstream together
+  // with the peek hook's instrumentation.
+  peek: ["opened", "closed", "expand_toggle", "resized", "open_in_new_tab"],
   table: [
     "filter_builder_open",
     "filter_builder_close",
@@ -208,6 +213,57 @@ export const events = {
   cmd_k_menu: ["opened", "search_entered", "navigated"],
   spend_alert: ["created", "updated", "deleted"],
   sidebar: ["book_a_call_clicked", "v4_beta_toggled"],
+  // ── Added for the evaluators v2 migration. Lists copied from upstream so the
+  // same user actions are measured under the same names. Only the allow-list
+  // changes: capture() properties are untyped here, so nothing else shifts.
+  evaluators: [
+    "create",
+    "update",
+    "delete",
+    "test",
+    "saved_dialog_submit",
+    "overview_action_click",
+    "variable_mapping_configured",
+    "version_history_interaction",
+    "default_model_update",
+    "reactivate",
+    "gallery_creation_source_select",
+    "empty_state_template_select",
+    "empty_state_browse_library",
+    "empty_state_detect_topics",
+    "alert_create_clicked",
+  ],
+  evaluation_rules: [
+    "create",
+    "update",
+    "delete",
+    "status_change",
+    "attach_evaluator",
+    "detach_evaluator",
+    "filter_reused",
+  ],
+  v4_migration: [
+    "update_required_badge_clicked",
+  ],
+  // The search bar's usage analytics (shipped with the evaluator migration).
+  // METADATA ONLY upstream: payloads never carry raw filter values or search text.
+  filters: [
+    "applied",
+    "cleared",
+    "facet_operator_toggled",
+    "active_only_toggled",
+    "facet_added",
+    "facet_search",
+    "facet_mode_switched",
+    "expand_all_toggled",
+    "facet_toggled",
+    "sidebar_toggled",
+    "search_submitted",
+    "search_error",
+    "ai_generate_requested",
+    "ai_generate_applied",
+    "ai_generate_failed",
+  ],
 } as const;
 
 // type that represents all possible event names, e.g. "traces:bookmark"

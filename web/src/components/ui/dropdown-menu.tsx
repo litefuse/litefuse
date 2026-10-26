@@ -79,12 +79,19 @@ const DropdownMenuItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
     inset?: boolean;
+    /**
+     * LITEFUSE ADDITION (copied from upstream): keep a disabled item receiving
+     * pointer events so it can still show a `title` tooltip explaining why it is
+     * disabled. Default behaviour (pointer-events-none) is unchanged.
+     */
+    allowPointerEventsWhenDisabled?: boolean;
   }
->(({ className, inset, ...props }, ref) => (
+>(({ className, inset, allowPointerEventsWhenDisabled, ...props }, ref) => (
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
-      "focus:bg-accent focus:text-accent-foreground relative flex cursor-default items-center rounded-sm px-2 py-1.5 text-sm outline-hidden transition-colors select-none data-disabled:pointer-events-none data-disabled:opacity-50",
+      "focus:bg-accent focus:text-accent-foreground relative flex cursor-default items-center rounded-sm px-2 py-1.5 text-sm outline-hidden transition-colors select-none data-disabled:opacity-50",
+      !allowPointerEventsWhenDisabled && "data-disabled:pointer-events-none",
       inset && "pl-8",
       className,
     )}

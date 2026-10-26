@@ -49,6 +49,7 @@ export const createDorisFilterFromFilterState = (
             operator: frontEndFilter.operator,
             value: frontEndFilter.value,
             tablePrefix: column.queryPrefix,
+            emptyEqualsNull: column.emptyEqualsNull,
           });
         case "datetime":
           return new DateTimeFilter({
@@ -65,6 +66,7 @@ export const createDorisFilterFromFilterState = (
             operator: frontEndFilter.operator,
             values: frontEndFilter.value,
             tablePrefix: column.queryPrefix,
+            emptyEqualsNull: column.emptyEqualsNull,
           });
         case "categoryOptions":
           return new CategoryOptionsFilter({
@@ -124,6 +126,7 @@ export const createDorisFilterFromFilterState = (
             field: column.select,
             operator: frontEndFilter.operator,
             tablePrefix: column.queryPrefix,
+            emptyEqualsNull: column.emptyEqualsNull,
           });
         default:
           // eslint-disable-next-line no-case-declarations

@@ -1,8 +1,14 @@
 Copyright (c) 2023-2025 Langfuse GmbH
 
-All third party components incorporated into this Software are licensed under
-the original license provided by the owner of the applicable component. All
-other content is available under the "MIT Expat" license as defined below.
+Portions of this software are licensed as follows:
+
+- Content that resides in the paths listed in ANNEX A of "LICENSE-EE", other
+  than the paths that file records as MIT in its ANNEX B, is licensed under the
+  license defined in "LICENSE-EE".
+- All third party components incorporated into this Software are licensed under
+  the original license provided by the owner of the applicable component.
+- Content outside of the restrictions above is available under the "MIT Expat"
+  license as defined below.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

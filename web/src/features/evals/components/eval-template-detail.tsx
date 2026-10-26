@@ -60,7 +60,7 @@ export const EvalTemplateDetail = () => {
   const handleTemplateSelect = (newTemplate: EvalTemplate) => {
     // Update URL without full page reload
     router.push(
-      `/project/${projectId}/evals/templates/${newTemplate.id}`,
+      `/project/${projectId}/evals/legacy/templates/${newTemplate.id}`,
       undefined,
       { shallow: true },
     );
@@ -74,7 +74,7 @@ export const EvalTemplateDetail = () => {
         breadcrumb: [
           {
             name: t("Evaluator Library"),
-            href: `/project/${router.query.projectId as string}/evals/templates`,
+            href: `/project/${router.query.projectId as string}/evals/legacy/templates`,
           },
         ],
         actionButtonsRight: (
@@ -90,7 +90,7 @@ export const EvalTemplateDetail = () => {
             {/* <DeleteEvaluatorTemplateButton
               itemId={templateId}
               projectId={projectId}
-              redirectUrl={`/project/${projectId}/evals/templates`}
+              redirectUrl={`/project/${projectId}/evals/legacy/templates`}
               deleteConfirmation={
                 template.data != null
                   ? `${template.data.name}-v${template.data.version}`

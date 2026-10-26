@@ -1,13 +1,12 @@
 /**
- * Four-way classification for the otel S3↔ledger reconciliation
- * (exactly-once design §3.5 / impl plan v2 §6.1). Pure — the script feeds it
- * facts, tests drive it directly.
+ * Four-way classification for the otel S3↔ledger reconciliation. Pure — the
+ * script feeds it facts, tests drive it directly.
  *
- * Threshold contract (design §6.4): olderThanMs must sit BETWEEN the DLQ age
+ * Threshold contract: olderThanMs must sit BETWEEN the DLQ age
  * guard (label_keep_max_second, default 3d — nothing still redrivable may be
  * re-injected) and the registered-key TTL (default 4d — inside the TTL the
  * key's existence is the "entered the pipeline" evidence that separates a
- * lost pointer from an A2 orphan). Outside that band the auto-reinject
+ * lost pointer from an orphan). Outside that band the auto-reinject
  * category degenerates and everything unexplained falls to manual audit.
  */
 
@@ -41,10 +40,10 @@ export const classifyOtelFile = (
   // just fail again — its disposition is the poison runbook, not the pipe.
   if (facts.isPoisoned) return { verdict: "poisoned" };
   if (facts.hasRegisteredKey) return { verdict: "reinject" };
-  // No ledger, over-age, no registration trace: either an A2 orphan (web
+  // No ledger, over-age, no registration trace: either an orphan (web
   // crashed pre-registration — the SDK re-sent a fresh copy, re-injection
   // would DUPLICATE data) or a loss older than the registered TTL. Not
-  // distinguishable mechanically → human decision (design boundary 3/4).
+  // distinguishable mechanically → human decision.
   return {
     verdict: "audit",
     reason: "no ledger, over-age, no registration trace (A2 orphan vs expired loss)",

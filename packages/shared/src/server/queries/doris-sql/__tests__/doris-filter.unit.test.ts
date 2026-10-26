@@ -639,3 +639,167 @@ describe("NumberObjectFilter", () => {
     );
   });
 });
+
+// ─── emptyEqualsNull (UI column mapping flag) ───────────────────────────────
+// Columns flagged in the mapping store "no value" as `''` (see migration 0037
+// for `parent_span_id`) while upstream's filter dialect spells the same fact as
+// NULL, so a flagged column must match both spellings.
+describe("emptyEqualsNull", () => {
+  const field = "o.parent_span_id";
+  const empty = `(${field} IS NULL OR ${field} = '')`;
+
+  describe("StringFilter", () => {
+    it("should treat an empty needle as null for =", () => {
+      const filter = new StringFilter({
+        table: "observations",
+        field,
+        operator: "=",
+        value: "",
+        emptyEqualsNull: true,
+      });
+      expect(filter.apply().query).toBe(empty);
+    });
+
+    it("should treat an empty needle as null for contains", () => {
+      const filter = new StringFilter({
+        table: "observations",
+        field,
+        operator: "contains",
+        value: "",
+        emptyEqualsNull: true,
+      });
+      expect(filter.apply().query).toBe(empty);
+    });
+
+    it("should treat an empty needle as null for starts with / ends with", () => {
+      for (const operator of ["starts with", "ends with"] as const) {
+        const filter = new StringFilter({
+          table: "observations",
+          field,
+          operator,
+          value: "",
+          emptyEqualsNull: true,
+        });
+        expect(filter.apply().query).toBe(empty);
+      }
+    });
+
+    it("should exclude null and empty for does not contain", () => {
+      const filter = new StringFilter({
+        table: "observations",
+        field,
+        operator: "does not contain",
+        value: "abc",
+        emptyEqualsNull: true,
+      });
+      expect(filter.apply().query).toBe(
+        `(${field} IS NOT NULL AND ${field} != '') AND INSTR(${field}, 'abc') = 0`,
+      );
+    });
+
+    it("should leave non-empty needles unchanged", () => {
+      const filter = new StringFilter({
+        table: "observations",
+        field,
+        operator: "=",
+        value: "abc",
+        emptyEqualsNull: true,
+      });
+      expect(filter.apply().query).toBe(`${field} = 'abc'`);
+    });
+
+    it("should leave unflagged columns unchanged", () => {
+      const filter = new StringFilter({
+        table: "observations",
+        field,
+        operator: "=",
+        value: "",
+      });
+      expect(filter.apply().query).toBe(`${field} = ''`);
+    });
+  });
+
+  describe("StringOptionsFilter", () => {
+    it("should OR IS NULL when the value list contains the empty string", () => {
+      const filter = new StringOptionsFilter({
+        table: "observations",
+        field,
+        operator: "any of",
+        values: ["", "abc"],
+        emptyEqualsNull: true,
+      });
+      expect(filter.apply().query).toBe(
+        `(${field} IN ('', 'abc') OR ${field} IS NULL)`,
+      );
+    });
+
+    it("should exclude empties for none of", () => {
+      const filter = new StringOptionsFilter({
+        table: "observations",
+        field,
+        operator: "none of",
+        values: ["abc"],
+        emptyEqualsNull: true,
+      });
+      expect(filter.apply().query).toBe(
+        `(${field} NOT IN ('abc') AND ${field} != '')`,
+      );
+    });
+
+    it("should exclude only nulls for none of that lists the empty string", () => {
+      const filter = new StringOptionsFilter({
+        table: "observations",
+        field,
+        operator: "none of",
+        values: ["", "abc"],
+        emptyEqualsNull: true,
+      });
+      expect(filter.apply().query).toBe(
+        `(${field} NOT IN ('', 'abc') AND ${field} IS NOT NULL)`,
+      );
+    });
+
+    it("should leave unflagged columns unchanged", () => {
+      const filter = new StringOptionsFilter({
+        table: "observations",
+        field,
+        operator: "any of",
+        values: ["abc"],
+      });
+      expect(filter.apply().query).toBe(`${field} IN ('abc')`);
+    });
+  });
+
+  describe("NullFilter", () => {
+    it("should match null and empty for is null", () => {
+      const filter = new NullFilter({
+        table: "observations",
+        field,
+        operator: "is null",
+        emptyEqualsNull: true,
+      });
+      expect(filter.apply().query).toBe(empty);
+    });
+
+    it("should exclude null and empty for is not null", () => {
+      const filter = new NullFilter({
+        table: "observations",
+        field,
+        operator: "is not null",
+        emptyEqualsNull: true,
+      });
+      expect(filter.apply().query).toBe(
+        `(${field} IS NOT NULL AND ${field} != '')`,
+      );
+    });
+
+    it("should leave unflagged columns unchanged", () => {
+      const filter = new NullFilter({
+        table: "observations",
+        field,
+        operator: "is null",
+      });
+      expect(filter.apply().query).toBe(`${field} is null`);
+    });
+  });
+});

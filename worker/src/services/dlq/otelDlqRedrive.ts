@@ -12,14 +12,14 @@ import { prisma } from "@langfuse/shared/src/db";
 import { env } from "../../env";
 
 /**
- * DLQ redrive for the otel ingestion shards (exactly-once design §3.4).
+ * DLQ redrive for the otel ingestion shards.
  *
  * Why not plain `job.retry()` (what DlqRetryService uses for the other
  * queues): reprocessJob does NOT reset the attempts counter — after the
  * first redrive `attemptsMade (6) + 1 < attempts (6)` is false, so every
  * later failure skips the whole backoff envelope and bounces straight back
  * to failed. One bare attempt per redrive cycle is no recovery envelope at
- * all (review M4). Instead: remove + re-add the SAME envelope under the
+ * all. Instead: remove + re-add the SAME envelope under the
  * SAME jobId — attempts start fresh, the first-enqueue `data.timestamp`
  * (age-guard input) and the group identity (jobId = groupId → load label)
  * are preserved.
@@ -29,7 +29,7 @@ import { env } from "../../env";
  *     purged, a blind replay would DOUBLE-LOAD → reconciliation path only.
  *   - REDRIVE COUNT: > max redrives → deterministic failure (poison group).
  * A poisoned job leaves automatic redrive ONLY after its fileKeys are
- * durably written to the Postgres poison ledger (review M6 — otherwise
+ * durably written to the Postgres poison ledger (otherwise
  * removeOnFail's age eviction eventually evaporates the only pointer to the
  * unprocessed files). PG write fails → job stays in failed → retried next
  * cycle.

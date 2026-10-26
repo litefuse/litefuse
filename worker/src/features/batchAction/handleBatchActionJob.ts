@@ -14,6 +14,9 @@ import {
   BatchTableNames,
   FilterCondition,
   EvalTargetObject,
+  // LITEFUSE ADDITION (evaluators v2): the batch-eval branch synthesizes
+  // rule-shaped entries for evaluators addressed directly.
+  JobConfigState,
 } from "@langfuse/shared";
 import Decimal from "decimal.js";
 import {
@@ -38,6 +41,7 @@ import {
 import { processAddObservationsToDataset } from "./processAddObservationsToDataset";
 import { ObservationAddToDatasetConfigSchema } from "@langfuse/shared";
 import { processBatchedObservationEval } from "./processBatchedObservationEval";
+import { type ObservationEvalRule } from "../evaluation/observationEval";
 
 const CHUNK_SIZE = 1000;
 const convertDatesInFiltersFromStrings = (filters: FilterCondition[]) => {
@@ -222,19 +226,59 @@ export const handleBatchActionJob = async (
     const { projectId, query, targetObject, configId, cutoffCreatedAt } =
       batchActionEvent;
 
-    const config = await prisma.jobConfiguration.findUnique({
+    // ── LITEFUSE ADDITION (evaluators v2) ───────────────────────────────────
+    // The id may address either a v2 evaluation rule (the migrated model) or a
+    // legacy job configuration. Upstream resolves the rule first; we keep the
+    // legacy space as well so both generations of historic runs work. The id
+    // travels through to `createEvalJobs`, which understands both spaces (see
+    // `loadV2TraceEvalConfigRows`).
+    const rule = await prisma.evaluationRule.findUnique({
       where: {
         id: configId,
         projectId: projectId,
       },
+      select: {
+        delay: true,
+        assignments: {
+          take: 1,
+          select: {
+            evaluator: { select: { type: true } },
+          },
+        },
+      },
     });
 
-    if (!config) {
+    const legacyConfig = rule
+      ? null
+      : await prisma.jobConfiguration.findUnique({
+          where: {
+            id: configId,
+            projectId: projectId,
+          },
+          select: { delay: true },
+        });
+
+    if (!rule && !legacyConfig) {
       logger.error(
         `Eval config ${configId} not found for project ${projectId}`,
       );
       return;
     }
+
+    if (rule && rule.assignments.length === 0) {
+      // Nothing to run: a rule with no evaluator assignment cannot produce jobs.
+      logger.info("Skipping historical eval-create for a rule without assignments", {
+        projectId,
+        configId,
+      });
+      return;
+    }
+
+    // Upstream additionally skips non-LLM-judge rules here, because its
+    // trace/dataset path only runs judges. Ours dispatches decision models on the
+    // same path (see 待决问题登记.md, 待决 10), and the projection in
+    // `createEvalJobs` drops anything it cannot run, so no type gate is needed.
+    const delay = rule?.delay ?? legacyConfig?.delay ?? 0;
 
     const dbReadStream =
       targetObject === EvalTargetObject.TRACE
@@ -305,7 +349,7 @@ export const handleBatchActionJob = async (
             timestamp: new Date(),
             name: QueueJobs.CreateEvalJob as const,
           },
-          { delay: config.delay },
+          { delay },
         );
         count++;
       } else {
@@ -373,8 +417,21 @@ export const handleBatchActionJob = async (
       observations,
     });
   } else if (actionId === "observation-run-batched-evaluation") {
-    const { projectId, query, cutoffCreatedAt, evaluatorIds, batchActionId } =
-      batchActionEvent;
+    const {
+      projectId,
+      query,
+      cutoffCreatedAt,
+      evaluatorIds,
+      batchActionId,
+      evalVersion,
+      evaluatorMappings,
+      // LITEFUSE ADDITION (evaluators v2): the sample fraction and row cap the
+      // backfill dialog asked for. Before, both were hardcoded here (sampling 1,
+      // rowLimit = the env ceiling) while the v2 caller already sent real values,
+      // so a "sample 20%" backfill silently evaluated 100% of the rows.
+      sampling: requestedSampling,
+      rowLimit: requestedRowLimit,
+    } = batchActionEvent;
 
     if (!batchActionId) {
       throw new Error(
@@ -384,36 +441,109 @@ export const handleBatchActionJob = async (
 
     const selectedEvaluatorIds = Array.from(new Set(evaluatorIds));
 
-    let evaluators;
+    let evaluators: ObservationEvalRule[];
+    let evaluatorLabels: string[];
     try {
-      const rawEvaluators = await prisma.jobConfiguration.findMany({
-        where: {
-          id: { in: selectedEvaluatorIds },
-          projectId,
-          targetObject: EvalTargetObject.EVENT,
-          // Preserve the selected evaluators as-is. Executability is checked
-          // later when each scheduling attempt runs.
-        },
-        select: {
-          id: true,
-          projectId: true,
-          evalTemplateId: true,
-          scoreName: true,
-          targetObject: true,
-          variableMapping: true,
-          status: true,
-          blockedAt: true,
-        },
-      });
+      // ── LITEFUSE ADDITION (evaluators v2) ───────────────────────────────
+      // A v2 batch run addresses the EVALUATOR directly: the user's table-level
+      // selection decides which observations to evaluate, so the rule's own
+      // filter is replaced by an empty filter. Sampling is NOT forced to 1: the
+      // backfill dialog sends the fraction the user chose (`sampling`), and the
+      // scheduler applies it per observation. Absent = evaluate everything, which
+      // is what a plain "run on these rows" means.
+      const batchSampling = new Decimal(requestedSampling ?? 1);
+      if (evalVersion === "v2") {
+        const stableEvaluators = await prisma.evaluator.findMany({
+          where: { id: { in: selectedEvaluatorIds }, projectId },
+          select: {
+            id: true,
+            name: true,
+            projectId: true,
+            type: true,
+            blockedAt: true,
+            assignments: {
+              where: { projectId },
+              orderBy: { evaluationRuleId: "asc" },
+              take: 1,
+              select: { evaluationRuleId: true },
+            },
+          },
+        });
 
-      // For batch evaluation the user's table-level selection determines which
-      // observations to evaluate, so we intentionally set filter=[] and
-      // sampling=1 to ensure every streamed observation is evaluated.
-      evaluators = rawEvaluators.map((e) => ({
-        ...e,
-        filter: [] as [],
-        sampling: new Decimal(1),
-      }));
+        evaluatorLabels = stableEvaluators.map(({ name }) => name);
+
+        const mappingByEvaluatorId = new Map(
+          (evaluatorMappings ?? []).map((mapping) => [
+            mapping.evaluatorId,
+            mapping.variableMapping,
+          ]),
+        );
+
+        evaluators = stableEvaluators.map((evaluator) => ({
+          // Ruleless run: `ruleId` stays null, but `id` uses one of the
+          // evaluator's rules when it has any, so the job-execution log stays
+          // readable the way it was before the migration.
+          id: evaluator.assignments[0]?.evaluationRuleId ?? evaluator.id,
+          ruleId: null,
+          projectId,
+          filter: [] as [],
+          sampling: batchSampling,
+          status: JobConfigState.ACTIVE,
+          targetObject: EvalTargetObject.EVENT,
+          assignments: [
+            {
+              // No assignment row exists for a ruleless run; the evaluator id is
+              // the identity the processor resolves by.
+              id: evaluator.id,
+              evaluatorId: evaluator.id,
+              variableMapping: mappingByEvaluatorId.get(evaluator.id) ?? null,
+              evaluator: {
+                id: evaluator.id,
+                projectId: evaluator.projectId,
+                type: evaluator.type,
+              },
+            },
+          ],
+        }));
+
+        if (evaluators.length !== selectedEvaluatorIds.length) {
+          throw new Error(
+            "Selected evaluators are missing or invalid for historical evaluation.",
+          );
+        }
+      } else {
+        const rawEvaluators = await prisma.jobConfiguration.findMany({
+          where: {
+            id: { in: selectedEvaluatorIds },
+            projectId,
+            targetObject: EvalTargetObject.EVENT,
+            // Preserve the selected evaluators as-is. Executability is checked
+            // later when each scheduling attempt runs.
+          },
+          select: {
+            id: true,
+            projectId: true,
+            evalTemplateId: true,
+            scoreName: true,
+            targetObject: true,
+            variableMapping: true,
+            status: true,
+            blockedAt: true,
+          },
+        });
+
+        evaluatorLabels = rawEvaluators.map(({ scoreName }) => scoreName);
+
+        // For batch evaluation the user's table-level selection determines which
+        // observations to evaluate, so filter stays empty; the sampling fraction
+        // still comes from the caller (the legacy producer sends none, which means
+        // "evaluate every selected row").
+        evaluators = rawEvaluators.map((e) => ({
+          ...e,
+          filter: [] as [],
+          sampling: batchSampling,
+        }));
+      }
     } catch (error) {
       await prisma.batchAction.update({
         where: { id: batchActionId },
@@ -439,13 +569,19 @@ export const handleBatchActionJob = async (
       filter: convertDatesInFiltersFromStrings(query.filter ?? []),
       searchQuery: query.searchQuery ?? undefined,
       searchType: query.searchType ?? ["id", "content"],
-      rowLimit: env.LITEFUSE_MAX_HISTORIC_EVAL_CREATION_LIMIT,
+      // The caller's row cap wins when it is *lower* than the instance ceiling;
+      // it can never raise it.
+      rowLimit: Math.min(
+        requestedRowLimit ?? env.LITEFUSE_MAX_HISTORIC_EVAL_CREATION_LIMIT,
+        env.LITEFUSE_MAX_HISTORIC_EVAL_CREATION_LIMIT,
+      ),
     });
 
     await processBatchedObservationEval({
       projectId,
       batchActionId,
       evaluators,
+      evaluatorLabels,
       observationStream: dbReadStream,
     });
   }

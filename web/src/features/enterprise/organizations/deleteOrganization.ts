@@ -6,10 +6,20 @@ import { ApiAuthService } from "@/src/features/public-api/server/apiAuth";
 import { cancelSubscriptionImmediatelyForOrganization } from "@/src/features/billing/server/billingService";
 
 /**
+ * Error code shared by both blocking conditions below; the accompanying
+ * `message` says which one applies.
+ */
+const PROJECTS_REMAIN_ERROR =
+  "Organization cannot be deleted while it still has projects";
+
+/**
  * Delete an organization (DELETE /api/admin/organizations/{id}, instance admin).
- * Mirrors the UI path (organizationRouter.delete): refuses while the
- * organization still has projects (live or pending deletion), cancels any
- * Stripe subscription first, then hard-deletes and drops cached org API keys.
+ *
+ * Mirrors the UI path (organizationRouter.delete): an organization is only
+ * removable once it holds no projects at all — neither live ones nor projects
+ * whose asynchronous deletion is still in flight. A billable Stripe
+ * subscription is cancelled before the hard delete, and the cached org API
+ * keys are dropped afterwards.
  */
 export async function deleteOrganization(
   req: NextApiRequest,
@@ -23,23 +33,23 @@ export async function deleteOrganization(
     return res.status(404).json({ error: "Organization not found" });
   }
 
-  const countNonDeletedProjects = await prisma.project.count({
-    where: { orgId: organizationId, deletedAt: null },
-  });
-  const countAllProjects = await prisma.project.count({
-    where: { orgId: organizationId },
-  });
+  const [liveProjectCount, projectCount] = await Promise.all([
+    prisma.project.count({
+      where: { orgId: organizationId, deletedAt: null },
+    }),
+    prisma.project.count({ where: { orgId: organizationId } }),
+  ]);
 
-  if (countNonDeletedProjects > 0) {
+  if (liveProjectCount > 0) {
     return res.status(400).json({
-      error: "Cannot delete organization with existing projects",
+      error: PROJECTS_REMAIN_ERROR,
       message:
         "Please delete or transfer all projects before deleting the organization.",
     });
   }
-  if (countAllProjects > 0) {
+  if (projectCount > 0) {
     return res.status(400).json({
-      error: "Cannot delete organization with existing projects",
+      error: PROJECTS_REMAIN_ERROR,
       message:
         "Deletion of your projects is still being processed, please try deleting the organization later",
     });
@@ -49,14 +59,19 @@ export async function deleteOrganization(
   // subscription behind. A Stripe failure aborts the deletion.
   await cancelSubscriptionImmediatelyForOrganization(organizationId);
 
-  const deleted = await prisma.organization.delete({
-    where: { id: organizationId },
-  });
-
-  // Cached API keys carry their org; drop them so deleted-org keys stop working.
+  // Drop the cached API keys BEFORE the delete, not after: the helper resolves the
+  // keys to evict by reading `api_keys`, and the organization delete cascades those
+  // rows away. Invalidating afterwards therefore found nothing to evict and left a
+  // stale Redis entry that kept authenticating a deleted organization's key for the
+  // remaining TTL (LITE_FUSE_CACHE_API_KEY_ENABLED defaults to true, 300s).
+  // `deleteProject` already invalidates first for the same reason.
   await new ApiAuthService(prisma, redis).invalidateCachedOrgApiKeys(
     organizationId,
   );
+
+  const deleted = await prisma.organization.delete({
+    where: { id: organizationId },
+  });
 
   await auditLog({
     apiKeyId: "admin-api",
@@ -67,7 +82,7 @@ export async function deleteOrganization(
     before: deleted,
   });
 
-  logger.info(`Deleted organization ${organizationId} via admin API`);
+  logger.info("Admin API deleted an organization", { organizationId });
 
-  return res.status(200).json({ success: true });
+  res.status(200).json({ success: true });
 }

@@ -1084,4 +1084,201 @@ describe("Filter Evaluation for Observation Evals", () => {
       expect(matched).toBe(false);
     });
   });
+
+  // Upstream's root-span dialect (the RuleSetup dialog's default filter and the
+  // sample selector's "Root spans" example) filters the boolean
+  // `isRootObservation`; it must resolve to our precomputed `spans.is_root`.
+  describe("boolean filters (isRootObservation)", () => {
+    it("should match a root observation with = true", async () => {
+      const observation = createTestObservation({
+        project_id: projectId,
+        is_root: true,
+      });
+
+      const matched = await testFilterMatch(observation, [
+        {
+          column: "isRootObservation",
+          type: "boolean",
+          operator: "=",
+          value: true,
+        },
+      ]);
+
+      expect(matched).toBe(true);
+    });
+
+    it("should not match a child observation with = true", async () => {
+      const observation = createTestObservation({
+        project_id: projectId,
+        is_root: false,
+      });
+
+      const matched = await testFilterMatch(observation, [
+        {
+          column: "isRootObservation",
+          type: "boolean",
+          operator: "=",
+          value: true,
+        },
+      ]);
+
+      expect(matched).toBe(false);
+    });
+
+    it("should match a child observation with = false", async () => {
+      const observation = createTestObservation({
+        project_id: projectId,
+        is_root: false,
+      });
+
+      const matched = await testFilterMatch(observation, [
+        {
+          column: "isRootObservation",
+          type: "boolean",
+          operator: "=",
+          value: false,
+        },
+      ]);
+
+      expect(matched).toBe(true);
+    });
+
+    it("should combine the root filter with other filters using AND logic", async () => {
+      const observation = createTestObservation({
+        project_id: projectId,
+        is_root: true,
+        name: "root-generation",
+      });
+
+      const matched = await testFilterMatch(observation, [
+        {
+          column: "isRootObservation",
+          type: "boolean",
+          operator: "=",
+          value: true,
+        },
+        {
+          column: "name",
+          type: "string",
+          operator: "=",
+          value: "root-generation",
+        },
+      ]);
+
+      expect(matched).toBe(true);
+    });
+  });
+
+  // The other two upstream filter columns that have no column of their own in
+  // this fork: the boolean `isExperimentItemRootSpan` (ours is the string
+  // `experiment_item_root_span_id`, so the value is derived as
+  // "span_id === experiment_item_root_span_id") and the numeric `toolCalls`
+  // count (ours are the `tool_calls`/`tool_call_names` arrays). Both are
+  // equivalent substitutions over columns we already store.
+  describe("equivalent substitutions (isExperimentItemRootSpan, toolCalls)", () => {
+    it("should match the experiment item root span with isExperimentItemRootSpan = true", async () => {
+      const spanId = "root-span-123";
+      const observation = createTestObservation({
+        project_id: projectId,
+        span_id: spanId,
+        experiment_item_root_span_id: spanId,
+      });
+
+      const matched = await testFilterMatch(observation, [
+        {
+          column: "isExperimentItemRootSpan",
+          type: "boolean",
+          operator: "=",
+          value: true,
+        },
+      ]);
+
+      expect(matched).toBe(true);
+    });
+
+    it("should not match a child span of the item with isExperimentItemRootSpan = true", async () => {
+      const observation = createTestObservation({
+        project_id: projectId,
+        span_id: "child-span-456",
+        experiment_item_root_span_id: "root-span-123",
+      });
+
+      const matched = await testFilterMatch(observation, [
+        {
+          column: "isExperimentItemRootSpan",
+          type: "boolean",
+          operator: "=",
+          value: true,
+        },
+      ]);
+
+      expect(matched).toBe(false);
+    });
+
+    it("should not match an observation without an experiment item root", async () => {
+      const observation = createTestObservation({
+        project_id: projectId,
+        span_id: "span-123",
+        experiment_item_root_span_id: null,
+      });
+
+      const matched = await testFilterMatch(observation, [
+        {
+          column: "isExperimentItemRootSpan",
+          type: "boolean",
+          operator: "=",
+          value: true,
+        },
+      ]);
+
+      expect(matched).toBe(false);
+    });
+
+    it("should match with toolCalls = 0 when the observation has no tool calls", async () => {
+      const observation = createTestObservation({
+        project_id: projectId,
+        tool_call_names: [],
+        tool_call_count: 0,
+      });
+
+      const matched = await testFilterMatch(observation, [
+        {
+          column: "toolCalls",
+          type: "number",
+          operator: "=",
+          value: 0,
+        },
+      ]);
+
+      expect(matched).toBe(true);
+    });
+
+    it("should match with a toolCalls threshold", async () => {
+      const observation = createTestObservation({
+        project_id: projectId,
+        tool_call_names: ["search", "read", "write"],
+        tool_call_count: 3,
+      });
+
+      const matchedAbove = await testFilterMatch(observation, [
+        {
+          column: "toolCalls",
+          type: "number",
+          operator: ">=",
+          value: 2,
+        },
+      ]);
+      const matchedBelow = await testFilterMatch(observation, [
+        {
+          column: "toolCalls",
+          type: "number",
+          operator: ">=",
+          value: 4,
+        },
+      ]);
+
+      expect(matchedAbove).toBe(true);
+      expect(matchedBelow).toBe(false);
+    });
+  });
 });

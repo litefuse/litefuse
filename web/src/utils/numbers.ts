@@ -39,12 +39,18 @@ export const compactSmallNumberFormatter = (
 export const numberFormatter = (
   number?: number | bigint,
   fractionDigits?: number,
+  /**
+   * LITEFUSE ADDITION (copied from upstream, used by the evaluators v2 cost
+   * estimate): allows fewer decimal places than the minimum, e.g. "40%".
+   * Omitted by every existing caller, whose output is unchanged.
+   */
+  maxFractionDigits?: number,
 ) => {
   return Intl.NumberFormat("en-US", {
     notation: "standard",
     useGrouping: true,
     minimumFractionDigits: fractionDigits ?? 2,
-    maximumFractionDigits: fractionDigits ?? 2,
+    maximumFractionDigits: maxFractionDigits ?? fractionDigits ?? 2,
   }).format(number ?? 0);
 };
 

@@ -44,7 +44,7 @@ import { AuthProviderButton } from "@/src/features/auth/components/AuthProviderB
 import { cn } from "@/src/utils/tailwind";
 import { useLangfuseCloudRegion } from "@/src/features/organizations/hooks";
 import { getSafeRedirectPath } from "@/src/utils/redirect";
-import { hasSsoConfig } from "@/src/features/enterprise/sso/ssoProviders";
+import { hasSsoConfig } from "@/src/features/auth/sso/enterpriseSso";
 
 import { i18nKey } from "@/src/features/i18n/i18nKey";
 

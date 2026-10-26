@@ -3,16 +3,16 @@ import { Alert, AlertTitle, AlertDescription } from "@/src/components/ui/alert";
 
 import { useTranslation } from "react-i18next";
 /**
- * Generic "no access" placeholder shown when the current user lacks the
- * required RBAC scope for a page. Previously the OSS build pulled the
- * equivalent component out of the EE billing folder; that EE folder has
- * been removed, so this is the OSS replacement.
+ * Placeholder screen for pages whose RBAC scope the current user does not
+ * hold. It only explains the restriction; the caller decides whether to render
+ * it at all.
  */
-export const SupportOrUpgradePage = () => {
+export function SupportOrUpgradePage() {
   const { t } = useTranslation();
+
   return (
-    <div className="flex h-full w-full items-center justify-center p-6">
-      <div className="w-full max-w-md">
+    <div className="flex h-full w-full p-6">
+      <div className="m-auto w-full max-w-md">
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>{t("Access Restricted")}</AlertTitle>
@@ -30,4 +30,4 @@ export const SupportOrUpgradePage = () => {
       </div>
     </div>
   );
-};
+}

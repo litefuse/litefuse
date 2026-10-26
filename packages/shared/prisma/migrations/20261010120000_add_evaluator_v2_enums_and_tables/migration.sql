@@ -1,0 +1,13 @@
+-- Evaluators v2 data model.
+--
+-- The four tables (evaluators, evaluator_versions, evaluation_rules,
+-- evaluation_rule_evaluator_assignments) and the EvalTemplateType /
+-- EvaluatorSourceCodeLanguage enums already existed in this database: they were
+-- created by an earlier, since-reverted attempt at the same migration, which is
+-- also why the enums carry two extra EvaluatorBlockReason values.
+--
+-- `prisma migrate diff --from-schema-datasource --to-schema-datamodel` reported
+-- exactly one statement of drift between the database and schema.prisma, so this
+-- migration only creates the one enum that was genuinely missing. The tables are
+-- adopted by schema.prisma, not recreated.
+CREATE TYPE "EvalTemplateSourceCodeLanguage" AS ENUM ('PYTHON', 'TYPESCRIPT');

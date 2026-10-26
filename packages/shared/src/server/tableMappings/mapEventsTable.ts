@@ -228,6 +228,37 @@ export const eventsTableNativeUiColumnDefinitions: UiColumnMappings = [
     select: "e.`environment`",
   },
   {
+    // Upstream's filter dialect spells "root spans" as a boolean
+    // `isRootObservation`; our spans table precomputes the same fact in
+    // `is_root` (1 = trace root, set at ingestion from the empty
+    // parent_span_id). Declared next to its inverse (`hasParentObservation`)
+    // so the search-bar field registry and the filter builder can both resolve
+    // the id. No storage change is involved: this only teaches the retrieval
+    // layer to translate the upstream spelling.
+    uiTableName: "Is Root Observation",
+    uiTableId: "isRootObservation",
+    tableName: "events_proto",
+    select: "e.is_root = 1",
+  },
+  {
+    // Upstream declares a boolean `isExperimentItemRootSpan` ("is this row the
+    // root span of a prompt-experiment item?"). Our table has no such flag: the
+    // item's root span id is a STRING (`experiment_item_root_span_id`, written
+    // at ingestion from the OTel attribute
+    // `langfuse.experiment.item.root_observation_id`) and the row's own id
+    // lives in `span_id`. The upstream boolean is therefore the equivalent
+    // expression "this row is its own item root", which is correct under both
+    // ingestion conventions: if the attribute is written only on the item's
+    // root row that row self-matches; if it is written on every row of the item
+    // pointing at the root, still only the root row self-matches. Rows with no
+    // item root (`NULL`/`''`) compare to NULL and are excluded, exactly like
+    // upstream's `false`. Retrieval-only: no storage change is involved.
+    uiTableName: "Is Experiment Item Root Span",
+    uiTableId: "isExperimentItemRootSpan",
+    tableName: "events_proto",
+    select: "e.experiment_item_root_span_id = e.span_id",
+  },
+  {
     uiTableName: "Has Parent Observation",
     uiTableId: "hasParentObservation",
     tableName: "events_proto",
@@ -554,6 +585,22 @@ export const eventsTableNativeUiColumnDefinitionsForDoris: UiColumnMappings = [
     uiTableId: "traceEnvironment",
     tableName: "observations",
     select: "o.environment",
+  },
+  {
+    // Mirror of the `events_proto` entry above for the Doris/physical
+    // `spans` table this array is used against (alias `o`).
+    uiTableName: "Is Root Observation",
+    uiTableId: "isRootObservation",
+    tableName: "observations",
+    select: "o.is_root = 1",
+  },
+  {
+    // Mirror of the `events_proto` entry above for the Doris/physical `spans`
+    // table this array is used against (alias `o`).
+    uiTableName: "Is Experiment Item Root Span",
+    uiTableId: "isExperimentItemRootSpan",
+    tableName: "observations",
+    select: "o.experiment_item_root_span_id = o.span_id",
   },
   {
     uiTableName: "Has Parent Observation",

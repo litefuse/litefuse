@@ -1,5 +1,5 @@
 /**
- * EO test replay tool (test-cases manual TC-10/11/12; design §4 D2).
+ * EO test replay tool for the exactly-once ingestion pipeline.
  *
  * Deterministic gray-box injection against the OFFICIAL image's pipeline —
  * runs on the host checkout, touches only Redis/BullMQ, never patches the
@@ -8,12 +8,12 @@
  *   re-register <shard> <fileKey>   — call the idempotent registration Lua 5x
  *                                     with the SAME fileKey; every attempt
  *                                     must return admitted=false (SETNX
- *                                     absorption, TC-10).
+ *                                     absorption).
  *   re-add-job  <shard> <groupId>   — rebuild a completed group's payload
  *                                     from the Doris ledger and enqueue it
- *                                     with the SAME jobId=groupId: the D2
- *                                     replay (label dedup + scalar gate,
- *                                     TC-11/12). groupId must be the FULL
+ *                                     with the SAME jobId=groupId: the late
+ *                                     replay (label dedup + scalar gate).
+ *                                     groupId must be the FULL
  *                                     40-char sha1 (logs only print 12).
  *
  * Usage (from worker/): pnpm run eo-replay -- <cmd> <shard> <arg>

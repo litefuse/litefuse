@@ -29,7 +29,7 @@ export function SelectEvaluatorList({ projectId }: SelectEvaluatorListProps) {
   const [isCreateTemplateOpen, setIsCreateTemplateOpen] = useState(false);
 
   const handleSelectEvaluator = (template: EvalTemplate) => {
-    router.push(`/project/${projectId}/evals/new?evaluator=${template.id}`);
+    router.push(`/project/${projectId}/evals/legacy/new?evaluator=${template.id}`);
   };
 
   const { isSelectionValid, selectedTemplate, setSelectedTemplate } =

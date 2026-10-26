@@ -30,6 +30,22 @@
   --color-accent-light-blue: hsl(var(--accent-light-blue));
   --color-accent-dark-blue: hsl(var(--accent-dark-blue));
 
+  /* Tokens the evaluator v2 UI needs. Upstream's design-system components
+     (web/src/components/design-system/**) are copied from it and reference
+     these names; they were not part of our older palette. Purely additive:
+     new names, so no existing component's styling changes. */
+  --color-light-violet: hsl(var(--light-violet));
+  --color-dark-violet: hsl(var(--dark-violet));
+  --color-light-teal: hsl(var(--light-teal));
+  --color-dark-teal: hsl(var(--dark-teal));
+  --color-foreground-secondary: hsl(var(--foreground-secondary));
+  --color-foreground-tertiary: hsl(var(--foreground-tertiary));
+  --color-surface-code: hsl(var(--surface-code));
+  --color-surface-code-header: hsl(var(--surface-code-header));
+  --color-control-fill: hsl(var(--control-fill));
+  --color-control-track: hsl(var(--control-track));
+  --color-control-border: hsl(var(--control-border));
+
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
@@ -187,6 +203,23 @@
     --light-blue: 214 94.6% 92.7%;
     --dark-blue: 217 91.2% 59.8%;
 
+    /* Added for the evaluator v2 UI (upstream design-system tokens). */
+    --light-violet: 251 91% 95.5%;
+    --dark-violet: 262 72% 54%;
+
+    --light-teal: 167 85% 89%;
+    --dark-teal: 175 84% 28%;
+
+    --foreground-secondary: 215 19% 35%;
+    --foreground-tertiary: 215 12% 62%;
+
+    --surface-code: 0 0% 92%;
+    --surface-code-header: 0 0% 86%;
+
+    --control-fill: 222.2 47.4% 11.2%;
+    --control-track: 214.3 31.8% 91.4%;
+    --control-border: 215 12% 60%;
+
     --accent-light-blue: 251 95.2% 91.8%;
     --accent-dark-blue: 224 76.3% 38%;
     --radius: 0.5rem;
@@ -277,6 +310,23 @@
 
     --light-blue: 224 64.3% 32.9%;
     --dark-blue: 212 96.4% 78.4%;
+
+    /* Added for the evaluator v2 UI (upstream design-system tokens). */
+    --light-violet: 258 40% 16%;
+    --dark-violet: 255 92% 76%;
+
+    --light-teal: 175 40% 12%;
+    --dark-teal: 172 66% 50%;
+
+    --foreground-secondary: 0 0% 62%;
+    --foreground-tertiary: 0 0% 40%;
+
+    --surface-code: 0 0% 2.3%;
+    --surface-code-header: 0 0% 8.2%;
+
+    --control-fill: 0 0% 78%;
+    --control-track: 0 0% 24%;
+    --control-border: 0 0% 26%;
 
     --accent-light-green: 192 21% 9%;
     --accent-dark-green: 124 21.8% 30.6%;

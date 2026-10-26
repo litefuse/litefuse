@@ -32,17 +32,35 @@ export const runEvaluationRouter = createTRPCRouter({
         });
 
         const { projectId, query, evaluatorIds: rawEvaluatorIds } = input;
+        const { evaluatorMappings, sampling, rowLimit } = input;
 
-        if (env.LITEFUSE_ENABLE_EVENTS_TABLE_FLAGS !== "true") {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Events table is not enabled for this instance.",
-          });
-        }
+        // LITEFUSE: upstream gated this endpoint on
+        // `LITEFUSE_ENABLE_EVENTS_TABLE_FLAGS` because both the count below and
+        // the worker's historic read stream targeted a physical `events` table.
+        // That table does not exist here — telemetry is split per project — and
+        // the read path was adapted instead of the storage
+        // (worker/src/features/database-read-stream/event-stream.ts reads
+        // `spans_<projectId>`, and `getObservationsCountFromEventsTable` already
+        // resolves the split `spans` table), so nothing on this path depends on
+        // that flag any more. Rejecting the request would only have kept a
+        // working feature unreachable while the flag defaults to "false".
 
         const requestedEvaluatorIds = Array.from(new Set(rawEvaluatorIds));
 
-        const evaluatorIds = (
+        // ── LITEFUSE ADDITION (evaluators v2) ───────────────────────────────
+        // A batch run may address either id space:
+        //   * v2 `evaluators` rows (what the migrated UI selects), or
+        //   * legacy `job_configurations` rows (still reachable in the old UI).
+        // The flag travels with the queue payload so the worker resolves the same
+        // space instead of guessing.
+        const stableEvaluatorIds = (
+          await ctx.prisma.evaluator.findMany({
+            where: { id: { in: requestedEvaluatorIds }, projectId },
+            select: { id: true },
+          })
+        ).map((e) => e.id);
+
+        const legacyEvaluatorIds = (
           await ctx.prisma.jobConfiguration.findMany({
             where: {
               id: {
@@ -57,10 +75,14 @@ export const runEvaluationRouter = createTRPCRouter({
           })
         ).map((e) => e.id);
 
-        if (evaluatorIds.length !== requestedEvaluatorIds.length) {
-          const foundIds = new Set(evaluatorIds);
+        const resolutionByEvaluatorId = new Map<string, "v2" | "legacy">([
+          ...stableEvaluatorIds.map((id) => [id, "v2"] as const),
+          ...legacyEvaluatorIds.map((id) => [id, "legacy"] as const),
+        ]);
+
+        if (resolutionByEvaluatorId.size !== requestedEvaluatorIds.length) {
           const missingEvaluatorIds = requestedEvaluatorIds.filter(
-            (id) => !foundIds.has(id),
+            (id) => !resolutionByEvaluatorId.has(id),
           );
 
           throw new TRPCError({
@@ -71,6 +93,20 @@ export const runEvaluationRouter = createTRPCRouter({
                 : "Selected evaluators are missing or not observation-scoped.",
           });
         }
+
+        // Mixed selections would need two different worker resolutions; the UIs
+        // never produce one, so reject it instead of guessing.
+        const resolvedVersions = new Set(resolutionByEvaluatorId.values());
+        if (resolvedVersions.size > 1) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Select evaluators from one generation at a time (evaluators v2 or legacy configurations).",
+          });
+        }
+
+        const evalVersion = resolvedVersions.has("v2") ? "v2" : undefined;
+        const evaluatorIds = requestedEvaluatorIds;
 
         const countQueryOpts = {
           projectId,
@@ -91,7 +127,20 @@ export const runEvaluationRouter = createTRPCRouter({
         }
 
         const userId = ctx.session.user.id;
-        const batchConfig = { evaluatorIds };
+        // ── LITEFUSE ADDITION (evaluators v2) ───────────────────────────────
+        // The v2 backfill dialog sends the sampling fraction, its own row cap and
+        // per-evaluator mappings. They are persisted on the batch action (so a
+        // retry reproduces the run) and forwarded in the queue payload; the worker
+        // applies sampling per observation and caps the read stream.
+        const batchConfig = {
+          evaluatorIds,
+          // LITEFUSE ADDITION: remember which id space this run addressed, so a
+          // retried batch action (and the worker) resolve the same rows.
+          ...(evalVersion ? { evalVersion } : {}),
+          ...(evaluatorMappings ? { evaluatorMappings } : {}),
+          ...(sampling !== undefined ? { sampling } : {}),
+          ...(rowLimit !== undefined ? { rowLimit } : {}),
+        };
 
         logger.info(
           "[TRPC] Creating observation-run-batched-evaluation action",
@@ -99,6 +148,9 @@ export const runEvaluationRouter = createTRPCRouter({
             projectId,
             evaluatorCount: evaluatorIds.length,
             evaluatorIds,
+            evalVersion: evalVersion ?? "legacy",
+            sampling: sampling ?? 1,
+            rowLimit: rowLimit ?? null,
           },
         );
 
@@ -136,6 +188,10 @@ export const runEvaluationRouter = createTRPCRouter({
               cutoffCreatedAt: new Date(),
               query,
               evaluatorIds: batchConfig.evaluatorIds,
+              ...(evalVersion ? { evalVersion } : {}),
+              ...(evaluatorMappings ? { evaluatorMappings } : {}),
+              ...(sampling !== undefined ? { sampling } : {}),
+              ...(rowLimit !== undefined ? { rowLimit } : {}),
             },
           },
           {

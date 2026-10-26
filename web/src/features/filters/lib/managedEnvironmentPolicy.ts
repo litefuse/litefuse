@@ -145,3 +145,78 @@ export function buildEffectiveEnvironmentFilter(params: {
   const envFilter = managedColumnFilters[0] as EnvironmentFilter;
   return [envFilter];
 }
+
+// ── Added for the evaluators v2 migration (ported from upstream) ─────────────
+/**
+ * Splits a `none of [...]` environment selection into the values the user really
+ * picked and the hidden ones the policy contributed, and reports whether the
+ * selection excludes every hidden environment (i.e. it is the implicit default).
+ */
+export function partitionNoneOfEnvironmentValues(params: {
+  values: readonly string[];
+  hiddenEnvironments: readonly string[];
+}): {
+  extras: string[];
+  hiddenInValues: string[];
+  excludesAllHidden: boolean;
+} {
+  const { values, hiddenEnvironments } = params;
+  const hiddenSet = new Set(hiddenEnvironments);
+  const extras = values.filter((value) => !hiddenSet.has(value));
+  const hiddenInValues = values.filter((value) => hiddenSet.has(value));
+  const valueSet = new Set(values);
+
+  return {
+    extras,
+    hiddenInValues,
+    excludesAllHidden:
+      hiddenEnvironments.length > 0 &&
+      hiddenEnvironments.every((environment) => valueSet.has(environment)),
+  };
+}
+
+/**
+ * The search bar reads the user's own selection: an implicit
+ * `none of [hidden ∪ extras]` exclusion is shown as just
+ * `-environment:production`, so the hidden environments stay off the chip.
+ */
+export function toSearchBarEnvironmentFilters(params: {
+  explicitFilters: FilterState;
+  config: ManagedEnvironmentPolicyConfig;
+}): FilterState {
+  const { explicitFilters, config } = params;
+  const { managedEnvironmentColumn, hiddenEnvironments } = config;
+
+  if (hiddenEnvironments.length === 0) return explicitFilters;
+
+  const managedColumnFilters = explicitFilters.filter(
+    (filter) => filter.column === managedEnvironmentColumn,
+  );
+
+  if (
+    managedColumnFilters.length !== 1 ||
+    managedColumnFilters[0]?.type !== "stringOptions"
+  ) {
+    return explicitFilters;
+  }
+
+  const envFilter = managedColumnFilters[0] as EnvironmentFilter;
+  if (envFilter.operator !== "none of") {
+    return explicitFilters;
+  }
+
+  const { extras, excludesAllHidden } = partitionNoneOfEnvironmentValues({
+    values: envFilter.value,
+    hiddenEnvironments,
+  });
+
+  if (!excludesAllHidden) {
+    return explicitFilters;
+  }
+
+  return explicitFilters.flatMap((filter) => {
+    if (filter !== envFilter) return [filter];
+    if (extras.length === 0) return [];
+    return [{ ...envFilter, value: extras }];
+  });
+}

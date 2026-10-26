@@ -100,3 +100,20 @@ export function extractValueFromObject(
     error,
   };
 }
+
+// ── Added for the evaluators v2 migration (copied from upstream) ─────────────
+export function extractValueFromObjectAsString(
+  obj: Record<string, unknown>,
+  selectedColumnId: string,
+  jsonSelector?: string,
+  parseJson?: (selectedColumn: unknown, jsonSelector: string) => unknown,
+): { value: string; error: Error | null } {
+  const { value, error } = extractValueFromObject(
+    obj,
+    selectedColumnId,
+    jsonSelector,
+    parseJson,
+  );
+
+  return { value: parseUnknownToString(value), error };
+}

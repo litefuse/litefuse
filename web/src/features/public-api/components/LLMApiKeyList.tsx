@@ -42,6 +42,12 @@ export function LlmApiKeyList(props: { projectId: string }) {
   const apiKeys = api.llmApiKey.all.useQuery(
     {
       projectId: props.projectId,
+      // This is the *connection management* surface: a decision-model (TypeSafe)
+      // connection that the evaluators v2 picker can select must also be listed
+      // here, otherwise it can neither be inspected, edited nor deleted — while
+      // creating a second one still fails as a duplicate. Ordinary model pickers
+      // keep the default (excluded).
+      includeDecisionModels: true,
     },
     {
       enabled: hasAccess,
@@ -55,7 +61,7 @@ export function LlmApiKeyList(props: { projectId: string }) {
   if (!hasAccess) {
     return (
       <div>
-        <Header title={t("LLM Connections")} />
+        <Header title={t("Model Connections")} />
         <Alert>
           <AlertTitle>{t("Access Denied")}</AlertTitle>
           <AlertDescription>
@@ -70,7 +76,7 @@ export function LlmApiKeyList(props: { projectId: string }) {
 
   return (
     <div id="llm-api-keys">
-      <Header title={t("LLM Connections")} />
+      <Header title={t("Model Connections")} />
       <p className="mb-4 text-sm">
         {t(
           "Connect your LLM services to enable evaluations and playground features. Your provider will charge based on usage.",
@@ -190,7 +196,7 @@ function DeleteApiKeyButton(props: { projectId: string; apiKeyId: string }) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="mb-5">
-            {t("Delete LLM Connection")}
+            {t("Delete Model Connection")}
           </DialogTitle>
           <DialogDescription>
             {t(

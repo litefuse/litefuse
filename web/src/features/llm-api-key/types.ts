@@ -8,7 +8,10 @@ export const LlmApiKeySchema = z.object({
     .min(1)
     .regex(/^[^:]+$/, "Provider name cannot contain colons"),
   adapter: z.enum(LLMAdapter),
-  baseURL: z.string().url().optional(),
+  // `null` is accepted on top of `undefined`: a decision-model (TypeSafe)
+  // connection clears its stored gateway base URL by sending null, mirroring
+  // upstream's CreateLLMApiKeyForm. `undefined` still means "not provided".
+  baseURL: z.string().url().nullish(),
   withDefaultModels: z.boolean().optional(),
   customModels: z.array(z.string().min(1)).optional(),
   config: z.record(z.string(), z.unknown()).optional(),

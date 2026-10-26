@@ -6,10 +6,22 @@ import useLocalStorage from "@/src/components/useLocalStorage";
 import {
   LLMAdapter,
   supportedModels,
+  type ModelParams,
   type UIModelParams,
 } from "@langfuse/shared";
 import { type ModelParamsContext } from "@/src/components/ModelParameters";
+import { getEnabledModelParamState } from "@/src/utils/getFinalModelParams";
 import { getModelNameKey, getModelProviderKey } from "../storage/keys";
+
+/**
+ * LITEFUSE ADDITION (copied from upstream): extra inputs for the hook. Only the
+ * evaluators v2 judge-model dialog passes it today; every other caller keeps
+ * calling `useModelParams(windowId?)` and gets the previous defaults.
+ */
+type UseModelParamsOptions = {
+  /** Seed the UI state from an already-saved model instead of the defaults. */
+  initialModel?: ModelParams;
+};
 
 /**
  * Hook for managing model parameters with window isolation support
@@ -18,11 +30,18 @@ import { getModelNameKey, getModelProviderKey } from "../storage/keys";
  * @param windowId - Optional window identifier for state isolation. Defaults to "default" for backward compatibility
  * @returns Object with model parameters state and management functions
  */
-export const useModelParams = (windowId?: string) => {
-  const [modelParams, setModelParams] = useState<UIModelParams>({
-    ...getDefaultAdapterParams(LLMAdapter.OpenAI),
-    provider: { value: "", enabled: true },
-    model: { value: "", enabled: true },
+export const useModelParams = (
+  windowId?: string,
+  options?: UseModelParamsOptions,
+) => {
+  const [modelParams, setModelParams] = useState<UIModelParams>(() => {
+    const initialModel = options?.initialModel;
+    return {
+      ...getDefaultAdapterParams(initialModel?.adapter ?? LLMAdapter.OpenAI),
+      ...(initialModel ? getEnabledModelParamState(initialModel) : {}),
+      provider: { value: initialModel?.provider ?? "", enabled: true },
+      model: { value: initialModel?.model ?? "", enabled: true },
+    };
   });
 
   // Set initial model params
@@ -260,6 +279,24 @@ function getDefaultAdapterParams(
         temperature: { value: 1, enabled: false },
         maxTemperature: { value: 2, enabled: false },
         max_tokens: { value: 4096, enabled: false },
+        top_p: { value: 1, enabled: false },
+        maxReasoningTokens: { value: 0, enabled: false },
+        providerOptions: { value: {}, enabled: false },
+      };
+
+    // LITEFUSE ADDITION (copied from upstream): a decision model takes no
+    // sampling parameters, so every one of them stays disabled with a neutral
+    // default. Nothing renders these for a decision-model connection because
+    // the playground only offers text models (llmApiKey.all excludes them).
+    case LLMAdapter.TypeSafe:
+      return {
+        adapter: {
+          value: adapter,
+          enabled: true,
+        },
+        temperature: { value: 0, enabled: false },
+        maxTemperature: { value: 0, enabled: false },
+        max_tokens: { value: 0, enabled: false },
         top_p: { value: 1, enabled: false },
         maxReasoningTokens: { value: 0, enabled: false },
         providerOptions: { value: {}, enabled: false },

@@ -34,6 +34,12 @@ export const BatchActionQuerySchema = z.object({
   orderBy,
   searchQuery: z.string().optional(),
   searchType: z.array(TracingSearchType).optional(),
+  // Upstream-compatible opt-in for reading the job from the events table
+  // instead of the legacy tables. Optional and additive: producers that do not
+  // set it keep their exact previous payload, and this fork's worker routes by
+  // the batch action's own table/source fields rather than by this flag, so
+  // accepting (and carrying) the declaration changes no routing today.
+  useEventsTable: z.boolean().optional(),
 });
 
 export type BatchActionQuery = z.infer<typeof BatchActionQuerySchema>;

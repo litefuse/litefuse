@@ -1,8 +1,11 @@
 import CodeMirror, {
   EditorView,
+  keymap,
   type ReactCodeMirrorRef,
 } from "@uiw/react-codemirror";
-import { SearchQuery, setSearchQuery } from "@codemirror/search";
+import { searchKeymap, SearchQuery, setSearchQuery } from "@codemirror/search";
+// LITEFUSE ADDITION: type of the caller-provided `extensions` prop below.
+import { type Extension } from "@codemirror/state";
 import { json, jsonParseLinter } from "@codemirror/lang-json";
 import { linter, type Diagnostic } from "@codemirror/lint";
 import { useTheme } from "next-themes";
@@ -26,6 +29,7 @@ import {
 } from "@langfuse/shared";
 import { lightTheme } from "@/src/components/editor/light-theme";
 import { darkTheme } from "@/src/components/editor/dark-theme";
+import { codeMirrorSearchPanel } from "@/src/constants/codeMirrorSearchPanel";
 
 import { type TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
@@ -141,6 +145,15 @@ const createPromptLinter = (t: TFunction) =>
 // Create a language support instance that combines the language and its configuration
 const promptSupport = new LanguageSupport(promptLanguage);
 
+// LITEFUSE ADDITION (search, copied from upstream Langfuse 4.43.0): the
+// editor-local find panel (Ctrl-F / Mod-f) and the keymap that opens it. Upstream
+// wires the same pair through `basicSetup.searchKeymap`; we keep `basicSetup={false}`
+// and add only these two extensions so nothing else about the editors changes.
+const editorSearchExtensions: Extension[] = [
+  codeMirrorSearchPanel,
+  keymap.of(searchKeymap),
+];
+
 export function applyCodeMirrorSearchQuery(
   editorRef: RefObject<ReactCodeMirrorRef | null> | undefined,
   searchValue: string,
@@ -244,6 +257,7 @@ export function CodeMirrorEditor({
   editorRef,
   enableSearchKeymap = true,
   onEditorMount,
+  extensions: additionalExtensions,
 }: {
   value: string;
   onChange?: (value: string) => void;
@@ -259,6 +273,12 @@ export function CodeMirrorEditor({
   editorRef?: RefObject<ReactCodeMirrorRef | null>;
   enableSearchKeymap?: boolean;
   onEditorMount?: () => void;
+  /**
+   * LITEFUSE ADDITION (copied from upstream): caller-provided CodeMirror
+   * extensions appended after the built-ins, e.g. a media drop/paste handler.
+   * Memoize the array at the call site to avoid reconfiguring the editor.
+   */
+  extensions?: Extension[];
 }) {
   const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
@@ -327,6 +347,17 @@ export function CodeMirrorEditor({
             overflow: "auto",
           },
         }),
+
+        // Editor-local find panel + keymap (Ctrl-F). Off when a call site
+        // disables the search keymap (the shared message-search surface owns the
+        // editor's search query there), and off for read-only editors: upstream
+        // pairs its panel with EditorState.readOnly, which we do not set, so the
+        // panel's Replace controls could otherwise dispatch document changes into
+        // a field the caller marked editable={false}.
+        ...(enableSearchKeymap && editable ? editorSearchExtensions : []),
+
+        // Caller-provided extensions last, so they can override the built-ins.
+        ...(additionalExtensions ?? []),
       ]}
       defaultValue={value}
       onChange={(c) => {

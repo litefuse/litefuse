@@ -400,6 +400,7 @@ describe("buildObservationForEval", () => {
       name: generationDetails.name || "generation",
       environment: LangfuseInternalTraceEnvironment.PromptExperiments,
       level: "DEFAULT",
+      is_root: false,
 
       // Prompt info
       prompt_name: config.prompt?.name,

@@ -46,13 +46,13 @@ export const SHARED_VALIDATION_MESSAGES = [
   i18nKey("Each rangeStart must be less than corresponding rangeEnd"),
   // Evaluator status banners, shown on the evaluator detail page.
   i18nKey(
-    "Evaluator paused: LLM authentication failed. Update the LLM connection used by this evaluator and then reactivate it.",
+    "Evaluator paused: LLM authentication failed. Update the model connection used by this evaluator and then reactivate it.",
   ),
   i18nKey(
     "Evaluator paused: model not found or unavailable. Update the evaluator template or default evaluation model, then reactivate it.",
   ),
   i18nKey(
-    "Evaluator paused: no LLM connection found for the provider used by this evaluator. Add or restore the LLM connection, then reactivate it.",
+    "Evaluator paused: no model connection found for the provider used by this evaluator. Add or restore the connection, then reactivate it.",
   ),
   i18nKey(
     "Evaluator paused: no default evaluation model is configured. Set a default evaluation model or update the evaluator template, then reactivate it.",
@@ -65,9 +65,29 @@ export const SHARED_VALIDATION_MESSAGES = [
   ),
   // EVALUATOR_BLOCK_METADATA.shortLabel, rendered by `evaluator-paused-callout`
   i18nKey("Authentication failed"),
-  i18nKey("LLM connection missing"),
+  i18nKey("Model connection missing"),
   i18nKey("Default evaluation model missing"),
   i18nKey("Evaluation model invalid"),
   i18nKey("Model unavailable"),
   i18nKey("Provider account setup incomplete"),
+  // The same metadata as worded for the evaluator-v2 banner
+  // (`EVALUATOR_BLOCK_METADATA` in `@langfuse/shared`, rendered by
+  // `EvaluatorBlockedBanner`). The v2 wording differs from the v1 wording above
+  // ("LLM connection" instead of "model connection"), so both spellings are
+  // tracked.
+  i18nKey(
+    "Evaluator paused: LLM authentication failed. Update the LLM connection used by this evaluator and then reactivate it.",
+  ),
+  i18nKey(
+    "Evaluator paused: no LLM connection found for the provider used by this evaluator. Add or restore the LLM connection, then reactivate it.",
+  ),
+  i18nKey(
+    "Evaluator paused: the LLM provider reported exhausted credits or an exceeded spend budget. Add credits or raise the limit in your provider account, then reactivate the evaluator.",
+  ),
+  i18nKey(
+    "Evaluator paused: the LLM connection's endpoint hostname could not be resolved. Fix the base URL of the LLM connection used by this evaluator, then reactivate it.",
+  ),
+  i18nKey("LLM connection missing"),
+  i18nKey("Provider credits exhausted"),
+  i18nKey("Endpoint unreachable"),
 ] as const;

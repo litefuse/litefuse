@@ -5,6 +5,9 @@ import { ObservationLevel, ObservationType } from "../../domain";
 import { SingleValueOption } from "../../tableDefinitions";
 import { ColumnDefinition } from "../../tableDefinitions";
 import { formatColumnOptions } from "../../tableDefinitions/typeHelpers";
+// Added with the tool-call cluster below (copied from upstream). Upstream's
+// version of this file already imports it.
+import { parseJsonIfString } from "../../utils/json";
 
 const flexibleUsageCostSchema = z.record(
   z.string(),
@@ -30,6 +33,16 @@ export const observationForEvalSchema = z.object({
   trace_name: z.string().nullish(),
   user_id: z.string().nullish(),
   session_id: z.string().nullish(),
+  // Root-span flag. Our `spans` table precomputes this as the numeric
+  // `is_root` (1 = trace root, 0 = child, derived at ingestion from the empty
+  // `parent_span_id`), while upstream's `is_app_root` is a boolean. Normalise
+  // both spellings to a boolean here: the in-memory filter comparison is a
+  // strict `===` against the filter's boolean value, and observation payloads
+  // written before this field existed simply default to `false`.
+  is_root: z
+    .union([z.boolean(), z.number()])
+    .nullish()
+    .transform((value) => value === true || value === 1),
   tags: z.array(z.string()).default([]),
   release: z.string().nullish(),
 
@@ -53,6 +66,15 @@ export const observationForEvalSchema = z.object({
   tool_definitions: z.record(z.string(), z.unknown()).default({}),
   tool_calls: z.array(z.unknown()).default([]),
   tool_call_names: z.array(z.string()).default([]),
+  // Tool-call COUNT, the numeric form the eval filter registry exposes as
+  // `toolCalls`. This fork stores only the arrays (there is no
+  // `tool_call_count` column), so the value is derived — never read from
+  // storage — at the points where an `ObservationForEval` is built, from
+  // `tool_call_names`, which is authoritative for count and order (ingestion
+  // writes both arrays in lockstep; see `zipObservationToolCalls`). This is
+  // upstream's own derivation, and it equals the display layer's
+  // `length(o.tool_calls)`.
+  tool_call_count: z.number().default(0),
 
   // Experiment
   experiment_id: z.string().nullish(),
@@ -61,6 +83,9 @@ export const observationForEvalSchema = z.object({
   experiment_dataset_id: z.string().nullish(),
   experiment_item_id: z.string().nullish(),
   experiment_item_expected_output: z.string().nullish(),
+  // Added for the evaluators v2 migration (copied from upstream).
+
+  experiment_item_metadata: z.record(z.string(), z.unknown()).nullish(),
   experiment_item_root_span_id: z.string().nullish(),
 
   // Data - accepts any type (string, array, object) from different OTEL SDKs
@@ -74,7 +99,16 @@ export type ObservationForEval = z.infer<typeof observationForEvalSchema>;
 export function convertEventRecordToObservationForEval(
   record: EventRecordBaseType,
 ): ObservationForEval {
-  return observationForEvalSchema.parse(record);
+  // The live OTel path builds the eval-facing observation straight from the
+  // ingested event record, so this is where the derived tool-call count is
+  // attached (mirrors upstream). `experiment_item_root_span_id` needs no
+  // derivation here: the record carries the raw id and
+  // `mapEventEvalFilterColumnIdToField` compares it with `span_id`.
+  const toolCallNames = record.tool_call_names ?? [];
+  return observationForEvalSchema.parse({
+    ...record,
+    tool_call_count: toolCallNames.length,
+  });
 }
 
 export type ObservationEvalFilterColumnInternal =
@@ -93,11 +127,45 @@ export type ObservationEvalFilterColumnInternal =
     | "experiment_dataset_id"
     | "metadata"
     | "parent_span_id"
+    | "is_root"
+    // ── Added for the evaluators v2 migration ──────────────────────────────
+    // Upstream's filter registry declares these; this fork already carried every
+    // one of them in `observationForEvalSchema` (and the evaluators-v2 rule UI,
+    // copied from upstream, still writes filters against them), but they were
+    // missing from the registry, so those filters were silently classified as
+    // unsupported and dropped. `getObservationColumnValue` reads
+    // `observation[internal]`, so declaring them here is all the data path needs.
+    //
+    // Two of them have no storage counterpart and are therefore derived instead
+    // of read (see `mapEventEvalFilterColumnIdToField` and every projection that
+    // builds an `ObservationForEval`):
+    //   * `experiment_item_root_span_id` backs upstream's boolean
+    //     `isExperimentItemRootSpan`; ours is a string id, so the boolean is
+    //     "span_id === experiment_item_root_span_id".
+    //   * `tool_call_count` backs upstream's numeric `toolCalls`; ours is the
+    //     `tool_calls`/`tool_call_names` array length.
+    | "release"
+    | "status_message"
+    | "provided_model_name"
+    | "prompt_name"
+    | "prompt_version"
+    | "experiment_id"
+    | "experiment_name"
+    | "experiment_item_root_span_id"
+    | "tool_call_names"
+    | "tool_call_count"
   >;
 
 export type ObservationEvalMappingColumnInternal = keyof Pick<
   ObservationForEval,
-  "input" | "output" | "metadata" | "experiment_item_expected_output"
+  // "tool_calls" and "experiment_item_metadata" added with the evaluators v2
+  // migration (copied from upstream).
+  | "input"
+  | "output"
+  | "metadata"
+  | "tool_calls"
+  | "experiment_item_expected_output"
+  | "experiment_item_metadata"
 >;
 
 export interface ObservationEvalVariableColumn {
@@ -239,6 +307,69 @@ export const observationEvalFilterColumns: ObservationEvalColumnDef[] = [
     internal: "version",
     nullable: true,
   },
+  // ── Added for the evaluators v2 migration (upstream declares these) ────────
+  // Without them the copied evaluators-v2 rule UI offered filters that the
+  // registry then classified as unsupported and dropped silently. Both are
+  // equivalent substitutions over columns we already have (no storage change):
+  // see the derivation note on `ObservationEvalFilterColumnInternal` and the
+  // branches in `mapEventEvalFilterColumnIdToField`.
+  {
+    name: "Release",
+    id: "release",
+    type: "string",
+    internal: "release",
+    nullable: true,
+  },
+  {
+    name: "Status Message",
+    id: "statusMessage",
+    type: "string",
+    internal: "status_message",
+    nullable: true,
+  },
+  {
+    name: "Provided Model Name",
+    id: "providedModelName",
+    type: "string",
+    internal: "provided_model_name",
+    nullable: true,
+  },
+  {
+    name: "Prompt Name",
+    id: "promptName",
+    type: "string",
+    internal: "prompt_name",
+    nullable: true,
+  },
+  {
+    name: "Prompt Version",
+    id: "promptVersion",
+    type: "number",
+    internal: "prompt_version",
+    nullable: true,
+  },
+  {
+    name: "Experiment ID",
+    id: "experimentId",
+    type: "stringOptions",
+    internal: "experiment_id",
+    options: [], // to be filled at runtime
+    nullable: true,
+  },
+  {
+    name: "Experiment Name",
+    id: "experimentName",
+    type: "string",
+    internal: "experiment_name",
+    nullable: true,
+  },
+  {
+    name: "Called Tool Names",
+    id: "calledToolNames",
+    type: "arrayOptions",
+    internal: "tool_call_names",
+    options: [], // to be filled at runtime
+  },
   {
     name: "Trace Name",
     id: "traceName",
@@ -273,6 +404,34 @@ export const observationEvalFilterColumns: ObservationEvalColumnDef[] = [
     id: "metadata",
     type: "stringObject",
     internal: "metadata",
+  },
+  {
+    // Upstream's spelling of "root spans" for rules, the sample selector and
+    // the new-rule dialog's default filter (`{column: "isRootObservation",
+    // type: "boolean", operator: "=", value: true}`). Backed by our precomputed
+    // root flag, normalised to a boolean by the schema field above.
+    name: "Is Root Observation",
+    id: "isRootObservation",
+    type: "boolean",
+    internal: "is_root",
+  },
+  {
+    // Upstream's boolean "is this row the root span of an experiment item?".
+    // The internal key is upstream's (the raw string column); the boolean value
+    // is derived in `mapEventEvalFilterColumnIdToField`.
+    name: "Is Experiment Item Root Span",
+    id: "isExperimentItemRootSpan",
+    type: "boolean",
+    internal: "experiment_item_root_span_id",
+  },
+  {
+    // Upstream's numeric tool-call count. `internal` carries the derived count
+    // (see the schema field and every projection that builds an
+    // `ObservationForEval`).
+    name: "Tool Call Count",
+    id: "toolCalls",
+    type: "number",
+    internal: "tool_call_count",
   },
   {
     name: "Parent Observation",
@@ -360,5 +519,151 @@ export function mapEventEvalFilterColumnIdToField(
   if (!columnMapping) {
     return undefined;
   }
+
+  // `isExperimentItemRootSpan` has no boolean column behind it in this fork: the
+  // stored fact is the item's root span ID (a string), so the upstream boolean
+  // is "this row is its own item root". Deriving it here — the single mapping
+  // point every in-memory filter evaluation goes through, whichever projection
+  // built the observation — mirrors upstream and guarantees the strict `===`
+  // comparison in `InMemoryFilterService` sees a real boolean. Rows without an
+  // item root (`null`/`undefined`, and `''` by way of the id comparison) are
+  // `false`, exactly like upstream. Retrieval-only: no storage change.
+  if (columnMapping.id === "isExperimentItemRootSpan") {
+    return (
+      observation.experiment_item_root_span_id != null &&
+      observation.experiment_item_root_span_id === observation.span_id
+    );
+  }
+
   return observation[columnMapping.internal];
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tool-call + code-eval variable cluster. Copied from upstream; our fork predates
+// it. Needed by server/evals/extractObservationVariables.ts and the v2 UI.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const toolCallForEvalSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  arguments: z.unknown(),
+  type: z.string(),
+  index: z.number(),
+});
+
+export type ToolCallForEval = z.infer<typeof toolCallForEvalSchema>;
+
+/**
+ * Zips the parallel arrays back into named tool call objects.
+ * \`tool_call_names\` is authoritative for count and order: ingestion writes
+ * both arrays in lockstep, and stored entries carry no name. \`arguments\` arrives
+ * double-encoded (a JSON string inside the entry JSON) and is parsed to an
+ * object; unparsable values stay raw strings.
+ */
+export function zipObservationToolCalls(
+  observation: Pick<ObservationForEval, "tool_calls" | "tool_call_names">,
+): ToolCallForEval[] {
+  return observation.tool_call_names.map((name, i) => {
+    const parsed = parseJsonIfString(observation.tool_calls[i]);
+    const entry =
+      typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
+        ? (parsed as Record<string, unknown>)
+        : {};
+
+    return {
+      id: typeof entry.id === "string" ? entry.id : "",
+      name,
+      arguments: parseJsonIfString(entry.arguments) ?? {},
+      type: typeof entry.type === "string" ? entry.type : "",
+      index: typeof entry.index === "number" ? entry.index : 0,
+    };
+  });
+}
+
+export function zipToolCallsFromRecord(record: object): ToolCallForEval[] {
+  const { toolCalls, toolCallNames } = record as {
+    toolCalls?: unknown;
+    toolCallNames?: unknown;
+  };
+
+  return zipObservationToolCalls({
+    tool_calls: Array.isArray(toolCalls) ? toolCalls : [],
+    tool_call_names: Array.isArray(toolCallNames)
+      ? toolCallNames.map((name) => (typeof name === "string" ? name : ""))
+      : [],
+  });
+}
+
+/**
+ * Canonical variable set for code evaluators — one entry per experiment target
+ * column below (the id annotation on the column arrays pins them to this list).
+ */
+export const CODE_EVAL_TEMPLATE_VARIABLES = [
+  "input",
+  "output",
+  "metadata",
+  "toolCalls",
+  "experimentItemExpectedOutput",
+  "experimentItemMetadata",
+] as const;
+
+export type CodeEvalTemplateVariable =
+  (typeof CODE_EVAL_TEMPLATE_VARIABLES)[number];
+
+export function getCodeEvalVariableMapping() {
+  return CODE_EVAL_TEMPLATE_VARIABLES.map((variable) => ({
+    templateVariable: variable,
+    selectedColumnId: variable,
+    jsonSelector: null,
+  }));
+}
+
+export const eventTargetEvalVariableColumns: (ObservationEvalVariableColumn & {
+  id: CodeEvalTemplateVariable;
+})[] = [
+  {
+    id: "input",
+    name: "Input",
+    description: "Observation input data",
+    internal: "input",
+  },
+  {
+    id: "output",
+    name: "Output",
+    description: "Observation output data",
+    internal: "output",
+  },
+  {
+    id: "metadata",
+    name: "Metadata",
+    description: "Observation metadata",
+    type: "stringObject",
+    internal: "metadata",
+  },
+  {
+    id: "toolCalls",
+    name: "Tool Calls",
+    description:
+      "Tool calls recorded on the observation ({id, name, arguments, type, index})",
+    internal: "tool_calls",
+  },
+];
+
+export const experimentTargetEvalVariableColumns: (ObservationEvalVariableColumn & {
+  id: CodeEvalTemplateVariable;
+})[] = [
+  ...eventTargetEvalVariableColumns,
+  {
+    id: "experimentItemExpectedOutput",
+    name: "Expected Output",
+    description: "Expected output from experiment item",
+    internal: "experiment_item_expected_output",
+  },
+  {
+    id: "experimentItemMetadata",
+    name: "Experiment Item Metadata",
+    description: "Metadata from experiment item",
+    type: "stringObject",
+    internal: "experiment_item_metadata",
+  },
+];

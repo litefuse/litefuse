@@ -33,7 +33,7 @@ import { env as sharedEnv } from "@langfuse/shared/src/env";
 
 /**
  * The single Redis lease key that elects ONE domain leader for ALL project
- * lanes (design §4.2 / F1/F7). Its value is a groupingKey passed to the shared
+ * lanes. Its value is a groupingKey passed to the shared
  * lease helpers — it is NOT a shard and NOT a lane, just the domain election key.
  */
 const LANE_DOMAIN_LEASE = "otel-lane-domain";
@@ -86,7 +86,7 @@ type Deps = {
 };
 
 /**
- * The otel grouper (exactly-once design §3.2): a resident candidate loop in
+ * The otel grouper (exactly-once pipeline): a resident candidate loop in
  * EVERY worker. Per shard, a Redis lease elects one leader; the leader's tick
  *
  *   1. recovers leftover staging manifests (periodic — not only on takeover:
@@ -208,7 +208,7 @@ export class OtelGrouper {
       return;
     }
 
-    // Deployment-contract self-check (design §5.2/L4): with an eviction
+    // Deployment-contract self-check: with an eviction
     // policy other than noeviction, Redis may silently evict pending entries,
     // staging manifests and registered keys — losing registered data and
     // breaking idempotency with no error signal anywhere. Refuse to run.
@@ -315,7 +315,7 @@ export class OtelGrouper {
     }
     // ── project-lane domain ──
     if (this.stopped) return;
-    // Lane backlog gauges are leadership-INDEPENDENT (like shards — #10): EVERY
+    // Lane backlog gauges are leadership-INDEPENDENT (like shards): EVERY
     // worker emits them, so a dead domain leader surfaces as a RISING gauge, not
     // as gauge absence. A lane has no backpressure — pending_depth/oldest_age is
     // the only pre-OOM early warning and must not go dark exactly when the leader
@@ -325,7 +325,7 @@ export class OtelGrouper {
       try {
         for (const lane of await this.candidateLanes(laneGaugeRedis)) {
           if (this.stopped) return;
-          // #9: one lane's gauge failure must not starve the rest.
+          // One lane's gauge failure must not starve the rest.
           try {
             await this.emitLaneGauges(lane);
           } catch (e) {
@@ -350,9 +350,9 @@ export class OtelGrouper {
   }
 
   /**
-   * Project-lane domain tick (design §4.2). A SINGLE domain leader (elected via
+   * Project-lane domain tick. A SINGLE domain leader (elected via
    * LANE_DOMAIN_LEASE) full-scans every project lane (≤100 short-term). Two
-   * phases (F2): probe each lane's staging residue in parallel, then cut the
+   * phases: probe each lane's staging residue in parallel, then cut the
    * residue-free majority and serially recover the few with residue (cut must
    * follow recover — recovering is multi-RTT + can't pipeline with cut).
    */
@@ -360,7 +360,7 @@ export class OtelGrouper {
     const redis = this.redis!;
     // One leader for ALL lanes (shorter TTL → fast takeover of a stalled leader).
     // NOTE: lane backlog gauges are emitted BEFORE this gate, in tickAll(), by
-    // EVERY worker (#10) — only the cut/recover work below needs the lease.
+    // EVERY worker — only the cut/recover work below needs the lease.
     if (
       !(await this.acquireOrRenew(
         LANE_DOMAIN_LEASE,
@@ -413,7 +413,7 @@ export class OtelGrouper {
         // else: tables exist, MV still building — a legitimate transient; the
         // backoff just waits, readiness flips true within a few checks.
       } catch (e) {
-        // #9: a readiness-probe error (Doris blip) skips only THIS lane; back
+        // A readiness-probe error (Doris blip) skips only THIS lane; back
         // off too so a persistent error doesn't tight-loop.
         this.laneReadinessNextCheck.set(lane, now + LANE_READINESS_BACKOFF_MS);
         logger.error(
@@ -423,7 +423,7 @@ export class OtelGrouper {
     }
     if (ready.length === 0) return;
 
-    // Phase 1 (F2): batch-probe staging residue.
+    // Phase 1: batch-probe staging residue.
     const probes = await Promise.all(
       ready.map((lane) =>
         scanStagedOtelGroups({ redis, groupingKey: lane })
@@ -440,7 +440,7 @@ export class OtelGrouper {
       try {
         await this.recoverStaged(lane);
       } catch (e) {
-        // #9: recover failure is per-lane — the lane keeps its residue and is
+        // Recover failure is per-lane — the lane keeps its residue and is
         // retried next tick (it is never cut while dirty).
         logger.error(
           `[OtelGrouper] lane ${lane} recover failed: ${e instanceof Error ? e.message : String(e)}`,
@@ -466,13 +466,13 @@ export class OtelGrouper {
       const stillRipe: string[] = [];
       for (const lane of ripeLanes) {
         if (this.stopped || cutsThisTick >= this.cfg.maxCutsPerTick) break;
-        // #6: re-confirm domain ownership before EACH cut. A long tick (per-lane
+        // Re-confirm domain ownership before EACH cut. A long tick (per-lane
         // readiness Doris queries + serial recovers) can outlast the short
         // domain-lease TTL; without this, an expired leader keeps cutting
-        // alongside the freshly elected one (dual-leader), defeating F1's fence —
-        // the per-lane token is a plain SET that the stale leader re-stamps. The
-        // renew also keeps a genuinely-live leader's lease fresh so a slow-but-
-        // alive tick is not spuriously taken over.
+        // alongside the freshly elected one (dual-leader), defeating the
+        // fence — the per-lane token is a plain SET that the stale leader
+        // re-stamps. The renew also keeps a genuinely-live leader's lease fresh
+        // so a slow-but-alive tick is not spuriously taken over.
         if (
           !(await this.acquireOrRenew(
             LANE_DOMAIN_LEASE,
@@ -491,7 +491,7 @@ export class OtelGrouper {
           }
           // no cut → lane fell below target/emptied; drop it from the rotation
         } catch (e) {
-          // #9: cut failure is per-lane (tickLaneCut reconciles its own cut-Lua
+          // Cut failure is per-lane (tickLaneCut reconciles its own cut-Lua
           // errors; this guards a publish/stamp failure from starving the rest).
           logger.error(
             `[OtelGrouper] lane ${lane} cut failed: ${e instanceof Error ? e.message : String(e)}`,
@@ -538,7 +538,7 @@ export class OtelGrouper {
   }
 
   /**
-   * Cut one group from a lane. F1: stamp this domain leader's token into the
+   * Cut one group from a lane. Stamp this domain leader's token into the
    * lane's lock (plain SET — the domain lease already guarantees a single
    * writer) so the unchanged cut Lua fence `GET lock==token` passes; a handover
    * overwrites it, fencing the old leader's late cut.
@@ -698,7 +698,7 @@ export class OtelGrouper {
     groupingKey: string,
     cut: OtelGroupCut,
   ): Promise<void> {
-    // F3: the consumer queue is DECOUPLED from the groupingKey (shard or lane).
+    // The consumer queue is DECOUPLED from the groupingKey (shard or lane).
     // A lane name would NaN → shard 0 (consumption skew); instead pick the shard
     // deterministically from the groupId, so a lane's groups spread evenly AND
     // every replay / DLQ redrive of the same group hits the same queue.
@@ -735,7 +735,7 @@ export class OtelGrouper {
     if (sharedEnv.REDIS_CLUSTER_ENABLED === "true") {
       // CONFIG GET on a cluster handle reaches one node only; checking every
       // node needs topology iteration — explicitly exempted, contract moves
-      // to the deployment checklist (design §5.2).
+      // to the deployment checklist.
       logger.warn(
         "[OtelGrouper] noeviction self-check skipped in cluster mode — ensure maxmemory-policy=noeviction on every node (deployment contract)",
       );

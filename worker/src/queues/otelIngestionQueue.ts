@@ -210,7 +210,7 @@ const isGroupPayload = (
 ): p is OtelGroupIngestionEventType => "shape" in p;
 
 /**
- * Self-contained group job wiring (exactly-once design §3.3): builds the real
+ * Self-contained group job wiring (exactly-once pipeline): builds the real
  * deps (S3, Doris client with the load semaphore, PG sessions, eval
  * scheduling, SDK direct-write gating) and runs the core processor. Any
  * failure fails the WHOLE job — BullMQ replay is the only retry layer; the
@@ -578,7 +578,7 @@ export const otelIngestionQueueProcessor: Processor = async (
         // A swallowed failure here 404s the session detail page FOREVER
         // (protectedGetSessionProcedure can't find the row). createMany with
         // skipDuplicates is idempotent, so failing the job for a replay is
-        // free and correct (review L3).
+        // free and correct.
         traceException(e);
         logger.error(
           `Failed to upsert trace_sessions for project ${projectId}`,
@@ -599,7 +599,7 @@ export const otelIngestionQueueProcessor: Processor = async (
             fileKey,
           );
         } catch (error) {
-          // Error whitelist (review H3): only DETERMINISTIC parse/schema
+          // Error whitelist: only DETERMINISTIC parse/schema
           // errors may skip a span (with a searchable dead-letter record) —
           // createEventRecord touches PG/Redis (getPrompt, getGenerationUsage)
           // and a swallowed transient error there is a silently lost row that
@@ -660,7 +660,7 @@ export const otelIngestionQueueProcessor: Processor = async (
       // Deterministic (API key / project no longer exists — a DB lookup that
       // answered "not found"): ack the file, but leave a searchable
       // dead-letter record instead of a bare warn — this is a whole-file
-      // drop and must be visible in reconciliation (review H3).
+      // drop and must be visible in reconciliation.
       traceException(e);
       recordIncrement("langfuse.otel_group.row_dead_letter", 1);
       logger.error(

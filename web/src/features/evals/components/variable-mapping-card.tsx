@@ -120,7 +120,7 @@ export const VariableMappingCard = ({
                   const isEvent = isEventTarget(form.watch("target"));
                   const basePath = hideAdvancedSettings
                     ? `/project/${projectId}/evals/remap?evaluator=${oldConfigId}`
-                    : `/project/${projectId}/evals/new?evaluator=${evalTemplate.id}`;
+                    : `/project/${projectId}/evals/legacy/new?evaluator=${evalTemplate.id}`;
                   if (isEvent) {
                     // For observations/events: entry.id is observationId, entry.params.traceId is traceId
                     return `${basePath}&traceId=${entry.params?.traceId}&observationId=${entry.id}`;

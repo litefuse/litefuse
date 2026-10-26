@@ -14,6 +14,7 @@ import {
 import { EventsTableOptions } from "./types";
 import {
   getEventList,
+  getEventListCursor,
   getEventCount,
   getEventFilterOptions,
   getEventBatchIO,
@@ -26,6 +27,7 @@ import {
   getObservationsForTraceFromEventsTable,
   MAX_OBSERVATIONS_PER_TRACE,
   applyCommentFilters,
+  type EventBatchIOExtraFields,
 } from "@langfuse/shared/src/server";
 
 import {
@@ -38,12 +40,34 @@ const GetAllEventsInput = EventsTableOptions.extend({
   ...paginationZod,
 });
 
+/**
+ * Cursor pagination reads the events table in its stable
+ * (startTime, traceId, id) tuple order and cannot honour an arbitrary sort, so
+ * the caller's `orderBy` is deliberately absent instead of silently ignored.
+ */
+const GetEventsCursorInput = EventsTableOptions.omit({ orderBy: true }).extend({
+  limit: paginationZod.limit,
+  cursor: zodSchema
+    .object({
+      lastStartTimeTo: zodSchema.date(),
+      lastTraceId: zodSchema.string(),
+      lastId: zodSchema.string(),
+    })
+    .optional(),
+});
+
 export type EventBatchIOOutput = Pick<
   Observation,
   "id" | "input" | "output" | "metadata"
->;
+> &
+  // LITEFUSE ADDITION (evaluators v2): present only when the caller asked for
+  // them (`includeToolCallFields` / `includeExperimentFields`), which is why they
+  // are optional. The mapping preview offers them as variables.
+  EventBatchIOExtraFields;
 
 export type GetAllEventsInput = z.infer<typeof GetAllEventsInput>;
+
+export type GetEventsCursorInput = z.infer<typeof GetEventsCursorInput>;
 
 const GetEventFilterOptionsInput = zodSchema.object({
   projectId: zodSchema.string(),
@@ -65,6 +89,12 @@ export const BatchIOInput = zodSchema.object({
   minStartTime: zodSchema.date(),
   maxStartTime: zodSchema.date(),
   truncated: zodSchema.boolean().optional(), // Defaults to true for performance
+  // ── LITEFUSE ADDITIONS (evaluators v2) ────────────────────────────────────
+  // Upstream's batch-IO contract. The copied evaluator testing UI sends
+  // `includeToolCalls: true`; `ioCharLimit` overrides the server-side truncation
+  // limit. Both optional, so the pre-existing callers are untouched.
+  includeToolCalls: zodSchema.boolean().optional(),
+  ioCharLimit: zodSchema.number().int().positive().max(10_000).optional(),
 });
 
 export type BatchIOInput = z.infer<typeof BatchIOInput>;
@@ -103,6 +133,49 @@ export const eventsRouter = createTRPCRouter({
             orderBy: normalizedOrderBy,
             page: input.page,
             limit: input.limit,
+          });
+        },
+      );
+    }),
+  /**
+   * Cursor-paginated events list. Reads the events table in its stable
+   * (startTime, traceId, id) DESC keyset order and returns `nextCursor` for the
+   * next page; `hasMore` is false once the last page is reached.
+   */
+  listCursor: protectedProjectProcedure
+    .input(GetEventsCursorInput)
+    .query(async ({ input, ctx }) => {
+      const { filterState, hasNoMatches } = await applyCommentFilters({
+        filterState: input.filter ?? [],
+        prisma: ctx.prisma,
+        projectId: ctx.session.projectId,
+        objectType: "OBSERVATION",
+      });
+
+      if (hasNoMatches) {
+        return {
+          observations: [],
+          hasMore: false,
+          nextCursor: undefined,
+        };
+      }
+
+      return instrumentAsync(
+        { name: "get-event-list-cursor-trpc" },
+        async (span) => {
+          addAttributesToSpan({
+            span,
+            input,
+            orderBy: { column: "startTime", order: "DESC" },
+          });
+
+          return getEventListCursor({
+            projectId: ctx.session.projectId,
+            filter: filterState,
+            searchQuery: input.searchQuery ?? undefined,
+            searchType: input.searchType,
+            limit: input.limit,
+            cursor: input.cursor,
           });
         },
       );
@@ -180,6 +253,36 @@ export const eventsRouter = createTRPCRouter({
             minStartTime: input.minStartTime,
             maxStartTime: input.maxStartTime,
             truncated: input.truncated,
+            ioCharLimit: input.ioCharLimit,
+            includeToolCallFields: input.includeToolCalls,
+          });
+        },
+      );
+    }),
+  /**
+   * LITEFUSE ADDITION (evaluators v2): upstream's `experimentBatchIO` is the
+   * same query as `batchIO` plus the experiment columns. The copied evaluator
+   * testing UI asks for it because a sample can be an experiment item, and the
+   * mapping preview needs those fields to offer them as variables.
+   */
+  experimentBatchIO: protectedProjectProcedure
+    .input(BatchIOInput)
+    .query(async ({ input, ctx }) => {
+      return instrumentAsync(
+        { name: "get-experiment-batch-io-trpc" },
+        async (span) => {
+          span.setAttribute("project_id", input.projectId);
+          span.setAttribute("observation_count", input.observations.length);
+
+          return getEventBatchIO({
+            projectId: ctx.session.projectId,
+            observations: input.observations,
+            minStartTime: input.minStartTime,
+            maxStartTime: input.maxStartTime,
+            truncated: input.truncated,
+            ioCharLimit: input.ioCharLimit,
+            includeExperimentFields: true,
+            includeToolCallFields: input.includeToolCalls,
           });
         },
       );
@@ -339,7 +442,7 @@ export const addAttributesToSpan = ({
   orderBy,
 }: {
   span: opentelemetry.Span;
-  input: GetAllEventsInput | GetEventFilterOptionsInput;
+  input: GetAllEventsInput | GetEventFilterOptionsInput | GetEventsCursorInput;
   orderBy?: OrderByState;
 }) => {
   span.setAttribute("project_id", input.projectId);

@@ -691,7 +691,10 @@ export function CategoricalFacet({
                   </Trans>
                 ) : filterKey === "name" ? (
                   <span>
-                    {t("No trace names found in the given time range.")}
+                    {/* The facet label names what is missing, so the same text
+                        works on every table (traces say "Trace Name", the
+                        evaluator and rule lists say "Name"). */}
+                    {t("{{field}}: no values found.", { field: t(label) })}
                   </span>
                 ) : filterKey === "tags" ? (
                   <Trans>

@@ -1,0 +1,23 @@
+-- Drop the foreign key job_executions.job_configuration_id -> job_configurations.id.
+--
+-- Upstream (Langfuse 4.43) deliberately declares this column WITHOUT a foreign
+-- key (`jobConfigurationId String // no fk constraint`): the column holds the
+-- evaluators-v2 *evaluation rule* id for v2 executions, which does not exist in
+-- job_configurations. With the constraint in place every insert of a v2
+-- execution row failed:
+--
+--   Invalid `prisma.jobExecution.upsert()` invocation
+--   Foreign key constraint violated on
+--   the constraint: `job_executions_job_configuration_id_fkey`
+--
+-- (observed live: worker/src/features/evaluation/observationEval/createSchedulerDeps.ts,
+-- and the same shape in evalService.ts `jobConfigurationId: config.id`).
+--
+-- Deletion is handled in application code in this repository already:
+--   * web/src/features/evals/v2/server/rules/ruleRepository.ts (deleteMany)
+--   * worker/src/features/traces/processPostgresTraceDelete.ts (deleteMany)
+-- plus the project cascade on job_executions.project_id.
+--
+-- The column stays NOT NULL; only the constraint is removed.
+ALTER TABLE "job_executions"
+  DROP CONSTRAINT IF EXISTS "job_executions_job_configuration_id_fkey";

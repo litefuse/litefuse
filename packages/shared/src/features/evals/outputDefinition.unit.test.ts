@@ -29,7 +29,6 @@ describe("eval output definitions", () => {
 
   it("validates boolean and multi-match categorical results", () => {
     const boolean = compilePersistedEvalOutputDefinition({
-      version: 2,
       dataType: ScoreDataTypeEnum.BOOLEAN,
       reasoning: { description: "why" },
       score: { description: "yes/no" },

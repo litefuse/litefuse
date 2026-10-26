@@ -30,7 +30,7 @@ export function NoModelConfiguredAlert({
             className="font-medium underline underline-offset-4 hover:text-yellow-900 dark:hover:text-yellow-300"
           >
             <Settings className="inline h-3 w-3" />{" "}
-            {t("LLM Connection Settings")}
+            {t("Model Connection Settings")}
           </Link>{" "}
           {t("to add an LLM API key and configure your models.")}
         </AlertDescription>

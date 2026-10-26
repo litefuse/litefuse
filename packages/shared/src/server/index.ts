@@ -30,13 +30,22 @@ export * from "./llm/handlers";
 export * from "./llm/compileChatMessages";
 export * from "./llm/testModelCall";
 export * from "./llm/getInternalTracingHandler";
+export * from "./llm/legacyLlmTextCompat";
 export * from "./utils/DatabaseReadStream";
 export * from "./utils/transforms";
 export * from "./utils/billingCycleHelpers";
 export * from "./utils/compareVersions";
 export * from "./utils/dorisArrays";
+export * from "./utils/traceId";
 export * from "./otel/utils";
 export * from "./otel/directWriteHelpers";
+// ── LITEFUSE ADDITION (evaluators v2) ───────────────────────────────────────
+// The internal-tracing pipeline pieces, exported so the worker can record an
+// execution trace for evaluators that do not run through `fetchLLMCompletion`
+// (the decision model calls TypeSafe directly). Upstream has the same two
+// modules exported through `internalTraceOtelWriter.ts`.
+export * from "./otel/OtelIngestionProcessor";
+export * from "./otel/internalTraceToResourceSpans";
 export * from "./doris/client";
 export * from "./doris/schema";
 export * from "./doris/schemaUtils";
@@ -46,6 +55,8 @@ export * from "./doris/crossProjectTableRouting";
 export * from "./doris/splitTableTemplates";
 export * from "./doris/measureAndReturn";
 export * from "./repositories/definitions";
+export * from "./repositories/evalCostCompat";
+export * from "./repositories/evalScoreNames";
 export * from "../utils/IORepresentation/chatML/types";
 export * from "../server/ingestion/types";
 export * from "../server/ingestion/modelMatch";
@@ -109,6 +120,23 @@ export * from "./repositories/billing";
 export * from "./repositories/dataset-items";
 export * from "./utils/rendering";
 export * from "./utils/sqlLike";
+export * from "./evals/evalExecutionMetadata";
+export * from "./evals/extractObservationVariables";
+// Re-exported so \`@langfuse/shared/src/server\` callers see it (upstream defines it
+// in server/llm/types.ts; we keep the definition in the client-safe eval module).
+export {
+  isDecisionModelAdapter,
+  // LITEFUSE ADDITION: the adapter value itself, needed by the llm-api-key
+  // router to exclude decision-model connections from generic model pickers.
+  DECISION_MODEL_ADAPTER,
+} from "../features/evals/decisionModel";
+export * from "./evals/llmEvaluatorExecution";
+export * from "./evals/codeEvalCompat";
+export * from "./evals/decisionModelEvaluatorExecution";
+export * from "./llm/typesafe/typeSafeDecisionModelClient";
+export * from "./llm/openai/openAiDecisionModelClient";
+export * from "./llm/createDecisionModelClient";
+export * from "./prismaFilter";
 export * from "./redis/evalExecutionQueue";
 export * from "./redis/llmAsJudgeExecutionQueue";
 export * from "./services/sessions-ui-table-service";

@@ -70,8 +70,8 @@ const EnvSchema = z.object({
     .number()
     .positive()
     .default(5),
-  // Otel grouper (exactly-once pipeline, design §3.2). Group sizing is a
-  // production tuning knob (design §6.4): target SOURCE bytes must leave
+  // Otel grouper (exactly-once pipeline). Group sizing is a
+  // production tuning knob: target SOURCE bytes must leave
   // headroom under BE streaming_load_json_max_mb after the transform
   // inflation ratio (measured in load tests).
   LITEFUSE_OTEL_GROUP_TARGET_BYTES: z.coerce
@@ -90,7 +90,7 @@ const EnvSchema = z.object({
     .number()
     .positive()
     .default(10_000),
-  // Lane-domain lease TTL (Stage 1.4 / design F7): the single leader for all
+  // Lane-domain lease TTL (Stage 1.4): the single leader for all
   // project lanes. Kept SHORTER than the per-shard lock so a stalled leader is
   // taken over fast (≤ this) — data waits in pending, only cut latency spikes.
   LITEFUSE_OTEL_LANE_DOMAIN_LEASE_TTL_MS: z.coerce
@@ -118,13 +118,13 @@ const EnvSchema = z.object({
     .number()
     .positive()
     .default(64),
-  // Self-contained group job (design §3.3): per-worker semaphores.
+  // Self-contained group job: per-worker semaphores.
   // TRANSFORM bounds concurrent S3 download + JSON.parse (event-loop/heap
   // protection); LOAD bounds concurrent stream loads (global tablet-writer
-  // fan-out = N workers × this value — design §5.3).
+  // fan-out = N workers × this value).
   LITEFUSE_OTEL_TRANSFORM_CONCURRENCY: z.coerce.number().positive().default(4),
   LITEFUSE_OTEL_LOAD_CONCURRENCY: z.coerce.number().positive().default(4),
-  // DLQ redrive (design §3.4). LABEL_KEEP_MS must mirror the Doris FE's
+  // DLQ redrive. LABEL_KEEP_MS must mirror the Doris FE's
   // label_keep_max_second (default 3 days): a job older than the label
   // retention window CANNOT be redriven — its dedup label has been purged,
   // a blind replay would double-load — it must go to the poison ledger /

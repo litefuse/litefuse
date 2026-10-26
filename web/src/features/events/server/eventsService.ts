@@ -54,14 +54,26 @@ const TRACE_SCORE_SCOPE_FILTER: FilterCondition[] = [
   },
 ];
 
-interface GetObservationsListParams {
+interface GetObservationsListBaseParams {
   projectId: string;
   filter: any[];
   searchQuery?: string;
   searchType: any[];
+  limit: number;
+}
+
+interface GetObservationsListParams extends GetObservationsListBaseParams {
   orderBy: any;
   page: number;
-  limit: number;
+}
+
+interface GetObservationsCursorListParams
+  extends GetObservationsListBaseParams {
+  cursor?: {
+    lastStartTimeTo: Date;
+    lastTraceId: string;
+    lastId: string;
+  };
 }
 
 interface GetObservationsCountParams {
@@ -94,11 +106,64 @@ export async function getEventList(params: GetObservationsListParams) {
     renderingProps: { truncated: true, shouldJsonParse: false },
   };
 
-  const observations =
+  const { observations } = await getEventListPage(params, queryOpts);
+
+  return { observations };
+}
+
+/**
+ * Get a cursor-paginated list of events.
+ *
+ * Reads the events table in its stable (startTime, traceId, id) DESC keyset
+ * order — an arbitrary `orderBy` cannot be honoured alongside a cursor, so this
+ * path deliberately takes none.
+ */
+export async function getEventListCursor(
+  params: GetObservationsCursorListParams,
+) {
+  const page = await getEventListPage(params, {
+    projectId: params.projectId,
+    filter: params.filter,
+    searchQuery: params.searchQuery,
+    searchType: params.searchType,
+    // One extra row detects whether a further page exists; getEventListPage
+    // slices it back off before the rows are enriched or returned.
+    limit: params.limit + 1,
+    cursorPagination: true,
+    cursor: params.cursor,
+    selectIOAndMetadata: false,
+    renderingProps: { truncated: true, shouldJsonParse: false },
+  });
+  const boundary = page.observations.at(-1);
+
+  return {
+    ...page,
+    nextCursor:
+      page.hasMore && boundary
+        ? {
+            lastStartTimeTo: boundary.startTime,
+            // Doris stores the empty-string sentinel where the domain adapter
+            // represents a missing trace id as null.
+            lastTraceId: boundary.traceId ?? "",
+            lastId: boundary.id,
+          }
+        : undefined,
+  };
+}
+
+async function getEventListPage(
+  params: GetObservationsListBaseParams,
+  queryOpts: Parameters<typeof getObservationsWithModelDataFromEventsTable>[0],
+) {
+  const fetchedObservations =
     await getObservationsWithModelDataFromEventsTable(queryOpts);
+  const hasMore = fetchedObservations.length > params.limit;
+  const observations = hasMore
+    ? fetchedObservations.slice(0, params.limit)
+    : fetchedObservations;
 
   if (observations.length === 0) {
-    return { observations };
+    return { observations, hasMore };
   }
 
   const traceIds = Array.from(
@@ -176,7 +241,7 @@ export async function getEventList(params: GetObservationsListParams) {
       : {},
   }));
 
-  return { observations: observationsWithScores };
+  return { observations: observationsWithScores, hasMore };
 }
 
 /**
@@ -419,6 +484,10 @@ interface GetEventBatchIOParams {
   minStartTime: Date;
   maxStartTime: Date;
   truncated?: boolean;
+  /** Upstream `batchIO` / `experimentBatchIO` options (all additive). */
+  ioCharLimit?: number;
+  includeToolCallFields?: boolean;
+  includeExperimentFields?: boolean;
 }
 
 /**
@@ -433,5 +502,8 @@ export async function getEventBatchIO(
     minStartTime: params.minStartTime,
     maxStartTime: params.maxStartTime,
     truncated: params.truncated,
-  });
+    ioCharLimit: params.ioCharLimit,
+    includeToolCallFields: params.includeToolCallFields,
+    includeExperimentFields: params.includeExperimentFields,
+  }) as Promise<Array<EventBatchIOOutput>>;
 }

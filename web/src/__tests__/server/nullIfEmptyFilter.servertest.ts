@@ -35,7 +35,15 @@ describe("NULL_IF_EMPTY_RE", () => {
 
 const C = "t.user_id";
 
-/** Replace random param names like `stringFilterAb3x` with `P` for stable assertions. */
+/**
+ * Replace random param names like `stringFilterAb3x` with `P` for stable assertions.
+ *
+ * NOTE (Litefuse): these classes emit the Doris dialect in this fork, which
+ * inlines every literal and returns no bind params at all (see
+ * `packages/shared/src/server/queries/doris-sql/doris-filter.ts`). `norm()` is
+ * therefore a no-op for the strings asserted below; it is kept because it is
+ * what makes the assertions stable if a param-carrying form ever returns.
+ */
 const norm = (sql: string) =>
   sql.replace(/string(Filter|OptionsFilter)\w+/g, "P");
 
@@ -56,63 +64,63 @@ describe("StringFilter with emptyEqualsNull", () => {
       desc: "= non-empty (unchanged)",
       operator: "=",
       value: "alice",
-      expectedQuery: `${C} = {P: String}`,
-      paramValues: ["alice"],
+      expectedQuery: `${C} = 'alice'`,
+      paramValues: [],
     },
     {
       desc: "= empty → match '' and NULL",
       operator: "=",
       value: "",
-      expectedQuery: `(${C} = '' OR ${C} IS NULL)`,
+      expectedQuery: `(${C} IS NULL OR ${C} = '')`,
       paramValues: [],
     },
     {
       desc: "contains (unchanged)",
       operator: "contains",
       value: "ali",
-      expectedQuery: `position(${C}, {P: String}) > 0`,
-      paramValues: ["ali"],
+      expectedQuery: `INSTR(${C}, 'ali') > 0`,
+      paramValues: [],
     },
     {
       desc: "does not contain → guard empty",
       operator: "does not contain",
       value: "ali",
-      expectedQuery: `(${C} != '' AND position(${C}, {P: String}) = 0)`,
-      paramValues: ["ali"],
+      expectedQuery: `(${C} IS NOT NULL AND ${C} != '') AND INSTR(${C}, 'ali') = 0`,
+      paramValues: [],
     },
     {
       desc: "contains empty → match '' and NULL",
       operator: "contains",
       value: "",
-      expectedQuery: `(${C} = '' OR ${C} IS NULL)`,
+      expectedQuery: `(${C} IS NULL OR ${C} = '')`,
       paramValues: [],
     },
     {
       desc: "starts with (unchanged)",
       operator: "starts with",
       value: "ali",
-      expectedQuery: `startsWith(${C}, {P: String})`,
-      paramValues: ["ali"],
+      expectedQuery: `STARTS_WITH(${C}, 'ali')`,
+      paramValues: [],
     },
     {
       desc: "starts with empty → match '' and NULL",
       operator: "starts with",
       value: "",
-      expectedQuery: `(${C} = '' OR ${C} IS NULL)`,
+      expectedQuery: `(${C} IS NULL OR ${C} = '')`,
       paramValues: [],
     },
     {
       desc: "ends with (unchanged)",
       operator: "ends with",
       value: "ice",
-      expectedQuery: `endsWith(${C}, {P: String})`,
-      paramValues: ["ice"],
+      expectedQuery: `ENDS_WITH(${C}, 'ice')`,
+      paramValues: [],
     },
     {
       desc: "ends with empty → match '' and NULL",
       operator: "ends with",
       value: "",
-      expectedQuery: `(${C} = '' OR ${C} IS NULL)`,
+      expectedQuery: `(${C} IS NULL OR ${C} = '')`,
       paramValues: [],
     },
   ])("$desc", ({ operator, value, expectedQuery, paramValues }) => {
@@ -141,29 +149,29 @@ describe("StringOptionsFilter with emptyEqualsNull", () => {
       desc: "any of (no empty, unchanged)",
       operator: "any of",
       values: ["a", "b"],
-      expectedQuery: `${C} IN ({P: Array(String)})`,
-      paramValues: [["a", "b"]],
+      expectedQuery: `${C} IN ('a', 'b')`,
+      paramValues: [],
     },
     {
       desc: "any of (with empty) → OR IS NULL",
       operator: "any of",
       values: ["", "a"],
-      expectedQuery: `(${C} IN ({P: Array(String)}) OR ${C} IS NULL)`,
-      paramValues: [["", "a"]],
+      expectedQuery: `(${C} IN ('', 'a') OR ${C} IS NULL)`,
+      paramValues: [],
     },
     {
       desc: "none of (no empty) → AND != ''",
       operator: "none of",
       values: ["a"],
-      expectedQuery: `(${C} NOT IN ({P: Array(String)}) AND ${C} != '')`,
-      paramValues: [["a"]],
+      expectedQuery: `(${C} NOT IN ('a') AND ${C} != '')`,
+      paramValues: [],
     },
     {
       desc: "none of (with empty) → AND IS NOT NULL",
       operator: "none of",
       values: ["", "a"],
-      expectedQuery: `(${C} NOT IN ({P: Array(String)}) AND ${C} IS NOT NULL)`,
-      paramValues: [["", "a"]],
+      expectedQuery: `(${C} NOT IN ('', 'a') AND ${C} IS NOT NULL)`,
+      paramValues: [],
     },
   ])("$desc", ({ operator, values, expectedQuery, paramValues }) => {
     const { query, params } = new StringOptionsFilter({
@@ -188,12 +196,12 @@ describe("NullFilter with emptyEqualsNull", () => {
     {
       desc: "is null → match '' and NULL",
       operator: "is null",
-      expectedQuery: `(${C} = '' OR ${C} IS NULL)`,
+      expectedQuery: `(${C} IS NULL OR ${C} = '')`,
     },
     {
       desc: "is not null → exclude '' and NULL",
       operator: "is not null",
-      expectedQuery: `(${C} != '' AND ${C} IS NOT NULL)`,
+      expectedQuery: `(${C} IS NOT NULL AND ${C} != '')`,
     },
   ])("$desc", ({ operator, expectedQuery }) => {
     const { query, params } = new NullFilter({

@@ -10,6 +10,13 @@ import { EventActionSchema } from "../domain";
 import { PromptDomainSchema } from "../domain/prompts";
 import { ObservationAddToDatasetConfigSchema } from "../features/batchAction/addToDatasetTypes";
 import { EvalTargetObjectSchema } from "../features/evals/types";
+// LITEFUSE ADDITION: the observation execution event carries the v2 identity and
+// the mode, so the worker can resolve an evaluator without guessing from ids.
+import {
+  BatchEvalEvaluatorMappingSchema,
+  observationVariableMappingList,
+} from "../features/evals/types";
+import { EvalExecutionMode } from "../features/evals/evalConfigBlocking";
 
 export const IngestionEvent = z.object({
   data: z.object({
@@ -135,6 +142,14 @@ export const EvalExecutionEvent = z.object({
   projectId: z.string(),
   jobExecutionId: z.string(),
   delay: z.number().nullish(),
+  // ── LITEFUSE ADDITION (copied from upstream) ──────────────────────────────
+  // Evaluator v2 identity, carried by newly scheduled trace/dataset jobs so the
+  // worker does not have to re-derive which evaluator a job belongs to from
+  // `jobConfigurationId`. Jobs queued before the migration omit both fields;
+  // their `job_configuration_id` is the migrated rule id, which the worker
+  // resolves directly.
+  evaluatorId: z.string().optional(),
+  evaluationRuleId: z.string().optional(),
 });
 
 // LLM-as-a-Judge execution for observation-based evals
@@ -142,6 +157,22 @@ export const LLMAsJudgeExecutionEventSchema = z.object({
   projectId: z.string(),
   jobExecutionId: z.string(),
   observationS3Path: z.string(),
+  // ── LITEFUSE ADDITIONS (copied from upstream's ObservationEvalExecutionEvent) ─
+  // Evaluator v2 identity, carried so the worker does not have to re-derive which
+  // evaluator a job belongs to from `jobConfigurationId`: the legacy backfill
+  // reuses job-configuration ids for both rules and evaluators, so that id alone
+  // is ambiguous. Absent on jobs queued before evaluator v2; the worker resolves
+  // those through the migrated rule assignment.
+  //
+  // No version is carried: a rule always runs its evaluator's current version,
+  // which the executor resolves on pickup and records on the execution.
+  executionMode: EvalExecutionMode.optional(),
+  evaluatorId: z.string().optional(),
+  evaluationRuleId: z.string().optional(),
+  // Ruleless manual batch runs have no assignment row to hold a mapping override.
+  // Optional for jobs queued before this field existed; those inherit the
+  // evaluator version mapping.
+  variableMapping: observationVariableMappingList.optional(),
 });
 export const PostHogIntegrationProcessingEventSchema = z.object({
   projectId: z.string(),
@@ -231,6 +262,29 @@ export const BatchActionProcessingEventSchema = z.discriminatedUnion(
       cutoffCreatedAt: z.date(),
       batchActionId: z.string(),
       evaluatorIds: z.array(z.string()),
+      // ── LITEFUSE ADDITIONS (copied from upstream) ─────────────────────────
+      // Which id space `evaluatorIds` refers to. `"v2"` means the ids are
+      // `evaluators` rows (the migrated model); absent means the legacy
+      // `job_configurations` ids a pre-migration producer sent.
+      evalVersion: z.literal("v2").optional(),
+      /**
+       * Per-evaluator mapping override, for a one-shot batch run. A `null`
+       * mapping inherits the evaluator version's mapping.
+       */
+      evaluatorMappings: z.array(BatchEvalEvaluatorMappingSchema).optional(),
+      /**
+       * Fraction of the selected rows to evaluate (0..1). Absent means "every
+       * selected row" — which is what a plain legacy producer means. The v2
+       * backfill dialog sends the fraction the user picked in the cost dialog;
+       * before this field existed the worker forced 1 and silently ignored it.
+       */
+      sampling: z.number().min(0).max(1).optional(),
+      /**
+       * Cap on how many rows are read for this run. Absent means the instance
+       * ceiling (`LITEFUSE_MAX_HISTORIC_EVAL_CREATION_LIMIT`); a caller can only
+       * lower that, never raise it.
+       */
+      rowLimit: z.number().int().positive().optional(),
     }),
   ],
 );

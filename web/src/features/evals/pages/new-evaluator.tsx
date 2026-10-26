@@ -18,9 +18,9 @@ import { DefaultEvalModelSetup } from "@/src/features/evals/components/default-e
 
 import { useTranslation } from "react-i18next";
 // Multi-step setup process
-// 0. Set up default model (optional, only if no default model exists): /project/:projectId/evals/new
-// 1. Select Evaluator: /project/:projectId/evals/new
-// 2. Configure Evaluator: /project/:projectId/evals/new?evaluator=:evaluatorId
+// 0. Set up default model (optional, only if no default model exists): /project/:projectId/evals/legacy/new
+// 1. Select Evaluator: /project/:projectId/evals/legacy/new
+// 2. Configure Evaluator: /project/:projectId/evals/legacy/new?evaluator=:evaluatorId
 export default function NewEvaluatorPage() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -74,7 +74,7 @@ export default function NewEvaluatorPage() {
         breadcrumb: [
           {
             name: t("Running Evaluators"),
-            href: `/project/${projectId}/evals`,
+            href: `/project/${projectId}/evals/legacy`,
           },
         ],
         actionButtonsRight: <ManageDefaultEvalModel projectId={projectId} />,
@@ -103,7 +103,9 @@ export default function NewEvaluatorPage() {
           )}
           <BreadcrumbItem
             className="hover:cursor-pointer"
-            onClick={() => router.push(`/project/${projectId}/evals/new`)}
+            onClick={() =>
+              router.push(`/project/${projectId}/evals/legacy/new`)
+            }
           >
             <BreadcrumbPage
               className={cn(

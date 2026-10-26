@@ -117,7 +117,7 @@ export const PeekViewEvaluatorConfigDetail = ({
         </span>
         {evalConfig.evalTemplate && (
           <TableLink
-            path={`/project/${projectId}/evals/templates/${evalConfig.evalTemplate.id}`}
+            path={`/project/${projectId}/evals/legacy/templates/${evalConfig.evalTemplate.id}`}
             value={evalConfig.evalTemplate.name}
             className="mr-1 flex min-h-6 items-center"
           />
@@ -171,3 +171,22 @@ export const PeekViewEvaluatorConfigDetail = ({
     </div>
   );
 };
+
+// ── Added for the evaluators v2 migration (adapter, not an upstream copy) ────
+// Upstream: \`<TablePeekView {...peekProps}><PeekViewEvaluatorConfigDetail projectId readOnly /></TablePeekView>\`.
+// We do not have \`TablePeekView\`, and our PeekViewEvaluatorConfigDetail takes no
+// \`readOnly\`, so this delegates to ours and drops the shell props.
+//
+// ACCEPTED AND IGNORED: the \`PeekNavigation\` fields, \`itemType\`,
+// \`detailNavigationKey\`, \`layout\` and the expand config. \`readOnly\` is accepted
+// because the evaluator pages pass it, but our evaluator-config peek has no
+// read-only mode yet — so an evaluator opened from a rule behaves as before rather
+// than being locked. Recorded as an evaluator-page wiring item.
+export const TablePeekViewEvaluatorConfigDetail = ({
+  projectId,
+}: {
+  projectId: string;
+  readOnly?: boolean;
+} & Record<string, unknown>) => (
+  <PeekViewEvaluatorConfigDetail projectId={projectId} />
+);

@@ -92,7 +92,7 @@ export const EvaluatorDetail = () => {
         breadcrumb: [
           {
             name: t("LLM-as-a-Judge Evaluators"),
-            href: `/project/${router.query.projectId as string}/evals`,
+            href: `/project/${router.query.projectId as string}/evals/legacy`,
           },
         ],
 
@@ -117,7 +117,7 @@ export const EvaluatorDetail = () => {
                 key="nav"
                 currentId={encodeURIComponent(evaluator.data.id)}
                 path={(entry) =>
-                  `/project/${projectId}/evals/${encodeURIComponent(entry.id)}`
+                  `/project/${projectId}/evals/legacy/${encodeURIComponent(entry.id)}`
                 }
                 listKey="evals"
               />

@@ -336,7 +336,7 @@ export const InnerEvalTemplateForm = (props: {
           return;
         }
         void router.push(
-          `/project/${props.projectId}/evals/templates/${res.id}`,
+          `/project/${props.projectId}/evals/legacy/templates/${res.id}`,
         );
       })
       .catch((error) => {

@@ -1,9 +1,8 @@
 #!/usr/bin/env tsx
 
 /**
- * Otel S3 ↔ ledger reconciliation (exactly-once design §3.5; the final
- * backstop for every loss window: Redis tail-loss on failover, poison
- * eviction, A2 orphans).
+ * Otel S3 ↔ ledger reconciliation — the final backstop for every loss
+ * window: Redis tail-loss on failover, poison eviction, orphans.
  *
  * Usage (from worker/):
  *   pnpm run reconcile-otel-files                    # dry-run, last 8 days
@@ -18,7 +17,7 @@
  *   reinject  — over-age + registered key still present ⇒ pointer lost
  *               inside the pipeline → DEL registered key, re-register
  *               (--execute only; dry-run just reports)
- *   audit     — over-age, no evidence ⇒ A2 orphan vs expired loss → manual
+ *   audit     — over-age, no evidence ⇒ orphan vs expired loss → manual
  *               (auto-reinjection could DUPLICATE an SDK re-sent copy)
  *
  * The re-registered entry carries size/spanCount = 0 (unknown without a
@@ -67,7 +66,7 @@ const main = async () => {
       select: { id: true },
     });
     const projectIds = projects.map((project) => project.id);
-    // Duplicate-rate accounting SQL (design §3.6) per recent day.
+    // Duplicate-rate accounting SQL per recent day.
     for (let d = 0; d < WINDOW_DAYS; d++) {
       const day = new Date(Date.now() - d * 86_400_000)
         .toISOString()
@@ -106,7 +105,7 @@ const main = async () => {
     return;
   }
 
-  // Age-guard sanity (design §6.4 threshold contract). Read from the SAME
+  // Age-guard sanity (threshold contract). Read from the SAME
   // env var the DLQ age guard uses — a hardcoded copy here would let the two
   // ends of the "nothing still redrivable may be re-injected" contract drift
   // when the operator retunes LITEFUSE_OTEL_LABEL_KEEP_MS.
@@ -153,8 +152,7 @@ const main = async () => {
     .filter((k): k is string => Boolean(k));
 
   // ⓪ Execute-mode preflight: re-injection is only safe against a HEALTHY
-  // pipeline. Two disaster shapes make it double-load instead (invariant
-  // review, case 8):
+  // pipeline. Two disaster shapes make it double-load instead:
   //   - an over-age file whose ORIGINAL entry still sits in pending (grouper
   //     dead for days) → re-injection puts the same fileKey in the list
   //     twice → two groups → two labels;
@@ -273,7 +271,7 @@ const main = async () => {
         laneForDesignated,
       );
       // Force re-admission: the registered key would absorb the register as
-      // an idempotent no-op (review: reconciliation × SETNX conflict). DEL
+      // an idempotent no-op (reconciliation × SETNX conflict). DEL
       // under every candidate key so a stale lane/shard key can't block it.
       for (const key of candidates)
         await redis.del(otelRegisteredKey(key, f.file));

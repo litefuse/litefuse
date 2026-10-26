@@ -14,6 +14,12 @@ import {
   contextWithLangfuseProps,
 } from "@langfuse/shared/src/server";
 import * as opentelemetry from "@opentelemetry/api";
+import {
+  sendStructuredPublicApiErrorResponse,
+  structuredPublicApiErrorContract,
+  toStructuredPublicApiError,
+  type PublicApiErrorContract,
+} from "@/src/features/public-api/server/structuredPublicApiErrorContract";
 
 // Exported to silence @typescript-eslint/no-unused-vars v8 warning
 // (used for type extraction via typeof, which is a legitimate pattern)
@@ -30,7 +36,19 @@ const defaultHandler = () => {
   throw new MethodNotAllowedError();
 };
 
-export function withMiddlewares(handlers: Handlers) {
+// LITEFUSE ADDITION: upstream 4.56.0 accepts an `errorContract` option here
+// (`web/src/features/public-api/server/withMiddlewares.ts`) so that the stable
+// public endpoints answer with `{ message, code, details? }`. The option is
+// optional and defaulting to the legacy behaviour keeps every existing route
+// byte-identical.
+type MiddlewareOptions = {
+  errorContract?: PublicApiErrorContract;
+};
+
+export function withMiddlewares(
+  handlers: Handlers,
+  options?: MiddlewareOptions,
+) {
   return async (req: NextApiRequest, res: NextApiResponse) => {
     const ctx = contextWithLangfuseProps({
       headers: req.headers,
@@ -56,6 +74,35 @@ export function withMiddlewares(handlers: Handlers) {
 
         return await finalHandlers[method](req, res);
       } catch (error) {
+        // LITEFUSE ADDITION: structured error contract for the stable public
+        // endpoints (upstream 4.56.0 behaviour). Must run before the legacy
+        // branches below, which answer with `{ message, error }`.
+        if (options?.errorContract === structuredPublicApiErrorContract) {
+          if (
+            error instanceof LangfuseNotFoundError ||
+            error instanceof UnauthorizedError
+          ) {
+            logger.info(error);
+          } else if (error instanceof BaseError) {
+            if (error.httpCode >= 500 && error.httpCode < 600) {
+              logger.error(error);
+              traceException(error);
+            } else {
+              logger.warn(error);
+            }
+          } else if (isZodError(error)) {
+            logger.warn(error);
+          } else {
+            logger.error(error);
+            traceException(error);
+          }
+
+          return sendStructuredPublicApiErrorResponse(
+            res,
+            toStructuredPublicApiError(error),
+          );
+        }
+
         if (
           error instanceof LangfuseNotFoundError ||
           error instanceof UnauthorizedError

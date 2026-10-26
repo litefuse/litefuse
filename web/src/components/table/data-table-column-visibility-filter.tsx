@@ -1,6 +1,7 @@
 import React, {
   useCallback,
   useMemo,
+  type ComponentProps,
   type Dispatch,
   type SetStateAction,
 } from "react";
@@ -56,6 +57,15 @@ interface DataTableColumnVisibilityFilterProps<TData, TValue> {
   setColumnVisibility: Dispatch<SetStateAction<VisibilityState>>;
   columnOrder?: ColumnOrderState;
   setColumnOrder?: Dispatch<SetStateAction<ColumnOrderState>>;
+  /** Table identity for analytics only. Optional: when omitted the emitted
+   *  payload is unchanged, so existing callers keep emitting exactly what they
+   *  emitted before. */
+  tableName?: string;
+  /** Marks the emitting table as the v4/events table in analytics. Optional for
+   *  the same reason as `tableName`. */
+  isV4?: boolean;
+  /** Trigger button size; upstream-compatible. Defaults to the Button default. */
+  triggerSize?: ComponentProps<typeof Button>["size"];
 }
 
 const calculateColumnCounts = <TData, TValue>(
@@ -313,6 +323,9 @@ export function DataTableColumnVisibilityFilter<TData, TValue>({
   setColumnVisibility,
   columnOrder,
   setColumnOrder,
+  tableName,
+  isV4,
+  triggerSize,
 }: DataTableColumnVisibilityFilterProps<TData, TValue>) {
   const { t } = useTranslation();
   const capture = usePostHogClientCapture();
@@ -345,6 +358,10 @@ export function DataTableColumnVisibilityFilter<TData, TValue>({
         );
         capture("table:column_visibility_changed", {
           selectedColumns: selectedColumns,
+          // Only added when the caller passes them, so every existing caller
+          // emits byte-identical payloads to before.
+          ...(tableName !== undefined ? { tableName } : {}),
+          ...(isV4 !== undefined ? { isV4 } : {}),
         });
         return newColumnVisibility;
       });
@@ -413,7 +430,11 @@ export function DataTableColumnVisibilityFilter<TData, TValue>({
     >
       <Drawer modal={false} dismissible>
         <DrawerTrigger asChild>
-          <Button variant="outline" title={t("Show/hide columns")}>
+          <Button
+            variant="outline"
+            title={t("Show/hide columns")}
+            size={triggerSize}
+          >
             <span>{t("Columns")}</span>
             <div className="bg-input ml-1 rounded-sm px-1 text-xs">{`${count}/${total}`}</div>
           </Button>

@@ -30,7 +30,7 @@ import { env as sharedEnv } from "@langfuse/shared/src/env";
 import { toTraceScalarRecord } from "../services/IngestionService";
 
 /**
- * Self-contained otel group job (exactly-once design §3.3): one job = one
+ * Self-contained otel group job (exactly-once pipeline): one job = one
  * group = one spans stream load batch = one deterministic label.
  *
  *   download N files → deterministic transform → stream load spans
@@ -43,7 +43,7 @@ import { toTraceScalarRecord } from "../services/IngestionService";
  */
 
 // ---------------------------------------------------------------------------
-// Error classification (design §3.3-1 / review H3)
+// Error classification
 // ---------------------------------------------------------------------------
 
 /**
@@ -114,8 +114,8 @@ const ndjsonBody = (rows: Record<string, unknown>[]): StreamLoadBodySource => {
 
 // Deliberately minimal: format json + long timeout. NEVER add
 // max_filter_ratio here — silently dropping rows breaks exactly-once
-// (design §3.3 / plan review; repositories/doris.ts's option set with
-// max_filter_ratio 0.1 must not be copied).
+// (repositories/doris.ts's option set with max_filter_ratio 0.1 must not
+// be copied).
 const LOAD_OPTS = { format: "json" as const, timeout: 600 };
 
 // ---------------------------------------------------------------------------
@@ -232,7 +232,7 @@ export type GroupJobDeps = {
   ) => Promise<void>;
   /**
    * Best-effort observation-eval scheduling (side-effect boundary: NOT
-   * label-protected, a replay re-schedules — declared in design §3.3). The
+   * label-protected, a replay re-schedules). The
    * implementation must swallow its own errors; eval scheduling must never
    * fail the data path.
    */
@@ -412,7 +412,7 @@ export const processOtelGroupJob = async (
         })
       : { dedupedByLabel: false };
   } catch (e) {
-    // "Table doesn't exist" three-way (design §4.2 / Stage 1.2d): a split
+    // "Table doesn't exist" three-way (Stage 1.2d): a split
     // target's table is gone. handleMissingSplitTable classifies via PG —
     // reprovision+retry (live project), pg-error→retry (never guess), or
     // skip (tombstoned project → dead-letter the group so it doesn't retry
@@ -435,10 +435,10 @@ export const processOtelGroupJob = async (
   const eventsWaitMs = outcome.waitedMs ?? 0;
   const eventsLoadMs = Math.max(0, eventsMs - eventsWaitMs);
 
-  // ④ traces_scalar (MoW, no label). Delete-protection gate — DUAL condition
-  // (design §3.3-3 / review B1): skip ONLY when the label deduped AND the
-  // ledger already exists. spans commits are VISIBLE immediately, so a
-  // C6 replay (spans committed, scalar never written, crash) ALSO sees
+  // ④ traces_scalar (MoW, no label). Delete-protection gate — DUAL condition:
+  // skip ONLY when the label deduped AND the ledger already exists. spans
+  // commits are VISIBLE immediately, so a replay after a crash between the
+  // two loads (spans committed, scalar never written) ALSO sees
   // dedupedByLabel=true — the ledger (written after BOTH loads) is the only
   // signal separating it from a fully-completed run's late replay (which
   // must skip, or a user-deleted trace's scalar row would resurrect).
@@ -620,7 +620,7 @@ export const buildGroupJobDeps = (params: {
       ).download(fileKey),
     transformFile: params.transformFile,
     // Every load goes through the per-worker load semaphore: global in-flight
-    // loads = N workers × LITEFUSE_OTEL_LOAD_CONCURRENCY (design §5.3).
+    // loads = N workers × LITEFUSE_OTEL_LOAD_CONCURRENCY.
     // Semaphore WAIT is measured separately — it is included in the caller's
     // per-load duration, so without this a saturated semaphore is
     // indistinguishable from a slow Doris (high ms, low MB/s) in the

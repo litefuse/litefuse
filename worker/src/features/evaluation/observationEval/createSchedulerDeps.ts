@@ -73,6 +73,23 @@ export function createObservationEvalSchedulerDeps(): ObservationEvalSchedulerDe
             projectId: params.projectId,
             jobExecutionId: params.jobExecutionId,
             observationS3Path: params.observationS3Path,
+            // LITEFUSE ADDITION (evaluators v2): the executor resolves the
+            // evaluator from this identity instead of guessing it from
+            // `jobConfigurationId`. Absent for legacy job configurations.
+            ...(params.evaluatorId
+              ? {
+                  evaluatorId: params.evaluatorId,
+                  ...(params.evaluationRuleId
+                    ? { evaluationRuleId: params.evaluationRuleId }
+                    : {}),
+                }
+              : {}),
+            ...(params.executionMode
+              ? { executionMode: params.executionMode }
+              : {}),
+            ...(params.variableMapping
+              ? { variableMapping: params.variableMapping }
+              : {}),
           },
         },
         {

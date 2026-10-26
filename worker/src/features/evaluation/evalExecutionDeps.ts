@@ -8,7 +8,10 @@ import {
   LLMAdapter,
   QueueJobs,
   ScoreEventType,
+  type EvaluatorBlockSource,
 } from "@langfuse/shared/src/server";
+// `EvaluatorBlockReason` is a Prisma enum, so it comes from the prisma client.
+import { type EvaluatorBlockReason } from "@prisma/client";
 import { env } from "../../env";
 import { buildEvalScoreSchema, buildEvalMessages } from "./evalExecutionUtils";
 import { getEvalS3StorageClient } from "./s3StorageClient";
@@ -123,6 +126,26 @@ export interface EvalExecutionDeps {
   fetchModelConfig: (
     params: FetchModelConfigParams,
   ) => Promise<ModelConfigResult>;
+
+  /**
+   * LITEFUSE ADDITION (evaluators v2): pause the evaluator row that owns a job.
+   *
+   * The legacy path blocks a `job_configurations` row; a v2 job has no such row,
+   * so the evaluator itself is paused (`evaluators.blocked_at`) — which is also
+   * what the migrated UI renders as "Blocked". Optional so existing tests and the
+   * mock factory keep working unchanged.
+   *
+   * Difference from upstream: no cache-invalidation/notification tail
+   * (`finalizeEvaluatorBlocks` is not ported). Nothing depends on a cache here —
+   * the v2 rule query re-reads `evaluator.blockedAt` on every job-creation pass.
+   */
+  blockEvaluator?: (params: {
+    projectId: string;
+    evaluatorId: string;
+    blockReason: EvaluatorBlockReason;
+    blockMessage: string;
+    source: EvaluatorBlockSource;
+  }) => Promise<void>;
 }
 
 /**
@@ -217,6 +240,15 @@ export function createProductionEvalExecutionDeps(): EvalExecutionDeps {
 
       // Cast to our simplified ModelConfigResult type for the interface
       return result as ModelConfigResult;
+    },
+
+    // LITEFUSE ADDITION: see the interface note. `blockedAt: null` in the filter
+    // makes concurrent executions of one evaluator dedupe to a single write.
+    blockEvaluator: async ({ projectId, evaluatorId, blockReason, blockMessage }) => {
+      await prisma.evaluator.updateMany({
+        where: { id: evaluatorId, projectId, blockedAt: null },
+        data: { blockedAt: new Date(), blockReason, blockMessage },
+      });
     },
   };
 }

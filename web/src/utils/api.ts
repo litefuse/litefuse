@@ -276,3 +276,13 @@ export type RouterInputs = inferRouterInputs<AppRouter>;
  * @example type HelloOutput = RouterOutputs['example']['hello']
  */
 export type RouterOutputs = inferRouterOutputs<AppRouter>;
+
+// ── Added for the evaluators v2 migration (copied from upstream) ─────────────
+/**
+ * Marks a tRPC query so it is sent over POST, for inputs that would blow past
+ * the GET URL length limit (large filter payloads).
+ * Use as `useQuery(input, { ...sendAsPostOption, enabled })`.
+ */
+export const sendAsPostOption = {
+  trpc: { context: { sendAsPost: true } },
+} as const;

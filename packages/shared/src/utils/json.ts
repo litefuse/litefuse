@@ -416,3 +416,29 @@ export const parseJsonPrioritised = (
     return json;
   }
 };
+
+// ── Added for the evaluators v2 migration (copied from upstream) ─────────────
+// Added for the evaluators v2 migration (copied from upstream).
+export const parseJsonIfString = (value: unknown): unknown =>
+  typeof value === "string" ? parseJsonPrioritised(value) : value;
+
+/** JSON.stringify with object keys sorted, so equal values compare equal. */
+export function stableJsonStringify(value: unknown): string {
+  return JSON.stringify(sortJsonValue(value)) ?? "undefined";
+}
+
+function sortJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(sortJsonValue);
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, nestedValue]) => [key, sortJsonValue(nestedValue)]),
+    );
+  }
+
+  return value;
+}

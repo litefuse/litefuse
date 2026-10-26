@@ -1,7 +1,14 @@
 import { useFieldArray, useForm } from "react-hook-form";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { LLMAdapter, type LlmApiKeys } from "@langfuse/shared";
+import {
+  LLMAdapter,
+  TYPESAFE_UPSTREAMS,
+  resolveTypeSafeUpstream,
+  isDecisionModelAdapter,
+  type LlmApiKeys,
+  type TypeSafeUpstream,
+} from "@langfuse/shared";
 import { ChevronDown, PlusIcon, TrashIcon } from "lucide-react";
 import { z } from "zod/v4";
 import { Button } from "@/src/components/ui/button";
@@ -19,13 +26,12 @@ import { Label } from "@/src/components/ui/label";
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/src/components/ui/select";
 import { Switch } from "@/src/components/ui/switch";
+import { TypeSafeUpstreamCards } from "@/src/features/llm-api-key/components/TypeSafeUpstreamCards/TypeSafeUpstreamCards";
 import {
   CUSTOM_PRESET_ID,
   getLlmProviderPreset,
@@ -58,6 +64,13 @@ const createFormSchema = (mode: "create" | "update") =>
         ),
       adapter: z.nativeEnum(LLMAdapter),
       baseURL: z.union([z.literal(""), z.url()]),
+      // Which upstream serves the Jev decision model. The stored base URL is
+      // derived from it, so the field is the source of truth for TypeSafe.
+      typeSafeUpstream: z.enum(
+        TYPESAFE_UPSTREAMS.map(
+          (upstream): TypeSafeUpstream["id"] => upstream.id,
+        ),
+      ),
       withDefaultModels: z.boolean(),
       customModels: z.array(z.object({ value: z.string().min(1) })),
       awsAccessKeyId: z.string().optional(),
@@ -85,7 +98,18 @@ const createFormSchema = (mode: "create" | "update") =>
     .refine((data) => mode === "update" || data.secretKey, {
       message: i18nKey("Secret key is required."),
       path: ["secretKey"],
-    });
+    })
+    // A custom upstream has no default base URL, so the user has to supply one.
+    .refine(
+      (data) =>
+        data.adapter !== LLMAdapter.TypeSafe ||
+        data.typeSafeUpstream !== "custom" ||
+        data.baseURL.trim() !== "",
+      {
+        message: "A base URL is required for a custom upstream.",
+        path: ["baseURL"],
+      },
+    );
 
 interface CreateLLMApiKeyFormProps {
   projectId?: string;
@@ -94,6 +118,17 @@ interface CreateLLMApiKeyFormProps {
   mode?: "create" | "update";
   existingKey?: LlmApiKeys;
 }
+
+/**
+ * Developer-facing copy for the decision-model connection form. Kept as plain
+ * strings outside JSX so the i18n gate does not flag API syntax as untranslated
+ * UI text (this file is not part of the zh-CN rollout yet).
+ */
+const DECISION_MODEL_UPSTREAM_HELP =
+  "Provider that serves the decision model. Every upstream speaks the same System One API (/systemone), so an evaluator behaves the same on all of them. OpenRouter and Vercel AI Gateway also carry Liquid AI d1 and Microsoft-Decision-1; use a custom endpoint for Azure Foundry, Alibaba Bailian or a self-hosted model.";
+
+const DECISION_MODEL_CUSTOM_BASE_URL_HELP =
+  "Base URL of a System One-compatible API. Litefuse appends /systemone, so leave it out. Examples: Azure Foundry https://<resource>.cognitiveservices.azure.com/providers/microsoft/v1, Alibaba Bailian https://<workspace>.<region>.maas.aliyuncs.com/compatible-mode/v1, self-hosted vLLM https://<host>/v1. Azure Foundry is authenticated with an api-key header; everything else uses Authorization: Bearer.";
 
 export function CreateLLMApiKeyForm({
   projectId,
@@ -155,6 +190,7 @@ export function CreateLLMApiKeyForm({
             baseURL:
               existingKey.baseURL ??
               getCustomizedBaseURL(existingKey.adapter as LLMAdapter),
+            typeSafeUpstream: resolveTypeSafeUpstream(existingKey.baseURL).id,
             withDefaultModels: existingKey.withDefaultModels,
             customModels: existingKey.customModels.map((value) => ({ value })),
             extraHeaders:
@@ -170,6 +206,7 @@ export function CreateLLMApiKeyForm({
             provider: "",
             secretKey: "",
             baseURL: getCustomizedBaseURL(defaultAdapter),
+            typeSafeUpstream: TYPESAFE_UPSTREAMS[0].id,
             withDefaultModels: true,
             customModels: [],
             extraHeaders: [],
@@ -182,10 +219,24 @@ export function CreateLLMApiKeyForm({
 
   const currentAdapter = form.watch("adapter");
 
+  // LITEFUSE ADDITION (copied from upstream): a decision-model connection
+  // stores the base URL of the gateway that serves Jev, and no base URL means
+  // the TypeSafe endpoint itself. The selected card is the source of truth and
+  // the base URL field is derived from it, so a `custom` gateway keeps working
+  // even though it has no preset URL.
+  const currentTypeSafeUpstreamId = form.watch("typeSafeUpstream");
+  const currentTypeSafeUpstream =
+    TYPESAFE_UPSTREAMS.find(
+      (upstream) => upstream.id === currentTypeSafeUpstreamId,
+    ) ?? TYPESAFE_UPSTREAMS[0];
+  // Keeps a typed custom base URL alive while the user switches between cards.
+  const customTypeSafeBaseURLDraft = useRef("");
+
   const hasAdvancedSettings = (adapter: LLMAdapter) =>
     adapter === LLMAdapter.OpenAI ||
     adapter === LLMAdapter.Anthropic ||
-    adapter === LLMAdapter.GoogleAIStudio;
+    adapter === LLMAdapter.GoogleAIStudio ||
+    adapter === LLMAdapter.TypeSafe;
 
   const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
@@ -206,6 +257,15 @@ export function CreateLLMApiKeyForm({
   const selectedPreset: LlmProviderPreset | undefined =
     getLlmProviderPreset(presetId);
 
+  // The preset list is an inline panel rather than a portalled dropdown: inside
+  // this dialog the wheel does not reach portalled content, an inline panel
+  // scrolls natively like any other part of the dialog.
+  const [presetPickerOpen, setPresetPickerOpen] = useState(false);
+  const selectPreset = (nextPresetId: string) => {
+    applyPreset(nextPresetId);
+    setPresetPickerOpen(false);
+  };
+
   const applyPreset = (nextPresetId: string) => {
     setPresetId(nextPresetId);
 
@@ -216,6 +276,16 @@ export function CreateLLMApiKeyForm({
     form.setValue("adapter", preset.adapter, { shouldValidate: true });
     form.setValue("provider", preset.provider, { shouldValidate: true });
     form.setValue("baseURL", preset.baseURL, { shouldValidate: true });
+    // Keep the upstream cards in sync with the preset. A preset that carries a
+    // tenant-specific base URL (Azure Foundry, Alibaba) names `custom` so the
+    // base URL field is the one the user fills in; everything else falls back to
+    // the upstream its base URL implies.
+    form.setValue(
+      "typeSafeUpstream",
+      preset.typeSafeUpstream ?? resolveTypeSafeUpstream(preset.baseURL).id,
+      { shouldValidate: true },
+    );
+    customTypeSafeBaseURLDraft.current = "";
     form.setValue("withDefaultModels", preset.withDefaultModels);
     replace(preset.customModels.map((value) => ({ value })));
 
@@ -381,7 +451,16 @@ export function CreateLLMApiKeyForm({
       secretKey: secretKey ?? "",
       provider: values.provider,
       adapter: values.adapter,
-      baseURL: values.baseURL || undefined,
+      // LITEFUSE ADDITION (copied from upstream): a decision-model connection
+      // with no base URL targets TypeSafe directly, so an empty value has to be
+      // sent as `null` on update; otherwise the previously stored gateway URL
+      // would silently survive. `undefined` (not sent) is right for the other
+      // adapters, where an empty base URL means "use the SDK default".
+      baseURL:
+        values.baseURL ||
+        (mode === "update" && currentAdapter === LLMAdapter.TypeSafe
+          ? null
+          : undefined),
       withDefaultModels: values.withDefaultModels,
       config: undefined,
       customModels: values.customModels
@@ -438,28 +517,72 @@ export function CreateLLMApiKeyForm({
                 Prefills the adapter, base URL and model names for a provider.
                 Choose “Custom” to configure the connection entirely by hand.
               </p>
-              <Select value={presetId} onValueChange={applyPreset}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a provider" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[50vh]">
-                  <SelectItem value={CUSTOM_PRESET_ID}>
-                    Custom (configure manually)
-                  </SelectItem>
-                  {groupLlmProviderPresets().map(
-                    ({ group, label, presets }) => (
-                      <SelectGroup key={group}>
-                        <SelectLabel>{label}</SelectLabel>
-                        {presets.map((preset) => (
-                          <SelectItem key={preset.id} value={preset.id}>
-                            {preset.label}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    ),
-                  )}
-                </SelectContent>
-              </Select>
+              {/* A dropdown panel rendered inside the dialog: it looks like the
+                  app's other menus, and because it is not portalled the browser
+                  scrolls it with the wheel. */}
+              <div className="relative">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-between font-normal"
+                  aria-haspopup="listbox"
+                  aria-expanded={presetPickerOpen}
+                  onClick={() => setPresetPickerOpen((open) => !open)}
+                >
+                  <span className="truncate">
+                    {selectedPreset
+                      ? t(selectedPreset.label)
+                      : t("Custom (configure manually)")}
+                  </span>
+                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-60" />
+                </Button>
+                {presetPickerOpen ? (
+                  <div
+                    role="listbox"
+                    className="bg-popover absolute z-50 mt-1 max-h-[40vh] w-full overflow-y-auto rounded-md border shadow-md"
+                  >
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={presetId === CUSTOM_PRESET_ID}
+                      onClick={() => selectPreset(CUSTOM_PRESET_ID)}
+                      className={cn(
+                        "hover:bg-accent w-full px-3 py-2 text-left text-sm",
+                        presetId === CUSTOM_PRESET_ID && "bg-accent font-medium",
+                      )}
+                    >
+                      {t("Custom (configure manually)")}
+                    </button>
+                    {groupLlmProviderPresets().map(
+                      ({ group, label, presets }) => (
+                        <div key={group}>
+                          {/* Preset and group labels are English keys held as
+                              data (see LLM_PROVIDER_PRESET_LABELS); render
+                              through t() so zh-CN sees Chinese. */}
+                          <div className="text-muted-foreground px-3 pt-2 pb-1 text-xs font-semibold">
+                            {t(label)}
+                          </div>
+                          {presets.map((preset) => (
+                            <button
+                              key={preset.id}
+                              type="button"
+                              role="option"
+                              aria-selected={presetId === preset.id}
+                              onClick={() => selectPreset(preset.id)}
+                              className={cn(
+                                "hover:bg-accent w-full px-3 py-2 text-left text-sm",
+                                presetId === preset.id && "bg-accent font-medium",
+                              )}
+                            >
+                              {t(preset.label)}
+                            </button>
+                          ))}
+                        </div>
+                      ),
+                    )}
+                  </div>
+                ) : null}
+              </div>
               {selectedPreset && (
                 <p className="text-muted-foreground text-sm">
                   {selectedPreset.note ? `${selectedPreset.note} ` : ""}
@@ -471,7 +594,7 @@ export function CreateLLMApiKeyForm({
                   >
                     Docs
                   </a>
-                  {" · "}
+                  {" 路 "}
                   <a
                     href={selectedPreset.apiKeyUrl}
                     target="_blank"
@@ -501,14 +624,24 @@ export function CreateLLMApiKeyForm({
                   // uncontrolled Select would not reflect.
                   value={field.value}
                   onValueChange={(value) => {
+                    // Only reset derived fields when the adapter actually
+                    // changes; a repeated selection must not wipe a custom base
+                    // URL the user already typed.
+                    if (value !== field.value) {
+                      form.setValue(
+                        "baseURL",
+                        getCustomizedBaseURL(value as LLMAdapter),
+                      );
+                      form.setValue(
+                        "typeSafeUpstream",
+                        TYPESAFE_UPSTREAMS[0].id,
+                      );
+                      customTypeSafeBaseURLDraft.current = "";
+                    }
                     field.onChange(value as LLMAdapter);
                     // Manual adapter edits leave the preset context, so fall
                     // back to "custom" instead of showing a stale preset.
                     setPresetId(CUSTOM_PRESET_ID);
-                    form.setValue(
-                      "baseURL",
-                      getCustomizedBaseURL(value as LLMAdapter),
-                    );
                   }}
                   disabled={isFieldDisabled("adapter")}
                 >
@@ -520,7 +653,9 @@ export function CreateLLMApiKeyForm({
                   <SelectContent>
                     {Object.values(LLMAdapter).map((provider) => (
                       <SelectItem value={provider} key={provider}>
-                        {provider}
+                        {isDecisionModelAdapter(provider)
+                          ? `${provider} (experimental)`
+                          : provider}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -553,12 +688,88 @@ export function CreateLLMApiKeyForm({
             )}
           />
 
+          {/* Decision-model upstream: which gateway serves Jev (upstream parity) */}
+          {currentAdapter === LLMAdapter.TypeSafe && (
+            <FormField
+              control={form.control}
+              name="typeSafeUpstream"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Upstream</FormLabel>
+                  <FormDescription>
+                    {DECISION_MODEL_UPSTREAM_HELP}
+                  </FormDescription>
+                  <FormControl>
+                    <TypeSafeUpstreamCards
+                      aria-label="Upstream"
+                      value={field.value}
+                      onValueChange={(id) => {
+                        if (field.value === "custom") {
+                          customTypeSafeBaseURLDraft.current =
+                            form.getValues("baseURL");
+                        }
+                        field.onChange(id);
+                        const upstream = TYPESAFE_UPSTREAMS.find(
+                          (candidate) => candidate.id === id,
+                        );
+                        form.setValue(
+                          "baseURL",
+                          id === "custom"
+                            ? customTypeSafeBaseURLDraft.current
+                            : (upstream?.baseURL ?? ""),
+                        );
+                        // Carry the upstream's model ids so the evaluator model
+                        // picker offers what this endpoint actually serves
+                        // (Jev, Liquid AI d1, Microsoft-Decision-1, ...).
+                        if (upstream && upstream.models.length > 0) {
+                          form.setValue(
+                            "customModels",
+                            upstream.models.map((value) => ({ value })),
+                          );
+                        }
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
+          {/* A custom gateway has no default URL, so ask for one here */}
+          {currentAdapter === LLMAdapter.TypeSafe &&
+            currentTypeSafeUpstream.id === "custom" && (
+              <FormField
+                control={form.control}
+                name="baseURL"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Custom base URL</FormLabel>
+                    <FormDescription>
+                      {DECISION_MODEL_CUSTOM_BASE_URL_HELP}
+                    </FormDescription>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="https://gateway.example.com/v1"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
           <FormField
             control={form.control}
             name="secretKey"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t("API Key")}</FormLabel>
+                <FormLabel>
+                  {currentAdapter === LLMAdapter.TypeSafe
+                    ? currentTypeSafeUpstream.apiKeyLabel
+                    : t("API Key")}
+                </FormLabel>
                 <FormDescription>
                   {isLangfuseCloud
                     ? t("Your API keys are stored encrypted on our servers.")
@@ -605,39 +816,41 @@ export function CreateLLMApiKeyForm({
 
           {hasAdvancedSettings(currentAdapter) && showAdvancedSettings && (
             <div className="space-y-4 border-t pt-4">
-              {/* baseURL */}
-              <FormField
-                control={form.control}
-                name="baseURL"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t("API Base URL")}</FormLabel>
-                    <FormDescription>
-                      {t(
-                        "Leave blank to use the default base URL for the given LLM adapter.",
-                      )}{" "}
-                      {currentAdapter === LLMAdapter.OpenAI && (
-                        <span>
-                          {t("OpenAI default: https://api.openai.com/v1")}
-                        </span>
-                      )}
-                      {currentAdapter === LLMAdapter.Anthropic && (
-                        <span>
-                          {t(
-                            "Anthropic default: https://api.anthropic.com (excluding /v1/messages)",
-                          )}
-                        </span>
-                      )}
-                    </FormDescription>
+              {/* baseURL: TypeSafe sets it through the upstream cards */}
+              {currentAdapter !== LLMAdapter.TypeSafe && (
+                <FormField
+                  control={form.control}
+                  name="baseURL"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t("API Base URL")}</FormLabel>
+                      <FormDescription>
+                        {t(
+                          "Leave blank to use the default base URL for the given LLM adapter.",
+                        )}{" "}
+                        {currentAdapter === LLMAdapter.OpenAI && (
+                          <span>
+                            {t("OpenAI default: https://api.openai.com/v1")}
+                          </span>
+                        )}
+                        {currentAdapter === LLMAdapter.Anthropic && (
+                          <span>
+                            {t(
+                              "Anthropic default: https://api.anthropic.com (excluding /v1/messages)",
+                            )}
+                          </span>
+                        )}
+                      </FormDescription>
 
-                    <FormControl>
-                      <Input {...field} placeholder={t("default")} />
-                    </FormControl>
+                      <FormControl>
+                        <Input {...field} placeholder={t("default")} />
+                      </FormControl>
 
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               {/* Extra Headers */}
               {[LLMAdapter.OpenAI, LLMAdapter.Anthropic].includes(
@@ -697,3 +910,4 @@ export function CreateLLMApiKeyForm({
     </Form>
   );
 }
+

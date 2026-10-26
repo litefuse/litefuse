@@ -22,3 +22,12 @@ types:
       totalPages:
         type: integer
         docs: number of total pages given the current limit
+  # LITEFUSE ADDITION: copied from upstream 4.56.0 so the cursor-paginated
+  # stable endpoints (`/api/public/v2/evaluators`, `/api/public/v2/evaluation-rules`)
+  # can be described in `evaluators.yml` / `evaluation-rules.yml`.
+  CursorMetaResponse:
+    docs: Metadata for cursor-based pagination.
+    properties:
+      cursor:
+        type: optional<string>
+        docs: Opaque cursor for the next page. Omitted when there is no next page.

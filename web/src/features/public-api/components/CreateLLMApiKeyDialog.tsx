@@ -40,12 +40,12 @@ export function CreateLLMApiKeyDialog({
       <DialogTrigger asChild>
         <Button variant="secondary">
           <PlusIcon className="mr-1.5 -ml-0.5 h-5 w-5" aria-hidden="true" />
-          {t("Add LLM Connection")}
+          {t("Add Model Connection")}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90%] min-w-[40vw] overflow-auto">
         <DialogHeader>
-          <DialogTitle>{t("New LLM Connection")}</DialogTitle>
+          <DialogTitle>{t("New Model Connection")}</DialogTitle>
         </DialogHeader>
         {open && (
           <CreateLLMApiKeyForm

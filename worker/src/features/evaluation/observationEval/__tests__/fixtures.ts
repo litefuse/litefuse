@@ -20,6 +20,9 @@ import {
 export function createTestObservation(
   overrides: Partial<ObservationForEval> = {},
 ): ObservationForEval {
+  // Mirrors the derivation every projection applies: `tool_call_names` is
+  // authoritative for the count.
+  const toolCallNames = overrides.tool_call_names ?? [];
   return {
     // Core identifiers
     span_id: `obs-${randomUUID()}`,
@@ -39,6 +42,7 @@ export function createTestObservation(
     trace_name: "test-trace",
     user_id: "user-123",
     session_id: "session-456",
+    is_root: false,
     tags: ["test-tag"],
     release: "v1.0.0",
 
@@ -55,6 +59,7 @@ export function createTestObservation(
     tool_definitions: {},
     tool_calls: [],
     tool_call_names: [],
+    tool_call_count: toolCallNames.length,
 
     // Usage & Cost
     usage_details: { input: 100, output: 50 },
@@ -140,6 +145,9 @@ export function createMockProcessorDeps(
     downloadObservationFromS3:
       overrides.downloadObservationFromS3 ??
       vi.fn().mockResolvedValue(JSON.stringify(defaultObservation)),
+    // LITEFUSE ADDITION (evaluators v2): the v2 executors persist scores through
+    // these deps. The legacy observation tests never reach them, so no-ops suffice.
+    evalExecutionDeps: createMockEvalExecutionDeps(),
   };
 }
 
@@ -317,6 +325,8 @@ export function createFullyMockedEvalPipeline(
       }
       return JSON.stringify(observation);
     }),
+    // Filled in below with the same mocked execution deps the assertions use.
+    evalExecutionDeps: createMockEvalExecutionDeps(),
   };
 
   const executionDeps: EvalExecutionDeps = createMockEvalExecutionDeps({

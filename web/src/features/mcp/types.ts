@@ -22,7 +22,6 @@
  *
  * @see /web/src/features/public-api/server/apiAuth.ts - Auth patterns
  * @see /web/src/features/audit-logs/auditLog.ts - Audit logging
- * @see /web/src/features/rbac/README.md - RBAC patterns
  */
 export interface ServerContext {
   /**

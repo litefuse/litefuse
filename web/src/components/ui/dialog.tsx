@@ -112,13 +112,22 @@ DialogContent.displayName = DialogPrimitive.Content.displayName;
 const DialogHeader = ({
   className,
   children,
+  variant = "default",
   ...props
-}: React.HTMLAttributes<HTMLDivElement>) => {
+}: React.HTMLAttributes<HTMLDivElement> & {
+  /**
+   * LITEFUSE ADDITION (copied from upstream): `action` is the borderless header
+   * of a confirm dialog — it drops the divider and trims the bottom padding so
+   * title and body do not drift apart. Default output is unchanged.
+   */
+  variant?: "default" | "action";
+}) => {
   const { t } = useTranslation();
   return (
     <div
       className={cn(
-        "dialog-header bg-background sticky top-0 z-30 flex shrink-0 flex-col space-y-1.5 rounded-t-lg border-b p-4",
+        "dialog-header bg-background sticky top-0 z-30 flex shrink-0 flex-col space-y-1.5 rounded-t-lg p-4",
+        variant === "default" ? "border-b" : "pb-2",
         className,
       )}
       {...props}
@@ -152,11 +161,20 @@ DialogBody.displayName = "DialogBody";
 
 const DialogFooter = ({
   className,
+  variant = "default",
   ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
+}: React.HTMLAttributes<HTMLDivElement> & {
+  /**
+   * LITEFUSE ADDITION (copied from upstream): `action` is the borderless footer
+   * of a confirm dialog — it drops the divider and pulls the buttons closer to
+   * the content. Default output is unchanged.
+   */
+  variant?: "default" | "action";
+}) => (
   <div
     className={cn(
-      "dialog-footer bg-background sticky bottom-0 z-10 flex shrink-0 flex-col-reverse rounded-b-lg border-t p-6 px-6 sm:flex-row sm:justify-end sm:space-x-2",
+      "dialog-footer bg-background sticky bottom-0 z-10 flex shrink-0 flex-col-reverse rounded-b-lg p-6 px-6 sm:flex-row sm:justify-end sm:space-x-2",
+      variant === "default" ? "border-t" : "pt-2",
       className,
     )}
     {...props}

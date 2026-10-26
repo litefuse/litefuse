@@ -1,12 +1,26 @@
 import { filterOperators } from "../../../interfaces/filters";
 import { Filter, DbFilter } from "../filter";
 
+/**
+ * Columns flagged `emptyEqualsNull` in a UI column mapping treat the empty
+ * string as NULL, because this schema stores "no value" as `''` for several
+ * string columns (see migration 0037 for `parent_span_id`: root spans carry
+ * `''`, not NULL). Upstream's filter dialect spells those conditions as
+ * `IS NULL` / `IS NOT NULL` over real NULLs, so a flagged column must match
+ * both spellings. Unflagged columns keep the historical SQL byte-for-byte.
+ */
+const isEmptyPredicate = (column: string) =>
+  `(${column} IS NULL OR ${column} = '')`;
+const isNotEmptyPredicate = (column: string) =>
+  `(${column} IS NOT NULL AND ${column} != '')`;
+
 export class StringFilter implements Filter {
   public table: string;
   public field: string;
   public value: string;
   public operator: (typeof filterOperators)["string"][number];
   public tablePrefix?: string;
+  public emptyEqualsNull: boolean;
 
   constructor(opts: {
     table?: string;
@@ -15,12 +29,15 @@ export class StringFilter implements Filter {
     operator: (typeof filterOperators)["string"][number];
     value: string;
     tablePrefix?: string;
+    /** Treat `''` as NULL for this column (from the UI column mapping). */
+    emptyEqualsNull?: boolean;
   }) {
     this.table = opts.table ?? opts.dorisTable ?? "";
     this.field = opts.field;
     this.value = opts.value;
     this.operator = opts.operator;
     this.tablePrefix = opts.tablePrefix;
+    this.emptyEqualsNull = opts.emptyEqualsNull ?? false;
   }
 
   apply(): DbFilter {
@@ -28,6 +45,19 @@ export class StringFilter implements Filter {
 
     // 转义单引号以防止SQL注入
     const escapedValue = this.value.replace(/'/g, "''");
+
+    // An empty needle can only ever match "no value": `''::String` is what this
+    // schema stores for that, and NULL is the upstream spelling of the same
+    // fact. `does not contain` is the negation and must therefore exclude both.
+    if (this.emptyEqualsNull && this.value === "") {
+      return {
+        query:
+          this.operator === "does not contain"
+            ? isNotEmptyPredicate(fieldWithPrefix)
+            : isEmptyPredicate(fieldWithPrefix),
+        params: {},
+      };
+    }
 
     let query: string;
     switch (this.operator) {
@@ -40,8 +70,11 @@ export class StringFilter implements Filter {
         query = `INSTR(${fieldWithPrefix}, '${escapedValue}') > 0`;
         break;
       case "does not contain":
-        // 不包含操作
-        query = `INSTR(${fieldWithPrefix}, '${escapedValue}') = 0`;
+        // 不包含操作；flagged columns additionally exclude the empty value,
+        // which IS NULL semantics would also have excluded from the result set
+        query = this.emptyEqualsNull
+          ? `${isNotEmptyPredicate(fieldWithPrefix)} AND INSTR(${fieldWithPrefix}, '${escapedValue}') = 0`
+          : `INSTR(${fieldWithPrefix}, '${escapedValue}') = 0`;
         break;
       case "starts with":
         // 开始于操作，使用STARTS_WITH函数
@@ -144,6 +177,7 @@ export class StringOptionsFilter implements Filter {
   public values: string[];
   public operator: (typeof filterOperators.stringOptions)[number];
   public tablePrefix?: string;
+  public emptyEqualsNull: boolean;
 
   constructor(opts: {
     table?: string;
@@ -152,12 +186,15 @@ export class StringOptionsFilter implements Filter {
     operator: (typeof filterOperators.stringOptions)[number];
     values: string[];
     tablePrefix?: string;
+    /** Treat `''` as NULL for this column (from the UI column mapping). */
+    emptyEqualsNull?: boolean;
   }) {
     this.table = opts.table ?? opts.dorisTable ?? "";
     this.field = opts.field;
     this.values = opts.values;
     this.operator = opts.operator;
     this.tablePrefix = opts.tablePrefix;
+    this.emptyEqualsNull = opts.emptyEqualsNull ?? false;
   }
 
   apply(): DbFilter {
@@ -176,10 +213,29 @@ export class StringOptionsFilter implements Filter {
     );
     const valuesList = escapedValues.join(", ");
 
-    const query =
-      this.operator === "any of"
-        ? `${fieldWithPrefix} IN (${valuesList})`
-        : `${fieldWithPrefix} NOT IN (${valuesList})`;
+    // `''` in the value list means "no value" for a flagged column, which also
+    // covers rows that store a real NULL — `IN`/`NOT IN` alone never match NULL.
+    const selectsEmpty =
+      this.emptyEqualsNull && this.values.some((value) => value === "");
+
+    let query: string;
+    if (this.operator === "any of") {
+      query = selectsEmpty
+        ? `(${fieldWithPrefix} IN (${valuesList}) OR ${fieldWithPrefix} IS NULL)`
+        : `${fieldWithPrefix} IN (${valuesList})`;
+    } else {
+      // The negation must not leak rows the positive form could never select:
+      // NULL rows are excluded by NULL semantics, and so is `''` on a flagged
+      // column.
+      const notIn = `${fieldWithPrefix} NOT IN (${valuesList})`;
+      if (!this.emptyEqualsNull) {
+        query = notIn;
+      } else if (selectsEmpty) {
+        query = `(${notIn} AND ${fieldWithPrefix} IS NOT NULL)`;
+      } else {
+        query = `(${notIn} AND ${fieldWithPrefix} != '')`;
+      }
+    }
 
     return {
       query,
@@ -225,6 +281,7 @@ export class NullFilter implements Filter {
   public field: string;
   public operator: (typeof filterOperators)["null"][number];
   public tablePrefix?: string;
+  public emptyEqualsNull: boolean;
 
   constructor(opts: {
     table?: string;
@@ -232,15 +289,31 @@ export class NullFilter implements Filter {
     field: string;
     operator: (typeof filterOperators)["null"][number];
     tablePrefix?: string;
+    /** Treat `''` as NULL for this column (from the UI column mapping). */
+    emptyEqualsNull?: boolean;
   }) {
     this.table = opts.table ?? opts.dorisTable ?? "";
     this.field = opts.field;
     this.operator = opts.operator;
     this.tablePrefix = opts.tablePrefix;
+    this.emptyEqualsNull = opts.emptyEqualsNull ?? false;
   }
 
   apply(): DbFilter {
     const fieldWithPrefix = `${this.tablePrefix ? this.tablePrefix + "." : ""}${this.field}`;
+
+    // Upstream's `is null` / `is not null` on a flagged column must also match
+    // our `''` encoding of the same fact, otherwise root rows (parent_span_id
+    // = '') are invisible to it.
+    if (this.emptyEqualsNull) {
+      return {
+        query:
+          this.operator === "is not null"
+            ? isNotEmptyPredicate(fieldWithPrefix)
+            : isEmptyPredicate(fieldWithPrefix),
+        params: {},
+      };
+    }
 
     return {
       query: `${fieldWithPrefix} ${this.operator}`,

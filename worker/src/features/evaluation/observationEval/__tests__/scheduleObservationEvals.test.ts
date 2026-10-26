@@ -3,6 +3,7 @@ import { scheduleObservationEvals } from "../scheduleObservationEvals";
 import {
   type ObservationForEval,
   type ObservationEvalConfig,
+  type EvaluationRuleWithAssignments,
   type ObservationEvalSchedulerDeps,
 } from "../types";
 import { type Prisma } from "@langfuse/shared/src/db";
@@ -35,6 +36,7 @@ describe("scheduleObservationEvals", () => {
     trace_name: "my-trace",
     user_id: "user-abc",
     session_id: "session-xyz",
+    is_root: false,
     tags: ["tag1", "tag2"],
     release: "v2.0.0",
 
@@ -140,6 +142,202 @@ describe("scheduleObservationEvals", () => {
 
       expect(schedulerDeps.uploadObservationToS3).not.toHaveBeenCalled();
       expect(schedulerDeps.upsertJobExecution).not.toHaveBeenCalled();
+      expect(schedulerDeps.enqueueEvalJob).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("evaluator v2 rules", () => {
+    const createMockRule = (
+      overrides: Partial<EvaluationRuleWithAssignments> = {},
+    ): EvaluationRuleWithAssignments => ({
+      id: "rule-1",
+      ruleId: "rule-1",
+      projectId: "project-789",
+      filter: [],
+      sampling: { toNumber: () => 1 } as unknown as Prisma.Decimal,
+      status: JobConfigState.ACTIVE,
+      // Already canonicalized to `event` by fetchObservationEvalConfigs.
+      targetObject: EvalTargetObject.EVENT,
+      assignments: [
+        {
+          id: "assignment-1",
+          evaluatorId: "evaluator-1",
+          variableMapping: [
+            { templateVariable: "output", selectedColumnId: "output" },
+          ],
+          evaluator: {
+            id: "evaluator-1",
+            projectId: "project-789",
+            type: "LLM_AS_JUDGE",
+          },
+        },
+      ],
+      ...overrides,
+    });
+
+    it("schedules one job per assignment, each carrying its own identity", async () => {
+      const schedulerDeps = createMockSchedulerDeps();
+      const observation = createMockObservation();
+
+      await scheduleObservationEvals({
+        observation,
+        configs: [
+          createMockRule({
+            assignments: [
+              {
+                id: "assignment-1",
+                evaluatorId: "evaluator-1",
+                variableMapping: null,
+                evaluator: {
+                  id: "evaluator-1",
+                  projectId: "project-789",
+                  type: "LLM_AS_JUDGE",
+                },
+              },
+              {
+                id: "assignment-2",
+                evaluatorId: "evaluator-2",
+                variableMapping: [
+                  { templateVariable: "output", selectedColumnId: "output" },
+                ],
+                evaluator: {
+                  id: "evaluator-2",
+                  projectId: "project-789",
+                  type: "DECISION_MODEL",
+                },
+              },
+            ],
+          }),
+        ],
+        schedulerDeps,
+      });
+
+      // One S3 upload, two executions.
+      expect(schedulerDeps.uploadObservationToS3).toHaveBeenCalledTimes(1);
+      expect(schedulerDeps.upsertJobExecution).toHaveBeenCalledTimes(2);
+      expect(schedulerDeps.enqueueEvalJob).toHaveBeenCalledTimes(2);
+
+      const enqueued = vi
+        .mocked(schedulerDeps.enqueueEvalJob)
+        .mock.calls.map(([params]) => params);
+      expect(enqueued[0]).toMatchObject({
+        evaluatorId: "evaluator-1",
+        evaluationRuleId: "rule-1",
+        evalTemplateType: "LLM_AS_JUDGE",
+      });
+      expect(enqueued[1]).toMatchObject({
+        evaluatorId: "evaluator-2",
+        evaluationRuleId: "rule-1",
+        evalTemplateType: "DECISION_MODEL",
+        // Only the second assignment overrides the mapping.
+        variableMapping: [
+          { templateVariable: "output", selectedColumnId: "output" },
+        ],
+      });
+
+      // Distinct deterministic ids: the assignment id is part of the key, so the
+      // two evaluators of one rule do not collide on the same job execution.
+      const ids = enqueued.map((params) => params.jobExecutionId);
+      expect(ids[0]).not.toBe(ids[1]);
+
+      // A v2 job pins no template: the executor resolves the version at pickup.
+      expect(
+        vi.mocked(schedulerDeps.upsertJobExecution).mock.calls[0]![0],
+      ).toMatchObject({
+        jobConfigurationId: "rule-1",
+        jobTemplateId: null,
+      });
+    });
+
+    it("skips a rule whose assignments were all filtered out", async () => {
+      const schedulerDeps = createMockSchedulerDeps();
+
+      await scheduleObservationEvals({
+        observation: createMockObservation(),
+        configs: [createMockRule({ assignments: [] })],
+        schedulerDeps,
+      });
+
+      expect(schedulerDeps.uploadObservationToS3).not.toHaveBeenCalled();
+      expect(schedulerDeps.enqueueEvalJob).not.toHaveBeenCalled();
+    });
+
+    it("skips an inactive rule", async () => {
+      const schedulerDeps = createMockSchedulerDeps();
+
+      await scheduleObservationEvals({
+        observation: createMockObservation(),
+        configs: [createMockRule({ status: JobConfigState.INACTIVE })],
+        schedulerDeps,
+      });
+
+      expect(schedulerDeps.enqueueEvalJob).not.toHaveBeenCalled();
+    });
+
+    it("samples a v2 rule out before uploading the observation", async () => {
+      const schedulerDeps = createMockSchedulerDeps();
+
+      await scheduleObservationEvals({
+        observation: createMockObservation(),
+        configs: [
+          createMockRule({
+            sampling: { toNumber: () => 0 } as unknown as Prisma.Decimal,
+          }),
+        ],
+        schedulerDeps,
+      });
+
+      expect(schedulerDeps.uploadObservationToS3).not.toHaveBeenCalled();
+      expect(schedulerDeps.enqueueEvalJob).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("loop safeguard", () => {
+    it("does not schedule anything for internal langfuse environments", async () => {
+      const schedulerDeps = createMockSchedulerDeps();
+
+      await scheduleObservationEvals({
+        observation: createMockObservation({
+          environment: "langfuse-llm-as-a-judge",
+        }),
+        configs: [createMockConfig({ id: "config-1" })],
+        schedulerDeps,
+      });
+
+      expect(schedulerDeps.uploadObservationToS3).not.toHaveBeenCalled();
+      expect(schedulerDeps.enqueueEvalJob).not.toHaveBeenCalled();
+    });
+
+    it("schedules the root span of a prompt experiment (the sanctioned target)", async () => {
+      const schedulerDeps = createMockSchedulerDeps();
+
+      await scheduleObservationEvals({
+        observation: createMockObservation({
+          environment: "langfuse-prompt-experiment",
+          span_id: "root-span",
+          experiment_item_root_span_id: "root-span",
+        }),
+        configs: [createMockConfig({ id: "config-1" })],
+        schedulerDeps,
+      });
+
+      expect(schedulerDeps.enqueueEvalJob).toHaveBeenCalledTimes(1);
+    });
+
+    it("skips the non-root spans of a prompt experiment", async () => {
+      const schedulerDeps = createMockSchedulerDeps();
+
+      await scheduleObservationEvals({
+        observation: createMockObservation({
+          environment: "langfuse-prompt-experiment",
+          span_id: "child-span",
+          experiment_item_root_span_id: "root-span",
+        }),
+        configs: [createMockConfig({ id: "config-1" })],
+        schedulerDeps,
+      });
+
+      expect(schedulerDeps.uploadObservationToS3).not.toHaveBeenCalled();
       expect(schedulerDeps.enqueueEvalJob).not.toHaveBeenCalled();
     });
   });

@@ -62,8 +62,6 @@ import { useRouter } from "next/router";
 import { DeleteEvalConfigButton } from "@/src/components/deleteButton";
 import { MaintainerTooltip } from "@/src/features/evals/components/maintainer-tooltip";
 import { useHasProjectAccess } from "@/src/features/rbac/utils/checkProjectAccess";
-import { Skeleton } from "@/src/components/ui/skeleton";
-import { usdFormatter } from "@/src/utils/numbers";
 import { Callout } from "@/src/components/ui/callout";
 import Link from "next/link";
 import { Badge } from "@/src/components/ui/badge";
@@ -218,22 +216,10 @@ export default function EvaluatorTable({ projectId }: { projectId: string }) {
         );
       },
     }),
-    columnHelper.accessor("totalCost", {
-      header: t("Total Cost (7d)"),
-      id: "totalCost",
-      size: 120,
-      cell: (row) => {
-        const totalCost = row.getValue();
-
-        if (row.row.original.isCostLoading) {
-          return <Skeleton className="h-4 w-16" />;
-        }
-
-        if (totalCost != null) return usdFormatter(totalCost, 2, 4);
-
-        return "–";
-      },
-    }),
+    // The "Total Cost (7d)" column was removed: the cost reader returns no real
+    // numbers in this deployment, so it only ever rendered an empty
+    // placeholder. Restore it from git history if the reader starts returning
+    // data again.
     columnHelper.accessor("result", {
       header: t("Result"),
       id: "result",
@@ -262,7 +248,7 @@ export default function EvaluatorTable({ projectId }: { projectId: string }) {
             onClick={(e) => {
               e.stopPropagation();
               router.push(
-                `/project/${projectId}/evals/${encodeURIComponent(id)}`,
+                `/project/${projectId}/evals/legacy/${encodeURIComponent(id)}`,
               );
             }}
           >
@@ -420,7 +406,7 @@ export default function EvaluatorTable({ projectId }: { projectId: string }) {
                   aria-label={t("Delete")}
                   itemId={id}
                   projectId={projectId}
-                  redirectUrl={`/project/${projectId}/evals`}
+                  redirectUrl={`/project/${projectId}/evals/legacy`}
                   deleteConfirmation={row.original.scoreName}
                 />
               </DropdownMenuItem>

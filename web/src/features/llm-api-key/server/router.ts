@@ -16,19 +16,25 @@ import {
   ChatMessageRole,
   type Prisma,
   supportedModels,
+  isAllowedDecisionModel,
+  LLMAdapter,
   EvaluatorBlockReason,
   getEvaluatorBlockMetadata,
 } from "@langfuse/shared";
 import { encrypt, decrypt } from "@langfuse/shared/encryption";
 import {
   ChatMessageType,
+  createDecisionModelClient,
   fetchLLMCompletion,
-  type LLMAdapter,
+  isDecisionModelAdapter,
   logger,
   decryptAndParseExtraHeaders,
   blockEvaluatorConfigsInTx,
   EvaluatorBlockSource,
   finalizeBlockedEvaluatorConfigBlocks,
+  // LITEFUSE ADDITION: used by `all` to keep decision-model connections out of
+  // the generic model pickers (see the note on `includeDecisionModels`).
+  DECISION_MODEL_ADAPTER,
 } from "@langfuse/shared/src/server";
 import { env } from "@/src/env.mjs";
 import { TRPCError } from "@trpc/server";
@@ -49,6 +55,103 @@ type TestLLMConnectionParams = {
   config?: unknown;
 };
 
+/**
+ * LITEFUSE ADDITION (copied from upstream): a decision-model connection is an
+ * ordinary `llm_api_keys` row. For TypeSafe-style gateways the client appends
+ * `/systemone`, for OpenAI it appends `/decisions`, so the stored base URL must
+ * not already carry either path or a query string.
+ *
+ * Any gateway URL is accepted — the `custom` upstream stores one of the user's
+ * choosing. Extra headers stay rejected for TypeSafe connections because that
+ * client authenticates with the connection's API key only; the rule is not
+ * applied to OpenAI connections, which are ordinary text connections too.
+ */
+function assertDecisionModelConnectionInput(input: {
+  adapter: LLMAdapter;
+  baseURL?: string | null;
+  extraHeaders?: Record<string, string | null | undefined> | null;
+}) {
+  if (!isDecisionModelAdapter(input.adapter)) return;
+
+  if (input.baseURL) {
+    let url: URL;
+    try {
+      url = new URL(input.baseURL);
+    } catch {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Invalid base URL",
+      });
+    }
+
+    if (/\/(systemone|decisions)\/?$/.test(url.pathname)) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message:
+          "Remove /systemone or /decisions from the end of the base URL. Litefuse appends it.",
+      });
+    }
+
+    if (url.search || url.hash) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message:
+          "Remove the query string from the base URL. Litefuse appends /systemone to it.",
+      });
+    }
+  }
+
+  if (
+    input.adapter === LLMAdapter.TypeSafe &&
+    input.extraHeaders &&
+    Object.keys(input.extraHeaders).length > 0
+  ) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Decision-model connections do not support extra headers.",
+    });
+  }
+}
+
+/**
+ * LITEFUSE ADDITION (copied from upstream): decision models cannot generate
+ * text, so the regular `fetchLLMCompletion` probe is useless for them (it throws
+ * by design). Upstream validates such a connection by asking Jev one throwaway
+ * choice question instead.
+ */
+async function testDecisionModelConnection(params: {
+  adapter: string;
+  secretKey: string;
+  model: string;
+  baseURL?: string | null;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const client = createDecisionModelClient({
+      adapter: params.adapter,
+      apiKey: params.secretKey,
+      model: params.model,
+      baseURL: params.baseURL,
+    });
+    await client.evaluate({
+      state: { message: "Hello, is anyone there?" },
+      questions: {
+        kind: {
+          type: "choice",
+          instructions: "What kind of message is `message`?",
+          criteria: { greeting: null, other: null },
+        },
+      },
+    });
+    return { success: true };
+  } catch (err) {
+    logger.error(err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Unknown error",
+    };
+  }
+}
+
 async function testLLMConnection(
   params: TestLLMConnectionParams,
 ): Promise<{ success: boolean; error?: string }> {
@@ -58,6 +161,23 @@ async function testLLMConnection(
       : supportedModels[params.adapter][0];
 
     if (!model) throw Error("No model found");
+
+    // LITEFUSE ADDITION (copied from upstream): route decision models to their
+    // own probe before the text-model path.
+    // Only a model that actually is a decision model takes the decision probe.
+    // The OpenAI adapter serves both text models and `gpt-6-luna`, so checking
+    // the adapter alone would send a text model to `/v1/decisions`.
+    if (
+      isDecisionModelAdapter(params.adapter) &&
+      isAllowedDecisionModel(params.adapter, model)
+    ) {
+      return await testDecisionModelConnection({
+        adapter: params.adapter,
+        secretKey: params.secretKey,
+        model,
+        baseURL: params.baseURL,
+      });
+    }
 
     const testMessages: ChatMessage[] = [
       {
@@ -107,6 +227,8 @@ export const llmApiKeyRouter = createTRPCRouter({
           scope: "llmApiKeys:create",
         });
 
+        assertDecisionModelConnectionInput(input);
+
         if (!env.ENCRYPTION_KEY) {
           if (env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION) {
             throw new TRPCError({
@@ -150,6 +272,21 @@ export const llmApiKeyRouter = createTRPCRouter({
         });
       } catch (e) {
         logger.error(e);
+        // LITEFUSE ADDITION: `llm_api_keys` carries @@unique([projectId, provider]),
+        // so re-using a provider name (e.g. adding a second "TypeSafe" connection)
+        // makes Prisma throw P2002. Rethrowing that verbatim surfaced as a bare
+        // "internal server error" for what is a user-fixable naming clash; answer
+        // with an actionable message instead.
+        if (
+          e &&
+          typeof e === "object" &&
+          (e as { code?: string }).code === "P2002"
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `A connection with provider "${input.provider}" already exists in this project. Edit that connection instead, or use a different provider name.`,
+          });
+        }
         throw e;
       }
     }),
@@ -289,6 +426,13 @@ export const llmApiKeyRouter = createTRPCRouter({
     .input(
       z.object({
         projectId: z.string(),
+        /**
+         * LITEFUSE ADDITION (copied from upstream): decision-model connections
+         * (the evaluators v2 "Jev" judge) share this table but must not appear
+         * in the generic model pickers. Defaults to false, so every existing
+         * caller keeps the previous behaviour unless such a connection exists.
+         */
+        includeDecisionModels: z.boolean().optional().default(false),
       }),
     )
     .query(async ({ input, ctx }) => {
@@ -297,6 +441,13 @@ export const llmApiKeyRouter = createTRPCRouter({
         projectId: input.projectId,
         scope: "llmApiKeys:read",
       });
+
+      const where = {
+        projectId: input.projectId,
+        ...(input.includeDecisionModels
+          ? {}
+          : { adapter: { not: DECISION_MODEL_ADAPTER } }),
+      };
 
       const apiKeys = z
         .array(
@@ -322,17 +473,11 @@ export const llmApiKeyRouter = createTRPCRouter({
               extraHeaderKeys: true,
               config: true,
             },
-            where: {
-              projectId: input.projectId,
-            },
+            where,
           }),
         );
 
-      const count = await ctx.prisma.llmApiKeys.count({
-        where: {
-          projectId: input.projectId,
-        },
-      });
+      const count = await ctx.prisma.llmApiKeys.count({ where });
 
       return {
         data: apiKeys, // does not contain the secret key
@@ -343,6 +488,8 @@ export const llmApiKeyRouter = createTRPCRouter({
   test: protectedProjectProcedureWithoutTracing
     .input(CreateLlmApiKey)
     .mutation(async ({ input }) => {
+      assertDecisionModelConnectionInput(input);
+
       return testLLMConnection({
         adapter: input.adapter,
         provider: input.provider,
@@ -363,6 +510,8 @@ export const llmApiKeyRouter = createTRPCRouter({
           projectId: input.projectId,
           scope: "llmApiKeys:read",
         });
+
+        assertDecisionModelConnectionInput(input);
 
         // Get the existing key from the database
         const existingKey = await ctx.prisma.llmApiKeys.findUnique({
@@ -390,7 +539,11 @@ export const llmApiKeyRouter = createTRPCRouter({
         const secretKey = decryptedSecretKey;
         const adapter = input.adapter ?? (existingKey.adapter as LLMAdapter);
         const provider = input.provider ?? existingKey.provider;
-        const baseURL = input.baseURL ?? existingKey.baseURL;
+        // LITEFUSE ADDITION (copied from upstream): `??` would treat an explicit
+        // null (a decision-model connection clearing its gateway URL) as absent
+        // and probe the old base URL instead.
+        const baseURL =
+          input.baseURL !== undefined ? input.baseURL : existingKey.baseURL;
         const customModels = input.customModels ?? existingKey.customModels;
         const config = input.config ?? existingKey.config;
         const extraHeaders =
@@ -427,6 +580,8 @@ export const llmApiKeyRouter = createTRPCRouter({
           projectId: input.projectId,
           scope: "llmApiKeys:update",
         });
+
+        assertDecisionModelConnectionInput(input);
 
         // Get existing key to verify provider and adapter
         const existingKey = await ctx.prisma.llmApiKeys.findUnique({

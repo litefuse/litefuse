@@ -14,6 +14,20 @@ import { RateLimitService } from "@/src/features/public-api/server/RateLimitServ
 import { contextWithLangfuseProps } from "@langfuse/shared/src/server";
 import * as opentelemetry from "@opentelemetry/api";
 import { env } from "@/src/env.mjs";
+import { isZodError } from "@/src/features/public-api/server/withMiddlewares";
+import {
+  createStructuredPublicApiAuthError,
+  createStructuredPublicApiRequestValidationError,
+  sendStructuredPublicApiErrorResponse,
+  structuredPublicApiErrorContract,
+  type PublicApiErrorContract,
+} from "@/src/features/public-api/server/structuredPublicApiErrorContract";
+
+export type AuthedProjectAPIRouteConfig<
+  TQuery extends ZodType<any>,
+  TBody extends ZodType<any>,
+  TResponse extends ZodType<any>,
+> = RouteConfig<TQuery, TBody, TResponse>;
 
 type RouteConfig<
   TQuery extends ZodType<any>,
@@ -26,6 +40,13 @@ type RouteConfig<
   responseSchema: TResponse;
   successStatusCode?: number;
   rateLimitResource?: z.infer<typeof RateLimitResource>; // defaults to public-api
+  /**
+   * LITEFUSE ADDITION (upstream 4.56.0 parity): when set to
+   * `structuredPublicApiErrorContract`, auth failures and query/body validation
+   * failures answer with `{ message, code, details? }` instead of the legacy
+   * `{ message }` / `{ message, error }` bodies. Unset keeps legacy behaviour.
+   */
+  errorContract?: PublicApiErrorContract;
   /**
    * Allow authentication via ADMIN_API_KEY for self-hosted instances only.
    * When enabled, the endpoint will accept admin API key authentication in addition to regular API keys.
@@ -253,6 +274,17 @@ export const createAuthedProjectAPIRoute = <
       const statusCode = error.status || 401;
       const message = error.message || "Authentication failed";
 
+      // LITEFUSE ADDITION (upstream 4.56.0 parity): the stable public endpoints
+      // answer 401/403 with the structured `{ message, code }` body.
+      if (routeConfig.errorContract === structuredPublicApiErrorContract) {
+        sendStructuredPublicApiErrorResponse(
+          res,
+          createStructuredPublicApiAuthError({ statusCode, message }),
+        );
+
+        return;
+      }
+
       res.status(statusCode).json({ message });
 
       return;
@@ -276,12 +308,52 @@ export const createAuthedProjectAPIRoute = <
       },
     );
 
-    const query = routeConfig.querySchema
-      ? routeConfig.querySchema.parse(req.query)
-      : ({} as z.infer<TQuery>);
-    const body = routeConfig.bodySchema
-      ? routeConfig.bodySchema.parse(req.body)
-      : ({} as z.infer<TBody>);
+    // LITEFUSE ADDITION (upstream 4.56.0 parity): parse query and body
+    // separately so a structured-contract route can answer `invalid_query` vs
+    // `invalid_body` as upstream does.
+    let query: z.infer<TQuery>;
+    try {
+      query = routeConfig.querySchema
+        ? routeConfig.querySchema.parse(req.query)
+        : ({} as z.infer<TQuery>);
+    } catch (error) {
+      if (
+        routeConfig.errorContract === structuredPublicApiErrorContract &&
+        isZodError(error)
+      ) {
+        return sendStructuredPublicApiErrorResponse(
+          res,
+          createStructuredPublicApiRequestValidationError({
+            error,
+            requestPart: "query",
+          }),
+        );
+      }
+
+      throw error;
+    }
+
+    let body: z.infer<TBody>;
+    try {
+      body = routeConfig.bodySchema
+        ? routeConfig.bodySchema.parse(req.body)
+        : ({} as z.infer<TBody>);
+    } catch (error) {
+      if (
+        routeConfig.errorContract === structuredPublicApiErrorContract &&
+        isZodError(error)
+      ) {
+        return sendStructuredPublicApiErrorResponse(
+          res,
+          createStructuredPublicApiRequestValidationError({
+            error,
+            requestPart: "body",
+          }),
+        );
+      }
+
+      throw error;
+    }
 
     const ctx = contextWithLangfuseProps({
       headers: req.headers,

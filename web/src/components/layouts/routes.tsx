@@ -167,10 +167,22 @@ export const ROUTES: Route[] = [
     icon: SquarePercent,
   },
   {
-    title: i18nKey("LLM-as-a-Judge"),
+    // LITEFUSE CHANGE (user decision): this entry used to be titled
+    // "LLM-as-a-Judge" and pointed at the legacy pages, which made the migrated
+    // evaluators UI invisible (it had no navigation entry at all, so it looked
+    // like nothing had changed). It is now named after what it leads to and
+    // points at `/project/[projectId]/evals`, exactly like upstream's
+    // "Evaluators" entry. The legacy evaluators UI moved to
+    // `/project/[projectId]/evals/legacy/**`.
+    title: i18nKey("Evaluators"),
     icon: Lightbulb,
     productModule: "evaluation",
-    projectRbacScopes: ["evalJob:read"],
+    // Upstream's scopes for this entry: the Rules page gates on
+    // `evaluationRule:read` and the evaluator surfaces on `evaluator:read`.
+    // (The array is an OR, so either scope reveals the entry.) The previous
+    // `evalJob:read` only guarded the legacy pages, which this entry no longer
+    // leads to.
+    projectRbacScopes: ["evaluator:read", "evaluationRule:read"],
     group: RouteGroup.Evaluation,
     section: RouteSection.Main,
     pathname: `/project/[projectId]/evals`,

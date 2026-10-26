@@ -7,8 +7,7 @@ import { logger } from "../logger";
 import { env } from "../../env";
 
 /**
- * Redis primitives for the otel exactly-once ingestion pipeline
- * (docs/ingestion-exactly-once-design.md §3.1/§3.2):
+ * Redis primitives for the otel exactly-once ingestion pipeline:
  *
  *   web  ── REGISTER (idempotent SETNX+RPUSH Lua) ──▶ pending LIST
  *   grouper ── CUT_GROUP (fence → members → staging → LTRIM, one atomic Lua)
@@ -16,7 +15,7 @@ import { env } from "../../env";
  *
  * A "grouping key" identifies one pending pipeline — today a BullMQ shard name
  * (shared pool), under table split a per-project lane `lane-<pid>`. The key
- * builders make no shape assumption about it (F4), so both forms work.
+ * builders make no shape assumption about it, so both forms work.
  *
  * Key layout: every key of a grouping key shares that key's tag (deployment
  * prefix + grouping key; cluster mode wraps it in {braces} so the multi-key Lua
@@ -117,11 +116,11 @@ export const LABELS_PER_GROUP = 2;
 
 /**
  * Minimum Doris `label_num_threshold` the FE must be configured with (capacity
- * gate, Stage 1.8 / design §4.5). Each group holds LABELS_PER_GROUP labels for
+ * gate, Stage 1.8). Each group holds LABELS_PER_GROUP labels for
  * the keep window; at a sustained group rate the registry must fit them all, or
  * labels get evicted early and a replay re-loads a committed batch (the
  * 2026-07-28 duplicate-data incident). Total group rate rises with lane count
- * (shared pool + Σ per-project lane cut rates) — plug the T8-measured rate in.
+ * (shared pool + Σ per-project lane cut rates) — plug the measured rate in.
  */
 export const requiredLabelNumThreshold = (params: {
   groupsPerSecond: number;
@@ -139,7 +138,7 @@ export const requiredLabelNumThreshold = (params: {
  * Idempotent registration: the fileKey is admitted into the pending list at
  * most once per TTL window. Closes the ioredis in-flight command resend hole
  * (autoResendUnfulfilledCommands re-executes a RPUSH whose reply was lost →
- * duplicate entry → duplicate group membership; design review H1).
+ * duplicate entry → duplicate group membership).
  * KEYS[1]=registered:{fileKey}  KEYS[2]=pending list
  * ARGV[1]=entry JSON  ARGV[2]=ttl ms
  * Returns 1 = newly registered, 0 = already registered (idempotent success).
@@ -156,7 +155,7 @@ return 0
  * Atomic group cut: fence → decide members from the list head → dedup →
  * groupId → persist the staging manifest → SADD staged index → LTRIM.
  *
- * Ordering inside the script is normative (design §3.2):
+ * Ordering inside the script is normative:
  *   - staging HSET (directory + manifest in ONE command — no dangling
  *     directory state is representable) BEFORE LTRIM: a partial failure
  *     between them leaves the members BOTH in the manifest and in the list —
@@ -558,7 +557,7 @@ export const acquireOtelGrouperLease = async (params: {
 
 /**
  * Write a grouping key's lock = token (plain SET PX, no NX) — the lane-lock
- * TOKEN CARRIER for the lane domain (Stage 1.4 / design F1). Mutual exclusion
+ * TOKEN CARRIER for the lane domain (Stage 1.4). Mutual exclusion
  * across workers is already guaranteed by the single LANE_DOMAIN_LEASE, so this
  * is NOT a contended lock — it only stamps the current domain leader's token
  * into each lane's lock key so the (unchanged) cut Lua fence `GET lock==token`

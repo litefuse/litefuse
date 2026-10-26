@@ -57,6 +57,10 @@ export async function scheduleExperimentObservationEvals(
       name: generationDetails.name || "generation",
       environment: LangfuseInternalTraceEnvironment.PromptExperiments,
       level: "DEFAULT",
+      // The experiment generation carries a parent (the trace root the SDK
+      // creates), so it is not the trace root itself — `experiment_item_root_span_id`
+      // below carries the (different) experiment-item-root notion.
+      is_root: false,
 
       // Prompt info
       prompt_name: config.prompt?.name,
@@ -86,6 +90,10 @@ export async function scheduleExperimentObservationEvals(
       tool_definitions: {},
       tool_calls: [],
       tool_call_names: [],
+      // Derived tool-call count (upstream's numeric `toolCalls` filter). The
+      // experiment generation carries no tool calls, so the count is 0 — the
+      // same derivation the other projections apply from `tool_call_names`.
+      tool_call_count: 0,
     };
 
     // 3. Schedule evals

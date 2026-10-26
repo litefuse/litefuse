@@ -87,6 +87,9 @@ model User {
   commentReactions          CommentReaction[]
   notificationPreferences   NotificationPreference[]
   defaultViews              DefaultView[]               @relation("DefaultViewUser")
+  evaluatorsCreated         Evaluator[]                 @relation("EvaluatorCreatedByUser")
+  evaluatorVersionsCreated  EvaluatorVersion[]          @relation("EvaluatorVersionCreatedByUser")
+  evaluationRulesCreated    EvaluationRule[]            @relation("EvaluationRuleCreatedByUser")
 
   @@map("users")
 }
@@ -143,6 +146,9 @@ model Project {
   EvalTemplate              EvalTemplate[]
   JobConfiguration          JobConfiguration[]
   JobExecution              JobExecution[]
+  Evaluator                 Evaluator[]
+  EvaluationRule            EvaluationRule[]
+  EvaluationRuleEvaluatorAssignment EvaluationRuleEvaluatorAssignment[]
   LlmApiKeys                LlmApiKeys[]
   PosthogIntegration        PosthogIntegration[]
   MixpanelIntegration       MixpanelIntegration[]
@@ -946,6 +952,131 @@ model EvalTemplate {
   @@map("eval_templates")
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Evaluators v2 data model. Added for the evaluator migration
+// (`web/src/features/evals/v2/`): Evaluator + EvaluatorVersion (versioned
+// definitions), EvaluationRule (what to evaluate) and the n:m assignment table
+// that binds rules to evaluators.
+//
+// These four tables already existed in the local Postgres database, created by an
+// earlier, since-reverted attempt; `prisma migrate diff` confirmed the database
+// matches this definition, so the accompanying migration is a no-op for them.
+// The enum values are appended (rather than reordered to match upstream's
+// ordering) so Postgres never has to rebuild a type.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Evaluator {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  projectId String  @map("project_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  name            String
+  type            EvalTemplateType
+  description     String?
+  createdByUserId String?               @map("created_by_user_id")
+  createdByUser   User?                 @relation("EvaluatorCreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  blockedAt       DateTime?             @map("blocked_at")
+  blockReason     EvaluatorBlockReason? @map("block_reason")
+  blockMessage    String?               @map("block_message")
+
+  versions    EvaluatorVersion[]
+  assignments EvaluationRuleEvaluatorAssignment[]
+
+  @@index([projectId, createdAt(sort: Desc)])
+  @@map("evaluators")
+}
+
+model EvaluatorVersion {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  evaluatorId String    @map("evaluator_id")
+  evaluator   Evaluator @relation(fields: [evaluatorId], references: [id], onDelete: Cascade)
+  version     Int
+
+  createdByUserId String? @map("created_by_user_id")
+  createdByUser   User?   @relation("EvaluatorVersionCreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  prompt             String?
+  promptMessages     Json?                        @map("prompt_messages")
+  partner            String?
+  model              String?
+  provider           String?
+  modelParams        Json?                        @map("model_params")
+  vars               String[]                     @default([])
+  variableMapping    Json?                        @map("variable_mapping")
+  outputDefinition   Json?                        @map("output_definition")
+  sourceCode         String?                      @map("source_code") @db.VarChar(262144)
+  sourceCodeLanguage EvaluatorSourceCodeLanguage? @map("source_code_language")
+  questions          Json?
+
+  @@unique([evaluatorId, version(sort: Desc)])
+  @@map("evaluator_versions")
+}
+
+enum EvalTemplateType {
+  LLM_AS_JUDGE
+  CODE
+  DECISION_MODEL
+}
+
+enum EvalTemplateSourceCodeLanguage {
+  PYTHON
+  TYPESCRIPT
+}
+
+enum EvaluatorSourceCodeLanguage {
+  PYTHON
+  TYPESCRIPT
+}
+
+model EvaluationRule {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  projectId String  @map("project_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  createdByUserId String?        @map("created_by_user_id")
+  createdByUser   User?          @relation("EvaluationRuleCreatedByUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  name            String
+  status          JobConfigState @default(ACTIVE)
+  targetObject    String         @map("target_object")
+  filter          Json
+  sampling        Decimal
+  delay           Int
+  timeScope       String[]       @default(["NEW"]) @map("time_scope")
+
+  assignments EvaluationRuleEvaluatorAssignment[]
+
+  @@index([projectId, updatedAt(sort: Desc)])
+  @@map("evaluation_rules")
+}
+
+model EvaluationRuleEvaluatorAssignment {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  projectId String  @map("project_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  evaluationRuleId String         @map("evaluation_rule_id")
+  evaluationRule   EvaluationRule @relation(fields: [evaluationRuleId], references: [id], onDelete: Cascade)
+  evaluatorId      String         @map("evaluator_id")
+  evaluator        Evaluator      @relation(fields: [evaluatorId], references: [id], onDelete: Cascade)
+  variableMapping  Json?          @map("variable_mapping")
+
+  @@unique([evaluationRuleId, evaluatorId], map: "evaluation_rule_assignments_rule_evaluator_key")
+  @@index([projectId], map: "evaluation_rule_assignments_project_id_idx") // for efficient project deletes
+  @@index([evaluatorId], map: "evaluation_rule_assignments_evaluator_id_idx")
+  @@map("evaluation_rule_evaluator_assignments")
+}
+
 // We currently assume in evaluator execution-count queries that _all_ job_executions are for EVAL job_configs.
 // If we ever extend this, we need to adjust the filter condition there. ref.: getEvaluatorExecutionStatusCounts.
 enum JobType {
@@ -964,6 +1095,11 @@ enum EvaluatorBlockReason {
   EVAL_MODEL_CONFIG_INVALID
   EVAL_MODEL_UNAVAILABLE
   PROVIDER_ACCOUNT_NOT_READY
+  // Appended (upstream orders these two right after LLM_CONNECTION_AUTH_INVALID).
+  // Keeping the existing members first means Postgres only has to ADD two values
+  // instead of rebuilding the type.
+  LLM_CONNECTION_BILLING_EXHAUSTED
+  LLM_CONNECTION_ENDPOINT_UNREACHABLE
 }
 
 model JobConfiguration {
@@ -989,7 +1125,6 @@ model JobConfiguration {
   sampling        Decimal // ratio of jobs that are executed for sampling (0..1)
   delay           Int // delay in milliseconds
   timeScope       String[]       @default(["NEW"]) @map("time_scope")
-  JobExecution    JobExecution[]
 
   @@index([projectId, id])
   @@map("job_configurations")
@@ -1011,8 +1146,7 @@ model JobExecution {
   projectId String  @map("project_id")
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  jobConfigurationId String           @map("job_configuration_id")
-  jobConfiguration   JobConfiguration @relation(fields: [jobConfigurationId], references: [id], onDelete: Cascade)
+  jobConfigurationId String @map("job_configuration_id") // no fk constraint - deletion handled in application code (v2 rule repository, trace delete) and via project cascade. Upstream stores the v2 evaluation rule id in this column, so a foreign key to job_configurations would reject every evaluators-v2 execution.
 
   jobTemplateId String?       @map("job_template_id")
   jobTemplate   EvalTemplate? @relation(fields: [jobTemplateId], references: [id], onDelete: SetNull, onUpdate: NoAction)
@@ -1656,7 +1790,7 @@ model CloudSpendAlert {
   @@map("cloud_spend_alerts")
 }
 
-// Poison ledger for the otel exactly-once pipeline (design §3.4 M6): a job
+// Poison ledger for the otel exactly-once pipeline: a job
 // leaves DLQ auto-redrive only after its fileKeys are durably recorded here.
 // In Postgres by design — poisoning is most often caused by a Doris outage,
 // so the ledger must not live in Doris.
@@ -1676,7 +1810,7 @@ model OtelPoisonJob {
   @@map("otel_poison_jobs")
 }
 
-// EO completion ledger (design §3.5 v3.2): one row = "this fileKey completed
+// EO completion ledger: one row = "this fileKey completed
 // end-to-end as part of groupId". Moved from Doris blob_storage_file_log —
 // the per-group 2-row stream loads concentrated tablet versions and tripped
 // max_tablet_version_num (E-235, 2026-07-28 incident); PG handles small
@@ -1695,7 +1829,7 @@ model OtelFileLedger {
   @@map("otel_file_ledger")
 }
 
-// Per-project Doris table-split control table (docs/project-per-table-*.md).
+// Per-project Doris table-split control table.
 // One row per project that gets its own spans_<pid> / traces_scalar_<pid>
 // / trace_metrics_agg_<pid> tables. Table split is universal (every project is
 // designated at creation); consulted (cached) by isSplitProject, which routes a

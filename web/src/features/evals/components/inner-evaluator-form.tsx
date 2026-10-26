@@ -512,7 +512,7 @@ export const InnerEvaluatorForm = (props: {
         props.onFormSuccess?.();
 
         if (props.mode !== "edit" && !props.preventRedirect) {
-          void router.push(`/project/${props.projectId}/evals`);
+          void router.push(`/project/${props.projectId}/evals/legacy`);
           // Don't reset form when redirecting - it will unmount anyway
         } else {
           // Only reset form when NOT redirecting

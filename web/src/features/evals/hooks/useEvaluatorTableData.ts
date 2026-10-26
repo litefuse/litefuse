@@ -37,11 +37,9 @@ export type EvaluatorDataRow = {
     count: number;
     symbol: string;
   }[];
-  isCostLoading: boolean;
   isResultLoading: boolean;
   logs?: string;
   actions?: string;
-  totalCost?: number | null;
   isLegacy?: boolean;
 };
 
@@ -74,19 +72,6 @@ export const useEvaluatorTableData = ({
   const evaluatorIds =
     evaluators.data?.configs.map((config) => config.id) ?? [];
 
-  const costs = api.evals.costByEvaluatorIds.useQuery(
-    {
-      projectId,
-      evaluatorIds,
-    },
-    {
-      enabled: evaluators.isSuccess && evaluatorIds.length > 0,
-      meta: {
-        silentHttpCodes: [503],
-      },
-    },
-  );
-
   const lazyExecutionCounts = useLazyEvaluatorExecutionCountsByIds({
     projectId,
     evaluatorIds,
@@ -98,7 +83,6 @@ export const useEvaluatorTableData = ({
       (evaluators.data?.configs ?? []).map((jobConfig) => {
         const executionCounts =
           lazyExecutionCounts.jobExecutionCountsByEvaluatorId[jobConfig.id];
-        const costData = costs.data?.[jobConfig.id];
         const status =
           getLazyEvaluatorDisplayStatus({
             evaluator: jobConfig,
@@ -124,7 +108,6 @@ export const useEvaluatorTableData = ({
           target: jobConfig.targetObject,
           filter: z.array(singleFilter).parse(jobConfig.filter),
           result: generateJobExecutionCounts(executionCounts),
-          isCostLoading: !costs.data,
           isResultLoading:
             lazyExecutionCounts.isLoading &&
             !lazyExecutionCounts.jobExecutionCountsByEvaluatorId[jobConfig.id],
@@ -135,12 +118,10 @@ export const useEvaluatorTableData = ({
                 ? "Litefuse and Ragas maintained"
                 : "Litefuse maintained"
             : "Not available",
-          totalCost: costData,
           isLegacy: isLegacyEvalTarget(jobConfig.targetObject),
         } satisfies EvaluatorDataRow;
       }),
     [
-      costs.data,
       evaluators.data?.configs,
       lazyExecutionCounts.isLoading,
       lazyExecutionCounts.jobExecutionCountsByEvaluatorId,

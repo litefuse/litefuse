@@ -10,11 +10,11 @@ export const getEvalsTabs = (projectId: string) => [
   {
     value: EVALS_TABS.CONFIGS,
     label: i18nKey("Running Evaluators"),
-    href: `/project/${projectId}/evals`,
+    href: `/project/${projectId}/evals/legacy`,
   },
   {
     value: EVALS_TABS.TEMPLATES,
     label: i18nKey("Evaluator Library"),
-    href: `/project/${projectId}/evals/templates`,
+    href: `/project/${projectId}/evals/legacy/templates`,
   },
 ];

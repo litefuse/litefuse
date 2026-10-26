@@ -97,6 +97,25 @@ export const AuditLogRecordType = {
 } as const;
 export type AuditLogRecordType =
   (typeof AuditLogRecordType)[keyof typeof AuditLogRecordType];
+export const EvalTemplateType = {
+  LLM_AS_JUDGE: "LLM_AS_JUDGE",
+  CODE: "CODE",
+  DECISION_MODEL: "DECISION_MODEL",
+} as const;
+export type EvalTemplateType =
+  (typeof EvalTemplateType)[keyof typeof EvalTemplateType];
+export const EvalTemplateSourceCodeLanguage = {
+  PYTHON: "PYTHON",
+  TYPESCRIPT: "TYPESCRIPT",
+} as const;
+export type EvalTemplateSourceCodeLanguage =
+  (typeof EvalTemplateSourceCodeLanguage)[keyof typeof EvalTemplateSourceCodeLanguage];
+export const EvaluatorSourceCodeLanguage = {
+  PYTHON: "PYTHON",
+  TYPESCRIPT: "TYPESCRIPT",
+} as const;
+export type EvaluatorSourceCodeLanguage =
+  (typeof EvaluatorSourceCodeLanguage)[keyof typeof EvaluatorSourceCodeLanguage];
 export const JobType = {
   EVAL: "EVAL",
 } as const;
@@ -114,6 +133,8 @@ export const EvaluatorBlockReason = {
   EVAL_MODEL_CONFIG_INVALID: "EVAL_MODEL_CONFIG_INVALID",
   EVAL_MODEL_UNAVAILABLE: "EVAL_MODEL_UNAVAILABLE",
   PROVIDER_ACCOUNT_NOT_READY: "PROVIDER_ACCOUNT_NOT_READY",
+  LLM_CONNECTION_BILLING_EXHAUSTED: "LLM_CONNECTION_BILLING_EXHAUSTED",
+  LLM_CONNECTION_ENDPOINT_UNREACHABLE: "LLM_CONNECTION_ENDPOINT_UNREACHABLE",
 } as const;
 export type EvaluatorBlockReason =
   (typeof EvaluatorBlockReason)[keyof typeof EvaluatorBlockReason];
@@ -545,6 +566,61 @@ export type EvalTemplate = {
   model_params: unknown | null;
   vars: Generated<string[]>;
   output_schema: unknown;
+};
+export type EvaluationRule = {
+  id: string;
+  created_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp>;
+  project_id: string;
+  created_by_user_id: string | null;
+  name: string;
+  status: Generated<JobConfigState>;
+  target_object: string;
+  filter: unknown;
+  sampling: string;
+  delay: number;
+  time_scope: Generated<string[]>;
+};
+export type EvaluationRuleEvaluatorAssignment = {
+  id: string;
+  created_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp>;
+  project_id: string;
+  evaluation_rule_id: string;
+  evaluator_id: string;
+  variable_mapping: unknown | null;
+};
+export type Evaluator = {
+  id: string;
+  created_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp>;
+  project_id: string;
+  name: string;
+  type: EvalTemplateType;
+  description: string | null;
+  created_by_user_id: string | null;
+  blocked_at: Timestamp | null;
+  block_reason: EvaluatorBlockReason | null;
+  block_message: string | null;
+};
+export type EvaluatorVersion = {
+  id: string;
+  created_at: Generated<Timestamp>;
+  evaluator_id: string;
+  version: number;
+  created_by_user_id: string | null;
+  prompt: string | null;
+  prompt_messages: unknown | null;
+  partner: string | null;
+  model: string | null;
+  provider: string | null;
+  model_params: unknown | null;
+  vars: Generated<string[]>;
+  variable_mapping: unknown | null;
+  output_definition: unknown | null;
+  source_code: string | null;
+  source_code_language: EvaluatorSourceCodeLanguage | null;
+  questions: unknown | null;
 };
 export type JobConfiguration = {
   id: string;
@@ -1034,6 +1110,10 @@ export type DB = {
   default_views: DefaultView;
   doris_project_table_split: DorisProjectTableSplit;
   eval_templates: EvalTemplate;
+  evaluation_rule_evaluator_assignments: EvaluationRuleEvaluatorAssignment;
+  evaluation_rules: EvaluationRule;
+  evaluator_versions: EvaluatorVersion;
+  evaluators: Evaluator;
   job_configurations: JobConfiguration;
   job_executions: JobExecution;
   llm_api_keys: LlmApiKeys;

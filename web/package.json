@@ -46,6 +46,7 @@
     "@emotion/serialize": "^1.1.4",
     "@emotion/styled": "^11.11.0",
     "@ferrucc-io/emoji-picker": "^0.0.47",
+    "@floating-ui/react": "0.26.24",
     "@headlessui/react": "2.2.7",
     "@headlessui/tailwindcss": "0.2.2",
     "@heroicons/react": "^2.1.5",
@@ -188,7 +189,8 @@
     "uuid": "^9.0.1",
     "vaul": "^1.1.2",
     "vis-network": "^9.1.9",
-    "zod": "^3.25.62"
+    "zod": "^3.25.62",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@jedmao/location": "^3.0.0",

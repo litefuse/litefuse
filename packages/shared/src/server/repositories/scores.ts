@@ -1,4 +1,5 @@
 import {
+  ScoreDataTypeEnum,
   ScoreDataTypeType,
   ScoreDomain,
   ScoreSourceType,
@@ -6,6 +7,10 @@ import {
   LISTABLE_SCORE_TYPES,
   AggregatableScoreDataType,
 } from "../../domain/scores";
+import z from "zod/v4";
+import { InvalidRequestError, InternalServerError } from "../../errors";
+import type { APIScoreV3 } from "../../features/scores/interfaces/api/v3/schemas";
+import type { ScoreFieldGroupV3 } from "../../features/scores/interfaces/api/v3/endpoints";
 import { env } from "../../env";
 import { logger } from "../logger";
 import { FilterList } from "../queries";
@@ -226,9 +231,16 @@ const formatMetadataSelect = (
     "environment",
   ];
 
+  // `scores.metadata` is a Doris MAP<TEXT,TEXT>. Doris renders a MAP as text by
+  // concatenating the raw values, WITHOUT escaping quotes inside them, so a
+  // value that is itself JSON (every decision-model score, and any nested
+  // object) came back as invalid JSON — e.g. {"typesafe":"{"questionId":"q1"}"}
+  // — and `parseMetadataCHRecordToDomain` then JSON.parse-failed into `{}`.
+  // `to_json` serialises the map with proper escaping (and a JSON-typed column),
+  // so the parser receives a real object and keeps such values intact.
   const selectColumns = excludeMetadata
     ? baseColumns
-    : [...baseColumns, "metadata"];
+    : [...baseColumns, "to_json(metadata) AS metadata"];
 
   return [
     selectColumns.join(", "),
@@ -972,7 +984,7 @@ const getScoresUiGeneric = async <T>(props: {
           s.source,
           s.data_type,
           s.comment,
-          ${!excludeMetadata ? "s.metadata," : ""}
+          ${!excludeMetadata ? "to_json(s.metadata) AS metadata," : ""}
           s.trace_id,
           s.session_id,
           s.observation_id,
@@ -1058,6 +1070,7 @@ const getScoresUiGeneric = async <T>(props: {
             ${props.select === "rows" ? `, t.user_id, t.name as trace_name, t.tags as trace_tags` : ""}
         FROM (
             SELECT s.*,
+                ${!excludeMetadata ? "to_json(s.metadata) AS metadata," : ""}
                 CASE WHEN s.metadata IS NOT NULL AND map_size(s.metadata) > 0
                      THEN 1 ELSE 0 END AS has_metadata
             FROM scores s
@@ -1746,7 +1759,7 @@ export const getScoreMetadataById = async (
   source?: ScoreSourceType,
 ) => {
   const query = `
-      SELECT metadata
+      SELECT to_json(metadata) AS metadata
       FROM scores s
       WHERE s.project_id = {projectId: String}
       AND s.id = {id: String}
@@ -1840,3 +1853,149 @@ export const getScoreCountsByProjectAndDay = async ({
     date: row.date,
   }));
 };
+
+// ── LITEFUSE PORT ───────────────────────────────────────────────────────────
+// Copied from upstream Langfuse 4.56.0
+// `packages/shared/src/server/repositories/scores.ts` ("Cursor helpers (v3
+// pagination)" + `polymorphicValueForV3` / `deriveSubjectForV3` /
+// `scoreDomainToV3`).
+//
+// Deliberate difference: upstream's `listScoresV3ForPublicApi` and its
+// `buildV3ListQuery`/`buildDynamicFilters` are ClickHouse-specific. Litefuse
+// reads scores from Doris, so the query itself lives next to the other
+// public-API score reads in
+// `web/src/features/public-api/server/scores.ts`
+// (`_handleListScoresV3ForPublicApi`) and only these cursor/payload helpers,
+// which are storage-agnostic, are shared.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const ScoresCursorV3 = z.discriminatedUnion("v", [
+  z.object({
+    v: z.literal(1),
+    lastTimestamp: z.coerce.date(),
+    lastId: z.string(),
+  }),
+]);
+export type ScoresCursorV3Type = z.infer<typeof ScoresCursorV3>;
+
+export const EncodedScoresCursorV3 = z
+  .string()
+  .transform((val) => {
+    try {
+      const decoded = Buffer.from(val, "base64url").toString("utf-8");
+      return JSON.parse(decoded);
+    } catch (_e) {
+      throw new InvalidRequestError("Invalid cursor format");
+    }
+  })
+  .pipe(ScoresCursorV3);
+
+export const encodeCursorV3 = (cursor: ScoresCursorV3Type): string =>
+  Buffer.from(
+    JSON.stringify({
+      v: cursor.v,
+      lastTimestamp: cursor.lastTimestamp.toISOString(),
+      lastId: cursor.lastId,
+    }),
+  ).toString("base64url");
+
+export function polymorphicValueForV3(score: {
+  dataType: ScoreDataTypeType;
+  value: number;
+  stringValue?: string | null;
+  longStringValue?: string | null;
+}): number | boolean | string {
+  switch (score.dataType) {
+    case ScoreDataTypeEnum.NUMERIC:
+      return score.value;
+    case ScoreDataTypeEnum.BOOLEAN:
+      return score.value === 1;
+    case ScoreDataTypeEnum.CATEGORICAL:
+    case ScoreDataTypeEnum.TEXT:
+      if (score.stringValue == null) {
+        throw new InternalServerError(
+          `Score with dataType ${score.dataType} is missing its stringValue`,
+        );
+      }
+      return score.stringValue;
+    case ScoreDataTypeEnum.CORRECTION:
+      if (score.longStringValue == null) {
+        throw new InternalServerError(
+          "Score with dataType CORRECTION is missing its longStringValue",
+        );
+      }
+      return score.longStringValue;
+    default: {
+      const _exhaustiveCheck: never = score.dataType;
+      throw new InternalServerError(
+        `Score has unknown dataType: ${_exhaustiveCheck as string}`,
+      );
+    }
+  }
+}
+
+function deriveSubjectForV3(
+  score: ScoreDomain,
+):
+  | { kind: "observation"; id: string; traceId?: string }
+  | { kind: "trace" | "session" | "experiment"; id: string } {
+  if (score.datasetRunId) {
+    return { kind: "experiment", id: score.datasetRunId };
+  }
+  if (score.observationId) {
+    return {
+      kind: "observation",
+      id: score.observationId,
+      ...(score.traceId ? { traceId: score.traceId } : {}),
+    };
+  }
+  if (score.sessionId) {
+    return { kind: "session", id: score.sessionId };
+  }
+  if (!score.traceId) {
+    throw new InternalServerError(
+      `Score ${score.id} has kind=trace but missing traceId`,
+    );
+  }
+  return { kind: "trace", id: score.traceId };
+}
+
+export function scoreDomainToV3(
+  score: ScoreDomain,
+  fields: ScoreFieldGroupV3[],
+): APIScoreV3 {
+  return {
+    id: score.id,
+    projectId: score.projectId,
+    name: score.name,
+    dataType: score.dataType,
+    value: polymorphicValueForV3({
+      dataType: score.dataType,
+      value: score.value,
+      stringValue: score.stringValue as string | null | undefined,
+      longStringValue: score.longStringValue as string | null | undefined,
+    }),
+    source: score.source,
+    timestamp: score.timestamp,
+    environment: score.environment,
+    createdAt: score.createdAt,
+    updatedAt: score.updatedAt,
+    ...(fields.includes("details")
+      ? {
+          comment: score.comment,
+          configId: score.configId,
+          metadata: score.metadata,
+        }
+      : {}),
+    ...(fields.includes("annotation")
+      ? {
+          authorUserId: score.authorUserId,
+          queueId: score.queueId,
+        }
+      : {}),
+    ...(fields.includes("subject")
+      ? { subject: deriveSubjectForV3(score) }
+      : {}),
+  } as APIScoreV3;
+}
+// ── END LITEFUSE PORT ───────────────────────────────────────────────────────

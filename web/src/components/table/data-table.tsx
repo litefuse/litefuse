@@ -5,6 +5,7 @@ import React, {
   useMemo,
   useCallback,
   type CSSProperties,
+  type UIEventHandler,
 } from "react";
 import DocPopup from "@/src/components/layouts/doc-popup";
 import { DataTablePagination } from "@/src/components/table/data-table-pagination";
@@ -44,6 +45,15 @@ import { type DataTablePeekViewProps } from "@/src/components/table/peek";
 import isEqual from "lodash/isEqual";
 import { useRouter } from "next/router";
 import { useColumnSizing } from "@/src/components/table/hooks/useColumnSizing";
+// LITEFUSE ADDITION (evaluators v2): tables that own their selection in an
+// external store pass it here so row highlighting and checkbox state read from
+// that store instead of TanStack's `rowSelection`. Without the prop everything
+// behaves exactly as before (the store helpers fall back to the given values).
+import {
+  type TableSelectionStoreLike,
+  useTableRowIsSelected,
+  useTableSelectAll,
+} from "@/src/components/table/table-selection-store";
 
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -64,6 +74,10 @@ interface DataTableProps<TData, TValue> {
   };
   rowSelection?: RowSelectionState;
   setRowSelection?: OnChangeFn<RowSelectionState>;
+  /** External selection store; row highlight/checkbox state reads from it instead of TanStack rowSelection */
+  selectionStore?: TableSelectionStoreLike;
+  /** Highlight every row, e.g. while a "select all matching" selection is active. */
+  highlightAllRows?: boolean;
   columnVisibility?: VisibilityState;
   onColumnVisibilityChange?: OnChangeFn<VisibilityState>;
   columnOrder?: ColumnOrderState;
@@ -80,6 +94,12 @@ interface DataTableProps<TData, TValue> {
   onRowClick?: (row: TData, event?: React.MouseEvent) => void;
   /** Used for row click handling and MemoizedTableBody snapshot only. Render <TablePeekView> as a sibling outside DataTable. */
   peekView?: DataTablePeekViewProps;
+  /**
+   * Scroll handler for the body's scrolling element, for consumers that paginate
+   * on scroll (upstream-compatible). Optional: without it the element keeps its
+   * previous behaviour exactly.
+   */
+  onScroll?: UIEventHandler<HTMLDivElement>;
   hidePagination?: boolean;
   tableName: string;
   getRowClassName?: (row: TData) => string;
@@ -153,6 +173,8 @@ export function DataTable<TData extends object, TValue>({
   pagination,
   rowSelection,
   setRowSelection,
+  selectionStore,
+  highlightAllRows = false,
   columnVisibility,
   onColumnVisibilityChange,
   columnOrder,
@@ -171,6 +193,7 @@ export function DataTable<TData extends object, TValue>({
   hidePagination = false,
   tableName,
   getRowClassName,
+  onScroll,
 }: DataTableProps<TData, TValue>) {
   const { t } = useTranslation();
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -233,7 +256,11 @@ export function DataTable<TData extends object, TValue>({
       columnOrder: columnOrder
         ? insertArrayAfterKey(columnOrder, flattedColumnsByGroup)
         : undefined,
-      rowSelection,
+      // LITEFUSE FIX (copied from upstream): `{}` default, not `undefined`.
+      // TanStack indexes this state by row id (`isRowSelected`), so a table that
+      // keeps its selection in an external `selectionStore` — and therefore
+      // passes no `rowSelection` — crashes as soon as it renders a row.
+      rowSelection: rowSelection ?? {},
       columnSizing,
       columnPinning,
     },
@@ -302,6 +329,7 @@ export function DataTable<TData extends object, TValue>({
         <div
           className={cn("relative min-h-full w-full overflow-auto border-t")}
           style={{ ...columnSizeVars }}
+          onScroll={onScroll}
         >
           <Table>
             <TableHeader className="sticky top-0 z-20">
@@ -423,6 +451,8 @@ export function DataTable<TData extends object, TValue>({
                 noResultsMessage={noResultsMessage}
                 onRowClick={hasRowClickAction ? handleOnRowClick : undefined}
                 getRowClassName={getRowClassName}
+                highlightAllRows={highlightAllRows}
+                selectionStore={selectionStore}
                 tableSnapshot={{
                   columnVisibility,
                   columnOrder,
@@ -441,6 +471,8 @@ export function DataTable<TData extends object, TValue>({
                 noResultsMessage={noResultsMessage}
                 onRowClick={hasRowClickAction ? handleOnRowClick : undefined}
                 getRowClassName={getRowClassName}
+                highlightAllRows={highlightAllRows}
+                selectionStore={selectionStore}
               />
             )}
           </Table>
@@ -488,6 +520,9 @@ interface TableBodyComponentProps<TData> {
   noResultsMessage?: React.ReactNode;
   onRowClick?: (row: TData, event?: React.MouseEvent) => void;
   getRowClassName?: (row: TData) => string;
+  highlightAllRows?: boolean;
+  /** Mirrors DataTableProps.selectionStore; see the note there. */
+  selectionStore?: TableSelectionStoreLike;
   tableSnapshot?: {
     columnVisibility?: VisibilityState;
     columnOrder?: ColumnOrderState;
@@ -499,15 +534,28 @@ function TableRowComponent<TData>({
   row,
   onRowClick,
   getRowClassName,
+  highlightAllRows = false,
+  selectionStore,
   children,
 }: {
   row: Row<TData>;
   onRowClick?: (row: TData, event?: React.MouseEvent) => void;
   getRowClassName?: (row: TData) => string;
+  highlightAllRows?: boolean;
+  selectionStore?: TableSelectionStoreLike;
   children: React.ReactNode;
 }) {
   const router = useRouter();
   const selectedRowId = router.query.peek as string | undefined;
+  const rowIsSelected = useTableRowIsSelected(
+    selectionStore,
+    row.id,
+    row.getIsSelected(),
+  );
+  const shouldHighlightAllRows = useTableSelectAll(
+    selectionStore,
+    highlightAllRows,
+  );
 
   return (
     <TableRow
@@ -521,7 +569,10 @@ function TableRowComponent<TData>({
       className={cn(
         "hover:bg-accent",
         !!onRowClick ? "cursor-pointer" : "cursor-default",
-        selectedRowId && selectedRowId === row.id ? "bg-accent" : undefined,
+        selectedRowId && selectedRowId === row.id
+          ? "bg-accent dark:bg-accent"
+          : undefined,
+        (rowIsSelected || shouldHighlightAllRows) && "bg-accent dark:bg-accent",
         getRowClassName?.(row.original),
       )}
     >
@@ -541,6 +592,8 @@ function TableBodyComponent<TData>({
   noResultsMessage,
   onRowClick,
   getRowClassName,
+  highlightAllRows,
+  selectionStore,
 }: TableBodyComponentProps<TData>) {
   const { t } = useTranslation();
   return (
@@ -561,6 +614,8 @@ function TableBodyComponent<TData>({
             row={row}
             onRowClick={onRowClick}
             getRowClassName={getRowClassName}
+            highlightAllRows={highlightAllRows}
+            selectionStore={selectionStore}
           >
             {row.getVisibleCells().map((cell) => {
               const cellValue = cell.getValue();
@@ -663,6 +718,10 @@ const MemoizedTableBody = React.memo(TableBodyComponent, (prev, next) => {
   if (prev.rowheighttw !== next.rowheighttw) return false;
   if (prev.rowHeight !== next.rowHeight) return false;
   if (prev.autoRowHeight !== next.autoRowHeight) return false;
+  // Selection stores are subscribable objects passed by identity: a new store
+  // must always re-render, and the snapshot below only covers TanStack state.
+  if (prev.selectionStore !== next.selectionStore) return false;
+  if (prev.highlightAllRows !== next.highlightAllRows) return false;
 
   // Then do more expensive deep equality checks
   if (

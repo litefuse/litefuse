@@ -1,0 +1,1 @@
+export { usePostHogClientCapture } from "./usePostHogClientCapture";

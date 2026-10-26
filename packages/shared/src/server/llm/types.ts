@@ -248,6 +248,77 @@ export enum LLMAdapter {
   // Bedrock = "bedrock",
   // VertexAI = "google-vertex-ai",
   GoogleAIStudio = "google-ai-studio",
+  // Decision-model (Jev) connections. Upstream carries this member in the same
+  // enum, and a decision-model connection is an ordinary `llm_api_keys` row whose
+  // adapter is this value. Added so the connection form can create one; see
+  // `DECISION_MODEL_ADAPTERS` below for what may run on it.
+  TypeSafe = "typesafe",
+}
+
+/** Adapters that can answer decision-model evaluators. */
+export const DECISION_MODEL_ADAPTERS: readonly LLMAdapter[] = [
+  LLMAdapter.TypeSafe,
+  LLMAdapter.OpenAI,
+];
+
+export function isDecisionModelAdapterType(adapter: string): boolean {
+  return DECISION_MODEL_ADAPTERS.includes(adapter as LLMAdapter);
+}
+
+// ── LITEFUSE NOTE: two decision-model providers, two wire formats ────────────
+// Upstream 4.56 exposes two decision-model adapters: TypeSafe (System One, Jev)
+// and OpenAI (the hosted Decisions API, `gpt-6-luna`). This fork matches that
+// surface, but implements both clients by hand instead of through the AI SDK:
+//
+//   * `.../llm/typesafe/typeSafeDecisionModelClient.ts` — POST /systemone
+//   * `.../llm/openai/openAiDecisionModelClient.ts`     — POST /decisions
+//   * `.../llm/createDecisionModelClient.ts`            — picks one by adapter
+//
+// All four call sites (worker execution, save-time preflight, manual test run,
+// connection test) go through that factory, so the adapter gate
+// (`isDecisionModelAdapter` / `DECISION_MODEL_ADAPTERS`), the selector filter and
+// the execution path always agree.
+//
+// The OpenAI endpoint is NOT System One: `input` instead of `state`, `predicate`
+// instead of `noul`, ordered `questions`/`answers` arrays instead of keyed
+// objects, `choices`/`levels` arrays instead of criteria, and probabilities as
+// `[{ value, probability }]`. The OpenAI client absorbs all of that; the rest of
+// the pipeline keeps seeing the same domain types.
+//
+// Difference that remains: a TypeSafe connection accepts any model name (the
+// model version is free text, `jev-latest` by default), while an OpenAI
+// connection is restricted to `OPENAI_DECISION_MODEL_IDS` — a typo there would
+// only surface as a provider 404 on the first real run.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const OPENAI_DECISION_MODEL_IDS: readonly string[] = ["gpt-6-luna"];
+
+/**
+ * Adapters that can answer a decision-model evaluator: TypeSafe (System One) and
+ * OpenAI (Decisions API).
+ */
+export function supportsDecisionModels(adapter: string): boolean {
+  return isDecisionModelAdapterType(adapter);
+}
+
+/**
+ * Whether a model may be used for decision models on that adapter.
+ *
+ * TypeSafe allows any non-empty name (the Jev model version is free text);
+ * OpenAI allows only `OPENAI_DECISION_MODEL_IDS`.
+ */
+export function isAllowedDecisionModel(
+  adapter: string,
+  model: string,
+): boolean {
+  // TypeSafe stores a free-text model version (`jev-latest` by default), so any
+  // non-empty name is allowed there. OpenAI's decision models are an allowlist:
+  // only the hosted ids this client knows how to call.
+  if (adapter === LLMAdapter.TypeSafe) return model.length > 0;
+  if (adapter === LLMAdapter.OpenAI) {
+    return OPENAI_DECISION_MODEL_IDS.includes(model);
+  }
+  return false;
 }
 
 export const TextPromptContentSchema = z.string().min(1, "Enter a prompt");
@@ -458,10 +529,87 @@ export const googleAIStudioModels = [
 ] as const;
 
 export type AnthropicModel = (typeof anthropicModels)[number];
+
+/**
+ * Models served by TypeSafe's decision-model API. These are not text models: a
+ * decision model returns structured answers and is executed by the decision-model
+ * evaluator, never by `fetchLLMCompletion`.
+ *
+ * List follows upstream main, which dropped `jev-1.13.0` in favour of the
+ * `jev-latest` alias.
+ */
+export const typeSafeModels = ["jev-latest"] as const;
+
+/**
+ * Providers that serve Jev through TypeSafe's `/v1/systemone` API. A TypeSafe
+ * connection stores a gateway's `baseURL`, or none for TypeSafe itself, which
+ * the AI SDK provider then defaults to. Presets only prefill the base URL; a
+ * `custom` connection stores any base URL the provider appends `/systemone`
+ * to.
+ */
+export const TYPESAFE_UPSTREAMS = [
+  {
+    id: "typesafe",
+    label: "TypeSafe",
+    baseURL: null,
+    apiKeyLabel: "TypeSafe API key",
+    /** Model ids this upstream serves by default. */
+    models: ["jev-latest"],
+  },
+  {
+    id: "vercel-ai-gateway",
+    label: "Vercel AI Gateway",
+    baseURL: "https://ai-gateway.vercel.sh/typesafe/v1",
+    apiKeyLabel: "Vercel AI Gateway API key",
+    models: ["jev-latest"],
+  },
+  {
+    id: "openrouter",
+    label: "OpenRouter",
+    // The gateway fans out to every System One provider it carries, so the
+    // model id selects the vendor: Jev, Liquid AI d1, Microsoft-Decision-1.
+    baseURL: "https://openrouter.ai/api/v1",
+    apiKeyLabel: "OpenRouter API key",
+    models: ["jev-latest", "liquid/d1-ultra", "microsoft/microsoft-decision-1"],
+  },
+  {
+    id: "custom",
+    label: "Custom",
+    baseURL: null,
+    apiKeyLabel: "API key",
+    /**
+     * No defaults: the base URL carries the tenant. Known System One hosts:
+     *   Azure Foundry  https://<resource>.cognitiveservices.azure.com/providers/microsoft/v1
+     *                  (authenticated with an `api-key` header, not Bearer)
+     *   Alibaba        https://<workspace>.<region>.maas.aliyuncs.com/compatible-mode/v1
+     *                  model `decision-model-preview`
+     *   liquid / vLLM  https://<host>/v1  (model `LiquidAI/d1-3B`)
+     */
+    models: [],
+  },
+] as const;
+
+export type TypeSafeUpstream = (typeof TYPESAFE_UPSTREAMS)[number];
+
+/**
+ * Maps a stored base URL back to the upstream card it came from. An empty base
+ * URL is TypeSafe itself; any unknown base URL is a `custom` gateway.
+ */
+export function resolveTypeSafeUpstream(
+  baseURL: string | null | undefined,
+): TypeSafeUpstream {
+  if (!baseURL) return TYPESAFE_UPSTREAMS[0];
+  return (
+    TYPESAFE_UPSTREAMS.find((upstream) => upstream.baseURL === baseURL) ??
+    TYPESAFE_UPSTREAMS[TYPESAFE_UPSTREAMS.length - 1]
+  );
+}
+
 export const supportedModels = {
   [LLMAdapter.Anthropic]: anthropicModels,
   [LLMAdapter.OpenAI]: openAIModels,
   [LLMAdapter.GoogleAIStudio]: googleAIStudioModels,
+  [LLMAdapter.TypeSafe]: typeSafeModels,
 } as const;
 
 export type LLMFunctionCall = {
@@ -498,6 +646,8 @@ export type LLMApiKey =
 
 export enum LangfuseInternalTraceEnvironment {
   PromptExperiments = "langfuse-prompt-experiment",
+  // Added for the evaluators v2 migration; same value as upstream.
+  CodeEval = "langfuse-code-eval",
   LLMJudge = "langfuse-llm-as-a-judge",
 }
 

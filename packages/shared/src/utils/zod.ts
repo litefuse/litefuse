@@ -70,6 +70,79 @@ export const optionalPaginationZod = {
     .optional(),
 };
 
+// ── LITEFUSE PORT ───────────────────────────────────────────────────────────
+// Copied from upstream Langfuse 4.56.0 `packages/shared/src/utils/zod.ts`.
+// Upstream defines `paginationLimitZod` and aliases `publicApiPaginationLimitZod`
+// to it, then reuses that alias in `publicApiPaginationZod`. Litefuse's own
+// `paginationZod`/`publicApiPaginationZod` above use a laxer limit (no integer
+// check, no lower bound), so instead of changing v1/v2 behaviour the strict
+// upstream form is exposed as its own export that only the v3 scores contract
+// consumes.
+export const publicApiPaginationLimitZod = z.preprocess(
+  (x) => (x === "" ? undefined : x),
+  z.coerce.number().int().gte(1).lte(100).default(50),
+);
+
+// ── LITEFUSE PORT ───────────────────────────────────────────────────────────
+// Copied from upstream Langfuse 4.56.0 `packages/shared/src/utils/zod.ts`.
+const splitCommaSeparatedQueryParam = (value: string) =>
+  value
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+
+export const optionalCommaSeparatedStringArray = z
+  .string()
+  .nullish()
+  .transform((value) => {
+    if (!value) return undefined;
+
+    const values = splitCommaSeparatedQueryParam(value);
+    return values.length > 0 ? values : undefined;
+  });
+
+type CommaSeparatedEnumArrayOptions = {
+  unknownValues?: "reject" | "filter";
+};
+
+type CommaSeparatedEnumArrayOutput<
+  TValues extends readonly [string, ...string[]],
+  TDefault extends Array<TValues[number]> | null,
+> = TDefault extends null
+  ? Array<TValues[number]> | null
+  : Array<TValues[number]>;
+
+export function commaSeparatedEnumArray<
+  const TValues extends readonly [string, ...string[]],
+  const TDefault extends Array<TValues[number]> | null,
+>(
+  values: TValues,
+  defaultValue: TDefault,
+  options?: CommaSeparatedEnumArrayOptions,
+): z.ZodType<CommaSeparatedEnumArrayOutput<TValues, TDefault>> {
+  const arraySchema = z.array(z.enum(values));
+  const schema =
+    defaultValue === null
+      ? arraySchema.nullable().default(null)
+      : arraySchema.default(defaultValue);
+
+  return z.preprocess((value) => {
+    if (value === null || value === undefined || value === "") return undefined;
+    if (typeof value !== "string") return value;
+
+    const items = splitCommaSeparatedQueryParam(value);
+
+    if (options?.unknownValues === "filter") {
+      return items.filter((item): item is TValues[number] =>
+        values.includes(item as TValues[number]),
+      );
+    }
+
+    return items;
+  }, schema) as z.ZodType<CommaSeparatedEnumArrayOutput<TValues, TDefault>>;
+}
+// ── END LITEFUSE PORT ───────────────────────────────────────────────────────
+
 export const queryStringZod = z
   .string()
   .transform((val) => decodeURIComponent(val));
@@ -185,3 +258,9 @@ export function sanitizeEmailSubject(input: string): string {
  * versionZod.parse(undefined) // Returns undefined
  */
 export const versionZod = z.coerce.date().optional();
+
+// ── Added for the evaluators v2 migration (copied from upstream) ─────────────
+export const paginationLimitZod = z.preprocess(
+  (x) => (x === "" ? undefined : x),
+  z.coerce.number().int().gte(1).lte(100).default(50),
+);

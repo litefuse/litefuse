@@ -56,7 +56,7 @@ export default function TemplatesPage() {
               <Link
                 href={
                   hasWriteAccess
-                    ? `/project/${projectId}/evals/templates/new`
+                    ? `/project/${projectId}/evals/legacy/templates/new`
                     : "#"
                 }
               >

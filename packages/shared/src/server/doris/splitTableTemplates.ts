@@ -2,7 +2,7 @@ import { readFileSync, existsSync } from "fs";
 import { dirname, join } from "path";
 
 /**
- * Per-project Doris table DDL generation (docs/project-per-table-*.md, Stage 1.2).
+ * Per-project Doris table DDL generation (Stage 1.2).
  *
  * A split project gets its own `spans_<pid>` / `traces_scalar_<pid>` base
  * tables + a `trace_metrics_agg_<pid>` sync MV. There is no shared telemetry

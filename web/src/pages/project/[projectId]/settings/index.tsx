@@ -172,9 +172,10 @@ export const getProjectSettingsPages = ({
     ),
   },
   {
-    title: i18nKey("LLM Connections"),
+    title: i18nKey("Model Connections"),
     slug: "llm-connections",
     cmdKKeywords: [
+      "model",
       "llm",
       "provider",
       "openai",

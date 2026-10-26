@@ -55,6 +55,12 @@ import { DateTimeFilter as DorisDateTimeFilter } from "../queries/doris-sql/dori
 import { OBSERVATIONS_TO_TRACE_INTERVAL } from "./constants";
 import { orderByToDorisSQL } from "../queries/doris-sql/orderby-factory";
 import {
+  EVENTS_CURSOR_KEYSET_WHERE,
+  EVENTS_CURSOR_ORDER_BY,
+  eventsCursorKeysetParams,
+  type EventsCursorPaginationParams,
+} from "../queries/doris-sql/eventsCursor";
+import {
   queryDoris,
   queryDorisStream,
   commandDoris,
@@ -362,7 +368,7 @@ export const getObservationsCountFromEventsTable = async (
 };
 
 export const getObservationsWithModelDataFromEventsTable = async (
-  opts: ObservationTableQuery,
+  opts: ObservationTableQuery & EventsCursorPaginationParams,
 ): Promise<FullEventsObservations> => {
   const observationRecords =
     await getObservationsFromEventsTableInternal<ObservationsTableQueryResultWitouhtTraceFields>(
@@ -385,10 +391,11 @@ export const getObservationsWithModelDataFromEventsTable = async (
 };
 
 async function getObservationsFromEventsTableInternal<T>(
-  opts: ObservationTableQuery & {
-    select: "count" | "rows";
-    tags: Record<string, string>;
-  },
+  opts: ObservationTableQuery &
+    EventsCursorPaginationParams & {
+      select: "count" | "rows";
+      tags: Record<string, string>;
+    },
 ): Promise<Array<T>> {
   const {
     projectId,
@@ -398,6 +405,8 @@ async function getObservationsFromEventsTableInternal<T>(
     limit,
     offset,
     orderBy,
+    cursorPagination,
+    cursor,
   } = opts;
 
   // Build filter list from filter state using Doris filter factory
@@ -508,6 +517,28 @@ async function getObservationsFromEventsTableInternal<T>(
     eventsTableUiColumnDefinitionsForDoris,
   );
 
+  // Keyset pagination is opt-in (`cursorPagination`) and fixes the ordering:
+  // the cursor triple only means anything together with
+  // EVENTS_CURSOR_ORDER_BY, so a caller-supplied `orderBy` cannot be honoured on
+  // this path. Same contract as the public API observations cursor
+  // (applyCursorPagination below). Absent the flag, the query is byte-identical
+  // to the pre-cursor offset path.
+  const isCursorPagination = Boolean(cursorPagination);
+  const keysetParams =
+    isCursorPagination && cursor ? eventsCursorKeysetParams(cursor) : {};
+
+  // A cursor page never carries an OFFSET — the keyset predicate IS the cursor.
+  // limit/offset are interpolated rather than bound (as on the offset path), so
+  // clamp `limit` to a non-negative integer: it arrives from paginationZod,
+  // whose coercion does not enforce integrality.
+  const dorisLimit = isCursorPagination
+    ? limit !== undefined && Number.isFinite(limit)
+      ? `LIMIT ${Math.max(0, Math.trunc(limit))}`
+      : ""
+    : limit !== undefined && offset !== undefined
+      ? `LIMIT ${limit} OFFSET ${offset}`
+      : "";
+
   const query = `
       ${scoresCte}
       SELECT ${dorisSelectString}
@@ -515,8 +546,9 @@ async function getObservationsFromEventsTableInternal<T>(
                ${hasScoresFilter ? "LEFT JOIN scores_agg AS s ON s.trace_id = o.trace_id and s.observation_id = o.span_id" : ""}
       WHERE ${appliedFilter.query}
                    ${search.query}
-        ${dorisOrderBy}
-        ${limit !== undefined && offset !== undefined ? `LIMIT ${limit} OFFSET ${offset}` : ""};`;
+                   ${isCursorPagination && cursor ? EVENTS_CURSOR_KEYSET_WHERE : ""}
+        ${isCursorPagination ? EVENTS_CURSOR_ORDER_BY : dorisOrderBy}
+        ${dorisLimit};`;
 
   const res = await queryDoris<T>({
     query,
@@ -524,6 +556,7 @@ async function getObservationsFromEventsTableInternal<T>(
       projectId,
       ...appliedFilter.params,
       ...search.params,
+      ...keysetParams,
     },
     tags: {
       ...(opts.tags ?? {}),
@@ -580,6 +613,15 @@ export const getObservationByIdFromEventsTable = async ({
     input_trim: (record as { input_trim?: string | null }).input_trim ?? null,
     output_trim:
       (record as { output_trim?: string | null }).output_trim ?? null,
+    // Retrieval-only passthrough of the experiment item's root span id: the
+    // evaluators-v2 test-run projection (`getObservationForEvalById`) derives
+    // upstream's boolean `isExperimentItemRootSpan` from
+    // "span_id === experiment_item_root_span_id" and cannot do so if the read
+    // drops the column. `convertObservation` has no mapping for it, so it is
+    // carried through here like the trimmed previews above.
+    experiment_item_root_span_id:
+      (record as { experiment_item_root_span_id?: string | null })
+        .experiment_item_root_span_id ?? null,
   }));
 
   mapped.forEach((observation) => {
@@ -650,7 +692,14 @@ async function getObservationByIdFromEventsTableInternal({
       prompt_id,
       prompt_name,
       prompt_version,
-      created_at
+      created_at,
+      -- Added for the evaluators-v2 eval projection: the item's root span id
+      -- (upstream's boolean isExperimentItemRootSpan) and the tool-call arrays
+      -- (upstream's numeric toolCalls count). Both are plain reads of existing
+      -- columns; nothing is written.
+      experiment_item_root_span_id,
+      tool_calls,
+      tool_call_names
     FROM ${tableFor(projectId, "spans")}
     WHERE project_id = {projectId: String}
     AND span_id = {id: String}
@@ -1038,15 +1087,12 @@ export function buildObservationsQueryDoris(opts: PublicApiObservationsQuery): {
   };
 }
 
-// Stable secondary sort keys for both pagination strategies. Without these,
-// rows with identical start_time can come back in any order from Doris on
-// each query — under cursor pagination this causes duplicates / skips on
-// page boundaries; under offset pagination it makes page N+1 contain rows
-// that were already in page N. Tying ORDER BY to (start_time, trace_id,
-// span_id) DESC matches the keyset predicate used by the cursor branch
-// below, which advances over the same triple.
-const STABLE_ORDER_BY =
-  "ORDER BY o.start_time DESC, o.trace_id DESC, o.span_id DESC";
+// The stable ORDER BY used by both pagination strategies is
+// EVENTS_CURSOR_ORDER_BY (declared in ../queries/doris-sql/eventsCursor):
+// without those secondary sort keys rows with an identical start_time can come
+// back in any order from Doris on each query — under cursor pagination that
+// duplicates / skips rows on page boundaries; under offset pagination it makes
+// page N+1 repeat rows already returned in page N.
 
 function applyOffsetPagination(
   opts: PublicApiObservationsQuery,
@@ -1055,7 +1101,7 @@ function applyOffsetPagination(
 ): { query: string; params: Record<string, unknown> } {
   const offset = (opts.page - 1) * opts.limit;
   return {
-    query: `${baseQuery} ${STABLE_ORDER_BY} LIMIT ${opts.limit} OFFSET ${offset}`,
+    query: `${baseQuery} ${EVENTS_CURSOR_ORDER_BY} LIMIT ${opts.limit} OFFSET ${offset}`,
     params,
   };
 }
@@ -1067,41 +1113,22 @@ function applyCursorPagination(
 ): { query: string; params: Record<string, unknown> } {
   if (!opts.cursor) {
     return {
-      query: `${baseQuery} ${STABLE_ORDER_BY} LIMIT ${opts.limit + 1}`,
+      query: `${baseQuery} ${EVENTS_CURSOR_ORDER_BY} LIMIT ${opts.limit + 1}`,
       params,
     };
   }
 
-  const cursor = opts.cursor;
-  // Doris does not support tuple/row comparisons `(a, b, c) < (x, y, z)`
-  // (works in ClickHouse / PostgreSQL but not Doris). Expand the keyset
-  // predicate into its boolean-equivalent form so it parses cleanly:
-  //
-  //   start_time <  X
-  //   OR (start_time = X AND trace_id <  Y)
-  //   OR (start_time = X AND trace_id =  Y AND span_id < Z)
-  //
-  // Combined with the outer `start_time <= X` upper bound this matches
-  // strict-less-than ordering on the (start_time, trace_id, span_id) key
-  // tuple — same semantics as the original tuple compare. The ORDER BY
-  // must include the full triple too (STABLE_ORDER_BY), otherwise rows
-  // with equal start_time can land on the wrong side of the cursor and
-  // duplicate / skip across pages.
+  // Keyset predicate + stable ordering live in EVENTS_CURSOR_KEYSET_WHERE /
+  // EVENTS_CURSOR_ORDER_BY so this path and the internal events-list cursor
+  // (getObservationsFromEventsTableInternal) can never drift apart.
   return {
     query: `${baseQuery}
-      AND o.start_time <= {lastStartTime: String}
-      AND (
-        o.start_time < {lastStartTime: String}
-        OR (o.start_time = {lastStartTime: String} AND o.trace_id < {lastTraceId: String})
-        OR (o.start_time = {lastStartTime: String} AND o.trace_id = {lastTraceId: String} AND o.span_id < {lastId: String})
-      )
-      ${STABLE_ORDER_BY}
+      ${EVENTS_CURSOR_KEYSET_WHERE}
+      ${EVENTS_CURSOR_ORDER_BY}
       LIMIT ${opts.limit + 1}`,
     params: {
       ...params,
-      lastStartTime: convertDateToAnalyticsDateTime(cursor.lastStartTimeTo),
-      lastTraceId: cursor.lastTraceId,
-      lastId: cursor.lastId,
+      ...eventsCursorKeysetParams(opts.cursor),
     },
   };
 }
@@ -2532,6 +2559,47 @@ export const deleteEventsOlderThanDays = async (
   return true;
 };
 
+/**
+ * Doris hands back JSON-typed columns as objects and string-typed ones as
+ * strings. These two keep the batch-IO mapping explicit instead of sprinkling
+ * `as any` over the opt-in columns.
+ */
+const parseJsonColumn = (value: unknown): unknown => {
+  if (typeof value !== "string") return value ?? null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+};
+
+const asNullableString = (value: unknown): string | null =>
+  typeof value === "string" ? value : null;
+
+/**
+ * Extra, opt-in columns of the batch-IO row. Upstream's `experimentBatchIO` /
+ * `batchIO` ask for these (`includeExperimentFields` / `includeToolCallFields`);
+ * the keys are camelCase because the consumers are the eval variable-mapping UI
+ * (`zipToolCallsFromRecord` reads `toolCalls` / `toolCallNames`, and
+ * `CODE_EVAL_TEMPLATE_VARIABLES` names `toolCalls`, `experimentItemExpectedOutput`,
+ * `experimentItemMetadata`).
+ */
+export type EventBatchIOExtraFields = {
+  toolDefinitions?: unknown;
+  toolCalls?: unknown;
+  toolCallNames?: unknown;
+  experimentId?: string | null;
+  experimentName?: string | null;
+  experimentDescription?: string | null;
+  experimentDatasetId?: string | null;
+  experimentMetadata?: unknown;
+  experimentItemId?: string | null;
+  experimentItemVersion?: string | null;
+  experimentItemRootSpanId?: string | null;
+  experimentItemExpectedOutput?: unknown;
+  experimentItemMetadata?: unknown;
+};
+
 export const getObservationsBatchIOFromEventsTable = async (opts: {
   projectId: string;
   observations: Array<{
@@ -2541,8 +2609,20 @@ export const getObservationsBatchIOFromEventsTable = async (opts: {
   minStartTime: Date;
   maxStartTime: Date;
   truncated?: boolean; // Default true for performance, false for full data
+  /**
+   * Overrides the server-side character limit used when `truncated`. Absent keeps
+   * `LITEFUSE_SERVER_SIDE_IO_CHAR_LIMIT`, i.e. the SQL is unchanged.
+   */
+  ioCharLimit?: number;
+  /** Adds the tool-call columns to each row (upstream `includeToolCallFields`). */
+  includeToolCallFields?: boolean;
+  /** Adds the experiment columns to each row (upstream `includeExperimentFields`). */
+  includeExperimentFields?: boolean;
 }): Promise<
-  Array<Pick<Observation, "id" | "input" | "output" | "metadata">>
+  Array<
+    Pick<Observation, "id" | "input" | "output" | "metadata"> &
+      EventBatchIOExtraFields
+  >
 > => {
   if (opts.observations.length === 0) {
     return [];
@@ -2560,12 +2640,39 @@ export const getObservationsBatchIOFromEventsTable = async (opts: {
 
   // In Doris, we use the observations table for both truncated and full I/O
   // Use SUBSTRING instead of leftUTF8 for truncation
+  const ioCharLimit = opts.ioCharLimit ?? env.LITEFUSE_SERVER_SIDE_IO_CHAR_LIMIT;
   const inputSelect = truncated
-    ? `SUBSTRING(e.input, 1, ${env.LITEFUSE_SERVER_SIDE_IO_CHAR_LIMIT}) as input`
+    ? `SUBSTRING(e.input, 1, ${ioCharLimit}) as input`
     : `e.input as input`;
   const outputSelect = truncated
-    ? `SUBSTRING(e.output, 1, ${env.LITEFUSE_SERVER_SIDE_IO_CHAR_LIMIT}) as output`
+    ? `SUBSTRING(e.output, 1, ${ioCharLimit}) as output`
     : `e.output as output`;
+
+  // Opt-in columns. Kept out of the SELECT unless asked for, so the existing
+  // callers' query text is unchanged.
+  const extraSelects = [
+    ...(opts.includeToolCallFields
+      ? [
+          `e.tool_definitions as tool_definitions`,
+          `e.tool_calls as tool_calls`,
+          `e.tool_call_names as tool_call_names`,
+        ]
+      : []),
+    ...(opts.includeExperimentFields
+      ? [
+          `e.experiment_id as experiment_id`,
+          `e.experiment_name as experiment_name`,
+          `e.experiment_description as experiment_description`,
+          `e.experiment_dataset_id as experiment_dataset_id`,
+          `e.experiment_metadata as experiment_metadata`,
+          `e.experiment_item_id as experiment_item_id`,
+          `e.experiment_item_version as experiment_item_version`,
+          `e.experiment_item_root_span_id as experiment_item_root_span_id`,
+          `e.experiment_item_expected_output as experiment_item_expected_output`,
+          `e.experiment_item_metadata as experiment_item_metadata`,
+        ]
+      : []),
+  ];
 
   const query = `
     SELECT
@@ -2573,6 +2680,7 @@ export const getObservationsBatchIOFromEventsTable = async (opts: {
       ${inputSelect},
       ${outputSelect},
       json_object_flatten(e.metadata) AS metadata
+      ${extraSelects.length ? `, ${extraSelects.join(", ")}` : ""}
     FROM ${tableFor(opts.projectId, "spans")} e
     WHERE e.project_id = {projectId: String}
       AND e.span_id IN ({observationIds: Array(String)})
@@ -2586,7 +2694,7 @@ export const getObservationsBatchIOFromEventsTable = async (opts: {
     input: string | null;
     output: string | null;
     metadata: unknown;
-  }>({
+  } & Record<string, unknown>>({
     query,
     params: {
       projectId: opts.projectId,
@@ -2618,6 +2726,34 @@ export const getObservationsBatchIOFromEventsTable = async (opts: {
         ? JSON.parse(r.metadata)
         : (r.metadata ?? {}),
     ),
+    // Only the requested run of columns; keys are camelCase for the consumers.
+    ...(opts.includeToolCallFields
+      ? {
+          toolDefinitions: parseJsonColumn(r.tool_definitions),
+          toolCalls: Array.isArray(r.tool_calls) ? r.tool_calls : [],
+          toolCallNames: Array.isArray(r.tool_call_names)
+            ? r.tool_call_names
+            : [],
+        }
+      : {}),
+    ...(opts.includeExperimentFields
+      ? {
+          experimentId: asNullableString(r.experiment_id),
+          experimentName: asNullableString(r.experiment_name),
+          experimentDescription: asNullableString(r.experiment_description),
+          experimentDatasetId: asNullableString(r.experiment_dataset_id),
+          experimentMetadata: parseJsonColumn(r.experiment_metadata),
+          experimentItemId: asNullableString(r.experiment_item_id),
+          experimentItemVersion: asNullableString(r.experiment_item_version),
+          experimentItemRootSpanId: asNullableString(
+            r.experiment_item_root_span_id,
+          ),
+          experimentItemExpectedOutput: parseJsonColumn(
+            r.experiment_item_expected_output,
+          ),
+          experimentItemMetadata: parseJsonColumn(r.experiment_item_metadata),
+        }
+      : {}),
   }));
 };
 

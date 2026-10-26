@@ -23,6 +23,7 @@ import {
   buildEffectiveEnvironmentFilter,
   buildManagedEnvironmentPolicyConfig,
   stripImplicitEnvironmentFilterFromExplicitState,
+  toSearchBarEnvironmentFilters,
   type ManagedEnvironmentPolicyInput,
 } from "../lib/managedEnvironmentPolicy";
 import { areStringSetsEqual } from "../lib/stringSetUtils";
@@ -33,16 +34,40 @@ import { usePeekTableState } from "@/src/components/table/peek/contexts/PeekTabl
 
 import { useTranslation } from "react-i18next";
 /**
+ * Per-surface rules for columns that arrive from a URL / saved view. See
+ * `FilterConfig.columnAliases` and `FilterConfig.unappliedFilterColumns`.
+ */
+export type FilterColumnHandling = {
+  columnAliases?: Record<string, string>;
+  unappliedFilterColumns?: Record<string, string>;
+};
+
+function applyColumnAliases(
+  filters: FilterState,
+  columnAliases: Record<string, string>,
+): FilterState {
+  return filters.map((filter) => {
+    const aliased = columnAliases[filter.column];
+    if (aliased && aliased !== filter.column) {
+      return { ...filter, column: aliased };
+    }
+    return filter;
+  });
+}
+
+/**
  * Decodes filters from URL query string and normalizes display names to column IDs.
  * This prevents duplicates when old URLs use display names and new filters use column IDs.
  *
  * @param filtersQuery - Encoded filter string from URL
  * @param columnDefinitions - Column definitions for validation and normalization
+ * @param handling - Per-surface column aliases and columns this surface cannot apply
  * @returns Normalized and validated FilterState
  */
 export function decodeAndNormalizeFilters(
   filtersQuery: string,
   columnDefinitions: ColumnDefinition[],
+  handling: FilterColumnHandling = {},
 ): FilterState {
   try {
     const filters = decodeFiltersGeneric(filtersQuery);
@@ -52,16 +77,31 @@ export function decodeAndNormalizeFilters(
       knownColumns.set(columnDefinition.name, columnDefinition.id);
     }
 
-    // Normalize display names to column IDs immediately after decoding
+    // Rewrite aliased ids first, then normalize display names to column IDs.
     // This prevents duplicates when old URLs use display names (e.g., "Environment")
     // and user adds new filters with column IDs (e.g., "environment")
-    const normalized = normalizeFilterColumnNames(filters, columnDefinitions);
+    const normalized = normalizeFilterColumnNames(
+      applyColumnAliases(filters, handling.columnAliases ?? {}),
+      columnDefinitions,
+    );
 
     // Validate normalized filters
     const result: FilterState = [];
     for (const filter of normalized) {
       const validationResult = singleFilter.safeParse(filter);
       if (validationResult.success) {
+        const skippedReason =
+          handling.unappliedFilterColumns?.[validationResult.data.column];
+        if (skippedReason) {
+          // Expected on this surface: the column is known (our own deep links
+          // emit it) but this view has nothing to apply it to, so the filter is
+          // dropped with the reason instead of looking like a bug.
+          console.info(
+            `Filter on "${validationResult.data.column}" is not applied on this view: ${skippedReason}. The filter was ignored.`,
+          );
+          continue;
+        }
+
         const canonicalColumnId = knownColumns.get(
           validationResult.data.column,
         );
@@ -356,6 +396,24 @@ type UseSidebarFilterStateOptions = {
    */
   sessionFilterContextId?: string | null;
   implicitDefaultConfig?: ManagedEnvironmentPolicyInput;
+  // ── Added for the evaluators v2 migration (ported from upstream) ───────────
+  /**
+   * Where the filter state lives. Litefuse implements the default
+   * (`urlAndSessionStorage`), which is what every caller in this repo uses; the
+   * other modes are upstream's, used by views we do not have. Passing one of
+   * them fails loudly rather than silently persisting to the wrong place.
+   */
+  stateLocation?: "urlAndSessionStorage" | "url" | "memory" | "peekContext";
+  /**
+   * Fires when the explicit filters change, with the origin of the change, so a
+   * host view can react (e.g. the evaluator tables deselect the saved view).
+   */
+  onExplicitFilterStateChange?: (params: {
+    previousFilters: FilterState;
+    nextFilters: FilterState;
+    origin: "user" | "saved_view" | "system";
+    action?: "clear";
+  }) => void;
 };
 
 /**
@@ -422,7 +480,18 @@ export function useSidebarFilterState(
     disableUrlPersistence,
     sessionFilterContextId,
     implicitDefaultConfig,
+    stateLocation = "urlAndSessionStorage",
+    onExplicitFilterStateChange,
   } = hookOptions;
+
+  // Only the default state location is implemented (see the option's doc). Fail
+  // loudly instead of persisting filter state to the wrong place.
+  if (stateLocation !== "urlAndSessionStorage") {
+    throw new Error(
+      `useSidebarFilterState: stateLocation "${stateLocation}" is not implemented in Litefuse; only "urlAndSessionStorage" is.`,
+    );
+  }
+
   const peekContext = usePeekTableState();
 
   const FILTER_EXPANDED_STORAGE_KEY = `${config.tableName}-filters-expanded`;
@@ -478,6 +547,9 @@ export function useSidebarFilterState(
   );
   // Optimistic query state: prevents stale URL reads from overriding immediate
   // local changes while use-query-params updates the URL asynchronously.
+  // Bumped when all filters are cleared so the filter editor remounts and drops
+  // its uncommitted draft (ported from upstream).
+  const [draftResetKey, setDraftResetKey] = useState(0);
   const [pendingFiltersQuery, setPendingFiltersQuery] = useState<string | null>(
     null,
   );
@@ -497,12 +569,17 @@ export function useSidebarFilterState(
     // If URL persistence is disabled, return empty filter state
     if (disableUrlPersistence) return [];
     return reconcileMutuallyExclusiveFilters(
-      decodeAndNormalizeFilters(filtersQuery, config.columnDefinitions),
+      decodeAndNormalizeFilters(filtersQuery, config.columnDefinitions, {
+        columnAliases: config.columnAliases,
+        unappliedFilterColumns: config.unappliedFilterColumns,
+      }),
       mutualExclusionContext,
     );
   }, [
     filtersQuery,
     config.columnDefinitions,
+    config.columnAliases,
+    config.unappliedFilterColumns,
     disableUrlPersistence,
     mutualExclusionContext,
   ]);
@@ -562,7 +639,14 @@ export function useSidebarFilterState(
   );
 
   const setFilterState = useCallback(
-    (newFilters: FilterState) => {
+    (
+      newFilters: FilterState,
+      options?: {
+        updateType?: "push" | "pushIn" | "replace" | "replaceIn";
+        origin?: "user" | "saved_view" | "system";
+        action?: "clear";
+      },
+    ) => {
       // Keep mutual exclusion reconciliation canonicalized in one place.
       // Any direct writes to peekContext.tableState.filters outside this hook can bypass this guard.
       const reconciledFilters = reconcileMutuallyExclusiveFilters(
@@ -573,6 +657,15 @@ export function useSidebarFilterState(
         explicitFilters: reconciledFilters,
         availableEnvironmentValues,
         config: managedEnvironmentPolicyConfig,
+      });
+
+      // Tell the host before persisting, so it sees the same canonicalized shape
+      // that is about to be written (ported from upstream).
+      onExplicitFilterStateChange?.({
+        previousFilters: explicitFilterState,
+        nextFilters: explicitFilters,
+        origin: options?.origin ?? "user",
+        action: options?.action,
       });
 
       if (peekContext) {
@@ -588,7 +681,7 @@ export function useSidebarFilterState(
 
       const encoded = encodeFiltersGeneric(explicitFilters);
       setPendingFiltersQuery(encoded);
-      setUrlFiltersQuery(encoded || null);
+      setUrlFiltersQuery(encoded || null, options?.updateType);
       setStoredFiltersQuery(encoded);
     },
     [
@@ -599,6 +692,8 @@ export function useSidebarFilterState(
       mutualExclusionContext,
       managedEnvironmentPolicyConfig,
       availableEnvironmentValues,
+      explicitFilterState,
+      onExplicitFilterStateChange,
     ],
   );
 
@@ -641,7 +736,9 @@ export function useSidebarFilterState(
   ]);
 
   const clearAll = () => {
-    setFilterState([]);
+    // Clearing discards drafts, so the editor must remount (ported from upstream).
+    setDraftResetKey((key) => key + 1);
+    setFilterState([], { action: "clear" });
   };
 
   // Generic apply selection logic
@@ -1720,10 +1817,29 @@ export function useSidebarFilterState(
     t,
   ]);
 
+  // ── Added for the evaluators v2 migration (ported from upstream) ───────────
+  const projectFiltersForSearchBar = useCallback(
+    (filters: FilterState) =>
+      toSearchBarEnvironmentFilters({
+        explicitFilters: filters,
+        config: managedEnvironmentPolicyConfig,
+      }),
+    [managedEnvironmentPolicyConfig],
+  );
+
+  /** What the search bar reads: the user's own selection, in bar form. */
+  const searchBarFilterState: FilterState = useMemo(
+    () => projectFiltersForSearchBar(explicitFilterState),
+    [explicitFilterState, projectFiltersForSearchBar],
+  );
+
   return {
     filterState,
     effectiveFilterState: filterState,
     explicitFilterState,
+    searchBarFilterState,
+    projectFiltersForSearchBar,
+    draftResetKey,
     setFilterState,
     updateFilter,
     updateFilterOnly,

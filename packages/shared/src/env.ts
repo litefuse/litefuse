@@ -120,7 +120,7 @@ const EnvSchema = z.object({
     .number()
     .positive()
     .default(1),
-  // Exactly-once otel pipeline (docs/ingestion-exactly-once-design.md).
+  // Exactly-once otel pipeline.
   // Idempotent-registration window: a fileKey is admitted into the pending
   // list at most once per TTL. MUST be >= the full retry window (BullMQ
   // attempts + DLQ redrives), i.e. >= FE label_keep_max_second — the

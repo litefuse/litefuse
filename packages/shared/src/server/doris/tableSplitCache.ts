@@ -185,7 +185,7 @@ export const stopSplitCacheRefresh = (): void => {
     clearInterval(splitCacheGlobal.litefuseDorisSplitRefreshTimer);
     splitCacheGlobal.litefuseDorisSplitRefreshTimer = null;
   }
-  // Close the dedicated pub/sub connections (#8). stop() is the shutdown hook,
+  // Close the dedicated pub/sub connections. stop() is the shutdown hook,
   // and nothing else disconnects these — the worker shutdown closes only the
   // shared `redis`. Leaving them open leaks the connection AND keeps the event
   // loop alive (the subscriber socket is not unref'd), hanging test runners.
@@ -212,7 +212,7 @@ let publisher: Redis | Cluster | null = null;
 let subscriber: Redis | Cluster | null = null;
 
 // Best-effort broadcast: the awaited publish is bounded so a Redis outage can
-// never wedge the caller (#7). createNewRedisInstance keeps enableOfflineQueue
+// never wedge the caller. createNewRedisInstance keeps enableOfflineQueue
 // (a publish issued before the connection is ready still flushes) AND
 // maxRetriesPerRequest:null (never fails) — together those mean an offline
 // publish neither rejects nor drops, it BLOCKS. The 15s periodic refresh is the

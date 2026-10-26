@@ -3,10 +3,26 @@ import { type ListEntry } from "@/src/features/navigate-detail-pages/context";
 import { useRouter } from "next/router";
 import { useCallback } from "react";
 import { urlSearchParamsToQuery } from "@/src/utils/navigation";
+import { resolvePeekTraceParams } from "@/src/components/table/peek/resolvePeekTraceParams";
+import { usePostHogClientCapture } from "@/src/features/posthog-analytics";
 
 const PEEK_PARAM = "peek";
+// View-mode param shared with the peek component (cleared whenever peek closes).
+const PEEK_VIEW_PARAM = "peekView";
 
 interface BasePeekConfig {
+  /**
+   * LITEFUSE ADDITION (evaluators v2): upstream's peek hook takes the table's
+   * own analytics identity and emits `peek:*` events with it, and returns both
+   * values so the peek view can forward them onto expand/resize events.
+   *
+   * They are OPTIONAL here on purpose: this repo's peek hook predates the
+   * analytics and every pre-existing caller omits them, while the v2 callers
+   * pass them. `tableName` defaults to "unknown" and `isV4` to false for the
+   * legacy callers, exactly like the pre-existing return values did.
+   */
+  tableName?: string;
+  isV4?: boolean;
   /** Additional URL parameters to clear when closing peek view and persist when expanding peek view */
   queryParams?: string[];
   /**
@@ -35,6 +51,12 @@ interface PeekConfigWithExpand extends BasePeekConfig {
     basePath: string;
     /** URL parameter to use for path param (defaults to "peek") */
     pathParam?: string;
+    /**
+     * Set for trace-detail peeks: routes the expand target's trace id and
+     * timestamp through `resolvePeekTraceParams` so the standalone page gets the
+     * same dialect handling as the peek pane.
+     */
+    reader?: "trace" | "observation";
   };
 }
 
@@ -45,6 +67,13 @@ interface BasePeekNavigation {
   closePeek: () => void;
   /** Resolve the navigation path for a detail entry */
   resolveDetailNavigationPath: (entry: ListEntry) => string;
+  /**
+   * LITEFUSE ADDITION: the analytics identity passed in the config, returned so
+   * consumers (the evaluators v2 peek config) can forward it. Defaults keep the
+   * type non-optional while existing callers pass nothing.
+   */
+  tableName: string;
+  isV4: boolean;
 }
 
 interface PeekNavigation extends BasePeekNavigation {}
@@ -65,18 +94,40 @@ export function usePeekNavigation(
 export function usePeekNavigation(config?: PeekConfig): PeekNavigation;
 export function usePeekNavigation(config?: PeekConfig | PeekConfigWithExpand) {
   const router = useRouter();
+  const capture = usePostHogClientCapture();
+  // Every peek is opened/closed through this hook, so open/close/new-tab
+  // analytics live here once instead of in each consuming table. Props are
+  // metadata-only: `routePattern` is the Next.js route PATTERN
+  // (`/project/[projectId]/traces`), never a concrete URL with ids.
+  const routePattern = router.pathname;
+  const tableName = config?.tableName ?? "unknown";
+  const isV4 = config?.isV4 ?? false;
 
   const openPeek = useCallback(
     (id?: string, row?: any) => {
       const pathname = getPathnameWithoutBasePath();
       const url = new URL(window.location.href);
       const params = new URLSearchParams(url.search);
+      const currentPeekId = params.get(PEEK_PARAM);
 
       if (!id) {
         // Close peek view - clear all peek-related params
+        if (currentPeekId !== null) {
+          capture("peek:closed", { routePattern, isV4, tableName });
+        }
         params.delete(PEEK_PARAM);
+        params.delete(PEEK_VIEW_PARAM);
         config?.queryParams?.forEach((param) => params.delete(param));
       } else {
+        // Re-clicking the already-peeked row is a no-op open — don't count it.
+        if (id !== currentPeekId) {
+          capture("peek:opened", {
+            routePattern,
+            wasOpen: currentPeekId !== null,
+            isV4,
+            tableName,
+          });
+        }
         // Clear all query params that are set in the config
         config?.queryParams?.forEach((param) => params.delete(param));
 
@@ -106,7 +157,7 @@ export function usePeekNavigation(config?: PeekConfig | PeekConfigWithExpand) {
         { shallow: true },
       );
     },
-    [router, config],
+    [router, config, capture, routePattern, isV4, tableName],
   );
 
   const closePeek = useCallback(() => {
@@ -114,8 +165,14 @@ export function usePeekNavigation(config?: PeekConfig | PeekConfigWithExpand) {
     const url = new URL(window.location.href);
     const params = new URLSearchParams(url.search);
 
+    // Guarded so programmatic cleanup with no peek open emits nothing.
+    if (params.get(PEEK_PARAM) !== null) {
+      capture("peek:closed", { routePattern, isV4, tableName });
+    }
+
     // Close peek view - clear all peek-related params
     params.delete(PEEK_PARAM);
+    params.delete(PEEK_VIEW_PARAM);
     config?.queryParams?.forEach((param) => params.delete(param));
 
     router.push(
@@ -126,7 +183,7 @@ export function usePeekNavigation(config?: PeekConfig | PeekConfigWithExpand) {
       undefined,
       { shallow: true },
     );
-  }, [router, config]);
+  }, [router, config, capture, routePattern, isV4, tableName]);
 
   const resolveDetailNavigationPath = useCallback(
     (entry: ListEntry) => {
@@ -168,11 +225,36 @@ export function usePeekNavigation(config?: PeekConfig | PeekConfigWithExpand) {
       const url = new URL(window.location.href);
       const params = new URLSearchParams(url.search);
       const pathParam = config?.expandConfig?.pathParam ?? PEEK_PARAM;
+      const reader = config?.expandConfig?.reader;
 
-      const pathname = `${config?.expandConfig?.basePath}/${params.get(pathParam)}`;
+      // Trace-detail expands resolve the id and timestamp through the shared
+      // dialect helper so the standalone page gets the same params as the pane:
+      // a v4-dialect timestamp is an observation startTime and must not become
+      // the trace-timestamp lookup filter.
+      const resolved = reader
+        ? resolvePeekTraceParams({
+            reader,
+            peek: params.get(PEEK_PARAM) ?? undefined,
+            traceId: params.get("traceId") ?? undefined,
+            timestamp: params.get("timestamp") ?? undefined,
+          })
+        : undefined;
+
+      // Fall back to `peek` when the configured pathParam is absent: the trace
+      // reader's URLs carry the trace id in `traceId` (v4 dialect) or in `peek`
+      // (v3 dialect) — see resolvePeekTraceParams.
+      const pathId = resolved
+        ? resolved.traceId
+        : (params.get(pathParam) ?? params.get(PEEK_PARAM));
+      const pathname = `${config?.expandConfig?.basePath}/${pathId}`;
       const queryParams = config?.queryParams
         ?.map((param) => {
-          const value = params.get(param);
+          // The resolved trace id is the path segment; don't repeat it.
+          if (resolved && param === "traceId") return null;
+          const value =
+            resolved && param === "timestamp"
+              ? (resolved.timestamp?.toISOString() ?? null)
+              : params.get(param);
           return value ? `${param}=${value}` : null;
         })
         .filter(Boolean)
@@ -180,19 +262,22 @@ export function usePeekNavigation(config?: PeekConfig | PeekConfigWithExpand) {
       const pathnameWithQuery = `${pathname}?${queryParams}`;
 
       if (openInNewTab) {
+        capture("peek:open_in_new_tab", { routePattern, isV4, tableName });
         const pathnameWithBasePath = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}${pathnameWithQuery}`;
         window.open(pathnameWithBasePath, "_blank");
       } else {
         router.push(pathnameWithQuery);
       }
     },
-    [router, config],
+    [router, config, capture, routePattern, isV4, tableName],
   );
 
   const baseNavigation = {
     openPeek,
     closePeek,
     resolveDetailNavigationPath,
+    tableName,
+    isV4,
   };
 
   if (config?.expandConfig) {

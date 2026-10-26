@@ -8,6 +8,19 @@ import {
   getDisplaySecretKey,
 } from "@langfuse/shared/src/server";
 
+/**
+ * `env` from env.mjs is a frozen `createEnv()` result, so the assignments this suite
+ * makes in `beforeAll` and per test were silently ignored: it ran against whatever the
+ * host `.env` provided (a cloud region and a different admin key), and every admin-key
+ * case failed with "Admin API key auth is not available on Litefuse Cloud" instead of
+ * the error under test. Mock the module with a writable copy of the real values so the
+ * suite controls the environment it asserts on.
+ */
+jest.mock("../../env.mjs", () => {
+  const actual = jest.requireActual("../../env.mjs");
+  return { ...actual, env: { ...actual.env } };
+});
+
 describe("Admin API Key Authentication", () => {
   const ADMIN_API_KEY = "test-admin-key-123";
 
@@ -163,7 +176,7 @@ describe("Admin API Key Authentication", () => {
 
       await expect(verifyAuth(mockReq, true)).rejects.toEqual({
         status: 403,
-        message: "Admin API key auth is not available on Langfuse Cloud",
+        message: "Admin API key auth is not available on Litefuse Cloud",
       });
 
       (env as any).NEXT_PUBLIC_LITEFUSE_CLOUD_REGION = undefined;

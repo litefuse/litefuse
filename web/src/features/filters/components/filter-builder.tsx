@@ -39,6 +39,7 @@ import {
   TooltipTrigger,
 } from "@/src/components/ui/tooltip";
 import { MultiSelect } from "@/src/features/filters/components/multi-select";
+import { getColumnOptionsForFilterRow } from "@/src/features/filters/lib/filter-transform";
 import {
   type WipFilterState,
   type WipFilterCondition,
@@ -343,6 +344,9 @@ export function InlineFilterBuilder({
   disabled,
   columnsWithCustomSelect,
   filterWithAI = false,
+  columnsHiddenUnlessSelected,
+  compact = false,
+  subtleAddButton = false,
 }: {
   columns: ColumnDefinitionWithAlert[];
   filterState: FilterState;
@@ -354,6 +358,20 @@ export function InlineFilterBuilder({
   disabled?: boolean;
   columnsWithCustomSelect?: string[];
   filterWithAI?: boolean;
+  /**
+   * Column ids/names that stay in the picker only for rows that already use
+   * them. Used to grandfather retired columns without offering them on new rows.
+   */
+  columnsHiddenUnlessSelected?: readonly string[];
+  /**
+   * Width-constrained rendering flag. Upstream swaps its single-row table for a
+   * wrapping block layout here; this fork keeps the table (callers such as the
+   * evaluators-v2 sample selector constrain the column widths themselves) and
+   * only relaxes the inner min-widths.
+   */
+  compact?: boolean;
+  /** Renders the add action like the subtle prompt-editor "Add message" action. */
+  subtleAddButton?: boolean;
 }) {
   const [wipFilterState, _setWipFilterState] =
     useState<WipFilterState>(filterState);
@@ -394,6 +412,9 @@ export function InlineFilterBuilder({
         disabled={disabled}
         columnsWithCustomSelect={columnsWithCustomSelect}
         filterWithAI={filterWithAI}
+        columnsHiddenUnlessSelected={columnsHiddenUnlessSelected}
+        compact={compact}
+        subtleAddButton={subtleAddButton}
       />
     </div>
   );
@@ -437,6 +458,9 @@ function FilterBuilderForm({
   disabled,
   columnsWithCustomSelect = [],
   filterWithAI = false,
+  columnsHiddenUnlessSelected = [],
+  compact = false,
+  subtleAddButton = false,
 }: {
   columnIdentifier: ColumnIdentifier;
   columns: ColumnDefinitionWithAlert[];
@@ -445,6 +469,14 @@ function FilterBuilderForm({
   disabled?: boolean;
   columnsWithCustomSelect?: string[];
   filterWithAI?: boolean;
+  /**
+   * Column ids/names that stay in the picker only for rows that already use
+   * them. Used to grandfather retired columns without offering them on new rows.
+   */
+  columnsHiddenUnlessSelected?: readonly string[];
+  /** See `InlineFilterBuilder`: this fork relaxes inner min-widths only. */
+  compact?: boolean;
+  subtleAddButton?: boolean;
 }) {
   const { t } = useTranslation();
   const { isLangfuseCloud } = useLangfuseCloudRegion();
@@ -623,6 +655,11 @@ function FilterBuilderForm({
                 const column = columns.find(
                   (c) => c.id === filter.column || c.name === filter.column,
                 );
+                const columnsForPicker = getColumnOptionsForFilterRow(
+                  columns,
+                  filter.column,
+                  columnsHiddenUnlessSelected,
+                );
                 return (
                   <tr key={i}>
                     <td className="p-1 text-sm">
@@ -637,7 +674,10 @@ function FilterBuilderForm({
                             role="combobox"
                             type="button"
                             disabled={disabled}
-                            className="flex w-full min-w-32 items-center justify-between gap-2"
+                            className={cn(
+                              "flex w-full items-center justify-between gap-2",
+                              compact ? "min-w-0" : "min-w-32",
+                            )}
                           >
                             <span className="truncate">
                               {column ? t(column.name) : t("Column")}
@@ -664,7 +704,7 @@ function FilterBuilderForm({
                                 {t("No options found.")}
                               </InputCommandEmpty>
                               <InputCommandGroup>
-                                {columns.map((option) => {
+                                {columnsForPicker.map((option) => {
                                   const hasAlert = !!option.alert;
                                   const severity =
                                     option.alert?.severity ?? "warning";
@@ -1046,11 +1086,21 @@ function FilterBuilderForm({
             <Button
               onClick={() => addNewFilter()}
               type="button" // required as it will otherwise submit forms where this component is used
-              className="mt-2"
-              variant="outline"
+              className={cn(
+                subtleAddButton
+                  ? "text-foreground hover:text-foreground mt-2 h-6 w-full justify-start gap-1.5 px-0 py-0 text-xs leading-none underline-offset-4 hover:bg-transparent hover:underline"
+                  : "mt-2",
+                compact && !subtleAddButton && "mt-4 self-start",
+              )}
+              variant={subtleAddButton ? "ghost" : "outline"}
               size="sm"
             >
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus
+                className={cn(
+                  "shrink-0",
+                  subtleAddButton ? "h-3.5 w-3.5" : "mr-2 h-4 w-4",
+                )}
+              />
               {t("Add filter")}
             </Button>
           ) : null}

@@ -121,3 +121,37 @@ export const singleFilter = z.discriminatedUnion("type", [
   nullFilter,
   positionInTraceFilter,
 ]);
+
+// ── Added for the evaluators v2 migration (copied from upstream) ─────────────
+const LEGACY_EMPTY_SUBSTRING_STRING_OBJECT_OPERATORS = new Set<string>([
+  "contains",
+  "starts with",
+  "ends with",
+]);
+
+/**
+ * Historical rows stored an empty string-object value with a substring operator,
+ * which no longer parses. Rewriting it to "is set" keeps those filters readable.
+ */
+export const coerceLegacyEmptyMetadataFilters = (filters: unknown): unknown => {
+  if (!Array.isArray(filters)) return filters;
+  return filters.map((filter) => {
+    if (
+      filter &&
+      typeof filter === "object" &&
+      (filter as { type?: unknown }).type === "stringObject" &&
+      (filter as { value?: unknown }).value === "" &&
+      LEGACY_EMPTY_SUBSTRING_STRING_OBJECT_OPERATORS.has(
+        (filter as { operator?: unknown }).operator as string,
+      )
+    ) {
+      return { ...(filter as object), operator: "is set" };
+    }
+    return filter;
+  });
+};
+
+export const singleFilterList = z.preprocess(
+  coerceLegacyEmptyMetadataFilters,
+  z.array(singleFilter),
+) as z.ZodType<z.output<typeof singleFilter>[], z.input<typeof singleFilter>[]>;

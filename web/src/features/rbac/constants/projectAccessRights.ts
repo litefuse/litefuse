@@ -77,6 +77,10 @@ export const projectScopes = [
 
   "TableViewPresets:CUD",
   "TableViewPresets:read",
+  "evaluator:CUD",
+  "evaluator:read",
+  "evaluationRule:CUD",
+  "evaluationRule:read",
 
   "automations:CUD",
   "automations:read",
@@ -87,6 +91,13 @@ export type ProjectScope = (typeof projectScopes)[number];
 
 export const projectRoleAccessRights: Record<Role, ProjectScope[]> = {
   OWNER: [
+  // ── Added for the evaluators v2 migration ──────────────────────────────────
+  // Upstream keeps the same four scopes in the same list, and grants them the
+  // same way: all four to OWNER/ADMIN/MEMBER, read-only to VIEWER.
+    "evaluator:CUD",
+    "evaluator:read",
+    "evaluationRule:CUD",
+    "evaluationRule:read",
     "project:read",
     "project:update",
     "project:delete",
@@ -143,6 +154,13 @@ export const projectRoleAccessRights: Record<Role, ProjectScope[]> = {
     "automations:read",
   ],
   ADMIN: [
+  // ── Added for the evaluators v2 migration ──────────────────────────────────
+  // Upstream keeps the same four scopes in the same list, and grants them the
+  // same way: all four to OWNER/ADMIN/MEMBER, read-only to VIEWER.
+    "evaluator:CUD",
+    "evaluator:read",
+    "evaluationRule:CUD",
+    "evaluationRule:read",
     "project:read",
     "project:update",
     "projectMembers:read",
@@ -198,6 +216,13 @@ export const projectRoleAccessRights: Record<Role, ProjectScope[]> = {
     "automations:read",
   ],
   MEMBER: [
+  // ── Added for the evaluators v2 migration ──────────────────────────────────
+  // Upstream keeps the same four scopes in the same list, and grants them the
+  // same way: all four to OWNER/ADMIN/MEMBER, read-only to VIEWER.
+    "evaluator:CUD",
+    "evaluator:read",
+    "evaluationRule:CUD",
+    "evaluationRule:read",
     "project:read",
     "projectMembers:read",
     "apiKeys:read",
@@ -240,6 +265,11 @@ export const projectRoleAccessRights: Record<Role, ProjectScope[]> = {
     "automations:read",
   ],
   VIEWER: [
+  // ── Added for the evaluators v2 migration ──────────────────────────────────
+  // Upstream keeps the same four scopes in the same list, and grants them the
+  // same way: all four to OWNER/ADMIN/MEMBER, read-only to VIEWER.
+    "evaluator:read",
+    "evaluationRule:read",
     "project:read",
     "prompts:read",
     "evalTemplate:read",

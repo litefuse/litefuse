@@ -64,7 +64,7 @@ export default function RemapEvaluatorPage() {
   const updateJobMutation = api.evals.updateEvalJob.useMutation({
     onSuccess: () => {
       utils.evals.invalidate();
-      void router.push(`/project/${projectId}/evals`);
+      void router.push(`/project/${projectId}/evals/legacy`);
     },
     onError: (err) => {
       setError(err.message ?? "Failed to update old eval configuration");
@@ -75,7 +75,7 @@ export default function RemapEvaluatorPage() {
   const deleteJobMutation = api.evals.deleteEvalJob.useMutation({
     onSuccess: () => {
       utils.evals.invalidate();
-      void router.push(`/project/${projectId}/evals`);
+      void router.push(`/project/${projectId}/evals/legacy`);
     },
     onError: (err) => {
       setError(err.message ?? "Failed to delete old eval configuration");
@@ -114,7 +114,7 @@ export default function RemapEvaluatorPage() {
         case "keep-active":
           // Do nothing - both old and new evals will be active
           utils.evals.invalidate();
-          void router.push(`/project/${projectId}/evals`);
+          void router.push(`/project/${projectId}/evals/legacy`);
           break;
         case "mark-inactive":
           // Set old eval to INACTIVE
@@ -151,7 +151,7 @@ export default function RemapEvaluatorPage() {
         breadcrumb: [
           {
             name: t("Running Evaluators"),
-            href: `/project/${projectId}/evals`,
+            href: `/project/${projectId}/evals/legacy`,
           },
         ],
       }}

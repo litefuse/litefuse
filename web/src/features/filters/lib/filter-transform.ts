@@ -59,3 +59,30 @@ export function transformFiltersForBackend(
     return filter;
   });
 }
+
+/**
+ * Columns listed in `hiddenUnlessSelected` stay in the picker only for the
+ * filter row that already uses them. New / other rows cannot select them.
+ */
+export function getColumnOptionsForFilterRow<
+  T extends { id: string; name: string; aliases?: string[] },
+>(
+  columns: T[],
+  filterColumn: string | undefined,
+  hiddenUnlessSelected: readonly string[] = [],
+): T[] {
+  if (hiddenUnlessSelected.length === 0) return columns;
+
+  const hidden = new Set(hiddenUnlessSelected);
+  return columns.filter((option) => {
+    const isHiddenUnlessSelected =
+      hidden.has(option.id) || hidden.has(option.name);
+    if (!isHiddenUnlessSelected) return true;
+
+    return (
+      option.id === filterColumn ||
+      option.name === filterColumn ||
+      (filterColumn !== undefined && option.aliases?.includes(filterColumn))
+    );
+  });
+}

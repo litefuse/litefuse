@@ -57,6 +57,13 @@ import {
   getEvaluatorBlockMetadata,
   getBlockReasonForInvalidModelConfig,
   isJobConfigExecutable,
+  // ── LITEFUSE ADDITIONS (evaluators v2) ────────────────────────────────────
+  // TRACE/DATASET rules live in the v2 tables; the projections below need the
+  // evaluator type and the generated Kysely row type of `job_configurations`.
+  EvalTemplateType,
+  PersistedEvalOutputDefinitionSchema,
+  resolvePersistedEvalOutputDefinition,
+  type DB,
 } from "@langfuse/shared";
 import { kyselyPrisma, prisma } from "@langfuse/shared/src/db";
 import { createW3CTraceId } from "../utils";
@@ -78,6 +85,17 @@ import {
   createProductionEvalExecutionDeps,
 } from "./evalExecutionDeps";
 import { ExtractedVariable } from "./observationEval/extractObservationVariables";
+import { runV2LlmEvaluatorEvaluation } from "./v2LlmEvaluatorExecution";
+import { runV2DecisionModelEvaluation } from "./v2DecisionModelExecution";
+import { resolveV2Execution } from "./v2ExecutionResolution";
+import {
+  isEvalTargetEnvironmentAllowed,
+  isInternalEvalEnvironment,
+} from "./isEvalTargetEnvironmentAllowed";
+import {
+  getDeterministicSamplingValue,
+  shouldSampleEvaluation,
+} from "./deterministicSampling";
 
 /**
  * Determines which eval jobs to create for a given event (traces or dataset run items).
@@ -170,6 +188,306 @@ type CreateEvalJobsParams = {
     }
 );
 
+// ── Evaluators v2: TRACE/DATASET rules (LITEFUSE ADDITION) ──────────────────
+// The evaluators v2 model stores what used to be a `job_configuration` as
+// `evaluation_rules` + `evaluator_versions`. The executor below still consumes a
+// `job_configurations`-shaped row, so a v2 rule is projected onto that shape
+// (upstream does exactly the same, see its `toTraceEvalConfig`). Legacy rows are
+// untouched: both sources are merged when jobs are created.
+//
+// The projection is a plain object rather than the generated Kysely row type,
+// whose `Generated<…>` columns (created_at/status/time_scope) carry insert/update
+// wrappers that a hand-built value cannot satisfy. Only the fields the rest of
+// this file reads are needed.
+type V2TraceConfigRow = {
+  id: string;
+  created_at: Date;
+  updated_at: Date;
+  project_id: string;
+  job_type: "EVAL";
+  status: JobConfigState;
+  blocked_at: null;
+  block_reason: null;
+  block_message: null;
+  eval_template_id: string;
+  score_name: string;
+  filter: unknown;
+  target_object: string;
+  variable_mapping: unknown;
+  sampling: string;
+  delay: number;
+  time_scope: string[];
+  /**
+   * Not a `job_configurations` column: the evaluator this rule assigns, carried
+   * so the enqueued execution event can name it (see the enqueue site) and so a
+   * failure can pause the evaluator row.
+   */
+  evaluatorId: string;
+};
+
+/** Legacy row shape produced by the Kysely query below (select-all). */
+type LegacyConfigRow = Awaited<ReturnType<typeof selectLegacyConfigs>>[number];
+
+async function selectLegacyConfigs(params: {
+  projectId: string;
+  configId?: string;
+  enforcedJobTimeScope?: JobTimeScope;
+}) {
+  let query =
+    // ── LITEFUSE ADDITION (evaluators v2 backfill) ─────────────────────────
+    // Once the legacy→v2 backfill has run, the v2 tables own the scheduling and
+    // `job_configurations` is a backup: the legacy pages exist to look things up,
+    // not to do the work. So anything that has a v2 rule is excluded here.
+    //
+    // This is required for correctness, not just tidiness: `createEvalJobs` below
+    // merges both sources. Without the anti-join, every migrated configuration
+    // that is still active would be scheduled twice — once from
+    // `job_configurations`, once from its `evaluation_rules` row — and both the
+    // job execution insert and the queue id are unconstrained, so it would
+    // surface as duplicate job executions and duplicate scores (double provider
+    // spend) rather than as an error. The batch-action path still reaches this
+    // function for legacy ids, so it is reachable, not theoretical.
+    //
+    // Two id shapes have to be matched:
+    //   * `er.id = jc.id`               — the backfill's original shape, and the
+    //                                     only one that exists while a rolling
+    //                                     deploy still runs this code against a
+    //                                     database that has not been converted;
+    //   * `er.id = 'evr_' || jc.id`     — the shape 20261015000000_convert_
+    //                                     legacy_evaluators_to_event_rules
+    //                                     re-keys converted rules to. Keeping the
+    //                                     prefix in sync with that migration is
+    //                                     what makes the exclusion hold after the
+    //                                     conversion ran.
+    //
+    // The status is deliberately not part of the condition: it already lives on
+    // the rule (the backfill writes `INACTIVE` for historic-only configurations
+    // whose `time_scope` has no `NEW`, exactly as upstream does), and the rule is
+    // what the new UI shows and edits.
+    kyselyPrisma.$kysely
+      .selectFrom("job_configurations")
+      .selectAll()
+      .where(sql.raw("job_type::text"), "=", "EVAL")
+      .where("project_id", "=", params.projectId)
+      .where(sql.raw("status::text"), "=", "ACTIVE")
+      .where(sql.raw("blocked_at"), "is", null)
+      .where("target_object", "in", [
+        EvalTargetObject.TRACE,
+        EvalTargetObject.DATASET,
+      ]).where(sql<boolean>`NOT EXISTS (
+        SELECT 1 FROM "evaluation_rules" er
+        WHERE er."id" = "job_configurations"."id"
+           OR er."id" = 'evr_' || "job_configurations"."id"
+      )`);
+
+  if (params.configId) {
+    query = query.where("id", "=", params.configId);
+  }
+
+  // for dataset_run_item_upsert queue + trace queue, we do not want to execute evals on configs,
+  // which were only allowed to run on historic data. Hence, we need to filter all configs which have "NEW" in the time_scope column.
+  if (params.enforcedJobTimeScope) {
+    query = query.where(
+      "time_scope",
+      "@>",
+      sql<string[]>`ARRAY[${params.enforcedJobTimeScope}]`,
+    );
+  }
+
+  return query.execute();
+}
+
+const v2TraceRuleSelect = {
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  projectId: true,
+  status: true,
+  filter: true,
+  targetObject: true,
+  sampling: true,
+  delay: true,
+  timeScope: true,
+  assignments: {
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      variableMapping: true,
+      evaluator: {
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          blockedAt: true,
+          versions: {
+            orderBy: { version: "desc" },
+            take: 1,
+            select: {
+              id: true,
+              version: true,
+              prompt: true,
+              promptMessages: true,
+              vars: true,
+              provider: true,
+              model: true,
+              modelParams: true,
+              variableMapping: true,
+              outputDefinition: true,
+            },
+          },
+        },
+      },
+    },
+  },
+} satisfies Prisma.EvaluationRuleSelect;
+
+export type V2TraceRule = Prisma.EvaluationRuleGetPayload<{
+  select: typeof v2TraceRuleSelect;
+}>;
+
+/**
+ * `outputDefinition.dataType` values the executor in this file can score.
+ *
+ * All three are supported: `evaluate()` routes v2 jobs to the v2-native executor
+ * (`runV2LlmEvaluatorEvaluation`), which compiles the matching result schema per
+ * data type. Rules with an unknown/absent data type are skipped and logged here
+ * rather than producing a score of the wrong shape.
+ */
+const V2_EXECUTABLE_OUTPUT_DATA_TYPES = new Set([
+  "NUMERIC",
+  "BOOLEAN",
+  "CATEGORICAL",
+]);
+
+/**
+ * The score data type a persisted output definition resolves to, or null when it
+ * is unreadable.
+ *
+ * Rows carry one of two shapes:
+ *   * the dataType-discriminated v2 shape, and
+ *   * the legacy `{ score, reasoning }` shape — which is what the legacy template
+ *     form wrote and therefore what the evaluators v2 backfill copies out of
+ *     `eval_templates.output_schema` into `evaluator_versions.output_definition`.
+ *
+ * The legacy shape is resolved through the shared resolver, which normalises it to
+ * NUMERIC — the same function `executeLlmEvaluator` compiles with, so a migrated
+ * evaluator is not skipped for a type the executor could have scored. Reading the
+ * raw `dataType` field instead would silently skip every backfilled evaluator.
+ *
+ * A declared dataType is still honoured as declared, and a definition that is
+ * neither shape (e.g. `{}`) stays unreadable. Both keep the previous skip
+ * behaviour; the key gate mirrors `getTemplateResultType`, the legacy UI's own
+ * classification.
+ */
+function readOutputDefinitionDataType(
+  outputDefinition: unknown,
+): string | null {
+  if (!outputDefinition || typeof outputDefinition !== "object") return null;
+  const definition = outputDefinition as Record<string, unknown>;
+
+  if ("dataType" in definition) {
+    return typeof definition.dataType === "string" ? definition.dataType : null;
+  }
+
+  if (!("score" in definition) && !("reasoning" in definition)) return null;
+
+  const parsed = PersistedEvalOutputDefinitionSchema.safeParse(definition);
+  if (!parsed.success) return null;
+  return resolvePersistedEvalOutputDefinition(parsed.data).dataType;
+}
+
+/**
+ * Projects one v2 rule onto the legacy config row this file reads.
+ *
+ * Returns null when the rule must not be executed through the trace/dataset
+ * path — same contract as upstream's `toTraceEvalConfig`, plus our output-type
+ * guard: only a single-assignment rule whose evaluator is an unblocked
+ * LLM-as-a-judge with a usable latest version is executable here.
+ */
+export function toLegacyTraceConfigRow(
+  rule: V2TraceRule,
+): V2TraceConfigRow | null {
+  // TRACE/DATASET are legacy-target rules and keep the old one-rule/one-evaluator
+  // contract. Multi-assignment rules belong to the event/experiment flow and must
+  // not be flattened ambiguously here.
+  if (rule.assignments.length !== 1) return null;
+  const assignment = rule.assignments[0];
+  const evaluator = assignment.evaluator;
+  const version = evaluator.versions[0];
+  if (!version || evaluator.blockedAt) return null;
+
+  // Both judge families are executable here: the LLM judge needs a supported
+  // output definition, the decision model needs parseable questions (checked at
+  // execution time; a malformed set is a permanent failure there, not a skip).
+  const isLlmJudge = evaluator.type === EvalTemplateType.LLM_AS_JUDGE;
+  const isDecisionModel = evaluator.type === EvalTemplateType.DECISION_MODEL;
+  if (!isLlmJudge && !isDecisionModel) return null;
+
+  if (isLlmJudge) {
+    const dataType = readOutputDefinitionDataType(version.outputDefinition);
+    if (!dataType || !V2_EXECUTABLE_OUTPUT_DATA_TYPES.has(dataType)) {
+      logger.debug(
+        `Skipping v2 rule ${rule.id}: output type ${dataType ?? "unknown"} is not executable by the trace/dataset executor yet`,
+      );
+      return null;
+    }
+  }
+
+  return {
+    id: rule.id,
+    created_at: rule.createdAt,
+    updated_at: rule.updatedAt,
+    project_id: rule.projectId,
+    job_type: "EVAL",
+    status: rule.status,
+    blocked_at: null,
+    block_reason: null,
+    block_message: null,
+    // A v2 version id, resolved back through `resolveV2TraceExecution` at
+    // execution time (there is no `eval_templates` row behind it).
+    eval_template_id: version.id,
+    score_name: evaluator.name,
+    filter: rule.filter,
+    target_object: rule.targetObject,
+    variable_mapping:
+      assignment.variableMapping ?? version.variableMapping ?? [],
+    sampling: rule.sampling.toString(),
+    delay: rule.delay,
+    time_scope: rule.timeScope,
+    evaluatorId: evaluator.id,
+  } satisfies V2TraceConfigRow;
+}
+
+/**
+ * All executable v2 TRACE/DATASET rules of a project, in legacy row shape.
+ *
+ * Exported so the projection can be exercised against a real database
+ * (`worker/verify-v2-projection.ts`), which is the only way to check the shape of
+ * rows the UI actually writes.
+ */
+export async function loadV2TraceEvalConfigRows(params: {
+  projectId: string;
+  configId?: string;
+  enforcedJobTimeScope?: JobTimeScope;
+}): Promise<V2TraceConfigRow[]> {
+  const rules = await prisma.evaluationRule.findMany({
+    where: {
+      projectId: params.projectId,
+      status: "ACTIVE",
+      targetObject: { in: [EvalTargetObject.TRACE, EvalTargetObject.DATASET] },
+      ...(params.configId ? { id: params.configId } : {}),
+      ...(params.enforcedJobTimeScope
+        ? { timeScope: { has: params.enforcedJobTimeScope } }
+        : {}),
+    },
+    select: v2TraceRuleSelect,
+  });
+
+  return rules
+    .map(toLegacyTraceConfigRow)
+    .filter((row): row is V2TraceConfigRow => row !== null);
+}
+
 export const createEvalJobs = async ({
   event,
   sourceEventType,
@@ -182,34 +500,31 @@ export const createEvalJobs = async ({
   }
 
   // Fetch all configs for a given project. Those may be dataset or trace configs.
-  let configsQuery = kyselyPrisma.$kysely
-    .selectFrom("job_configurations")
-    .selectAll()
-    .where(sql.raw("job_type::text"), "=", "EVAL")
-    .where("project_id", "=", event.projectId)
-    .where(sql.raw("status::text"), "=", "ACTIVE")
-    .where(sql.raw("blocked_at"), "is", null)
-    .where("target_object", "in", [
-      EvalTargetObject.TRACE,
-      EvalTargetObject.DATASET,
-    ]);
+  const legacyConfigs = await selectLegacyConfigs({
+    projectId: event.projectId,
+    configId: "configId" in event ? (event.configId ?? undefined) : undefined,
+    enforcedJobTimeScope,
+  });
 
-  if ("configId" in event) {
-    // if configid is set in the event, we only want to fetch the one config
-    configsQuery = configsQuery.where("id", "=", event.configId);
-  }
+  // LITEFUSE ADDITION (evaluators v2): TRACE/DATASET rules are stored in the v2
+  // tables now; merge them in so a project can run migrated and legacy configs
+  // side by side. A failure to read them must not stop legacy evaluation.
+  const v2Configs = await loadV2TraceEvalConfigRows({
+    projectId: event.projectId,
+    configId: "configId" in event ? (event.configId ?? undefined) : undefined,
+    enforcedJobTimeScope,
+  }).catch((error) => {
+    logger.error("Failed to load evaluator v2 trace rules", {
+      projectId: event.projectId,
+      error,
+    });
+    return [] as V2TraceConfigRow[];
+  });
 
-  // for dataset_run_item_upsert queue + trace queue, we do not want to execute evals on configs,
-  // which were only allowed to run on historic data. Hence, we need to filter all configs which have "NEW" in the time_scope column.
-  if (enforcedJobTimeScope) {
-    configsQuery = configsQuery.where(
-      "time_scope",
-      "@>",
-      sql<string[]>`ARRAY[${enforcedJobTimeScope}]`,
-    );
-  }
-
-  const configs = await configsQuery.execute();
+  const configs: (LegacyConfigRow | V2TraceConfigRow)[] = [
+    ...legacyConfigs,
+    ...v2Configs,
+  ];
 
   if (configs.length === 0) {
     logger.debug(
@@ -246,7 +561,7 @@ export const createEvalJobs = async ({
   // See: packages/shared/src/server/llm/types.ts (LangfuseInternalTraceEnvironment enum)
   if (
     sourceEventType === "trace-upsert" &&
-    event.traceEnvironment?.startsWith("langfuse")
+    isInternalEvalEnvironment(event.traceEnvironment)
   ) {
     logger.debug("Skipping eval job creation for internal Langfuse trace", {
       traceId: event.traceId,
@@ -600,16 +915,26 @@ export const createEvalJobs = async ({
         continue;
       }
 
-      // apply sampling. Only if the job is sampled, we create a job
-      // user supplies a number between 0 and 1, which is the probability of sampling
-      if (parseFloat(config.sampling) !== 1) {
-        const random = Math.random();
-        if (random > parseFloat(config.sampling)) {
-          logger.debug(
-            `Eval job for config ${config.id} and trace ${event.traceId} was sampled out`,
-          );
-          continue;
-        }
+      // Apply sampling. Only if the job is sampled, we create a job. The user
+      // supplies a number between 0 and 1, the probability of sampling.
+      //
+      // LITEFUSE NOTE: upstream made this deterministic (hash of the target id)
+      // rather than `Math.random()` per attempt, so a retried scheduling attempt
+      // cannot sample the same trace differently. See deterministicSampling.ts.
+      const samplingTargetId =
+        "observationId" in event && event.observationId
+          ? event.observationId
+          : event.traceId;
+      if (
+        !shouldSampleEvaluation({
+          samplingValue: getDeterministicSamplingValue(samplingTargetId),
+          samplingRate: parseFloat(config.sampling),
+        })
+      ) {
+        logger.debug(
+          `Eval job for config ${config.id} and trace ${event.traceId} was sampled out`,
+        );
+        continue;
       }
 
       logger.debug(
@@ -649,6 +974,12 @@ export const createEvalJobs = async ({
             projectId: event.projectId,
             jobExecutionId: jobExecutionId,
             delay: config.delay,
+            // LITEFUSE ADDITION (evaluators v2): carry the evaluator identity so
+            // the executor resolves through the rule instead of re-deriving it
+            // from `jobConfigurationId`. Absent for legacy job configurations.
+            ...("evaluatorId" in config
+              ? { evaluatorId: config.evaluatorId, evaluationRuleId: config.id }
+              : {}),
           },
           retryBaggage: {
             originalJobTimestamp: new Date(),
@@ -757,6 +1088,24 @@ export async function executeLLMAsJudgeEvaluation({
         );
       }
 
+      /**
+       * Pauses the evaluator configuration this job belongs to. v2 jobs do not
+       * reach this executor (they run through `runV2LlmEvaluatorEvaluation`, which
+       * pauses the evaluator row instead).
+       */
+      const pauseEvaluatorOrConfig = async (
+        blockReason: EvaluatorBlockReason,
+        source: EvaluatorBlockSource,
+      ) => {
+        await blockEvaluatorConfigs({
+          projectId,
+          where: { id: config.id },
+          blockReason,
+          blockMessage: getEvaluatorBlockMetadata(blockReason).message,
+          source,
+        });
+      };
+
       logger.debug(
         `Executing LLM-as-judge evaluation for job ${jobExecutionId} in project ${projectId}`,
       );
@@ -807,13 +1156,10 @@ export async function executeLLMAsJudgeEvaluation({
           error: modelConfig.error,
         });
 
-        await blockEvaluatorConfigs({
-          projectId,
-          where: { id: config.id },
+        await pauseEvaluatorOrConfig(
           blockReason,
-          blockMessage: getEvaluatorBlockMetadata(blockReason).message,
-          source: EvaluatorBlockSource.INVALID_MODEL_CONFIG,
-        });
+          EvaluatorBlockSource.INVALID_MODEL_CONFIG,
+        );
 
         logger.warn(
           `Eval job ${jobExecutionId} will fail. ${modelConfig.error}`,
@@ -883,13 +1229,10 @@ export async function executeLLMAsJudgeEvaluation({
                   e.getEvaluatorBlockReason() ??
                   EvaluatorBlockReason.EVAL_MODEL_CONFIG_INVALID;
 
-                await blockEvaluatorConfigs({
-                  projectId,
-                  where: { id: config.id },
+                await pauseEvaluatorOrConfig(
                   blockReason,
-                  blockMessage: getEvaluatorBlockMetadata(blockReason).message,
-                  source: EvaluatorBlockSource.LLM_COMPLETION_ERROR,
-                });
+                  EvaluatorBlockSource.LLM_COMPLETION_ERROR,
+                );
               }
             }
             throw e;
@@ -972,6 +1315,32 @@ export async function executeLLMAsJudgeEvaluation({
  * Evaluates a trace-level job by extracting variables from tracing data
  * and calling the shared LLM-as-a-judge execution.
  */
+// ── Evaluators v2: execution resolution (LITEFUSE ADDITION) ─────────────────
+// The resolution itself lives in 2ExecutionResolution.ts, shared with the
+// observation/event path. This wrapper only names what is specific to the
+// trace/dataset queue.
+async function resolveV2TraceExecution(params: {
+  event: z.infer<typeof EvalExecutionEvent>;
+  job: JobExecution;
+}) {
+  const { event, job } = params;
+
+  return resolveV2Execution({
+    projectId: event.projectId,
+    jobConfigurationId: job.jobConfigurationId,
+    identity: {
+      evaluatorId: event.evaluatorId,
+      evaluationRuleId: event.evaluationRuleId,
+    },
+    // Decision models run here too: our rule UI allows attaching one to a rule,
+    // and the observation path is not v2-aware yet. See 待决问题登记.md (待决 10).
+    evaluatorTypes: [
+      EvalTemplateType.LLM_AS_JUDGE,
+      EvalTemplateType.DECISION_MODEL,
+    ],
+  });
+}
+
 export const evaluate = async ({
   event,
 }: {
@@ -1007,19 +1376,101 @@ export const evaluate = async ({
     return;
   }
 
-  // Fetch config to get variable mapping
-  const config = await prisma.jobConfiguration.findFirst({
+  // Fetch config to get variable mapping. For a job created from an evaluator v2
+  // rule there is no `job_configurations` row: resolve it through the v2 tables.
+  const legacyConfig = await prisma.jobConfiguration.findFirst({
     where: {
       id: job.jobConfigurationId,
       projectId: event.projectId,
     },
   });
 
-  if (!config || !config.evalTemplateId) {
+  if (!legacyConfig?.evalTemplateId) {
+    // ── Evaluators v2 path ──────────────────────────────────────────────────
+    // Runs through the v2-native executor (see `v2LlmEvaluatorExecution.ts`),
+    // which supports NUMERIC, BOOLEAN and CATEGORICAL output definitions.
+    const resolved = await resolveV2TraceExecution({ event, job });
+    if (resolved.type === "cancelled") {
+      logger.info(`Cancelling evaluator v2 job ${job.id}: ${resolved.reason}`);
+      await prisma.jobExecution.update({
+        where: { id: job.id, projectId: event.projectId },
+        data: {
+          status: JobExecutionStatus.CANCELLED,
+          endTime: new Date(),
+        },
+      });
+      return;
+    }
+
+    logger.debug(
+      `Resolved evaluator v2 job ${job.id} through rule ${resolved.evaluationRuleId}`,
+    );
+
+    const v2Variables = await extractVariablesFromTracingData({
+      projectId: event.projectId,
+      // For a decision model these are its state keys, for a judge its prompt
+      // variables; both are persisted in `evaluator_versions.vars`.
+      variables: resolved.version.vars,
+      traceId: job.jobInputTraceId,
+      traceTimestamp: job.jobInputTraceTimestamp ?? undefined,
+      datasetItemId: job.jobInputDatasetItemId ?? undefined,
+      datasetItemValidFrom: job.jobInputDatasetItemValidFrom ?? undefined,
+      variableMapping: variableMappingList.parse(resolved.variableMapping),
+    });
+
+    const environment =
+      getEnvironmentFromVariables(v2Variables) ?? DEFAULT_TRACE_ENVIRONMENT;
+    const deps = createProductionEvalExecutionDeps();
+
+    if (resolved.evaluatorType === "DECISION_MODEL") {
+      await runV2DecisionModelEvaluation({
+        projectId: event.projectId,
+        jobExecutionId: event.jobExecutionId,
+        job,
+        evaluatorId: resolved.evaluatorId,
+        evaluationRuleId: resolved.evaluationRuleId,
+        assignmentId: resolved.assignmentId,
+        scoreName: resolved.scoreName,
+        version: resolved.version,
+        extractedVariables: v2Variables,
+        environment,
+        deps,
+      });
+      return;
+    }
+
+    await runV2LlmEvaluatorEvaluation({
+      projectId: event.projectId,
+      jobExecutionId: event.jobExecutionId,
+      job,
+      evaluatorId: resolved.evaluatorId,
+      evaluationRuleId: resolved.evaluationRuleId,
+      assignmentId: resolved.assignmentId,
+      scoreName: resolved.scoreName,
+      version: resolved.version,
+      variableMapping: resolved.variableMapping,
+      extractedVariables: v2Variables,
+      environment,
+      deps,
+    });
+    return;
+  }
+
+  const legacyTemplate = await prisma.evalTemplate.findFirst({
+    where: {
+      id: legacyConfig.evalTemplateId,
+      OR: [{ projectId: event.projectId }, { projectId: null }],
+    },
+  });
+
+  if (!legacyTemplate) {
     throw new UnrecoverableError(
-      `Job configuration or template not found for job ${job.id}`,
+      `Evaluation template ${legacyConfig.evalTemplateId} not found`,
     );
   }
+
+  const config: JobConfiguration = legacyConfig;
+  const template: EvalTemplate = legacyTemplate;
 
   if (!isJobConfigExecutable(config)) {
     logger.debug(
@@ -1036,20 +1487,6 @@ export const evaluate = async ({
       },
     });
     return;
-  }
-
-  // Fetch template to get variable names
-  const template = await prisma.evalTemplate.findFirst({
-    where: {
-      id: config.evalTemplateId,
-      OR: [{ projectId: event.projectId }, { projectId: null }],
-    },
-  });
-
-  if (!template) {
-    throw new UnrecoverableError(
-      `Evaluation template ${config.evalTemplateId} not found`,
-    );
   }
 
   // Extract variables from tracing data
@@ -1071,6 +1508,37 @@ export const evaluate = async ({
     `Extracted ${extractedVariables.length} variables for job ${event.jobExecutionId}`,
   );
 
+  const environment =
+    getEnvironmentFromVariables(extractedVariables) ??
+    DEFAULT_TRACE_ENVIRONMENT;
+
+  // Final fail-closed loop safeguard: never execute an eval whose target lives in
+  // an internal Langfuse environment, regardless of which scheduling path created
+  // the job. See isEvalTargetEnvironmentAllowed. The environment is derived from
+  // the extracted trace variables, so a mapping without any tracing-data variable
+  // falls back to the default environment and relies on the scheduling guards.
+  if (!isEvalTargetEnvironmentAllowed(environment)) {
+    logger.warn(
+      "Cancelling eval job targeting an internal Langfuse environment",
+      {
+        jobExecutionId: event.jobExecutionId,
+        projectId: event.projectId,
+        environment,
+        traceId: job.jobInputTraceId,
+      },
+    );
+
+    await prisma.jobExecution.update({
+      where: { id: job.id, projectId: event.projectId },
+      data: {
+        status: JobExecutionStatus.CANCELLED,
+        endTime: new Date(),
+      },
+    });
+
+    return;
+  }
+
   // Execute the shared LLM-as-a-judge evaluation
   await executeLLMAsJudgeEvaluation({
     projectId: event.projectId,
@@ -1079,9 +1547,7 @@ export const evaluate = async ({
     config,
     template,
     extractedVariables,
-    environment:
-      getEnvironmentFromVariables(extractedVariables) ??
-      DEFAULT_TRACE_ENVIRONMENT,
+    environment,
   });
 };
 

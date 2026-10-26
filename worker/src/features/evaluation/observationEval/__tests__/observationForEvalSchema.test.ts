@@ -5,6 +5,7 @@ import {
   observationEvalFilterColumns,
   observationEvalVariableColumns,
   eventsEvalFilterColumns,
+  mapEventEvalFilterColumnIdToField,
 } from "@langfuse/shared";
 
 describe("observationForEvalSchema", () => {
@@ -78,6 +79,7 @@ describe("observationForEvalSchema", () => {
       trace_name: "my-trace",
       user_id: "user-123",
       session_id: "session-456",
+      is_root: false,
       tags: ["tag1", "tag2"],
       release: "v2.0.0",
       provided_model_name: "gpt-4",
@@ -88,6 +90,9 @@ describe("observationForEvalSchema", () => {
       tool_definitions: { search: '{"description": "Search"}' },
       tool_calls: ['{"name": "search"}'],
       tool_call_names: ["search"],
+      // Derived tool-call count (upstream's numeric `toolCalls` filter); the
+      // projection that builds this record derives it from `tool_call_names`.
+      tool_call_count: 1,
       usage_details: { input: 100, output: 50 },
       cost_details: { total: 0.01 },
       provided_usage_details: {},
@@ -179,6 +184,46 @@ describe("observationForEvalSchema", () => {
         observationForEvalSchema.parse(invalidObservation),
       ).toThrow();
     });
+
+    it("should accept the numeric spans.is_root encoding for is_root", () => {
+      expect(
+        observationForEvalSchema.parse({ ...validObservation, is_root: 1 })
+          .is_root,
+      ).toBe(true);
+      expect(
+        observationForEvalSchema.parse({ ...validObservation, is_root: 0 })
+          .is_root,
+      ).toBe(false);
+    });
+
+    it("should default is_root to false when the payload predates the field", () => {
+      const withoutRootFlag: Record<string, unknown> = { ...validObservation };
+      delete withoutRootFlag.is_root;
+
+      expect(observationForEvalSchema.parse(withoutRootFlag).is_root).toBe(
+        false,
+      );
+    });
+
+    it("should expose is_root to the isRootObservation filter", () => {
+      // The filter layer reads `observation[column.internal]`, so the column
+      // must resolve to the boolean the in-memory comparison uses.
+      const root = observationForEvalSchema.parse({
+        ...validObservation,
+        is_root: 1,
+      });
+      const child = observationForEvalSchema.parse({
+        ...validObservation,
+        is_root: 0,
+      });
+
+      expect(mapEventEvalFilterColumnIdToField(root, "isRootObservation")).toBe(
+        true,
+      );
+      expect(
+        mapEventEvalFilterColumnIdToField(child, "isRootObservation"),
+      ).toBe(false);
+    });
   });
 
   describe("filter columns alignment", () => {
@@ -200,6 +245,11 @@ describe("observationForEvalSchema", () => {
       expect(columnIds).toContain("level");
       expect(columnIds).toContain("version");
       expect(columnIds).toContain("parentObservationId");
+      // Upstream's root-span filter, backed by our precomputed `is_root` column.
+      // Asserted explicitly because the list above is what the copied
+      // evaluators-v2 rule UI and the RuleSetup default filter are checked
+      // against.
+      expect(columnIds).toContain("isRootObservation");
 
       // Trace-level properties
       expect(columnIds).toContain("traceName");

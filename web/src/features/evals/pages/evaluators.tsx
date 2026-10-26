@@ -101,7 +101,7 @@ export default function EvaluatorsPage() {
                 variant="default"
                 onClick={() => {
                   capture("eval_config:new_form_open");
-                  router.push(`/project/${projectId}/evals/new`);
+                  router.push(`/project/${projectId}/evals/legacy/new`);
                 }}
                 limitValue={countsQuery.data?.configActiveCount ?? 0}
                 limit={evaluatorLimit}
