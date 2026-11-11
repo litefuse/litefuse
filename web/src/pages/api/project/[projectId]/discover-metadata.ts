@@ -2,13 +2,13 @@ import { type NextApiRequest, type NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
 import { getAuthOptions } from "@/src/server/auth";
 import { isProjectMemberOrAdmin } from "@/src/server/utils/checkProjectMembershipOrAdmin";
-import { dorisClient, logger } from "@langfuse/shared/src/server";
-
-type MetadataAction = "databases" | "tables" | "fields" | "indexes";
-
-function escapeIdentifier(value: string) {
-  return value.replace(/`/g, "``");
-}
+import { logger } from "@langfuse/shared/src/server";
+import {
+  discoverDatabases,
+  DiscoverQueryError,
+  discoverTableMetadata,
+  discoverTables,
+} from "@/src/features/discover/server/queryUtils";
 
 export default async function handler(
   req: NextApiRequest,
@@ -32,53 +32,36 @@ export default async function handler(
     return res.status(403).json({ message: "Forbidden" });
   }
 
-  const { action, database, table } = req.body as {
-    action?: MetadataAction;
-    database?: string;
-    table?: string;
-  };
-
-  if (!action) {
-    return res.status(400).json({ message: "action is required" });
-  }
+  const { action, database, table } = req.body ?? {};
 
   try {
     let rows: unknown[] = [];
 
     switch (action) {
       case "databases": {
-        rows = await dorisClient({ database: "" }).query("SHOW DATABASES");
+        rows = discoverDatabases();
         break;
       }
       case "tables": {
-        if (!database) {
+        if (typeof database !== "string" || !database) {
           return res.status(400).json({ message: "database is required" });
         }
-        rows = await dorisClient({ database }).query(
-          `SHOW TABLES FROM \`${escapeIdentifier(database)}\``,
-        );
+        rows = await discoverTables(projectId, database);
         break;
       }
-      case "fields": {
-        if (!database || !table) {
-          return res
-            .status(400)
-            .json({ message: "database and table are required" });
-        }
-        rows = await dorisClient({ database }).query(
-          `SHOW COLUMNS FROM \`${escapeIdentifier(database)}\`.\`${escapeIdentifier(table)}\``,
-        );
-        break;
-      }
+      case "fields":
       case "indexes": {
-        if (!database || !table) {
+        if (
+          typeof database !== "string" ||
+          !database ||
+          typeof table !== "string" ||
+          !table
+        ) {
           return res
             .status(400)
             .json({ message: "database and table are required" });
         }
-        rows = await dorisClient({ database }).query(
-          `SHOW INDEXES FROM \`${escapeIdentifier(database)}\`.\`${escapeIdentifier(table)}\``,
-        );
+        rows = await discoverTableMetadata(action, projectId, database, table);
         break;
       }
       default: {
@@ -88,6 +71,11 @@ export default async function handler(
 
     return res.status(200).json({ rows });
   } catch (error) {
+    if (error instanceof DiscoverQueryError) {
+      return res
+        .status(error.code === "FORBIDDEN" ? 403 : 400)
+        .json({ message: error.message });
+    }
     const message = error instanceof Error ? error.message : String(error);
     logger.error("discover-metadata failed", {
       action,

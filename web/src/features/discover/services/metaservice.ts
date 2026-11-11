@@ -5,9 +5,7 @@
  * All functions are async and return row-major data directly.
  */
 import { directApi } from "@/src/utils/api";
-import { lastValueFrom, Observable } from "rxjs";
-
-const escapeSqlLiteral = (value: string) => value.replace(/'/g, "''");
+import { Observable } from "rxjs";
 
 const normalizeColumnType = ({
   dataType,
@@ -155,33 +153,23 @@ export async function getColumn({
 }) {
   if (!database || !table || !column) return null;
 
-  const query = `
-SELECT
-  COLUMN_NAME AS Field,
-  DATA_TYPE AS DataType,
-  COLUMN_TYPE AS ColumnType
-FROM information_schema.COLUMNS
-WHERE TABLE_SCHEMA = '${escapeSqlLiteral(database)}'
-  AND TABLE_NAME = '${escapeSqlLiteral(table)}'
-  AND COLUMN_NAME = '${escapeSqlLiteral(column)}'
-LIMIT 1;
-`;
-
   try {
-    const { rows } = await directApi.discover.query.mutate({
+    const { rows } = await directApi.discover.fields.query({
       projectId,
-      rawSql: query,
+      database,
+      table,
     });
 
-    if (!rows || rows.length === 0) return null;
+    const row = rows.find(
+      (row: Record<string, unknown>) =>
+        String(row.Field ?? row.COLUMN_NAME ?? "").toLowerCase() ===
+        column.toLowerCase(),
+    );
+    if (!row) return null;
 
-    const row = rows[0] as Record<string, unknown>;
     const name = String(row.Field ?? row.COLUMN_NAME ?? "");
-    if (!name) return null;
-
-    const dataType = row.DataType != null ? String(row.DataType) : undefined;
-    const columnType =
-      row.ColumnType != null ? String(row.ColumnType) : undefined;
+    const columnType = row.Type != null ? String(row.Type) : undefined;
+    const dataType = columnType?.split("(")[0];
 
     return {
       name,
@@ -207,9 +195,10 @@ export async function getInvertedIndexColumns({
   if (!database || !table) return [];
 
   try {
-    const { rows } = await directApi.discover.query.mutate({
+    const { rows } = await directApi.discover.indexes.query({
       projectId,
-      rawSql: `SHOW INDEXES FROM \`${database}\`.\`${table}\``,
+      database,
+      table,
     });
 
     if (!rows || rows.length === 0) return [];

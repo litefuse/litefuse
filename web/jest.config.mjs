@@ -18,6 +18,7 @@ const clientTestConfig = {
 
 const serverTestConfig = {
   displayName: "server",
+  moduleNameMapper: { "^@/(.*)$": "<rootDir>/$1" },
   testPathIgnorePatterns: ["__e2e__"],
   testMatch: ["/**/server/**/*.servertest.[jt]s?(x)"],
   testEnvironment: "jest-environment-node",

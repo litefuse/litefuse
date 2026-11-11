@@ -18,21 +18,17 @@ import { getServerSession } from "next-auth";
 import { getAuthOptions } from "@/src/server/auth";
 import { isProjectMemberOrAdmin } from "@/src/server/utils/checkProjectMembershipOrAdmin";
 import { dorisClient, logger } from "@langfuse/shared/src/server";
-import {
-  isLangfuseDatabase,
-  injectProjectIdFilter,
-} from "@/src/features/discover/server/queryUtils";
+import { z } from "zod/v4";
+import { prepareDiscoverRead } from "@/src/features/discover/server/readQuery";
+import { DiscoverQueryError } from "@/src/features/discover/server/queryUtils";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-interface QueryItem {
-  refId: string;
-  rawSql: string;
-  format?: string;
-  datasource?: unknown;
-}
+const queryBatch = z.object({
+  queries: z.array(z.object({ refId: z.string(), rawSql: z.string() })).min(1),
+});
 
 interface GrafanaField {
   name: string;
@@ -92,23 +88,6 @@ function rowsToGrafanaFrame(rows: Record<string, unknown>[]): GrafanaFrame {
   };
 }
 
-function extractDatabaseAndSql(rawSql: string): {
-  database?: string;
-  sql: string;
-} {
-  const trimmed = rawSql.trim();
-  const useMatch = trimmed.match(/^USE\s+`?([^`;]+)`?\s*;\s*/i);
-
-  if (!useMatch) {
-    return { sql: trimmed };
-  }
-
-  return {
-    database: useMatch[1],
-    sql: trimmed.slice(useMatch[0].length).trim(),
-  };
-}
-
 // ---------------------------------------------------------------------------
 // Handler
 // ---------------------------------------------------------------------------
@@ -137,32 +116,29 @@ export default async function handler(
   }
   // --------------------------------------------------------------------------
 
-  const { queries } = req.body as { queries: QueryItem[] };
-  if (!Array.isArray(queries) || queries.length === 0) {
-    return res.status(400).json({ message: "queries array is required" });
+  const batch = queryBatch.safeParse(req.body);
+  if (!batch.success) {
+    return res.status(400).json({ message: "Invalid queries array" });
   }
 
-  const doris = dorisClient();
-
   const resultEntries = await Promise.all(
-    queries.map(async (q): Promise<[string, QueryResult]> => {
-      try {
-        const { database, sql: parsedSql } = extractDatabaseAndSql(q.rawSql);
-        const sql = isLangfuseDatabase(database)
-          ? injectProjectIdFilter(parsedSql, projectId)
-          : parsedSql;
-        const client = database ? dorisClient({ database }) : doris;
-        const rows = (await client.query(sql)) as Record<string, unknown>[];
-        return [q.refId, { frames: [rowsToGrafanaFrame(rows)] }];
-      } catch (error) {
-        logger.error("discover-query: SQL execution failed", {
-          refId: q.refId,
-          sql: q.rawSql?.substring(0, 200),
-          error: error instanceof Error ? error.message : String(error),
-        });
-        return [q.refId, { frames: [] }];
-      }
-    }),
+    batch.data.queries.map(
+      async ({ refId, rawSql }): Promise<[string, QueryResult]> => {
+        try {
+          const { database, sql } = prepareDiscoverRead(projectId, rawSql);
+          const rows = await dorisClient({ database }).query(sql);
+          return [refId, { frames: [rowsToGrafanaFrame(rows)] }];
+        } catch (error) {
+          if (!(error instanceof DiscoverQueryError)) {
+            logger.error("discover-query: SQL execution failed", {
+              refId,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+          return [refId, { frames: [] }];
+        }
+      },
+    ),
   );
 
   const results = Object.fromEntries(resultEntries);
