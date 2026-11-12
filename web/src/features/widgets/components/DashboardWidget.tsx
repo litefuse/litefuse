@@ -33,6 +33,7 @@ import {
   buildWidgetOrderBy,
 } from "@/src/features/query/validateQuery";
 import { LangfuseIcon } from "@/src/components/LangfuseLogo";
+import { translateManagedDashboardText } from "@/src/features/dashboard/lib/managed-dashboard-text";
 
 import { useTranslation } from "react-i18next";
 export interface WidgetPlacement {
@@ -311,14 +312,25 @@ export function DashboardWidget({
     );
   }
 
+  const name = translateManagedDashboardText(
+    widget.data.name,
+    widget.data.owner,
+    t,
+  );
+  const description = translateManagedDashboardText(
+    widget.data.description,
+    widget.data.owner,
+    t,
+  );
+
   return (
     <div
       className={`group bg-background flex h-full w-full flex-col overflow-hidden rounded-lg border p-4`}
     >
       <div className="flex items-center justify-between">
         <span className="flex min-w-0 items-center gap-1 font-medium">
-          <span className="truncate" title={widget.data.name}>
-            {widget.data.name}
+          <span className="truncate" title={name}>
+            {name}
           </span>
           {dashboardOwner === "PROJECT" && widget.data.owner === "LANGFUSE" ? (
             <LangfuseIcon size={14} className="h-3.5 w-3.5 shrink-0" />
@@ -361,7 +373,7 @@ export function DashboardWidget({
           {!queryResult.isPending ? (
             <DownloadButton
               data={transformedData}
-              fileName={widget.data.name}
+              fileName={name}
               className="hidden group-hover:block"
             />
           ) : null}
@@ -369,9 +381,9 @@ export function DashboardWidget({
       </div>
       <div
         className="text-muted-foreground mb-4 truncate text-sm"
-        title={widget.data.description}
+        title={description}
       >
-        {widget.data.description}
+        {description}
       </div>
       <div className="relative min-h-0 flex-1">
         {!queryValidation.valid ? (

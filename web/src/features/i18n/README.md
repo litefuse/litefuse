@@ -170,12 +170,27 @@ outside the seeded content listed below. A green gate is necessary but not
 sufficient: it says no rule-visible literal is left, not that the UI is
 translated, so walk the pages after any sizeable merge.
 
-Seeded content is the remaining English a user sees: the built-in evaluator
-templates, the managed dashboards and their widgets, the Correctness queue and
-the default score configs. Those are rows a project owns and can rename, and
-their names are the keys the seeders match on, so they are a product decision
-rather than a translation one. The Next.js 404 page is also English; the app
-ships no `pages/404.tsx`.
+Managed dashboards and widgets are translated at display time, including
+their names, descriptions and hover text in the dashboard list and widget
+cards. The English database values, seed IDs and query
+identifiers stay unchanged, so existing installations need no data migration
+and switching languages updates the visible text immediately. Only known
+`LANGFUSE`-owned content is translated; `PROJECT`-owned names and descriptions
+remain user content, even when they match a built-in name. Managed widgets
+used in project-owned dashboards still translate according to the widget owner.
+The widget list and picker contain project-owned widgets and keep their text
+unchanged.
+The standard chart loading, slow-query and query-failure hints are UI copy and
+also translate. Custom hints and raw server error messages stay unchanged.
+
+When changing `worker/src/constants/langfuse-dashboards.json`, update the text
+inventory in `src/features/dashboard/lib/managed-dashboard-text.ts` and the
+locale files. `managed-dashboard-text.clienttest.ts` checks every seeded name
+and description against the display helper to catch missing translations.
+
+Seeded content that still stays English: the built-in evaluator templates,
+the Correctness queue and the default score configs. The Next.js 404 page is
+also English; the app ships no `pages/404.tsx`.
 
 After every upstream merge: `pnpm i18n:extract`, translate the new keys against
 the glossary, then `pnpm i18n:check` and `pnpm i18n:gate`.

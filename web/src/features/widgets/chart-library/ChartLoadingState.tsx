@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/src/utils/tailwind";
-import { SLOW_QUERY_HINT_TEXT } from "@langfuse/shared";
+import {
+  RESOURCE_LIMIT_ERROR_MESSAGE,
+  SLOW_QUERY_HINT_TEXT,
+} from "@langfuse/shared";
+import { useTranslation } from "react-i18next";
 
 const DEFAULT_HINT_DELAY_MS = 2000;
 
@@ -22,12 +26,13 @@ export function ChartLoadingState({
   className,
   spinnerClassName,
   hintClassName,
-  spinnerLabel = "Loading chart data",
+  spinnerLabel,
   hintText = SLOW_QUERY_HINT_TEXT,
   hintDelayMs = DEFAULT_HINT_DELAY_MS,
   showSpinner = true,
   showHintImmediately = false,
 }: ChartLoadingStateProps) {
+  const { t } = useTranslation();
   const [showHint, setShowHint] = useState(false);
 
   useEffect(() => {
@@ -50,12 +55,22 @@ export function ChartLoadingState({
   }
 
   const shouldShowHint = showHintImmediately || showHint;
+  const displayHintText =
+    hintText === SLOW_QUERY_HINT_TEXT
+      ? t(
+          "This query is taking longer than usual. Try reducing the time frame or adding more filters.",
+        )
+      : hintText === RESOURCE_LIMIT_ERROR_MESSAGE
+        ? t(
+            "Your query could not be completed. Please narrow your request by adding more specific filters (e.g., a shorter date range).",
+          )
+        : hintText;
 
   return (
     <div
       role="status"
       aria-live="polite"
-      aria-label={spinnerLabel}
+      aria-label={spinnerLabel ?? t("Loading chart data")}
       className={cn(
         "text-muted-foreground flex flex-col items-center justify-center gap-2",
         className,
@@ -75,7 +90,7 @@ export function ChartLoadingState({
             hintClassName,
           )}
         >
-          {hintText}
+          {displayHintText}
         </p>
       ) : null}
     </div>

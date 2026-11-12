@@ -28,6 +28,7 @@ import { EditDashboardDialog } from "@/src/features/dashboard/components/EditDas
 import { User as UserIcon } from "lucide-react";
 import { useRouter } from "next/router";
 import { LangfuseIcon } from "@/src/components/LangfuseLogo";
+import { translateManagedDashboardText } from "@/src/features/dashboard/lib/managed-dashboard-text";
 
 import { useTranslation } from "react-i18next";
 type DashboardTableRow = {
@@ -183,7 +184,11 @@ export function DashboardTable() {
         return name ? (
           <TableLink
             path={`/project/${projectId}/dashboards/${encodeURIComponent(row.row.original.id)}`}
-            value={name}
+            value={translateManagedDashboardText(
+              name,
+              row.row.original.owner,
+              t,
+            )}
           />
         ) : undefined;
       },
@@ -193,7 +198,11 @@ export function DashboardTable() {
       id: "description",
       size: 300,
       cell: (row) => {
-        return row.getValue();
+        return translateManagedDashboardText(
+          row.getValue(),
+          row.row.original.owner,
+          t,
+        );
       },
     }),
     columnHelper.display({
