@@ -1,5 +1,5 @@
 import { type NextApiRequest, type NextApiResponse } from "next";
-import { prisma } from "@langfuse/shared/src/db";
+import { prisma, type Prisma } from "@langfuse/shared/src/db";
 import {
   logger,
   provisionSplitForNewProject,
@@ -13,10 +13,49 @@ import {
   RETENTION_FLOOR_DAYS,
 } from "@langfuse/shared";
 
+type MetadataField =
+  | { state: "missing" }
+  | { state: "object"; value: Prisma.InputJsonValue }
+  | { state: "undecodable"; reason: string }
+  | { state: "wrong-type" };
+
+/**
+ * `metadata` arrives either as an already parsed object or as a JSON encoded
+ * string. Both spellings are normalised here; anything that does not end up as
+ * a plain JSON object is reported so the caller can answer with a 400.
+ */
+function readMetadataField(input: unknown): MetadataField {
+  if (input === undefined) {
+    return { state: "missing" };
+  }
+
+  let candidate: unknown = input;
+  if (typeof input === "string") {
+    try {
+      candidate = JSON.parse(input);
+    } catch (error) {
+      return { state: "undecodable", reason: `${error}` };
+    }
+  }
+
+  if (
+    typeof candidate !== "object" ||
+    candidate === null ||
+    Array.isArray(candidate)
+  ) {
+    return { state: "wrong-type" };
+  }
+
+  return { state: "object", value: candidate as Prisma.InputJsonValue };
+}
+
 /**
  * Create a project (POST /api/public/projects).
- * Validates name / metadata / retention, then creates the project + default score configs in a transaction.
- * scope comes from requireAdminApi and contains orgId and plan.
+ *
+ * `scope` is produced by requireAdminApi and pins the target organization plus
+ * the plan used for entitlement checks. Name, metadata and retention are
+ * validated first, then the project and its default score configs are written
+ * in a single transaction.
  */
 export async function createProject(
   req: NextApiRequest,
@@ -24,66 +63,62 @@ export async function createProject(
   scope: ApiAccessScope,
 ) {
   try {
-    const { name, retention, metadata } = req.body;
+    const {
+      name,
+      retention: requestedRetention,
+      metadata: rawMetadata,
+    } = req.body;
 
-    try {
-      projectNameSchema.parse({ name });
-    } catch {
+    if (!projectNameSchema.safeParse({ name }).success) {
       return res.status(400).json({
-        message: "Invalid project name. Should be between 3 and 60 characters.",
+        message: "Invalid project name. Use 3 to 60 characters.",
       });
     }
 
-    let parsedMetadata = metadata;
-    if (metadata !== undefined && typeof metadata !== "object") {
-      try {
-        parsedMetadata = JSON.parse(metadata);
-      } catch (error) {
-        return res.status(400).json({
-          message: `Invalid metadata. Should be a valid JSON object: ${error}`,
-        });
-      }
-    }
-    if (
-      parsedMetadata !== undefined &&
-      (typeof parsedMetadata !== "object" ||
-        parsedMetadata === null ||
-        Array.isArray(parsedMetadata))
-    ) {
+    const metadata = readMetadataField(rawMetadata);
+    if (metadata.state === "undecodable") {
       return res.status(400).json({
-        message: "Invalid metadata. Should be a valid JSON object.",
+        message: `Metadata is not decodable JSON: ${metadata.reason}`,
+      });
+    }
+    if (metadata.state === "wrong-type") {
+      return res.status(400).json({
+        message: "Metadata must be a JSON object.",
       });
     }
 
-    if (retention !== undefined) {
-      try {
-        projectRetentionSchema.parse({ retention });
-      } catch {
+    if (requestedRetention !== undefined) {
+      const retentionIsValid = projectRetentionSchema.safeParse({
+        retention: requestedRetention,
+      }).success;
+      if (!retentionIsValid) {
         return res.status(400).json({
           message: `Invalid retention value. Must be 0 or at least ${RETENTION_FLOOR_DAYS} days.`,
         });
       }
 
-      if (retention > 0) {
-        const hasRetentionEntitlement = hasEntitlementBasedOnPlan({
+      if (
+        requestedRetention > 0 &&
+        !hasEntitlementBasedOnPlan({
           entitlement: "data-retention",
           plan: scope.plan,
+        })
+      ) {
+        return res.status(403).json({
+          message:
+            "A retention period above zero requires the data-retention entitlement.",
         });
-        if (!hasRetentionEntitlement) {
-          return res.status(403).json({
-            message:
-              "The data-retention entitlement is required to set a non-zero retention period.",
-          });
-        }
       }
     }
 
-    const existingProject = await prisma.project.findFirst({
-      where: { name, orgId: scope.orgId, deletedAt: null },
+    // Soft deleted projects keep their name, so only live ones block a new one.
+    const liveProjectWithName = await prisma.project.findFirst({
+      where: { orgId: scope.orgId, name, deletedAt: null },
+      select: { id: true },
     });
-    if (existingProject) {
+    if (liveProjectWithName) {
       return res.status(409).json({
-        message: "A project with this name already exists in your organization",
+        message: "Your organization already has a project with this name.",
       });
     }
 
@@ -92,8 +127,8 @@ export async function createProject(
         data: {
           name,
           orgId: scope.orgId,
-          retentionDays: retention,
-          metadata: parsedMetadata,
+          retentionDays: requestedRetention,
+          metadata: metadata.state === "object" ? metadata.value : undefined,
         },
       });
 
@@ -104,28 +139,31 @@ export async function createProject(
       return created;
     });
 
-    // Universal Doris table split: every new project must get its own Doris tables.
-    // Matches project creation in the UI (projectsRouter.create): if designation fails,
-    // delete the just-created project so the request fails cleanly instead of leaving a project without tables.
+    // Every project owns its own Doris split tables. Same contract as project
+    // creation in the UI (projectsRouter.create): if provisioning fails the
+    // freshly created project is removed again, so the caller never ends up
+    // with a project that has no tables behind it.
     try {
       await provisionSplitForNewProject(project.id);
-    } catch (e) {
+    } catch (error) {
       await prisma.project
         .delete({ where: { id: project.id } })
         .catch(() => undefined);
-      throw e;
+      throw error;
     }
 
-    return res.status(201).json({
+    const payload: Record<string, unknown> = {
       id: project.id,
       name: project.name,
       metadata: project.metadata ?? {},
-      ...(project.retentionDays
-        ? { retentionDays: project.retentionDays }
-        : {}),
-    });
+    };
+    if (project.retentionDays) {
+      payload.retentionDays = project.retentionDays;
+    }
+
+    return res.status(201).json(payload);
   } catch (error) {
-    logger.error("Failed to create project", error);
+    logger.error("Could not create the project", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 }

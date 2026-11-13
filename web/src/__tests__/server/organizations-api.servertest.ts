@@ -557,7 +557,7 @@ describe("Admin Organizations API", () => {
 
       expect(result.status).toBe(400);
       expect(result.body.error).toContain(
-        "Cannot delete organization with existing projects",
+        "Organization cannot be deleted while it still has projects",
       );
     });
 

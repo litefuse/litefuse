@@ -1,5 +1,4 @@
 import { timingSafeEqual } from "crypto";
-import { type IncomingHttpHeaders } from "http";
 import { type NextApiRequest, type NextApiResponse } from "next";
 
 import { env } from "@/src/env.mjs";
@@ -15,52 +14,62 @@ export interface AdminAuthOptions {
 }
 
 /**
- * Constant-time comparison of the provided token against the expected key.
- * Compares byte lengths first since `timingSafeEqual` throws on unequal
- * buffer lengths.
+ * Credential problems are phrased with this word, which is how the guard below
+ * tells a 401 apart from the instance-side refusals that answer 403.
  */
-const isTokenValid = (token: string, expectedKey: string): boolean => {
-  const tokenBuffer = Buffer.from(token);
-  const expectedBuffer = Buffer.from(expectedKey);
-  if (tokenBuffer.byteLength !== expectedBuffer.byteLength) {
+const UNAUTHORIZED_PREFIX = "Unauthorized";
+
+/** Answer for a request that carries no authorization header at all. */
+const MISSING_AUTHORIZATION_ERROR =
+  "Unauthorized: authorization header is missing";
+
+/**
+ * Constant-time comparison of the provided token with the configured key.
+ * `timingSafeEqual` throws on buffers of unequal length, hence the length check
+ * up front.
+ */
+const tokenMatchesAdminKey = (token: string, adminKey: string): boolean => {
+  const provided = Buffer.from(token);
+  const configured = Buffer.from(adminKey);
+  if (provided.length !== configured.length) {
     return false;
   }
-  return timingSafeEqual(tokenBuffer, expectedBuffer);
+  return timingSafeEqual(provided, configured);
 };
 
 export class AdminApiAuthService {
-  static verifyAdminAuthFromAuthString = (
+  static verifyAdminAuthFromAuthString(
     authString: string,
     options: AdminAuthOptions = {},
-  ): AdminAuthResult => {
-    const { isAllowedOnLangfuseCloud = false } = options;
+  ): AdminAuthResult {
+    const allowOnLitefuseCloud = options.isAllowedOnLangfuseCloud ?? false;
 
-    // Block access on Litefuse Cloud unless explicitly allowed
-    if (
-      !isAllowedOnLangfuseCloud &&
-      env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION &&
-      env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION !== "DEV" // exclude dev and CI environments
-    ) {
+    // Admin endpoints stay closed on Litefuse Cloud unless they opt in. The
+    // "DEV" region covers local runs and CI.
+    const cloudRegion = env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION;
+    if (!allowOnLitefuseCloud && cloudRegion && cloudRegion !== "DEV") {
       return {
         isAuthorized: false,
         error: "Not accessible on Litefuse Cloud",
       };
     }
 
-    // Check if ADMIN_API_KEY is set
-    if (!env.ADMIN_API_KEY) {
-      logger.error("ADMIN_API_KEY is not set");
+    const adminApiKey = env.ADMIN_API_KEY;
+    if (!adminApiKey) {
+      logger.error("Rejected admin API request: no ADMIN_API_KEY configured");
       return {
         isAuthorized: false,
         error: "ADMIN_API_KEY is not set",
       };
     }
 
-    const [scheme, token] = authString.split(" ");
+    const authParts = authString.split(" ");
+    const scheme = authParts[0];
+    const token = authParts[1];
     if (
       scheme !== "Bearer" ||
       !token ||
-      !isTokenValid(token, env.ADMIN_API_KEY)
+      !tokenMatchesAdminKey(token, adminApiKey)
     ) {
       return {
         isAuthorized: false,
@@ -71,58 +80,38 @@ export class AdminApiAuthService {
     return {
       isAuthorized: true,
     };
-  };
-
-  /**
-   * Verifies if the request is authorized to access admin APIs
-   * @param headers The incoming HTTP headers
-   * @param options Admin auth options
-   * @returns An object with isAuthorized flag and optional error message
-   */
-  private static verifyAdminAuthFromHeader(
-    headers: IncomingHttpHeaders,
-    options: AdminAuthOptions = {},
-  ): AdminAuthResult {
-    // Check bearer token
-    const { authorization } = headers;
-    if (!authorization) {
-      return {
-        isAuthorized: false,
-        error: "Unauthorized: No authorization header provided",
-      };
-    }
-    return AdminApiAuthService.verifyAdminAuthFromAuthString(
-      authorization,
-      options,
-    );
   }
 
   /**
-   * Middleware function to handle admin authentication in Next.js API routes
-   * @param req The Next.js API request
-   * @param res The Next.js API response
-   * @param options Admin auth options. By default, blocks access on Litefuse Cloud (isAllowedOnLangfuseCloud: false)
-   * @returns true if authorized, false otherwise (and sets appropriate response)
+   * Middleware guard for admin API routes: authenticates the request and, when
+   * it fails, writes the error response itself.
+   *
+   * @param options Admin auth options. Access stays blocked on Litefuse Cloud
+   * unless `isAllowedOnLangfuseCloud` is set.
+   * @returns true when the caller may proceed, false once a response was sent.
    */
   public static handleAdminAuth(
     req: NextApiRequest,
     res: NextApiResponse,
     options: AdminAuthOptions = {},
   ): boolean {
-    const authResult = AdminApiAuthService.verifyAdminAuthFromHeader(
-      req.headers,
-      options,
-    );
-
-    if (!authResult.isAuthorized) {
-      if (authResult.error?.startsWith("Unauthorized")) {
-        res.status(401).json({ error: authResult.error });
-      } else {
-        res.status(403).json({ error: authResult.error });
-      }
+    const { authorization } = req.headers;
+    if (!authorization) {
+      res.status(401).json({ error: MISSING_AUTHORIZATION_ERROR });
       return false;
     }
 
-    return true;
+    const outcome = AdminApiAuthService.verifyAdminAuthFromAuthString(
+      authorization,
+      options,
+    );
+
+    if (outcome.isAuthorized) {
+      return true;
+    }
+
+    const status = outcome.error?.startsWith(UNAUTHORIZED_PREFIX) ? 401 : 403;
+    res.status(status).json({ error: outcome.error });
+    return false;
   }
 }
