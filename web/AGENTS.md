@@ -90,3 +90,6 @@ Use root [AGENTS.md](../AGENTS.md) for monorepo-level rules.
 - Node initialization must await the first Doris split-cache snapshot before
   request handlers can issue telemetry queries. Cross-project server features
   pass explicit active project IDs to shared aggregation repositories.
+- Discover's tRPC query entry point compiles browser SQL through
+  `src/features/discover/server/readQuery.ts` before calling Doris. Keep
+  database and table authorization shared with the structured metadata routes.

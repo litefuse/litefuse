@@ -6,14 +6,22 @@ import {
 import { dorisClient } from "@langfuse/shared/src/server";
 import { TRPCError } from "@trpc/server";
 import {
-  isLangfuseDatabase,
-  injectProjectIdFilter,
-  findForbiddenTelemetryTables,
-  filterVisibleTables,
+  discoverDatabases,
+  DiscoverQueryError,
+  discoverTableMetadata,
+  discoverTables,
 } from "./queryUtils";
+import { prepareDiscoverRead } from "./readQuery";
 
-function escapeIdentifier(value: string) {
-  return value.replace(/`/g, "``");
+async function withDiscoverAccess<T>(operation: () => T): Promise<Awaited<T>> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (error instanceof DiscoverQueryError) {
+      throw new TRPCError({ code: error.code, message: error.message });
+    }
+    throw error;
+  }
 }
 
 export const discoverRouter = createTRPCRouter({
@@ -23,10 +31,7 @@ export const discoverRouter = createTRPCRouter({
         projectId: z.string(),
       }),
     )
-    .query(async () => {
-      const rows = await dorisClient({ database: "" }).query("SHOW DATABASES");
-      return { rows };
-    }),
+    .query(() => ({ rows: discoverDatabases() })),
 
   tables: protectedProjectProcedure
     .input(
@@ -35,20 +40,11 @@ export const discoverRouter = createTRPCRouter({
         database: z.string(),
       }),
     )
-    .query(async ({ input }) => {
-      const rows = await dorisClient({ database: input.database }).query(
-        `SHOW TABLES FROM \`${escapeIdentifier(input.database)}\``,
-      );
-      // Hide other projects' split tables so they can't be enumerated (their
-      // cuid suffix would otherwise leak, and be queryable — see `query`).
-      const visible = isLangfuseDatabase(input.database)
-        ? filterVisibleTables(
-            rows as Record<string, unknown>[],
-            input.projectId,
-          )
-        : rows;
-      return { rows: visible };
-    }),
+    .query(async ({ input }) => ({
+      rows: await withDiscoverAccess(() =>
+        discoverTables(input.projectId, input.database),
+      ),
+    })),
 
   fields: protectedProjectProcedure
     .input(
@@ -58,12 +54,16 @@ export const discoverRouter = createTRPCRouter({
         table: z.string(),
       }),
     )
-    .query(async ({ input }) => {
-      const rows = await dorisClient({ database: input.database }).query(
-        `SHOW COLUMNS FROM \`${escapeIdentifier(input.database)}\`.\`${escapeIdentifier(input.table)}\``,
-      );
-      return { rows };
-    }),
+    .query(async ({ input }) => ({
+      rows: await withDiscoverAccess(() =>
+        discoverTableMetadata(
+          "fields",
+          input.projectId,
+          input.database,
+          input.table,
+        ),
+      ),
+    })),
 
   indexes: protectedProjectProcedure
     .input(
@@ -73,12 +73,16 @@ export const discoverRouter = createTRPCRouter({
         table: z.string(),
       }),
     )
-    .query(async ({ input }) => {
-      const rows = await dorisClient({ database: input.database }).query(
-        `SHOW INDEXES FROM \`${escapeIdentifier(input.database)}\`.\`${escapeIdentifier(input.table)}\``,
-      );
-      return { rows };
-    }),
+    .query(async ({ input }) => ({
+      rows: await withDiscoverAccess(() =>
+        discoverTableMetadata(
+          "indexes",
+          input.projectId,
+          input.database,
+          input.table,
+        ),
+      ),
+    })),
 
   query: protectedProjectProcedure
     .input(
@@ -89,34 +93,13 @@ export const discoverRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      const trimmed = input.rawSql.trim();
-      const useMatch = trimmed.match(/^USE\s+`?([^`;]+)`?\s*;\s*/i);
-
-      let database = input.database;
-      let sql = trimmed;
-
-      if (useMatch) {
-        database = useMatch[1];
-        sql = trimmed.slice(useMatch[0].length).trim();
-      }
-
-      if (isLangfuseDatabase(database)) {
-        // Hard allowlist: reject any reference to another project's split table
-        // or to the no-suffix shared telemetry table names before execution. No
-        // project_id filter can make those targets valid in the all-split model.
-        const forbidden = findForbiddenTelemetryTables(sql, input.projectId);
-        if (forbidden.length > 0) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: `Access denied: query references forbidden telemetry tables: ${forbidden.join(", ")}`,
-          });
-        }
-      }
-      const finalSql = isLangfuseDatabase(database)
-        ? injectProjectIdFilter(sql, input.projectId)
-        : sql;
-      const client = database ? dorisClient({ database }) : dorisClient();
-      const rows = (await client.query(finalSql)) as Record<string, unknown>[];
+      const { database, sql } = await withDiscoverAccess(() =>
+        prepareDiscoverRead(input.projectId, input.rawSql, input.database),
+      );
+      const rows = (await dorisClient({ database }).query(sql)) as Record<
+        string,
+        unknown
+      >[];
 
       // Normalize date values: DATE columns from mysql2 become Date objects with
       // time 00:00:00.000Z. When serialized to JSON, these become ISO strings like

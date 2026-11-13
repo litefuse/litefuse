@@ -208,10 +208,6 @@ const nextConfig = {
       shimBase,
       "grafana-data.ts",
     );
-    config.resolve.alias["@grafana/runtime"] = path.resolve(
-      shimBase,
-      "grafana-runtime.ts",
-    );
     config.resolve.alias["jotai-location"] = path.resolve(
       shimBase,
       "jotai-location.ts",
