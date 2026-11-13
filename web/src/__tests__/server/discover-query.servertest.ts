@@ -5,7 +5,6 @@ import { prisma } from "@langfuse/shared/src/db";
 import { env } from "@langfuse/shared/src/env";
 import { dorisClient } from "@langfuse/shared/src/server";
 import { DB } from "@/src/server/db";
-import queryHandler from "@/src/pages/api/project/[projectId]/discover-query";
 import metadataHandler from "@/src/pages/api/project/[projectId]/discover-metadata";
 import { discoverRouter } from "@/src/features/discover/server/discoverRouter";
 import {
@@ -66,49 +65,20 @@ beforeEach(() => {
 });
 
 describe("Discover query authorization", () => {
-  it("rejects SQL metadata commands before opening a Doris client", async () => {
-    const { req, res } = request({
-      queries: [{ refId: "A", rawSql: "SHOW DATABASES" }],
-    });
-
-    await queryHandler(req, res);
-
-    expect(dorisClient).not.toHaveBeenCalled();
-    expect(res._getJSONData()).toEqual({ results: { A: { frames: [] } } });
-  });
-
-  it("executes authorized entries in a mixed Grafana batch", async () => {
+  it("returns rows from the project's table", async () => {
     mockQuery.mockResolvedValue([{ id: "test" }]);
-    const { req, res } = request({
-      queries: [
-        { refId: "A", rawSql: `SELECT id FROM ${table}` },
-        { refId: "B", rawSql: "SELECT id FROM spans_other_project" },
-      ],
-    });
-
-    await queryHandler(req, res);
-
+    await expect(
+      caller.query({ projectId, rawSql: `SELECT id FROM ${table}` }),
+    ).resolves.toEqual({ rows: [{ id: "test" }] });
     expect(dorisClient).toHaveBeenCalledTimes(1);
     expect(dorisClient).toHaveBeenCalledWith({ database });
     expect(mockQuery).toHaveBeenCalledWith(
       `SELECT \`id\` FROM \`internal\`.\`${database}\`.\`${table}\``,
     );
-    expect(res._getJSONData()).toEqual({
-      results: {
-        A: {
-          frames: [
-            {
-              schema: { fields: [{ name: "id", type: "string" }] },
-              data: { values: [["test"]] },
-            },
-          ],
-        },
-        B: { frames: [] },
-      },
-    });
   });
 
   it.each([
+    "SHOW DATABASES",
     "SELECT 1; SELECT 2",
     "SELECT 1 INTO OUTFILE",
     "SELECT * FROM spans",

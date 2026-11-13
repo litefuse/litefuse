@@ -17,7 +17,6 @@
       "types/*": ["./src/features/discover/types/*"],
       "utils/*": ["./src/features/discover/utils/*"],
       "@grafana/data": ["./src/lib/discover-shims/grafana-data"],
-      "@grafana/runtime": ["./src/lib/discover-shims/grafana-runtime"],
       "jotai-location": ["./src/lib/discover-shims/jotai-location"],
       "antd": ["./src/lib/discover-shims/antd"]
     },
