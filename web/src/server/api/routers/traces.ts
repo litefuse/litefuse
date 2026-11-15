@@ -60,12 +60,12 @@ import {
   type AgentGraphDataResponse,
   AgentGraphDataSchema,
 } from "@/src/features/trace-graph-view/types";
-import { env } from "@/src/env.mjs";
 import {
   toDomainWithStringifiedMetadata,
   toDomainArrayWithStringifiedMetadata,
 } from "@/src/utils/clientSideDomainTypes";
 import partition from "lodash/partition";
+import { getTracePreviews } from "@/src/features/traces/server/tracePreviewService";
 
 const TraceFilterOptions = z.object({
   projectId: z.string(), // Required for protectedProjectProcedure
@@ -94,6 +94,23 @@ export type ObservationReturnType = Omit<
 >;
 
 export const traceRouter = createTRPCRouter({
+  batchPreviews: protectedProjectProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        traces: z
+          .array(z.object({ id: z.string().min(1), timestamp: z.date() }))
+          .max(1000),
+        includeMetadata: z.boolean().default(false),
+      }),
+    )
+    .query(({ input, ctx }) =>
+      getTracePreviews({
+        projectId: ctx.session.projectId,
+        traces: input.traces,
+        includeMetadata: input.includeMetadata,
+      }),
+    ),
   hasTracingConfigured: protectedProjectProcedure
     .input(
       z.object({

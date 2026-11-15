@@ -3,14 +3,15 @@ import { usePeekData } from "@/src/components/table/peek/hooks/usePeekData";
 import { Trace } from "@/src/components/trace2/Trace";
 import { Skeleton } from "@/src/components/ui/skeleton";
 import { StringParam, useQueryParam, withDefault } from "use-query-params";
-
-import { useTranslation } from "react-i18next";
+import { useObservationContent } from "@/src/components/trace2/api/useObservationContent";
+import { type ObservationPreviewReference } from "@/src/features/observations/lib/observationBatchPreview";
 export const PeekViewObservationDetail = ({
   projectId,
+  observationReferences = [],
 }: {
   projectId: string;
+  observationReferences?: ObservationPreviewReference[];
 }) => {
-  const { t } = useTranslation();
   const router = useRouter();
   const peekId = router.query.peek as string | undefined;
   const timestamp = router.query.timestamp
@@ -22,6 +23,29 @@ export const PeekViewObservationDetail = ({
     projectId,
     traceId,
     timestamp,
+  });
+
+  // The URL timestamp belongs to the Trace, not the Observation. Only start
+  // early with an unambiguous reference from the current list; old links and
+  // selections elsewhere in the trace tree retain the normal detail loader.
+  const references = observationReferences.filter(
+    (reference) => reference.id === peekId && reference.traceId === traceId,
+  );
+  const reference = references.length === 1 ? references[0] : undefined;
+  const canLoadEarly = Boolean(
+    projectId &&
+      peekId &&
+      traceId &&
+      reference &&
+      Number.isFinite(reference.startTime.getTime()) &&
+      (!router.query.observation || router.query.observation === peekId),
+  );
+  useObservationContent({
+    projectId,
+    observationId: peekId ?? "",
+    traceId: traceId ?? "",
+    startTime: canLoadEarly ? reference?.startTime : undefined,
+    enabled: canLoadEarly,
   });
 
   const [selectedTab, setSelectedTab] = useQueryParam(

@@ -192,25 +192,35 @@ export const api = createTRPCNext<AppRouter>({
           enabled: () => process.env.NODE_ENV === "development",
         }),
         splitLink({
-          condition(op) {
-            // check for context property `skipBatch`
-            const skipBatch = op.context.skipBatch === true;
-
-            // Manually skip batching, perf experiment
-            const alwaysSkipBatch = true;
-
-            return skipBatch || alwaysSkipBatch;
-          },
-          // when condition is true, use normal request
+          // Page preview batches can exceed proxy URL limits. Only these
+          // explicitly marked reads use POST; keep other transport unchanged.
+          condition: (op) => op.context.batchPreview === true,
           true: httpLink({
             url: `${getBaseUrl()}/api/trpc`,
             transformer: superjson,
+            methodOverride: "POST",
           }),
-          // when condition is false, use batching
-          false: httpBatchLink({
-            url: `${getBaseUrl()}/api/trpc`,
-            transformer: superjson,
-            maxURLLength: 2083, // avoid too large batches
+          false: splitLink({
+            condition(op) {
+              // check for context property `skipBatch`
+              const skipBatch = op.context.skipBatch === true;
+
+              // Manually skip batching, perf experiment
+              const alwaysSkipBatch = true;
+
+              return skipBatch || alwaysSkipBatch;
+            },
+            // when condition is true, use normal request
+            true: httpLink({
+              url: `${getBaseUrl()}/api/trpc`,
+              transformer: superjson,
+            }),
+            // when condition is false, use batching
+            false: httpBatchLink({
+              url: `${getBaseUrl()}/api/trpc`,
+              transformer: superjson,
+              maxURLLength: 2083, // avoid too large batches
+            }),
           }),
         }),
       ],

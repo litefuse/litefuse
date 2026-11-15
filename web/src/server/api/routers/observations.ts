@@ -2,6 +2,7 @@ import { env } from "@/src/env.mjs";
 import {
   createTRPCRouter,
   protectedGetTraceProcedure,
+  protectedProjectProcedure,
 } from "@/src/server/api/trpc";
 import { LangfuseNotFoundError, parseIO } from "@langfuse/shared";
 import {
@@ -10,8 +11,19 @@ import {
 } from "@langfuse/shared/src/server";
 import { z } from "zod/v4";
 import { toDomainWithStringifiedMetadata } from "@/src/utils/clientSideDomainTypes";
+import { observationBatchPreviewInput } from "@/src/features/observations/lib/observationBatchPreview";
+import { getObservationBatchPreviews } from "@/src/features/observations/server/observationBatchPreviews";
 
 export const observationsRouter = createTRPCRouter({
+  batchPreviews: protectedProjectProcedure
+    .input(observationBatchPreviewInput)
+    .query(({ input, ctx }) =>
+      getObservationBatchPreviews({
+        projectId: ctx.session.projectId,
+        observations: input.observations,
+        includeMetadata: input.includeMetadata,
+      }),
+    ),
   byId: protectedGetTraceProcedure
     .input(
       z.object({
