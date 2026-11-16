@@ -61,6 +61,11 @@ declare module "next-auth" {
 
 declare module "next-auth/jwt" {
   interface JWT {
+    /** Login identity; intentionally omitted from the client Session. */
+    ssoProviderId?: string;
+    ssoIdToken?: string;
+    ssoLogoutBinding?: string;
+    ssoLogoutError?: "id_token_too_large";
     id?: string;
     name?: string | null;
     email?: string | null;

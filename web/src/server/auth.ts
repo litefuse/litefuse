@@ -62,6 +62,7 @@ import { getSSOBlockedDomains } from "@/src/features/auth-credentials/server/sig
 import { createSupportEmailHash } from "@/src/features/support-chat/createSupportEmailHash";
 import { hasEntitlementBasedOnPlan } from "@/src/features/entitlements/server/hasEntitlement";
 import { resolveSelfHostedPlan } from "@/src/features/enterprise/plan/resolvePlan";
+import { rememberSsoSession } from "@/src/features/enterprise/sso/ssoLogout";
 
 function canCreateOrganizations(userEmail: string | null): boolean {
   const instancePlan = resolveSelfHostedPlan(
@@ -684,6 +685,8 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
       maxAge: env.AUTH_SESSION_MAX_AGE * 60, // convert minutes to seconds, default is set in env.mjs
     },
     callbacks: {
+      jwt: (params) =>
+        rememberSsoSession({ ...params, providers: dynamicSsoProviders }),
       async session({ session, token }): Promise<Session> {
         return instrumentAsync({ name: "next-auth-session" }, async (span) => {
           const dbUser = await prisma.user.findUnique({
@@ -737,7 +740,8 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
               // cloud_config plan, otherwise a leftover LITEFUSE_EE_LICENSE_KEY
               // would grant enterprise-gated UI (org API keys, admin-api, …)
               // to every org regardless of its actual plan.
-              selfHostedInstancePlan: process.env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION
+              selfHostedInstancePlan: process.env
+                .NEXT_PUBLIC_LITEFUSE_CLOUD_REGION
                 ? null
                 : resolveSelfHostedPlan(env.LITEFUSE_EE_LICENSE_KEY),
             },
