@@ -42,6 +42,13 @@ services:
       DORIS_FE_HTTP_URL: ${DORIS_FE_HTTP_URL:-http://doris:8040}
       DORIS_FE_QUERY_PORT: ${DORIS_FE_QUERY_PORT:-9030}
       DORIS_DB: ${DORIS_DB:-litefuse}
+      # This stack has a single Doris backend, so the migrations must not ask for
+      # more replicas than exist: with the shared default of 3 the entrypoint fails
+      # with "replication num should be less than the number of available backends.
+      # replication num is 3, available backend num is 1", exits, and the web
+      # container restarts forever. docker-compose.yml passes the same single-node
+      # value to its own services.
+      DORIS_REPLICATION_NUM: ${DORIS_REPLICATION_NUM:-1}
       DORIS_USER: ${DORIS_USER:-root}
       DORIS_PASSWORD: ${DORIS_PASSWORD:-}
       DORIS_MAX_OPEN_CONNECTIONS: ${DORIS_MAX_OPEN_CONNECTIONS:-100}
@@ -121,7 +128,11 @@ services:
       - doris_fe_meta:/opt/apache-doris/fe/doris-meta
       - doris_be_storage:/opt/apache-doris/be/storage
     healthcheck:
-      test: ["CMD-SHELL", "mysql -h 127.0.0.1 -P 9030 -uroot -e 'SELECT 1' 2>/dev/null || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "mysql -h 127.0.0.1 -P 9030 -uroot -e 'SELECT 1' 2>/dev/null || exit 1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 18

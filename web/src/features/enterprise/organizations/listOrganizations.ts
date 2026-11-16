@@ -3,12 +3,15 @@ import { prisma } from "@langfuse/shared/src/db";
 
 /**
  * List all organizations (GET /api/admin/organizations, instance admin).
+ *
+ * Only live projects are reported; each organization always carries a JSON
+ * object as `metadata`, defaulting to `{}` when none was set.
  */
 export async function listOrganizations(
   req: NextApiRequest,
   res: NextApiResponse,
 ) {
-  const organizations = await prisma.organization.findMany({
+  const organizationRows = await prisma.organization.findMany({
     select: {
       id: true,
       name: true,
@@ -28,10 +31,9 @@ export async function listOrganizations(
   });
 
   return res.status(200).json({
-    organizations: organizations.map((org) => ({
-      ...org,
-      metadata: org.metadata ?? {},
-      projects: org.projects,
+    organizations: organizationRows.map((organization) => ({
+      ...organization,
+      metadata: organization.metadata ?? {},
     })),
   });
 }

@@ -10,59 +10,52 @@ import {
   AvatarImage,
 } from "@/src/components/ui/avatar";
 import { cn } from "@/src/utils/tailwind";
-import { useRowHeightLocalStorage } from "@/src/components/table/data-table-row-height-switch";
+import {
+  useRowHeightLocalStorage,
+  type RowHeight,
+} from "@/src/components/table/data-table-row-height-switch";
 import { DataTableToolbar } from "@/src/components/table/data-table-toolbar";
 import { SettingsTableCard } from "@/src/components/layouts/settings-table-card";
 import { BatchExportTableButton } from "@/src/components/BatchExportTableButton";
 import { BatchExportTableName } from "@langfuse/shared";
+import type { TFunction } from "i18next";
 
 import { useTranslation } from "react-i18next";
 // Both endpoints return the same shape
 type AuditLogRow = RouterOutputs["auditLogs"]["all"]["data"][number];
 
-type AuditLogsTableProps =
-  | { scope: "project"; projectId: string }
-  | { scope: "organization"; orgId: string };
+// A caller renders exactly one audit-log source: a single project, or the
+// organization that project belongs to.
+type ProjectScopeProps = { projectId: string; scope: "project" };
+type OrganizationScopeProps = { orgId: string; scope: "organization" };
+type AuditLogsTableProps = ProjectScopeProps | OrganizationScopeProps;
 
-export function AuditLogsTable(props: AuditLogsTableProps) {
-  const { t } = useTranslation();
-  const [paginationState, setPaginationState] = useQueryParams({
-    pageIndex: withDefault(NumberParam, 0),
-    pageSize: withDefault(NumberParam, 50),
-  });
+// Column sizing and row height are persisted per table name, so the two scopes
+// are kept apart by using a distinct id for each of them.
+const TABLE_ID_BY_SCOPE = {
+  project: "auditLogs",
+  organization: "orgAuditLogs",
+} as const;
 
-  // Use the appropriate query based on scope
-  const projectAuditLogs = api.auditLogs.all.useQuery(
-    {
-      projectId: props.scope === "project" ? props.projectId : "",
-      page: paginationState.pageIndex,
-      limit: paginationState.pageSize,
-    },
-    { enabled: props.scope === "project" },
-  );
+/**
+ * Builds the audit-log columns. Kept outside the component so the table body
+ * and the toolbar share one definition without depending on component state.
+ */
+function buildAuditLogColumns(options: {
+  t: TFunction;
+  rowHeight: RowHeight;
+}): LangfuseColumnDef<AuditLogRow>[] {
+  const { t, rowHeight } = options;
+  const singleLineJson = rowHeight === "s";
 
-  const orgAuditLogs = api.auditLogs.allByOrg.useQuery(
-    {
-      orgId: props.scope === "organization" ? props.orgId : "",
-      page: paginationState.pageIndex,
-      limit: paginationState.pageSize,
-    },
-    { enabled: props.scope === "organization" },
-  );
+  const jsonCell = (value: string | null) =>
+    value ? <IOTableCell data={value} singleLine={singleLineJson} /> : null;
 
-  const auditLogs = props.scope === "project" ? projectAuditLogs : orgAuditLogs;
-
-  const tableId = props.scope === "project" ? "auditLogs" : "orgAuditLogs";
-  const [rowHeight, setRowHeight] = useRowHeightLocalStorage(tableId, "s");
-
-  const columns: LangfuseColumnDef<AuditLogRow>[] = [
+  return [
     {
       accessorKey: "createdAt",
       header: t("Time"),
-      cell: (row) => {
-        const date = row.getValue() as Date;
-        return date.toLocaleString();
-      },
+      cell: (row) => (row.getValue() as Date).toLocaleString(),
     },
     {
       accessorKey: "actor",
@@ -72,6 +65,7 @@ export function AuditLogsTable(props: AuditLogsTableProps) {
       },
       cell: (row) => {
         const actor = row.getValue() as AuditLogRow["actor"];
+
         if (actor?.type === "USER") {
           const user = actor.body;
           return (
@@ -124,30 +118,58 @@ export function AuditLogsTable(props: AuditLogsTableProps) {
       accessorKey: "before",
       header: t("Before"),
       size: 300,
-      cell: (row) => {
-        const value = row.getValue() as string | null;
-        if (!value) return null;
-        return <IOTableCell data={value} singleLine={rowHeight === "s"} />;
-      },
+      cell: (row) => jsonCell(row.getValue() as string | null),
     },
     {
       accessorKey: "after",
       header: t("After"),
       size: 300,
-      cell: (row) => {
-        const value = row.getValue() as string | null;
-        if (!value) return null;
-        return <IOTableCell data={value} singleLine={rowHeight === "s"} />;
-      },
+      cell: (row) => jsonCell(row.getValue() as string | null),
     },
   ];
+}
+
+export function AuditLogsTable(props: AuditLogsTableProps) {
+  const { t } = useTranslation();
+  const [paginationState, setPaginationState] = useQueryParams({
+    pageIndex: withDefault(NumberParam, 0),
+    pageSize: withDefault(NumberParam, 50),
+  });
+
+  const isOrganizationScope = props.scope === "organization";
+  // The query that is not in use still needs a value for the foreign id it
+  // expects, hence the empty string.
+  const projectId = props.scope === "project" ? props.projectId : "";
+  const orgId = props.scope === "organization" ? props.orgId : "";
+  const page = paginationState.pageIndex;
+  const limit = paginationState.pageSize;
+
+  // Both hooks run on every render so that hook order stays stable; only the
+  // query matching the active scope is enabled and reaches the server.
+  const projectRows = api.auditLogs.all.useQuery(
+    { projectId, page, limit },
+    { enabled: !isOrganizationScope },
+  );
+
+  const orgRows = api.auditLogs.allByOrg.useQuery(
+    { orgId, page, limit },
+    { enabled: isOrganizationScope },
+  );
+
+  const rows = isOrganizationScope ? orgRows : projectRows;
+  const tableId = isOrganizationScope
+    ? TABLE_ID_BY_SCOPE.organization
+    : TABLE_ID_BY_SCOPE.project;
+  const [density, setDensity] = useRowHeightLocalStorage(tableId, "s");
+
+  const columns = buildAuditLogColumns({ t, rowHeight: density });
 
   return (
     <>
       <DataTableToolbar
         columns={columns}
-        rowHeight={rowHeight}
-        setRowHeight={setRowHeight}
+        rowHeight={density}
+        setRowHeight={setDensity}
         actionButtons={
           props.scope === "project"
             ? [
@@ -168,26 +190,26 @@ export function AuditLogsTable(props: AuditLogsTableProps) {
           tableName={tableId}
           columns={columns}
           data={
-            auditLogs.isPending
+            rows.isPending
               ? { isLoading: true, isError: false }
-              : auditLogs.isError
+              : rows.isError
                 ? {
                     isLoading: false,
                     isError: true,
-                    error: auditLogs.error.message,
+                    error: rows.error.message,
                   }
                 : {
                     isLoading: false,
                     isError: false,
-                    data: safeExtract(auditLogs.data, "data", []),
+                    data: safeExtract(rows.data, "data", []),
                   }
           }
           pagination={{
-            totalCount: auditLogs.data?.totalCount ?? 0,
+            totalCount: rows.data?.totalCount ?? 0,
             onChange: setPaginationState,
             state: paginationState,
           }}
-          rowHeight={rowHeight}
+          rowHeight={density}
         />
       </SettingsTableCard>
     </>

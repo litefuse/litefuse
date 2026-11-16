@@ -1,5 +1,5 @@
 import { env } from "@/src/env.mjs";
-import { resolveSelfHostedPlan } from "@/src/features/enterprise/plan/resolvePlan";
+import { resolveSelfHostedPlan } from "@/src/features/entitlements/server/resolveSelfHostedPlan";
 
 /**
  * Whether multi-tenant Enterprise SSO is available:
@@ -10,6 +10,12 @@ import { resolveSelfHostedPlan } from "@/src/features/enterprise/plan/resolvePla
  *
  * The Cloud region is checked first so that Cloud availability is never
  * affected by the self-hosted license lookup.
+ *
+ * Lives outside the enterprise modules (MIT) because it is only a plan check and
+ * because the community edition needs it to decide whether the enterprise SSO
+ * implementation should be loaded at all — see
+ * `@/src/features/auth/sso/enterpriseSso`. The enterprise code imports it from
+ * here.
  */
 export const isMultiTenantSsoAvailable = Boolean(
   env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION ||

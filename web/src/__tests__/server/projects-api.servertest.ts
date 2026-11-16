@@ -466,7 +466,7 @@ describe("Projects API", () => {
         createBasicAuthHeader(orgApiKey, orgSecretKey),
       );
       expect(duplicateResult.status).toBe(409);
-      expect(duplicateResult.body.message).toContain("already exists");
+      expect(duplicateResult.body.message).toContain("already has a project");
     });
   });
 
@@ -737,7 +737,7 @@ describe("Projects API", () => {
 
       expect(response.status).toBe(202);
       expect(response.body.success).toBe(true);
-      expect(response.body.message).toContain("being processed asynchronously");
+      expect(response.body.message).toContain("queued for deletion");
 
       // Verify the project was marked as deleted in the database
       const project = await prisma.project.findUnique({
@@ -1019,7 +1019,7 @@ describe("Projects API", () => {
 
       expect(result.status).toBe(400);
       expect(result.body.message).toContain(
-        "Both publicKey and secretKey must be provided together",
+        "Both publicKey and secretKey are required together",
       );
     });
 
@@ -1039,7 +1039,7 @@ describe("Projects API", () => {
 
       expect(result.status).toBe(400);
       expect(result.body.message).toContain(
-        "Both publicKey and secretKey must be provided together",
+        "Both publicKey and secretKey are required together",
       );
     });
 
@@ -1060,7 +1060,9 @@ describe("Projects API", () => {
       );
 
       expect(result.status).toBe(400);
-      expect(result.body.message).toContain("publicKey must start with");
+      expect(result.body.message).toContain(
+        "publicKey has to use the 'pk-lf-' prefix",
+      );
     });
 
     it("should return 400 when secretKey does not start with sk-lf-", async () => {
@@ -1080,7 +1082,9 @@ describe("Projects API", () => {
       );
 
       expect(result.status).toBe(400);
-      expect(result.body.message).toContain("secretKey must start with");
+      expect(result.body.message).toContain(
+        "secretKey has to use the 'sk-lf-' prefix",
+      );
     });
 
     it("should return 409 when predefined publicKey already exists", async () => {
@@ -1116,7 +1120,7 @@ describe("Projects API", () => {
       );
 
       expect(secondResponse.status).toBe(409);
-      expect(secondResponse.body.message).toContain("already exists");
+      expect(secondResponse.body.message).toContain("already in use");
     });
   });
 

@@ -120,6 +120,16 @@ RUN adduser --system --uid ${UID} nextjs
 
 RUN npm install -g --no-package-lock --no-save prisma@6.17.1
 
+# The CLI package ships only the schema engine and fetches the query engine on
+# first use, into its own install directory, which is owned by root. The container
+# runs as `nextjs`, so that fetch fails:
+#   Error: Can't write to /usr/local/lib/node_modules/prisma/node_modules/@prisma/engines
+# and the entrypoint's `prisma migrate deploy` can never succeed, so the container
+# restarts forever and `docker compose up --wait` reports it as unhealthy. Fetch
+# the engines here instead: at runtime the CLI then needs neither network access
+# nor write access to its install directory.
+RUN prisma -v
+
 # Install dd-trace only if NEXT_PUBLIC_LITEFUSE_CLOUD_REGION is configured
 ARG NEXT_PUBLIC_LITEFUSE_CLOUD_REGION
 RUN if [ -n "$NEXT_PUBLIC_LITEFUSE_CLOUD_REGION" ]; then \

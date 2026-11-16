@@ -1,8 +1,55 @@
 import { type NextApiRequest, type NextApiResponse } from "next";
-import { prisma } from "@langfuse/shared/src/db";
+import { prisma, type Prisma } from "@langfuse/shared/src/db";
 import { logger } from "@langfuse/shared/src/server";
 import { auditLog } from "@/src/features/audit-logs/auditLog";
 import { organizationNameSchema } from "@/src/features/organizations/utils/organizationNameSchema";
+
+/**
+ * Result of reading the optional `metadata` field of an admin request body.
+ */
+type MetadataField =
+  | { ok: true; value: Prisma.InputJsonValue | undefined }
+  | { ok: false; error: string };
+
+/**
+ * Admin callers may send `metadata` either as a JSON object or as a string that
+ * encodes one. Anything else — arrays, null, scalars, malformed JSON — is
+ * rejected here so that only a JSON object is ever handed to the database.
+ */
+function readMetadata(body: unknown): MetadataField {
+  const requestBody = body as { metadata?: unknown } | null | undefined;
+  const rawMetadata = requestBody?.metadata;
+
+  if (rawMetadata === undefined) {
+    return { ok: true, value: undefined };
+  }
+
+  let candidate: unknown = rawMetadata;
+  if (typeof rawMetadata !== "object") {
+    try {
+      candidate = JSON.parse(String(rawMetadata));
+    } catch (parseError) {
+      return {
+        ok: false,
+        error: `Invalid metadata. Should be a valid JSON object: ${parseError}`,
+      };
+    }
+  }
+
+  const isJsonObject =
+    typeof candidate === "object" &&
+    candidate !== null &&
+    !Array.isArray(candidate);
+
+  if (!isJsonObject) {
+    return {
+      ok: false,
+      error: "Invalid metadata. Should be a valid JSON object.",
+    };
+  }
+
+  return { ok: true, value: candidate as Prisma.InputJsonValue };
+}
 
 /**
  * Create an organization (POST /api/admin/organizations, instance admin).
@@ -19,32 +66,16 @@ export async function createOrganization(
     });
   }
 
-  const { name } = validationResult.data;
-
-  const { metadata } = req.body;
-  let parsedMetadata = metadata;
-  if (metadata !== undefined && typeof metadata !== "object") {
-    try {
-      parsedMetadata = JSON.parse(metadata);
-    } catch (error) {
-      return res.status(400).json({
-        error: `Invalid metadata. Should be a valid JSON object: ${error}`,
-      });
-    }
-  }
-  if (
-    parsedMetadata !== undefined &&
-    (typeof parsedMetadata !== "object" ||
-      parsedMetadata === null ||
-      Array.isArray(parsedMetadata))
-  ) {
-    return res.status(400).json({
-      error: "Invalid metadata. Should be a valid JSON object.",
-    });
+  const metadataField = readMetadata(req.body);
+  if (!metadataField.ok) {
+    return res.status(400).json({ error: metadataField.error });
   }
 
   const organization = await prisma.organization.create({
-    data: { name, metadata: parsedMetadata },
+    data: {
+      name: validationResult.data.name,
+      metadata: metadataField.value,
+    },
     select: {
       id: true,
       name: true,
@@ -72,7 +103,9 @@ export async function createOrganization(
     after: organization,
   });
 
-  logger.info(`Created organization ${organization.id} via admin API`);
+  logger.info("Admin API created an organization", {
+    organizationId: organization.id,
+  });
 
   return res.status(201).json({
     id: organization.id,

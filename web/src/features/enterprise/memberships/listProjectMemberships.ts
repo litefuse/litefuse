@@ -3,8 +3,10 @@ import { prisma } from "@langfuse/shared/src/db";
 
 /**
  * List project memberships (GET /api/public/projects/{id}/memberships).
- * Returns the explicit project-level memberships only (users whose access to
- * this project overrides their organization role), scoped to the organization.
+ *
+ * Only explicit project-level memberships are reported: the users whose role
+ * on this project overrides the organization role they would otherwise
+ * inherit. Results are scoped to the caller's organization.
  */
 export async function listProjectMemberships(
   req: NextApiRequest,
@@ -12,24 +14,19 @@ export async function listProjectMemberships(
   projectId: string,
   orgId: string,
 ) {
-  const memberships = await prisma.projectMembership.findMany({
-    where: {
-      projectId,
-      organizationMembership: { orgId },
-    },
+  const rows = await prisma.projectMembership.findMany({
+    where: { projectId, organizationMembership: { orgId } },
     include: {
-      user: {
-        select: { id: true, email: true, name: true },
-      },
+      user: { select: { id: true, email: true, name: true } },
     },
   });
 
-  return res.status(200).json({
-    memberships: memberships.map((membership) => ({
-      userId: membership.userId,
-      role: membership.role,
-      email: membership.user.email,
-      name: membership.user.name,
-    })),
-  });
+  const memberships = rows.map(({ userId, role, user }) => ({
+    userId,
+    role,
+    email: user.email,
+    name: user.name,
+  }));
+
+  return res.status(200).json({ memberships });
 }

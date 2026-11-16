@@ -1,7 +1,7 @@
 import { type NextApiRequest, type NextApiResponse } from "next";
 import { AdminApiAuthService } from "@/src/server/adminApiAuth";
 import { hasEntitlementBasedOnPlan } from "@/src/features/entitlements/server/hasEntitlement";
-import { resolveSelfHostedPlan } from "@/src/features/enterprise/plan/resolvePlan";
+import { resolveSelfHostedPlan } from "@/src/features/entitlements/server/resolveSelfHostedPlan";
 
 /**
  * Instance-admin auth middleware (admin endpoints; distinct from the public requireAdminApi).

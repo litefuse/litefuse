@@ -55,13 +55,13 @@ import {
   buildSsoProviders,
   resolveSsoProviderIdForDomain,
   resolveMultiTenantSsoConfig,
-} from "@/src/features/enterprise/sso/ssoProviders";
+} from "@/src/features/auth/sso/enterpriseSso";
 import { ENTERPRISE_SSO_REQUIRED_MESSAGE } from "@/src/features/auth/constants";
 import { projectRoleAccessRights } from "@/src/features/rbac/constants/projectAccessRights";
 import { getSSOBlockedDomains } from "@/src/features/auth-credentials/server/signupApiHandler";
 import { createSupportEmailHash } from "@/src/features/support-chat/createSupportEmailHash";
 import { hasEntitlementBasedOnPlan } from "@/src/features/entitlements/server/hasEntitlement";
-import { resolveSelfHostedPlan } from "@/src/features/enterprise/plan/resolvePlan";
+import { resolveSelfHostedPlan } from "@/src/features/entitlements/server/resolveSelfHostedPlan";
 
 function canCreateOrganizations(userEmail: string | null): boolean {
   const instancePlan = resolveSelfHostedPlan(
@@ -737,7 +737,8 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
               // cloud_config plan, otherwise a leftover LITEFUSE_EE_LICENSE_KEY
               // would grant enterprise-gated UI (org API keys, admin-api, …)
               // to every org regardless of its actual plan.
-              selfHostedInstancePlan: process.env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION
+              selfHostedInstancePlan: process.env
+                .NEXT_PUBLIC_LITEFUSE_CLOUD_REGION
                 ? null
                 : resolveSelfHostedPlan(env.LITEFUSE_EE_LICENSE_KEY),
             },

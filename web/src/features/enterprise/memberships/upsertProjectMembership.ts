@@ -10,7 +10,10 @@ const ProjectMembershipBody = z.object({
 
 /**
  * Create or update a project membership (PUT /api/public/projects/{id}/memberships).
- * Confirms the user is already in the organization (organizationMembership), then upserts projectMembership.
+ *
+ * A project membership always hangs off an organization membership, so the
+ * organization membership is resolved first — it also carries the email and
+ * name returned to the caller — and only then is the project role upserted.
  */
 export async function upsertProjectMembership(
   req: NextApiRequest,
@@ -26,38 +29,36 @@ export async function upsertProjectMembership(
     });
   }
 
-  const orgMembership = await prisma.organizationMembership.findUnique({
-    where: {
-      orgId_userId: { userId: parsed.data.userId, orgId },
-    },
-    include: {
-      user: { select: { email: true, name: true } },
-    },
-  });
+  const { userId, role } = parsed.data;
 
-  if (!orgMembership) {
+  const organizationMembership = await prisma.organizationMembership.findUnique(
+    {
+      where: { orgId_userId: { orgId, userId } },
+      include: { user: { select: { email: true, name: true } } },
+    },
+  );
+
+  if (!organizationMembership) {
     return res.status(404).json({
-      error: "User is not a member of this organization",
+      error: "User does not belong to this organization",
     });
   }
 
   const membership = await prisma.projectMembership.upsert({
-    where: {
-      projectId_userId: { userId: parsed.data.userId, projectId },
-    },
-    update: { role: parsed.data.role },
+    where: { projectId_userId: { projectId, userId } },
+    update: { role },
     create: {
-      userId: parsed.data.userId,
+      userId,
       projectId,
-      role: parsed.data.role,
-      orgMembershipId: orgMembership.id,
+      role,
+      orgMembershipId: organizationMembership.id,
     },
   });
 
   return res.status(200).json({
     userId: membership.userId,
     role: membership.role,
-    email: orgMembership.user.email,
-    name: orgMembership.user.name,
+    email: organizationMembership.user.email,
+    name: organizationMembership.user.name,
   });
 }

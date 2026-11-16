@@ -170,7 +170,10 @@ describe("SCIM API", () => {
       expect(response.body.schemas).toContain(
         "urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig",
       );
-      expect(response.body.patch.supported).toBe(false);
+      // PATCH is implemented for User resources (active / roles) and the discovery
+      // document declares it, because clients such as Okta read this flag to decide
+      // whether they may use PATCH for deprovisioning and attribute updates.
+      expect(response.body.patch.supported).toBe(true);
       expect(response.body.filter.supported).toBe(true);
     });
 

@@ -11,9 +11,29 @@ const CreateProjectApiKeyBody = z.object({
   secretKey: z.string().optional(),
 });
 
+const PUBLIC_KEY_PREFIX = "pk-lf-";
+const SECRET_KEY_PREFIX = "sk-lf-";
+
+/**
+ * Prisma marks a clash on `publicKey` / `secretKey` with error code P2002. Some
+ * driver level failures only leave the unique constraint text behind, so both
+ * spellings are treated as the same problem.
+ */
+function isDuplicateKeyFailure(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) {
+    return false;
+  }
+  if ((error as { code?: unknown }).code === "P2002") {
+    return true;
+  }
+  return error instanceof Error && /unique constraint/i.test(error.message);
+}
+
 /**
  * Create a project-level API key (POST /api/public/projects/{id}/apiKeys).
- * Supports optional predefined keys (publicKey + secretKey must be provided together and start with pk-lf-/sk-lf-).
+ *
+ * The caller may dictate the key pair instead of letting us generate one, but
+ * then both halves have to be sent and have to look like regular keys.
  */
 export async function createProjectApiKey(
   req: NextApiRequest,
@@ -21,35 +41,38 @@ export async function createProjectApiKey(
   projectId: string,
   scope: ApiAccessScope,
 ) {
-  const parsed = CreateProjectApiKeyBody.safeParse(req.body);
-  if (!parsed.success) {
+  const body = CreateProjectApiKeyBody.safeParse(req.body);
+  if (!body.success) {
     return res.status(400).json({
       message: "Invalid request body",
-      details: parsed.error.format(),
+      details: body.error.format(),
     });
   }
 
-  const { note, publicKey, secretKey } = parsed.data;
+  const { note, publicKey, secretKey } = body.data;
 
+  let predefinedKeys: { publicKey: string; secretKey: string } | undefined;
   if (publicKey || secretKey) {
     if (!publicKey || !secretKey) {
       return res.status(400).json({
         message:
-          "Both publicKey and secretKey must be provided together when specifying predefined keys",
+          "Both publicKey and secretKey are required together to register a custom key pair.",
       });
     }
 
-    if (!publicKey.startsWith("pk-lf-")) {
+    if (!publicKey.startsWith(PUBLIC_KEY_PREFIX)) {
       return res.status(400).json({
-        message: "publicKey must start with 'pk-lf-'",
+        message: `publicKey has to use the '${PUBLIC_KEY_PREFIX}' prefix`,
       });
     }
 
-    if (!secretKey.startsWith("sk-lf-")) {
+    if (!secretKey.startsWith(SECRET_KEY_PREFIX)) {
       return res.status(400).json({
-        message: "secretKey must start with 'sk-lf-'",
+        message: `secretKey has to use the '${SECRET_KEY_PREFIX}' prefix`,
       });
     }
+
+    predefinedKeys = { publicKey, secretKey };
   }
 
   try {
@@ -58,8 +81,7 @@ export async function createProjectApiKey(
       entityId: projectId,
       note,
       scope: "PROJECT",
-      predefinedKeys:
-        publicKey && secretKey ? { publicKey, secretKey } : undefined,
+      predefinedKeys,
     });
 
     await auditLog({
@@ -71,22 +93,18 @@ export async function createProjectApiKey(
       action: "create",
     });
 
-    logger.info(`Created API key ${apiKeyMeta.id} for project ${projectId}`);
+    logger.info(`Registered API key ${apiKeyMeta.id} on project ${projectId}`);
 
     return res.status(201).json(apiKeyMeta);
   } catch (error) {
-    if (
-      error instanceof Error &&
-      (error.message.includes("Unique constraint") ||
-        error.message.includes("unique constraint"))
-    ) {
+    if (isDuplicateKeyFailure(error)) {
       return res.status(409).json({
         message:
-          "API key with the provided publicKey or secretKey already exists",
+          "That publicKey or secretKey is already in use by another API key.",
       });
     }
 
-    logger.error("Failed to create project API key", error);
+    logger.error("Could not create the project API key", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 }

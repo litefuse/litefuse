@@ -1,0 +1,11 @@
+The files in this directory are part of the Litefuse Enterprise Software and are
+governed by the Litefuse Enterprise License ("EE license").
+
+The full license text, the authoritative list of licensed materials, and the
+upstream attribution are in the repository root:
+
+    /LICENSE-EE
+
+The MIT license in /LICENSE does not apply to the files listed in ANNEX A of
+/LICENSE-EE. A license key with the "litefuse_ee_" prefix (or an equivalent
+written entitlement) is required to use them.

@@ -20,6 +20,12 @@ import { rejectUnlessScimIsEntitled } from "@/src/features/public-api/server/sci
 import { auditLog } from "@/src/features/audit-logs/auditLog";
 import { type Role, type User } from "@langfuse/shared/src/db";
 
+/**
+ * Page size this server advertises (`filter.maxResults` in
+ * /api/public/scim/ServiceProviderConfig) and the largest `count` it will honour.
+ */
+const MAX_RESULTS = 100;
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
@@ -94,15 +100,19 @@ export default async function handler(
       //   negative `take` additionally means "take from the end" in Prisma, so it
       //   silently returned the last page instead of an empty one.
       // - `count: 0` returns no resources while still reporting `totalResults`.
-      // A value that is not a number at all falls back to the defaults.
+      // A value that is not a number at all falls back to the defaults, and the
+      // result is capped at MAX_RESULTS: the discovery document advertises
+      // `filter.maxResults: 100` for this server, so accepting a larger `count`
+      // would let a client page through a bigger window than the protocol
+      // promises (and put the whole table through one query).
       const requestedStartIndex = parseInt(startIndex as string, 10);
       const parsedStartIndex = Number.isNaN(requestedStartIndex)
         ? 1
         : Math.max(1, requestedStartIndex);
       const requestedCount = parseInt(count as string, 10);
       const parsedCount = Number.isNaN(requestedCount)
-        ? 100
-        : Math.max(0, requestedCount);
+        ? MAX_RESULTS
+        : Math.min(Math.max(0, requestedCount), MAX_RESULTS);
 
       let whereClause = {};
       if (filter && typeof filter === "string") {
@@ -219,9 +229,7 @@ export default async function handler(
       let role: Role = "NONE";
       if (roles !== undefined && isEmptyRoleValue(roles)) {
         logger.warn("Empty roles provided for SCIM user creation", roles);
-        return res
-          .status(400)
-          .json(scimErrorBody(400, EMPTY_ROLES_DETAIL));
+        return res.status(400).json(scimErrorBody(400, EMPTY_ROLES_DETAIL));
       }
       if (roles && Array.isArray(roles) && roles.length > 0) {
         const requestedRole = parseRequestedRole(roles);

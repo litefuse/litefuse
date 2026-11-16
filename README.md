@@ -239,7 +239,7 @@ Your contributions are welcome!
 
 ## 🥇 License
 
-This repository is MIT licensed. See [LICENSE](LICENSE) for details.
+This repository is MIT licensed, except for the enterprise modules listed in ANNEX A of [LICENSE-EE](LICENSE-EE). See [LICENSE](LICENSE) for details.
 
 ## Dependencies
 

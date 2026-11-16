@@ -18,7 +18,7 @@ import {
   logger,
   traceException,
 } from "@langfuse/shared/src/server";
-import { isMultiTenantSsoAvailable } from "@/src/features/enterprise/sso/ssoAvailable";
+import { isMultiTenantSsoAvailable } from "@/src/features/auth/sso/isMultiTenantSsoAvailable";
 import {
   ssoProviderSchema,
   type SsoProviderConfig,
@@ -33,6 +33,14 @@ type TokenEndpointAuthMethod =
   | "self_signed_tls_client_auth"
   | "none";
 
+/** Credentials of a parsed SSO config, i.e. what the IdP is configured with. */
+type ProviderAuthConfig = NonNullable<SsoProviderConfig["authConfig"]>;
+
+/** NextAuth expects the token endpoint auth method under a `client` key. */
+type ClientConfig =
+  | { client: { token_endpoint_auth_method: TokenEndpointAuthMethod } }
+  | Record<string, never>;
+
 // Local cache of SSO configs
 let ssoConfigCache: {
   data: SsoProviderConfig[];
@@ -46,16 +54,19 @@ const DB_MAX_WAIT = 5 * 1000;
 const DB_TIMEOUT = 5 * 1000;
 
 /**
- * Load all SSO configs from the database (with local caching) and parse them into schema objects.
+ * Read the SSO configs from the database and parse them into schema objects,
+ * serving the local cache while it is still fresh. Rows that no longer match
+ * the schema are skipped instead of failing the whole lookup.
  */
 async function loadSsoConfigs(): Promise<SsoProviderConfig[]> {
   if (!isMultiTenantSsoAvailable) return [];
 
-  const cacheExpired =
-    Date.now() - ssoConfigCache.timestamp >
-    (ssoConfigCache.failedToFetch ? FAILED_RETRY_AFTER : CACHE_TTL);
+  const retryAfter = ssoConfigCache.failedToFetch
+    ? FAILED_RETRY_AFTER
+    : CACHE_TTL;
+  const cacheIsStale = Date.now() - ssoConfigCache.timestamp > retryAfter;
 
-  if (cacheExpired) {
+  if (cacheIsStale) {
     let dbConfigs: SsoConfig[] = [];
     let failedToFetch = false;
     try {
@@ -64,25 +75,27 @@ async function loadSsoConfigs(): Promise<SsoProviderConfig[]> {
         { maxWait: DB_MAX_WAIT, timeout: DB_TIMEOUT },
       );
     } catch (e) {
-      logger.error("Failed to load SSO configs from the database", e);
+      logger.error("Unable to read the SSO configs from the database", e);
       traceException(e);
+      // The empty result is cached so an unreachable database is not retried
+      // on every request.
       failedToFetch = true;
     }
 
     const parsed = dbConfigs
-      .map((v) => {
+      .map((row) => {
         try {
-          return ssoProviderSchema.parse(v);
+          return ssoProviderSchema.parse(row);
         } catch (e) {
           logger.error(
-            `Failed to parse SSO provider config for domain ${v.domain}`,
+            `Skipping SSO config of domain ${row.domain}: invalid schema`,
             e,
           );
           traceException(e);
           return null;
         }
       })
-      .filter((p): p is SsoProviderConfig => p !== null);
+      .filter((config): config is SsoProviderConfig => config !== null);
 
     ssoConfigCache = {
       data: parsed,
@@ -100,12 +113,11 @@ async function loadSsoConfigs(): Promise<SsoProviderConfig[]> {
 export async function buildSsoProviders(): Promise<Provider[]> {
   if (!isMultiTenantSsoAvailable) return [];
 
-  const providers: Provider[] = [];
-  for (const config of await loadSsoConfigs()) {
-    const provider = toNextAuthProvider(config);
-    if (provider !== null) providers.push(provider);
-  }
-  return providers;
+  const configs = await loadSsoConfigs();
+
+  return configs
+    .map((config) => toNextAuthProvider(config))
+    .filter((provider): provider is Provider => provider !== null);
 }
 
 /**
@@ -124,7 +136,7 @@ export async function resolveSsoProviderIdForDomain(
 ): Promise<string | null> {
   if (!isMultiTenantSsoAvailable) return null;
   const config = (await loadSsoConfigs()).find(
-    (c) => c.domain === domain.toLowerCase(),
+    (candidate) => candidate.domain === domain.toLowerCase(),
   );
   if (!config) return null;
   return buildAuthProviderId(config);
@@ -141,18 +153,11 @@ const buildAuthProviderId = (config: SsoProviderConfig): string => {
 /**
  * Build the NextAuth client config for the given token endpoint auth method.
  */
-const toClientConfig = (authConfig: {
-  tokenEndpointAuthMethod?: TokenEndpointAuthMethod;
-}):
-  | { client: { token_endpoint_auth_method: TokenEndpointAuthMethod } }
-  | Record<string, never> =>
-  authConfig.tokenEndpointAuthMethod
-    ? {
-        client: {
-          token_endpoint_auth_method: authConfig.tokenEndpointAuthMethod,
-        },
-      }
-    : {};
+const toClientConfig = (authConfig: ProviderAuthConfig): ClientConfig => {
+  const method = authConfig.tokenEndpointAuthMethod;
+  if (!method) return {};
+  return { client: { token_endpoint_auth_method: method } };
+};
 
 /**
  * Convert a database SSO config into a NextAuth Provider instance.
@@ -298,11 +303,10 @@ export const resolveMultiTenantSsoConfig = async ({
 > => {
   const configs = await loadSsoConfigs();
   const matched = configs
-    .filter((c) => Boolean(c.authConfig))
-    .find((c) => buildAuthProviderId(c) === providerId);
+    .filter((config) => Boolean(config.authConfig))
+    .find((config) => buildAuthProviderId(config) === providerId);
 
-  if (matched) {
-    return { isMultiTenantSsoProvider: true, domain: matched.domain };
-  }
-  return { isMultiTenantSsoProvider: false, domain: null };
+  return matched
+    ? { isMultiTenantSsoProvider: true, domain: matched.domain }
+    : { isMultiTenantSsoProvider: false, domain: null };
 };

@@ -70,7 +70,9 @@ services:
       start_period: 1s
 
   doris_fe:
-    image: apache/doris:fe-4.0.4
+    # 4.0.6 to match docker-compose.yml: 4.0.4 lacks json_object_flatten, which the
+    # analytics read paths call.
+    image: apache/doris:fe-4.0.6
     hostname: doris_fe
     container_name: litefuse-doris-fe
     environment:
@@ -85,6 +87,13 @@ services:
         ipv4_address: 172.29.0.2
     volumes:
       - litefuse_doris_fe_meta:/opt/apache-doris/fe/doris-meta
+      # The FE image hardcodes a heap that cannot be reserved on a GitHub runner
+      # (-Xmx8192m/-Xms8192m), so the JVM died during startup with
+      # "os::commit_memory failed" and the container exited - that is what stopped the
+      # web-test shard. Mount the reduced-heap copy instead. Read-WRITE on purpose:
+      # init_fe.sh appends `priority_networks` to this file on first boot, and a :ro
+      # mount makes the entrypoint die with "Read-only file system".
+      - ./doris-config/fe.conf:/opt/apache-doris/fe/conf/fe.conf
       - ./doris-config/fe_custom.conf:/opt/apache-doris/fe/conf/fe_custom.conf:ro
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8030/api/bootstrap 2>/dev/null || exit 1"]
@@ -94,7 +103,7 @@ services:
       start_period: 120s
 
   doris_be:
-    image: apache/doris:be-4.0.4
+    image: apache/doris:be-4.0.6
     hostname: doris_be
     container_name: litefuse-doris-be
     environment:

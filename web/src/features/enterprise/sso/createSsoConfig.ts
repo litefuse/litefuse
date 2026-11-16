@@ -4,12 +4,14 @@ import { type NextApiRequest, type NextApiResponse } from "next";
 import { env } from "@/src/env.mjs";
 import { logger } from "@langfuse/shared/src/server";
 import { AdminApiAuthService } from "@/src/server/adminApiAuth";
-import { isMultiTenantSsoAvailable } from "@/src/features/enterprise/sso/ssoAvailable";
+import { isMultiTenantSsoAvailable } from "@/src/features/auth/sso/isMultiTenantSsoAvailable";
 import { ssoProviderSchema } from "@/src/features/enterprise/sso/ssoConfigSchema";
 
 /**
  * Create a multi-tenant SSO config (POST /api/auth/add-sso-config).
- * Cloud deployments only; authenticated via ADMIN_API_KEY, and clientSecret is encrypted before storage.
+ *
+ * Only available where multi-tenant SSO is enabled, authenticated with the
+ * ADMIN_API_KEY, and the client secret is encrypted before it is stored.
  */
 export async function createSsoConfig(
   req: NextApiRequest,
@@ -17,9 +19,9 @@ export async function createSsoConfig(
 ) {
   try {
     if (!isMultiTenantSsoAvailable) {
-      res
-        .status(403)
-        .json({ error: "Multi-tenant SSO is not available on your instance" });
+      res.status(403).json({
+        error: "Multi-tenant SSO is not enabled on this instance",
+      });
       return;
     }
 
@@ -34,7 +36,9 @@ export async function createSsoConfig(
     }
 
     if (!env.ENCRYPTION_KEY) {
-      res.status(500).json({ error: "ENCRYPTION_KEY is not set" });
+      res.status(500).json({
+        error: "ENCRYPTION_KEY environment variable is missing",
+      });
       return;
     }
 
@@ -46,43 +50,47 @@ export async function createSsoConfig(
       return;
     }
 
-    const body = ssoProviderSchema.safeParse(req.body);
-    if (!body.success) {
-      res.status(400).json({ error: body.error });
+    const parsedBody = ssoProviderSchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      res.status(400).json({ error: parsedBody.error });
       return;
     }
 
-    const { domain, authProvider, authConfig } = body.data;
+    const ssoConfig = parsedBody.data;
 
-    // Duplicate check: only one SSO config is allowed per domain
-    const existingConfig = await prisma.ssoConfig.findUnique({
-      where: { domain },
+    // At most one SSO configuration may exist per domain, so check for an
+    // existing entry before writing.
+    const duplicate = await prisma.ssoConfig.findUnique({
+      where: { domain: ssoConfig.domain },
     });
-    if (existingConfig) {
-      logger.info(
-        `Attempt to create duplicate SSO configuration for domain: ${domain}`,
-      );
+    if (duplicate) {
+      logger.info("Rejected a duplicate SSO configuration", {
+        domain: ssoConfig.domain,
+      });
       res.status(409).json({
-        error: `An SSO configuration already exists for domain '${domain}'`,
+        error: `Domain ${ssoConfig.domain} already has an SSO configuration`,
       });
       return;
     }
 
-    const encryptedClientSecret = authConfig
-      ? { ...authConfig, clientSecret: encrypt(authConfig.clientSecret) }
+    const encryptedAuthConfig = ssoConfig.authConfig
+      ? {
+          ...ssoConfig.authConfig,
+          clientSecret: encrypt(ssoConfig.authConfig.clientSecret),
+        }
       : undefined;
 
     await prisma.ssoConfig.create({
       data: {
-        domain,
-        authProvider,
-        authConfig: encryptedClientSecret,
+        domain: ssoConfig.domain,
+        authProvider: ssoConfig.authProvider,
+        authConfig: encryptedAuthConfig,
       },
     });
 
     res.status(201).json({ message: "SSO configuration created successfully" });
   } catch (e) {
-    logger.error("Failed to create SSO configuration", e);
+    logger.error("Could not store the new SSO configuration", e);
     res.status(500).json({ error: "Internal Server Error" });
   }
 }

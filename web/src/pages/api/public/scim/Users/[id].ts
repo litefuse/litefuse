@@ -301,6 +301,49 @@ async function updateUserName(
   logger.info(`Updated name for user ${user.id} to "${name}" via SCIM`);
 }
 
+/**
+ * Fields that are written to the account (`users`) rather than to the caller's
+ * membership row, so naming them requires the account to belong to the caller's
+ * organization. Everything else a SCIM PATCH/PUT can carry (`active`, `roles`, and
+ * the attributes this implementation accepts but ignores) stays available for any
+ * account, which is what keeps multi-organization provisioning working.
+ */
+const ACCOUNT_NAME_FIELDS = ["name", "displayName"] as const;
+
+function carriesAccountName(value: unknown): boolean {
+  if (typeof value !== "object" || value === null) return false;
+  return ACCOUNT_NAME_FIELDS.some(
+    (field) => (value as Record<string, unknown>)[field] !== undefined,
+  );
+}
+
+/** Whether a SCIM PATCH body asks to change the account's name. */
+function patchAddressesAccount(body: unknown): boolean {
+  const operations = (body as { Operations?: unknown } | null | undefined)
+    ?.Operations;
+  if (!Array.isArray(operations)) return false;
+
+  return operations.some((operation) => {
+    const op = operation as { path?: unknown; value?: unknown } | null;
+    if (!op) return false;
+
+    const path = op.path;
+    if (
+      typeof path === "string" &&
+      ACCOUNT_NAME_FIELDS.some((field) => path.startsWith(field))
+    ) {
+      return true;
+    }
+
+    return carriesAccountName(op.value);
+  });
+}
+
+/** Whether a SCIM PUT body carries an account name. */
+function putAddressesAccount(body: unknown): boolean {
+  return carriesAccountName(body);
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
@@ -374,6 +417,40 @@ export default async function handler(
       detail: "User not found",
       status: 404,
     });
+  }
+
+  // The lookup above is global (by user id), so it can also resolve an account that
+  // belongs to another organization. The operations that address the *account* - read
+  // it, rename it, delete it - must therefore prove the caller's organization owns it,
+  // which is what upstream does too (its GET and DELETE call `requireOrgMembership`).
+  //
+  // Membership-level operations stay open to any account, deliberately: `active: true`
+  // and `roles` write the caller's own membership row, and provisioning an existing
+  // account into another organization is what upstream's PUT explicitly allows
+  // (`if (!isProvisioning && !requireOrgMembership(...))`). Refusing it would break
+  // multi-organization deployments and the IdP's deprovision/reactivate cycle.
+  if (
+    req.method === "GET" ||
+    req.method === "DELETE" ||
+    (req.method === "PATCH" && patchAddressesAccount(req.body)) ||
+    (req.method === "PUT" && putAddressesAccount(req.body))
+  ) {
+    const membership = await prisma.organizationMembership.findUnique({
+      where: {
+        orgId_userId: {
+          orgId: authCheck.scope.orgId,
+          userId: user.id,
+        },
+      },
+    });
+
+    if (!membership) {
+      return res.status(404).json({
+        schemas: ["urn:ietf:params:scim:api:messages:2.0:Error"],
+        detail: "User not found in organization",
+        status: 404,
+      });
+    }
   }
 
   // Route to the appropriate handler based on HTTP method

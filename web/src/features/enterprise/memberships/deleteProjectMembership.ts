@@ -50,7 +50,7 @@ export async function deleteProjectMembership(
   });
 
   return res.status(200).json({
-    message: "Project membership deleted successfully",
+    message: "Project membership removed",
     userId: parsed.data.userId,
   });
 }

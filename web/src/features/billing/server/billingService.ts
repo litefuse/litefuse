@@ -51,6 +51,13 @@ const PAID_STATUSES: Stripe.Subscription.Status[] = [
   "past_due",
 ];
 
+// A schedule in one of these states still owns the subscription's upcoming
+// phases, so it must be released before new phases can be created for it.
+const OPEN_SCHEDULE_STATUSES: Stripe.SubscriptionSchedule.Status[] = [
+  "active",
+  "not_started",
+];
+
 let stripeClient: Stripe | null = null;
 
 export function getStripeClient(): Stripe {
@@ -298,14 +305,27 @@ async function getSubscriptionSchedule(
     : null;
 }
 
+/**
+ * True when the schedule has not finished or been released yet and can still
+ * be released to hand control of the subscription back to Stripe.
+ */
+function scheduleIsOpen(
+  schedule: Stripe.SubscriptionSchedule | null,
+): schedule is Stripe.SubscriptionSchedule {
+  return schedule !== null && OPEN_SCHEDULE_STATUSES.includes(schedule.status);
+}
+
 function subscriptionSyncState(
   subscription: Stripe.Subscription,
   forceClear: boolean = false,
 ) {
   const subscriptionPlan = getSubscriptionPlan(subscription);
+  // Stripe reports a single status per subscription; it is stored verbatim so
+  // that the persisted state can be compared against later webhooks.
+  const stripeStatus = subscription.status;
   const paid =
     !forceClear &&
-    PAID_STATUSES.includes(subscription.status) &&
+    PAID_STATUSES.includes(stripeStatus) &&
     subscriptionPlan.plan !== null;
 
   return {
@@ -317,7 +337,7 @@ function subscriptionSyncState(
       ? subscriptionPlan.teamsAddonProductId
       : null,
     resolvedPlan: paid ? subscriptionPlan.plan : null,
-    subscriptionStatus: subscription.status,
+    stripeStatus,
     cancelAtPeriodEnd: paid ? hasScheduledCancellation(subscription) : false,
     currentPeriodEnd:
       subscriptionPeriodEnd(subscription)?.toISOString() ?? null,
@@ -346,7 +366,7 @@ function subscriptionNeedsSync(
     (current?.activeTeamsAddonProductId ?? null) !==
       expected.activeTeamsAddonProductId ||
     (current?.resolvedPlan ?? null) !== expected.resolvedPlan ||
-    (current?.subscriptionStatus ?? null) !== expected.subscriptionStatus ||
+    (current?.subscriptionStatus ?? null) !== expected.stripeStatus ||
     (current?.cancelAtPeriodEnd ?? false) !== expected.cancelAtPeriodEnd ||
     (current?.currentPeriodEnd ?? null) !== expected.currentPeriodEnd ||
     (current?.meteringStartAt ?? null) !== expectedMeteringStart ||
@@ -689,10 +709,7 @@ export async function changePlan(params: {
     });
   }
   const existingSchedule = await getSubscriptionSchedule(subscription);
-  if (
-    existingSchedule &&
-    ["active", "not_started"].includes(existingSchedule.status)
-  ) {
+  if (scheduleIsOpen(existingSchedule)) {
     await getStripeClient().subscriptionSchedules.release(existingSchedule.id);
   }
   await getStripeClient().subscriptions.update(subscription.id, {
@@ -729,7 +746,7 @@ export async function changePlan(params: {
 export async function cancelSubscription(orgId: string) {
   const subscription = await getActiveSubscription(orgId);
   const schedule = await getSubscriptionSchedule(subscription);
-  if (schedule && ["active", "not_started"].includes(schedule.status)) {
+  if (scheduleIsOpen(schedule)) {
     await getStripeClient().subscriptionSchedules.release(schedule.id);
   }
   const updatedSubscription = await getStripeClient().subscriptions.update(
@@ -753,7 +770,7 @@ export async function reactivateSubscription(orgId: string) {
 export async function clearScheduledChange(orgId: string) {
   let subscription = await getActiveSubscription(orgId);
   const schedule = await getSubscriptionSchedule(subscription);
-  if (schedule && ["active", "not_started"].includes(schedule.status)) {
+  if (scheduleIsOpen(schedule)) {
     await getStripeClient().subscriptionSchedules.release(schedule.id);
   }
   if (hasScheduledCancellation(subscription)) {
@@ -877,7 +894,7 @@ export async function syncSubscriptionToOrganization(
           activeUsageProductId: syncState.activeUsageProductId,
           activeTeamsAddonProductId: syncState.activeTeamsAddonProductId,
           resolvedPlan: syncState.resolvedPlan,
-          subscriptionStatus: syncState.subscriptionStatus,
+          subscriptionStatus: syncState.stripeStatus,
           cancelAtPeriodEnd: syncState.cancelAtPeriodEnd,
           currentPeriodEnd: syncState.currentPeriodEnd,
           meteringStartAt: meteringStartAt?.toISOString() ?? null,
@@ -928,12 +945,15 @@ export async function cancelSubscriptionImmediatelyForOrganization(
   orgId: string,
 ): Promise<void> {
   if (!env.STRIPE_SECRET_KEY) return;
-  const org = await prisma.organization.findUnique({ where: { id: orgId } });
-  const subscriptionId = parseCloudConfig(org?.cloudConfig ?? null)?.stripe
-    ?.activeSubscriptionId;
-  if (subscriptionId) {
-    await getStripeClient().subscriptions.cancel(subscriptionId);
-  }
+
+  const organization = await prisma.organization.findUnique({
+    where: { id: orgId },
+  });
+  const subscriptionId = parseCloudConfig(organization?.cloudConfig ?? null)
+    ?.stripe?.activeSubscriptionId;
+  if (!subscriptionId) return;
+
+  await getStripeClient().subscriptions.cancel(subscriptionId);
 }
 
 export async function assertCanManageBilling(params: {
