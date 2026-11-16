@@ -1,4 +1,9 @@
 import {
+  type BlobStorageExportOptions,
+  blobStorageMetadata,
+  blobStorageJson,
+} from "./blobStorageExportProjection";
+import {
   queryDoris,
   commandDoris,
   queryDorisStream,
@@ -1722,6 +1727,7 @@ export const getObservationsForBlobStorageExport = function (
   projectId: string,
   minTimestamp: Date,
   maxTimestamp: Date,
+  options?: BlobStorageExportOptions,
 ) {
   const query = `
       SELECT
@@ -1734,7 +1740,7 @@ export const getObservationsForBlobStorageExport = function (
         start_time,
         end_time,
         name,
-        json_object_flatten(metadata) AS metadata,
+        ${blobStorageMetadata("metadata", options?.parquet)},
         level,
         status_message,
         version,
@@ -1742,8 +1748,8 @@ export const getObservationsForBlobStorageExport = function (
         output,
         provided_model_name,
         model_parameters,
-        usage_details,
-        cost_details,
+        ${options?.parquet ? blobStorageJson("CAST(usage_details AS MAP<STRING, STRING>)", "usage_details", true) : "usage_details"},
+        ${options?.parquet ? blobStorageJson("CAST(cost_details AS MAP<STRING, STRING>)", "cost_details", true) : "cost_details"},
         completion_start_time,
         prompt_name,
         prompt_version
@@ -1755,6 +1761,8 @@ export const getObservationsForBlobStorageExport = function (
 
   const records = queryDorisStream<Record<string, unknown>>({
     query,
+    signal: options?.signal,
+    highWaterMark: options?.parquet ? 16 : undefined,
     params: {
       projectId,
       minTimestamp: convertDateToAnalyticsDateTime(minTimestamp),

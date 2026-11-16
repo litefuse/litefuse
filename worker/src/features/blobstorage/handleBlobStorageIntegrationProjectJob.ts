@@ -1,4 +1,4 @@
-import { pipeline } from "stream";
+import { pipeline, type Readable } from "stream";
 import { Job } from "bullmq";
 import { prisma } from "@langfuse/shared/src/db";
 import {
@@ -26,6 +26,8 @@ import { decrypt } from "@langfuse/shared/encryption";
 import { randomUUID } from "crypto";
 import { env } from "../../env";
 import { tableFor } from "@langfuse/shared/src/server";
+import type { BlobExportTable } from "./parquetSchema";
+import { uploadParquetExport } from "./uploadParquetExport";
 
 const getMinTimestampForExport = async (
   projectId: string,
@@ -135,12 +137,24 @@ const getFileTypeProperties = (fileType: BlobStorageIntegrationFileType) => {
         contentType: "application/x-ndjson; charset=utf-8",
         extension: "jsonl",
       };
+    case BlobStorageIntegrationFileType.PARQUET:
+      return {
+        contentType: "application/vnd.apache.parquet",
+        extension: "parquet",
+      };
     default:
       // eslint-disable-next-line no-case-declarations
       const _exhaustiveCheck: never = fileType;
       throw new Error(`Unsupported file type: ${fileType}`);
   }
 };
+
+const exportQueries = {
+  traces: getTracesForBlobStorageExport,
+  observations: getObservationsForBlobStorageExport,
+  scores: getScoresForBlobStorageExport,
+  observations_v2: getEventsForBlobStorageExport,
+} satisfies Record<BlobExportTable, unknown>;
 
 const processBlobStorageExport = async (config: {
   projectId: string;
@@ -154,7 +168,7 @@ const processBlobStorageExport = async (config: {
   prefix?: string;
   forcePathStyle?: boolean;
   type: BlobStorageIntegrationType;
-  table: "traces" | "observations" | "scores" | "observations_v2"; // observations_v2 is the events table
+  table: BlobExportTable;
   fileType: BlobStorageIntegrationFileType;
 }) => {
   logger.info(
@@ -178,73 +192,50 @@ const processBlobStorageExport = async (config: {
   try {
     const blobStorageProps = getFileTypeProperties(config.fileType);
 
-    // Create the file path with prefix if available
-    const timestamp = config.maxTimestamp
-      .toISOString()
-      .replace(/:/g, "-")
-      .substring(0, 19);
+    const timestampIso = config.maxTimestamp.toISOString().replace(/:/g, "-");
+    const timestamp =
+      config.fileType === "PARQUET"
+        ? timestampIso
+        : timestampIso.substring(0, 19);
     const filePath = `${config.prefix ?? ""}${config.projectId}/${config.table}/${timestamp}.${blobStorageProps.extension}`;
 
-    // Fetch data based on table type
-    let dataStream: AsyncGenerator<Record<string, unknown>>;
+    const upload = (data: Readable) =>
+      storageService.uploadFileBuffered({
+        fileName: filePath,
+        fileType: blobStorageProps.contentType,
+        data,
+        // 100 MiB parts keep large files within S3's 10,000-part limit.
+        partSizeBytes: 100 * 1024 * 1024,
+      });
+    const readRows = (options?: { parquet: boolean; signal: AbortSignal }) =>
+      exportQueries[config.table](
+        config.projectId,
+        config.minTimestamp,
+        config.maxTimestamp,
+        options,
+      );
 
-    switch (config.table) {
-      case "traces":
-        dataStream = getTracesForBlobStorageExport(
-          config.projectId,
-          config.minTimestamp,
-          config.maxTimestamp,
-        );
-        break;
-      case "observations":
-        dataStream = getObservationsForBlobStorageExport(
-          config.projectId,
-          config.minTimestamp,
-          config.maxTimestamp,
-        );
-        break;
-      case "scores":
-        dataStream = getScoresForBlobStorageExport(
-          config.projectId,
-          config.minTimestamp,
-          config.maxTimestamp,
-        );
-        break;
-      case "observations_v2": // observations_v2 is the events table
-        dataStream = getEventsForBlobStorageExport(
-          config.projectId,
-          config.minTimestamp,
-          config.maxTimestamp,
-        );
-        break;
-      default:
-        throw new Error(`Unsupported table type: ${config.table}`);
+    if (config.fileType === "PARQUET") {
+      await uploadParquetExport(
+        config.table,
+        (signal) => readRows({ parquet: true, signal }),
+        upload,
+      );
+    } else {
+      const fileStream = pipeline(
+        readRows(),
+        streamTransformations[config.fileType](),
+        (err) => {
+          if (err) {
+            logger.error(
+              "[BLOB INTEGRATION] Getting data from DB for blob storage integration failed: ",
+              err,
+            );
+          }
+        },
+      );
+      await upload(fileStream);
     }
-
-    const fileStream = pipeline(
-      dataStream,
-      streamTransformations[config.fileType](),
-      (err) => {
-        if (err) {
-          logger.error(
-            "[BLOB INTEGRATION] Getting data from DB for blob storage integration failed: ",
-            err,
-          );
-        }
-      },
-    );
-
-    // Upload the file to cloud storage
-    // For CSV exports, use larger part size to handle big files
-    // 100 MB parts support files up to ~1 TB (100 MB × 10,000 AWS limit)
-    // This prevents hitting AWS's 10,000 part limit on large exports
-
-    await storageService.uploadFileBuffered({
-      fileName: filePath,
-      fileType: blobStorageProps.contentType,
-      data: fileStream,
-      partSizeBytes: 100 * 1024 * 1024, // 100 MB part size
-    });
 
     logger.info(
       `[BLOB INTEGRATION] Successfully exported ${config.table} records for project ${config.projectId}`,
@@ -293,6 +284,16 @@ export const handleBlobStorageIntegrationProjectJob = async (
     );
     return;
   }
+  const parquet = blobStorageIntegration.fileType === "PARQUET";
+  const updateWhere = {
+    projectId,
+    ...(parquet
+      ? {
+          lastSyncAt: blobStorageIntegration.lastSyncAt,
+          updatedAt: blobStorageIntegration.updatedAt,
+        }
+      : {}),
+  };
 
   // Sync between lastSyncAt and now - 30 minutes
   // Cap the export to one frequency period to enable chunked historic exports
@@ -308,7 +309,8 @@ export const handleBlobStorageIntegrationProjectJob = async (
       `[BLOB INTEGRATION] Calculated minTimestamp for project ${projectId}: ${minTimestamp}, isValid: ${!isNaN(minTimestamp.getTime())}, getTime: ${minTimestamp.getTime()}, exportMode: ${blobStorageIntegration.exportMode}, lastSyncAt: ${blobStorageIntegration.lastSyncAt}, exportStartDate: ${blobStorageIntegration.exportStartDate}`,
     );
 
-    const now = new Date();
+    const now =
+      parquet && job.data.timestamp ? new Date(job.data.timestamp) : new Date();
     const uncappedMaxTimestamp = new Date(now.getTime() - 30 * 60 * 1000); // 30-minute lag buffer
     const frequencyIntervalMs = getFrequencyIntervalMs(
       blobStorageIntegration.exportFrequency,
@@ -332,6 +334,8 @@ export const handleBlobStorageIntegrationProjectJob = async (
       logger.info(
         `[BLOB INTEGRATION] Skipping export for project ${projectId}: time window is empty (min: ${minTimestamp.toISOString()}, max: ${maxTimestamp.toISOString()})`,
       );
+      // A Parquet run with no eligible window must keep its start position.
+      if (parquet) return;
       // Update lastSyncAt to now so the integration doesn't get stuck in a catch-up loop
       const nowForSkip = new Date();
       await prisma.blobStorageIntegration.update({
@@ -375,26 +379,14 @@ export const handleBlobStorageIntegrationProjectJob = async (
       );
       await processBlobStorageExport({ ...executionConfig, table: "traces" });
     } else {
-      // Process tables based on exportSource setting
-      const processPromises: Promise<void>[] = [];
-
-      // Always include scores
-      processPromises.push(
-        processBlobStorageExport({ ...executionConfig, table: "scores" }),
-      );
+      const tables: BlobExportTable[] = ["scores"];
 
       // Traces and observations - for TRACES_OBSERVATIONS and TRACES_OBSERVATIONS_EVENTS
       if (
         blobStorageIntegration.exportSource === "TRACES_OBSERVATIONS" ||
         blobStorageIntegration.exportSource === "TRACES_OBSERVATIONS_EVENTS"
       ) {
-        processPromises.push(
-          processBlobStorageExport({ ...executionConfig, table: "traces" }),
-          processBlobStorageExport({
-            ...executionConfig,
-            table: "observations",
-          }),
-        );
+        tables.push("traces", "observations");
       }
 
       // Events - for EVENTS and TRACES_OBSERVATIONS_EVENTS
@@ -403,15 +395,16 @@ export const handleBlobStorageIntegrationProjectJob = async (
         blobStorageIntegration.exportSource === "EVENTS" ||
         blobStorageIntegration.exportSource === "TRACES_OBSERVATIONS_EVENTS"
       ) {
-        processPromises.push(
-          processBlobStorageExport({
-            ...executionConfig,
-            table: "observations_v2",
-          }),
-        );
+        tables.push("observations_v2");
       }
 
-      await Promise.all(processPromises);
+      const processTable = (table: BlobExportTable) =>
+        processBlobStorageExport({ ...executionConfig, table });
+      if (parquet) {
+        for (const table of tables) await processTable(table);
+      } else {
+        await Promise.all(tables.map(processTable));
+      }
     }
 
     // Determine if we've caught up with present-day data
@@ -433,10 +426,8 @@ export const handleBlobStorageIntegrationProjectJob = async (
     }
 
     // Update integration after successful processing
-    await prisma.blobStorageIntegration.update({
-      where: {
-        projectId,
-      },
+    const updated = await prisma.blobStorageIntegration.updateMany({
+      where: updateWhere,
       data: {
         lastSyncAt: maxTimestamp,
         nextSyncAt,
@@ -444,6 +435,7 @@ export const handleBlobStorageIntegrationProjectJob = async (
         lastErrorAt: null,
       },
     });
+    if (updated.count === 0) return;
 
     // If still catching up, immediately queue the next chunk job
     if (!caughtUp) {
@@ -472,8 +464,8 @@ export const handleBlobStorageIntegrationProjectJob = async (
   } catch (error) {
     try {
       const errorMessage = extractStorageErrorMessage(error);
-      await prisma.blobStorageIntegration.update({
-        where: { projectId },
+      await prisma.blobStorageIntegration.updateMany({
+        where: updateWhere,
         data: {
           lastError: errorMessage,
           lastErrorAt: new Date(),

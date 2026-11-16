@@ -252,6 +252,8 @@ export async function* queryDorisStream<T>(opts: {
   query: string;
   params?: Record<string, unknown>;
   tags?: Record<string, string>;
+  signal?: AbortSignal;
+  highWaterMark?: number;
 }): AsyncGenerator<T> {
   const tracer = require("../instrumentation").getTracer("doris-query-stream");
   const span = tracer.startSpan("doris-query-stream");
@@ -270,7 +272,10 @@ export async function* queryDorisStream<T>(opts: {
     }
 
     let count = 0;
-    for await (const row of client.queryStream<T>(processedQuery)) {
+    for await (const row of client.queryStream<T>(processedQuery, {
+      signal: opts.signal,
+      highWaterMark: opts.highWaterMark,
+    })) {
       count++;
       yield row;
     }

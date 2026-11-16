@@ -16,7 +16,12 @@ export const BlobStorageIntegrationType = z.enum([
   "AZURE_BLOB_STORAGE",
 ]);
 
-export const BlobStorageIntegrationFileType = z.enum(["JSON", "CSV", "JSONL"]);
+export const BlobStorageIntegrationFileType = z.enum([
+  "JSON",
+  "CSV",
+  "JSONL",
+  "PARQUET",
+]);
 
 export const BlobStorageExportMode = z.enum([
   "FULL_HISTORY",

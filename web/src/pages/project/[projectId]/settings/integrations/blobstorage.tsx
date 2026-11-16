@@ -633,6 +633,8 @@ const BlobStorageIntegrationSettingsForm = ({
                     <SelectItem value="JSONL">JSONL</SelectItem>
                     <SelectItem value="CSV">CSV</SelectItem>
                     <SelectItem value="JSON">JSON</SelectItem>
+                    {/* eslint-disable-next-line i18next/no-literal-string -- Parquet is a file format name. */}
+                    <SelectItem value="PARQUET">Parquet</SelectItem>
                   </SelectContent>
                 </Select>
               </FormControl>

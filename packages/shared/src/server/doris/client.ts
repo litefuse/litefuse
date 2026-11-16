@@ -487,13 +487,13 @@ export class DorisClient {
    * Borrows a single connection from the pool, runs the raw SQL with the
    * mysql2 callback API's `.query(sql).stream()` (the promise wrapper hides
    * `.stream()`, so we reach through `conn.connection`), and yields each row
-   * as it arrives over the wire. Connection is released back to the pool in
-   * the finally block whether the consumer drains the stream, breaks early,
-   * or throws.
+   * as it arrives over the wire. Return a fully drained connection to the pool.
+   * Destroy connections with an unfinished result so a paused query cannot
+   * block the next borrower.
    */
   async *queryStream<T = any>(
     sql: string,
-    options: { highWaterMark?: number } = {},
+    options: { highWaterMark?: number; signal?: AbortSignal } = {},
   ): AsyncGenerator<T> {
     if (!this.connectionPool) {
       throw new Error("MySQL connection pool not initialized");
@@ -501,20 +501,27 @@ export class DorisClient {
 
     const highWaterMark = options.highWaterMark ?? 1000;
     const startTime = Date.now();
+    options.signal?.throwIfAborted();
     const conn = await this.connectionPool.getConnection();
+    let completed = false;
+    let abort: (() => void) | undefined;
 
     try {
+      options.signal?.throwIfAborted();
       // mysql2/promise's PoolConnection wraps a callback Connection. The
       // promise wrapper does not expose `.stream()`, but we can reach the
       // underlying callback connection at `.connection`.
       const underlying = (conn as unknown as { connection: any }).connection;
       const stream = underlying.query(sql).stream({ highWaterMark });
+      abort = () => stream.destroy(options.signal?.reason);
+      options.signal?.addEventListener("abort", abort, { once: true });
 
       let rowCount = 0;
       for await (const row of stream) {
         rowCount++;
         yield row as T;
       }
+      completed = true;
 
       const durationMs = Date.now() - startTime;
       logger.debug("Doris stream query completed", {
@@ -531,7 +538,10 @@ export class DorisClient {
       logger.error(`Doris stream query failed: ${errMsg}, SQL: ${sql}`);
       throw error;
     } finally {
-      conn.release();
+      if (abort) options.signal?.removeEventListener("abort", abort);
+      // A cancelled result can leave the protocol stream paused mid-query.
+      if (completed || !abort) conn.release();
+      else conn.destroy();
     }
   }
 
