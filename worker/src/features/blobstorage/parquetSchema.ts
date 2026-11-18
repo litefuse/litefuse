@@ -1,6 +1,8 @@
 import { ParquetSchema } from "@dsnp/parquetjs";
 
 const text = { type: "UTF8", optional: true, compression: "SNAPPY" } as const;
+// Full string min/max values are repeated in uncompressed Parquet metadata.
+const largeText = { ...text, statistics: false } as const;
 const requiredText = { ...text, optional: false };
 const timestamp = { ...text, type: "TIMESTAMP_MILLIS" } as const;
 const promptVersion = { ...text, type: "INT32" } as const;
@@ -16,6 +18,8 @@ const cost = {
   typeLength: 16,
   precision: 38,
   scale: 12,
+  // parquetjs compares DECIMAL buffers as unsigned bytes, reversing signed bounds.
+  statistics: false,
 } as const;
 
 const fields = {
@@ -25,7 +29,7 @@ const fields = {
     name: text,
     environment: text,
     project_id: requiredText,
-    metadata: text,
+    metadata: largeText,
     user_id: text,
     session_id: text,
     release: text,
@@ -33,8 +37,8 @@ const fields = {
     public: boolean,
     bookmarked: boolean,
     tags,
-    input: text,
-    output: text,
+    input: largeText,
+    output: largeText,
   },
   observations: {
     id: requiredText,
@@ -46,16 +50,16 @@ const fields = {
     start_time: { ...timestamp, optional: false },
     end_time: timestamp,
     name: text,
-    metadata: text,
+    metadata: largeText,
     level: text,
-    status_message: text,
+    status_message: largeText,
     version: text,
-    input: text,
-    output: text,
+    input: largeText,
+    output: largeText,
     provided_model_name: text,
-    model_parameters: text,
-    usage_details: text,
-    cost_details: text,
+    model_parameters: largeText,
+    usage_details: largeText,
+    cost_details: largeText,
     completion_start_time: timestamp,
     prompt_name: text,
     prompt_version: promptVersion,
@@ -75,15 +79,15 @@ const fields = {
     trace_name: text,
     total_cost: cost,
     latency: { ...text, type: "INT64" },
-    input: text,
-    output: text,
-    metadata: text,
+    input: largeText,
+    output: largeText,
+    metadata: largeText,
     start_time: { ...timestamp, optional: false },
     end_time: timestamp,
     model: text,
     prompt_name: text,
     prompt_version: promptVersion,
-    status_message: text,
+    status_message: largeText,
     parent_observation_id: text,
     event_version: text,
   },
@@ -97,9 +101,9 @@ const fields = {
     name: text,
     value: { ...text, type: "FLOAT" },
     source: text,
-    comment: text,
+    comment: largeText,
     data_type: text,
-    string_value: text,
+    string_value: largeText,
   },
 } as const;
 

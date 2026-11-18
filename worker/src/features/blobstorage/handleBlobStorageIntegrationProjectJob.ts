@@ -220,6 +220,11 @@ const processBlobStorageExport = async (config: {
         config.table,
         (signal) => readRows({ parquet: true, signal }),
         upload,
+        {
+          maxRows: env.LITEFUSE_BLOB_STORAGE_EXPORT_PARQUET_ROW_GROUP_MAX_ROWS,
+          targetBytes:
+            env.LITEFUSE_BLOB_STORAGE_EXPORT_PARQUET_ROW_GROUP_TARGET_BYTES,
+        },
       );
     } else {
       const fileStream = pipeline(

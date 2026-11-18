@@ -7,13 +7,16 @@ import {
   parquetSchema,
 } from "./parquetSchema";
 
-const MAX_GROUP_ROWS = 1024;
-const TARGET_GROUP_BYTES = 8 * 1024 * 1024;
+type ParquetRowGroupOptions = {
+  maxRows: number;
+  targetBytes: number;
+};
 
 export async function uploadParquetExport(
   table: BlobExportTable,
   readRows: (signal: AbortSignal) => AsyncIterable<BlobExportRow>,
   upload: (stream: Readable) => Promise<void>,
+  rowGroups: ParquetRowGroupOptions,
 ) {
   const output = new PassThrough();
   const controller = new AbortController();
@@ -28,6 +31,7 @@ export async function uploadParquetExport(
       output as unknown as Parameters<typeof ParquetWriter.openStream>[1],
       {
         useDataPageV2: false,
+        // parquetjs 1.8.8 writes incorrect offsets for multi-page row groups.
         pageIndex: false,
       },
     );
@@ -51,12 +55,15 @@ export async function uploadParquetExport(
           size + (typeof value === "string" ? Buffer.byteLength(value) : 8),
         0,
       );
-      if (group.length > 0 && groupBytes + bytes > TARGET_GROUP_BYTES) {
+      if (group.length > 0 && groupBytes + bytes > rowGroups.targetBytes) {
         await flush();
       }
       group.push(row);
       groupBytes += bytes;
-      if (group.length === MAX_GROUP_ROWS || groupBytes >= TARGET_GROUP_BYTES) {
+      if (
+        group.length >= rowGroups.maxRows ||
+        groupBytes >= rowGroups.targetBytes
+      ) {
         await flush();
       }
     }

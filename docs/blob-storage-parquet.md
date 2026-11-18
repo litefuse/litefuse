@@ -17,6 +17,35 @@ boundary can appear in adjacent files.
 Parquet uses internal Snappy compression. The integration's gzip flag and
 observation field groups have no effect on the Parquet files.
 
+## Row groups and statistics
+
+Worker row groups default to at most 10,000 rows and a target of 64 MiB
+(67,108,864 bytes) of estimated uncompressed field data. Configure them with:
+
+| Environment variable | Default |
+| --- | --- |
+| `LITEFUSE_BLOB_STORAGE_EXPORT_PARQUET_ROW_GROUP_MAX_ROWS` | `10000` |
+| `LITEFUSE_BLOB_STORAGE_EXPORT_PARQUET_ROW_GROUP_TARGET_BYTES` | `67108864` |
+
+Both values must be positive integers. The worker flushes a group when either
+limit is reached, or before adding a row that would exceed the byte target.
+A single row larger than the byte target is written as its own group. The byte
+target is not a compressed file-size or process-memory limit: encoding,
+statistics, and storage upload buffers also consume memory. Larger groups can
+improve scan throughput but do not guarantee a particular point-query read size.
+Each table and time window still produces one file, regardless of group count.
+
+Statistics are omitted for `input`, `output`, `metadata`, `model_parameters`,
+`usage_details`, `cost_details`, `status_message`, `comment`, and `string_value`
+where those columns exist. This avoids repeating potentially large text values
+in uncompressed metadata. Time columns, identifiers, and other filter columns
+retain their statistics.
+
+`total_cost` retains its exact `DECIMAL(38,12)` values, but its statistics are
+disabled because the current Parquet writer compares decimal bytes without
+accounting for their sign. Readers must scan candidate groups to filter this
+column rather than relying on its min/max. Page indexes remain disabled.
+
 ## Schema
 
 `TIMESTAMP_MILLIS` stores milliseconds since the UTC epoch. Readers such
