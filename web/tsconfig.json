@@ -18,8 +18,7 @@
       "utils/*": ["./src/features/discover/utils/*"],
       "@grafana/data": ["./src/lib/discover-shims/grafana-data"],
       "jotai-location": ["./src/lib/discover-shims/jotai-location"],
-      "antd": ["./src/lib/discover-shims/antd"],
-      "react-i18next": ["./src/lib/discover-shims/react-i18next"]
+      "antd": ["./src/lib/discover-shims/antd"]
     },
     "strictNullChecks": true
   },

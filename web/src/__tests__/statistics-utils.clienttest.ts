@@ -376,34 +376,39 @@ describe("Overall Agreement Interpretation", () => {
     const result = interpretOverallAgreement(0.95);
     expect(result.strength).toBe("Excellent");
     expect(result.color).toBe("green");
-    expect(result.description).toContain("95%");
+    expect(result.description).toBe("{{percentage}}% of predictions match");
+    expect(result.descriptionParams).toEqual({ percentage: 95 });
   });
 
   it("should interpret good agreement", () => {
     const result = interpretOverallAgreement(0.85);
     expect(result.strength).toBe("Good");
     expect(result.color).toBe("blue");
-    expect(result.description).toContain("85%");
+    expect(result.description).toBe("{{percentage}}% of predictions match");
+    expect(result.descriptionParams).toEqual({ percentage: 85 });
   });
 
   it("should interpret fair agreement", () => {
     const result = interpretOverallAgreement(0.7);
     expect(result.strength).toBe("Fair");
     expect(result.color).toBe("yellow");
-    expect(result.description).toContain("70%");
+    expect(result.description).toBe("{{percentage}}% of predictions match");
+    expect(result.descriptionParams).toEqual({ percentage: 70 });
   });
 
   it("should interpret poor agreement", () => {
     const result = interpretOverallAgreement(0.5);
     expect(result.strength).toBe("Poor");
     expect(result.color).toBe("orange");
-    expect(result.description).toContain("50%");
+    expect(result.description).toBe("{{percentage}}% of predictions match");
+    expect(result.descriptionParams).toEqual({ percentage: 50 });
   });
 
   it("should interpret very poor agreement", () => {
     const result = interpretOverallAgreement(0.2);
     expect(result.strength).toBe("Very Poor");
     expect(result.color).toBe("red");
-    expect(result.description).toContain("20%");
+    expect(result.description).toBe("{{percentage}}% of predictions match");
+    expect(result.descriptionParams).toEqual({ percentage: 20 });
   });
 });

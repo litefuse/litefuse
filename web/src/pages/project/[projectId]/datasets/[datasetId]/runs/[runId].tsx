@@ -23,7 +23,9 @@ import {
 import { Skeleton } from "@/src/components/ui/skeleton";
 import { LocalIsoDate } from "@/src/components/LocalIsoDate";
 
+import { useTranslation } from "react-i18next";
 export default function Dataset() {
+  const { t } = useTranslation();
   const router = useRouter();
   const projectId = router.query.projectId as string;
   const datasetId = router.query.datasetId as string;
@@ -45,12 +47,15 @@ export default function Dataset() {
         title: run.data?.name ?? runId,
         itemType: "DATASET_RUN",
         breadcrumb: [
-          { name: "Datasets", href: `/project/${projectId}/datasets` },
+          { name: t("Datasets"), href: `/project/${projectId}/datasets` },
           {
             name: dataset.data?.name ?? datasetId,
             href: `/project/${projectId}/datasets/${datasetId}`,
           },
-          { name: "Runs", href: `/project/${projectId}/datasets/${datasetId}` },
+          {
+            name: t("Runs"),
+            href: `/project/${projectId}/datasets/${datasetId}`,
+          },
         ],
         actionButtonsRight: (
           <>
@@ -62,7 +67,7 @@ export default function Dataset() {
             >
               <Button>
                 <Columns3 className="mr-2 h-4 w-4" />
-                <span>Compare</span>
+                <span>{t("Compare")}</span>
               </Button>
             </Link>
             <DetailPageNav
@@ -103,11 +108,11 @@ export default function Dataset() {
           />
         </div>
         <SidePanel
-          mobileTitle="Experiment run details"
+          mobileTitle={t("Experiment run details")}
           id="experiment-run-details"
         >
           <SidePanelHeader>
-            <SidePanelTitle>Experiment run details</SidePanelTitle>
+            <SidePanelTitle>{t("Experiment run details")}</SidePanelTitle>
           </SidePanelHeader>
           <SidePanelContent>
             {run.isPending ? (
@@ -116,7 +121,9 @@ export default function Dataset() {
               <>
                 {run.data?.datasetVersion && (
                   <div className="flex flex-col gap-2 p-1">
-                    <span className="text-sm font-medium">Dataset Version</span>
+                    <span className="text-sm font-medium">
+                      {t("Dataset Version")}
+                    </span>
                     <Link
                       href={`/project/${projectId}/datasets/${datasetId}/items?version=${run.data.datasetVersion.toISOString()}`}
                       className="text-accent-dark-blue hover:text-primary-accent/60 text-sm"
@@ -128,20 +135,20 @@ export default function Dataset() {
                 {!!run.data?.description && (
                   <JSONView
                     json={run.data.description}
-                    title="Description"
+                    title={t("Description")}
                     className="w-full overflow-y-auto"
                   />
                 )}
                 {!!run.data?.metadata && (
                   <JSONView
                     json={run.data.metadata}
-                    title="Metadata"
+                    title={t("Metadata")}
                     className="w-full overflow-y-auto"
                   />
                 )}
                 {!run.data?.description && !run.data?.metadata && (
                   <div className="text-muted-foreground mt-1 px-1 text-sm">
-                    No description or metadata for this run
+                    {t("No description or metadata for this run")}
                   </div>
                 )}
               </>

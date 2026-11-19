@@ -1,4 +1,5 @@
 import { z } from "zod/v4";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 import {
   PricingTierConditionSchema,
   PricingTierInputSchema,
@@ -84,7 +85,7 @@ export const UpsertModelSchema = z
       return result.valid;
     },
     {
-      message: "Invalid pricing tiers configuration",
+      message: i18nKey("Invalid pricing tiers configuration"),
       path: ["pricingTiers"],
     },
   );
@@ -106,7 +107,7 @@ export const FormUpsertModelSchema = z.object({
         }
       },
       {
-        message: "Tokenizer config needs to be valid JSON",
+        message: i18nKey("Tokenizer config needs to be valid JSON"),
       },
     )
     .transform((value) => (value === "{}" ? undefined : value))
@@ -122,6 +123,16 @@ export enum PriceUnit {
   Per1KUnits = "per 1K units",
   Per1MUnits = "per 1M units",
 }
+
+/**
+ * The enum values are the stored setting, so they stay English. These are the
+ * labels shown for them; the renderer calls t() on the result.
+ */
+export const priceUnitLabels: Record<PriceUnit, string> = {
+  [PriceUnit.PerUnit]: i18nKey("per unit"),
+  [PriceUnit.Per1KUnits]: i18nKey("per 1K units"),
+  [PriceUnit.Per1MUnits]: i18nKey("per 1M units"),
+};
 
 export const ModelLastUsedQueryResult = z.array(
   z.object({

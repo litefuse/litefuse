@@ -33,7 +33,9 @@ import {
   buildWidgetOrderBy,
 } from "@/src/features/query/validateQuery";
 import { LangfuseIcon } from "@/src/components/LangfuseLogo";
+import { translateManagedDashboardText } from "@/src/features/dashboard/lib/managed-dashboard-text";
 
+import { useTranslation } from "react-i18next";
 export interface WidgetPlacement {
   id: string;
   widgetId: string;
@@ -63,6 +65,7 @@ export function DashboardWidget({
   dashboardOwner: "LANGFUSE" | "PROJECT";
   schedulerId?: string;
 }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const utils = api.useUtils();
   const { isBetaEnabled } = useV4Beta();
@@ -245,7 +248,7 @@ export function DashboardWidget({
                 // Objects / numbers / booleans are stringified to avoid React key issues
                 return String(val);
               })()
-            : formatMetricName(metricField),
+            : formatMetricName(metricField, t),
         metric: isHistogramChart
           ? metricValue // Keep as-is (JSON string) for HistogramChart
           : Array.isArray(metricValue)
@@ -254,7 +257,7 @@ export function DashboardWidget({
         time_dimension: item["time_dimension"],
       };
     });
-  }, [queryResult.data, widget.data]);
+  }, [queryResult.data, widget.data, t]);
 
   const handleEdit = () => {
     router.push(
@@ -271,7 +274,7 @@ export function DashboardWidget({
       });
     },
     onError: (e) => {
-      showErrorToast("Failed to clone widget", e.message);
+      showErrorToast(t("Failed to clone widget"), e.message);
     },
   });
   const handleCopy = () => {
@@ -284,7 +287,7 @@ export function DashboardWidget({
   };
 
   const handleDelete = () => {
-    if (onDeleteWidget && confirm("Please confirm deletion")) {
+    if (onDeleteWidget && confirm(t("Please confirm deletion"))) {
       onDeleteWidget(placement.id);
     }
   };
@@ -294,7 +297,7 @@ export function DashboardWidget({
       <div
         className={`bg-background flex items-center justify-center rounded-lg border p-4`}
       >
-        <div className="text-muted-foreground">Loading...</div>
+        <div className="text-muted-foreground">{t("Loading...")}</div>
       </div>
     );
   }
@@ -304,10 +307,21 @@ export function DashboardWidget({
       <div
         className={`bg-background flex items-center justify-center rounded-lg border p-4`}
       >
-        <div className="text-muted-foreground">Widget not found</div>
+        <div className="text-muted-foreground">{t("Widget not found")}</div>
       </div>
     );
   }
+
+  const name = translateManagedDashboardText(
+    widget.data.name,
+    widget.data.owner,
+    t,
+  );
+  const description = translateManagedDashboardText(
+    widget.data.description,
+    widget.data.owner,
+    t,
+  );
 
   return (
     <div
@@ -315,8 +329,8 @@ export function DashboardWidget({
     >
       <div className="flex items-center justify-between">
         <span className="flex min-w-0 items-center gap-1 font-medium">
-          <span className="truncate" title={widget.data.name}>
-            {widget.data.name}
+          <span className="truncate" title={name}>
+            {name}
           </span>
           {dashboardOwner === "PROJECT" && widget.data.owner === "LANGFUSE" ? (
             <LangfuseIcon size={14} className="h-3.5 w-3.5 shrink-0" />
@@ -333,7 +347,7 @@ export function DashboardWidget({
                 <button
                   onClick={handleEdit}
                   className="text-muted-foreground hover:text-foreground hidden group-hover:block"
-                  aria-label="Edit widget"
+                  aria-label={t("Edit widget")}
                 >
                   <PencilIcon size={16} />
                 </button>
@@ -341,7 +355,7 @@ export function DashboardWidget({
                 <button
                   onClick={handleCopy}
                   className="text-muted-foreground hover:text-foreground hidden group-hover:block"
-                  aria-label="Copy widget"
+                  aria-label={t("Copy widget")}
                 >
                   <CopyIcon size={16} />
                 </button>
@@ -349,7 +363,7 @@ export function DashboardWidget({
               <button
                 onClick={handleDelete}
                 className="text-muted-foreground hover:text-destructive hidden group-hover:block"
-                aria-label="Delete widget"
+                aria-label={t("Delete widget")}
               >
                 <TrashIcon size={16} />
               </button>
@@ -359,7 +373,7 @@ export function DashboardWidget({
           {!queryResult.isPending ? (
             <DownloadButton
               data={transformedData}
-              fileName={widget.data.name}
+              fileName={name}
               className="hidden group-hover:block"
             />
           ) : null}
@@ -367,9 +381,9 @@ export function DashboardWidget({
       </div>
       <div
         className="text-muted-foreground mb-4 truncate text-sm"
-        title={widget.data.description}
+        title={description}
       >
-        {widget.data.description}
+        {description}
       </div>
       <div className="relative min-h-0 flex-1">
         {!queryValidation.valid ? (

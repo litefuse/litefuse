@@ -10,11 +10,34 @@ import {
 import { api } from "@/src/utils/api";
 import useProjectIdFromURL from "@/src/hooks/useProjectIdFromURL";
 
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 export interface MediaButtonGroupProps {
   media: MediaReturnType[];
 }
 
 type MediaCategory = "image" | "audio" | "video" | "document";
+
+/**
+ * Written as literal t() calls rather than a key map so that the extractor
+ * sees the `count` option and generates the plural variants.
+ */
+const mediaCategoryTitle = (
+  t: TFunction,
+  category: MediaCategory,
+  count: number,
+) => {
+  switch (category) {
+    case "image":
+      return t("{{count}} image file", { count });
+    case "audio":
+      return t("{{count}} audio file", { count });
+    case "video":
+      return t("{{count}} video file", { count });
+    case "document":
+      return t("{{count}} document file", { count });
+  }
+};
 
 interface GroupedMedia {
   category: MediaCategory;
@@ -26,12 +49,13 @@ interface GroupedMedia {
  * AudioPlayer - Renders HTML5 audio player with controls
  */
 function AudioPlayer({ src }: { src?: string }) {
+  const { t } = useTranslation();
   if (!src) return null;
 
   return (
     <audio controls className="w-full" preload="metadata">
       <source src={src} />
-      Your browser does not support the audio element.
+      {t("Your browser does not support the audio element.")}
     </audio>
   );
 }
@@ -40,12 +64,13 @@ function AudioPlayer({ src }: { src?: string }) {
  * VideoPlayer - Renders HTML5 video player with controls
  */
 function VideoPlayer({ src }: { src?: string }) {
+  const { t } = useTranslation();
   if (!src) return null;
 
   return (
     <video controls className="w-full" preload="metadata" playsInline>
       <source src={src} />
-      Your browser does not support the video element.
+      {t("Your browser does not support the video element.")}
     </video>
   );
 }
@@ -54,6 +79,7 @@ function VideoPlayer({ src }: { src?: string }) {
  * ImagePreview - Renders 96x96px image that opens in new tab when clicked
  */
 function ImagePreview({ src }: { src?: string }) {
+  const { t } = useTranslation();
   if (!src) return null;
 
   const openInNewTab = () => {
@@ -64,12 +90,12 @@ function ImagePreview({ src }: { src?: string }) {
     <button
       onClick={openInNewTab}
       className="bg-muted h-24 w-24 overflow-hidden rounded-md border transition-opacity hover:opacity-80"
-      aria-label="Open image in new tab"
+      aria-label={t("Open image in new tab")}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
-        alt="Media preview"
+        alt={t("Media preview")}
         className="h-full w-full object-cover"
       />
     </button>
@@ -124,6 +150,7 @@ function MediaPreview({ mediaItem }: { mediaItem: MediaReturnType }) {
  * Shows popover on hover; click to keep it open.
  */
 export function MediaButtonGroup({ media }: MediaButtonGroupProps) {
+  const { t } = useTranslation();
   const [openCategory, setOpenCategory] = useState<MediaCategory | null>(null);
   const [clickedCategory, setClickedCategory] = useState<MediaCategory | null>(
     null,
@@ -200,9 +227,7 @@ export function MediaButtonGroup({ media }: MediaButtonGroupProps) {
           <PopoverTrigger asChild>
             <button
               className="hover:bg-accent relative flex h-6 w-6 items-center justify-center rounded"
-              title={`${group.items.length} ${group.category} file${
-                group.items.length > 1 ? "s" : ""
-              }`}
+              title={mediaCategoryTitle(t, group.category, group.items.length)}
               onMouseEnter={() => {
                 // Clear any pending close timeout
                 if (closeTimeoutRef.current) {

@@ -13,6 +13,7 @@ import { usdFormatter } from "@/src/utils/numbers";
 import { heatMapTextColor } from "@/src/components/trace2/lib/helpers";
 import { isPresent } from "@langfuse/shared";
 
+import { useTranslation } from "react-i18next";
 export function TimelineBar({
   node,
   metrics,
@@ -29,6 +30,7 @@ export function TimelineBar({
   commentCount,
   scores,
 }: TimelineBarProps) {
+  const { t } = useTranslation();
   const { startOffset, itemWidth, firstTokenTimeOffset, latency } = metrics;
   const duration = latency ? latency * 1000 : undefined;
   const hasChildren = node.children.length > 0;
@@ -71,7 +73,7 @@ export function TimelineBar({
             style={{ width: `${completionWidth}px` }}
           >
             <div className="text-muted-foreground -ml-8 flex flex-row items-center justify-start gap-2 text-xs">
-              <span className="text-xxs text-primary">First token</span>
+              <span className="text-xxs text-primary">{t("First token")}</span>
               <ItemBadge type={node.type} isSmall />
               <span className="text-primary text-sm font-medium whitespace-nowrap">
                 {node.name}

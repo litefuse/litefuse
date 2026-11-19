@@ -15,6 +15,7 @@ import {
 } from "@/src/features/query";
 import { useScheduledDashboardExecuteQuery } from "@/src/hooks/useDashboardQueryScheduler";
 
+import { useTranslation } from "react-i18next";
 export const ModelCostTable = ({
   className,
   projectId,
@@ -34,6 +35,7 @@ export const ModelCostTable = ({
   metricsVersion?: ViewVersion;
   schedulerId?: string;
 }) => {
+  const { t } = useTranslation();
   const modelCostQuery: QueryType = {
     view: "observations",
     dimensions: [{ field: "providedModelName" }],
@@ -106,13 +108,13 @@ export const ModelCostTable = ({
   return (
     <DashboardCard
       className={className}
-      title="Model costs"
+      title={t("Model costs")}
       isLoading={isLoading || metrics.isLoading}
     >
       <DashboardTable
         headers={[
-          "Model",
-          <RightAlignedCell key="tokens">Tokens</RightAlignedCell>,
+          t("Model"),
+          <RightAlignedCell key="tokens">{t("Tokens")}</RightAlignedCell>,
           <RightAlignedCell key="cost">USD</RightAlignedCell>,
         ]}
         rows={metricsData}
@@ -121,10 +123,12 @@ export const ModelCostTable = ({
       >
         <TotalMetric
           metric={totalCostDashboardFormatted(totalTokenCost)}
-          description="Total cost"
+          description={t("Total cost")}
         >
           <DocPopup
-            description="Calculated multiplying the number of tokens with cost per token for each model."
+            description={t(
+              "Calculated multiplying the number of tokens with cost per token for each model.",
+            )}
             href="https://litefuse.ai/docs/model-usage-and-cost"
           />
         </TotalMetric>

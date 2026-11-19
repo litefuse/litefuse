@@ -11,6 +11,7 @@ import { barListToDataPoints } from "@/src/features/dashboard/lib/chart-data-ada
 import { traceViewQuery } from "@/src/features/dashboard/lib/dashboard-utils";
 import { useScheduledDashboardExecuteQuery } from "@/src/hooks/useDashboardQueryScheduler";
 
+import { useTranslation } from "react-i18next";
 export const TracesBarListChart = ({
   className,
   projectId,
@@ -30,6 +31,7 @@ export const TracesBarListChart = ({
   metricsVersion?: ViewVersion;
   schedulerId?: string;
 }) => {
+  const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const isV2 = metricsVersion === "v2";
@@ -119,7 +121,7 @@ export const TracesBarListChart = ({
   return (
     <DashboardCard
       className={className}
-      title={"Traces"}
+      title={t("Traces")}
       description={null}
       isLoading={isLoading || traces.isPending || totalTraces.isPending}
     >
@@ -130,7 +132,7 @@ export const TracesBarListChart = ({
               ? Number(totalTraces.data[0][countField])
               : 0,
           )}
-          description={"Total traces tracked"}
+          description={t("Total traces tracked")}
         />
         {adjustedData.length > 0 ? (
           <div
@@ -159,7 +161,9 @@ export const TracesBarListChart = ({
         ) : (
           <NoDataOrLoading
             isLoading={isLoading || traces.isPending || totalTraces.isPending}
-            description="Traces contain details about LLM applications and can be created using the SDK."
+            description={t(
+              "Traces contain details about LLM applications and can be created using the SDK.",
+            )}
             href="https://litefuse.ai/docs/get-started"
           />
         )}
@@ -170,8 +174,8 @@ export const TracesBarListChart = ({
           maxLength={maxNumberOfEntries.collapsed}
           expandText={
             transformedTraces.length > maxNumberOfEntries.expanded
-              ? `Show top ${maxNumberOfEntries.expanded}`
-              : "Show all"
+              ? t("Show top {{count}}", { count: maxNumberOfEntries.expanded })
+              : t("Show all")
           }
         />
       </>

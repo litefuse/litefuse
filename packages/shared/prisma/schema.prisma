@@ -65,6 +65,7 @@ model User {
   image                     String?
   admin                     Boolean                     @default(false)
   v4BetaEnabled             Boolean                     @default(false) @map("v4_beta_enabled")
+  locale                    String?
   accounts                  Account[]
   sessions                  Session[]
   organizationMemberships   OrganizationMembership[]

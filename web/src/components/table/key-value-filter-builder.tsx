@@ -24,6 +24,7 @@ import {
 import { MultiSelect } from "@/src/features/filters/components/multi-select";
 import { Plus, X, Check, ChevronDown } from "lucide-react";
 import { cn } from "@/src/utils/tailwind";
+import { useTranslation } from "react-i18next";
 import type {
   KeyValueFilterEntry,
   NumericKeyValueFilterEntry,
@@ -70,6 +71,7 @@ const STRING_OPERATOR_LABELS = {
 } as const;
 
 export function KeyValueFilterBuilder(props: KeyValueFilterBuilderProps) {
+  const { t } = useTranslation();
   const {
     mode,
     keyOptions,
@@ -219,11 +221,13 @@ export function KeyValueFilterBuilder(props: KeyValueFilterBuilderProps) {
                   <PopoverContent className="w-[200px] p-0" align="start">
                     <InputCommand>
                       <InputCommandInput
-                        placeholder="Search keys..."
+                        placeholder={t("Search keys...")}
                         variant="bottom"
                       />
                       <InputCommandList>
-                        <InputCommandEmpty>No keys found.</InputCommandEmpty>
+                        <InputCommandEmpty>
+                          {t("No keys found.")}
+                        </InputCommandEmpty>
                         <InputCommandGroup>
                           {keyOptions.map((option) => (
                             <InputCommandItem
@@ -294,14 +298,14 @@ export function KeyValueFilterBuilder(props: KeyValueFilterBuilderProps) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="any of">any of</SelectItem>
-                    <SelectItem value="none of">none of</SelectItem>
+                    <SelectItem value="any of">{t("any of")}</SelectItem>
+                    <SelectItem value="none of">{t("none of")}</SelectItem>
                   </SelectContent>
                 </Select>
 
                 {/* Values multi-select */}
                 <MultiSelect
-                  title="Values"
+                  title={t("Values")}
                   options={availableValuesForKey.map((v) => ({ value: v }))}
                   values={filter.value as string[]}
                   onValueChange={(values) =>
@@ -338,7 +342,7 @@ export function KeyValueFilterBuilder(props: KeyValueFilterBuilderProps) {
                 {/* Numeric value input */}
                 <Input
                   type="number"
-                  placeholder="Value"
+                  placeholder={t("Value")}
                   value={filter.value}
                   onChange={(e) =>
                     handleFilterChange(index, {
@@ -377,7 +381,7 @@ export function KeyValueFilterBuilder(props: KeyValueFilterBuilderProps) {
                 {/* String value input */}
                 <Input
                   type="text"
-                  placeholder="Value"
+                  placeholder={t("Value")}
                   value={filter.value as string}
                   onChange={(e) =>
                     handleFilterChange(index, {
@@ -400,7 +404,7 @@ export function KeyValueFilterBuilder(props: KeyValueFilterBuilderProps) {
         className="w-full"
       >
         <Plus className="mr-2 h-4 w-4" />
-        Add filter
+        {t("Add filter")}
       </Button>
     </div>
   );

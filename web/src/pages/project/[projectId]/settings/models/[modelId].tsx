@@ -37,7 +37,9 @@ import {
 import { CodeMirrorEditor } from "@/src/components/editor";
 import { useEffect } from "react";
 
+import { useTranslation } from "react-i18next";
 export default function ModelDetailPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { priceUnit, priceUnitMultiplier } = usePriceUnitMultiplier();
   const projectId = router.query.projectId as string;
@@ -99,10 +101,10 @@ export default function ModelDetailPage() {
   if (!isLoading && !model) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center">
-        <div className="mb-4 text-xl font-medium">Model not found</div>
+        <div className="mb-4 text-xl font-medium">{t("Model not found")}</div>
         <Button variant="outline" asChild>
           <Link href={`/project/${projectId}/settings/models`}>
-            Return to Models page
+            {t("Return to Models page")}
           </Link>
         </Button>
       </div>
@@ -112,7 +114,7 @@ export default function ModelDetailPage() {
   const isLangfuseModel = !Boolean(model?.projectId);
 
   if (isLoading || !model) {
-    return <div className="p-3">Loading...</div>;
+    return <div className="p-3">{t("Loading...")}</div>;
   }
 
   return (
@@ -121,16 +123,16 @@ export default function ModelDetailPage() {
       headerProps={{
         title: model.modelName,
         help: {
-          description: "Model configuration and pricing details",
+          description: t("Model configuration and pricing details"),
           href: "https://litefuse.ai/docs/model-usage-and-cost",
         },
         breadcrumb: [
           {
-            name: "Settings",
+            name: t("Settings"),
             href: `/project/${router.query.projectId as string}/settings`,
           },
           {
-            name: "Models",
+            name: t("Models"),
             href: `/project/${router.query.projectId as string}/settings/models`,
           },
           { name: model.modelName },
@@ -165,36 +167,38 @@ export default function ModelDetailPage() {
       <div className="grid grid-cols-2 gap-6 p-2">
         <Card>
           <CardHeader>
-            <CardTitle>Model configuration</CardTitle>
+            <CardTitle>{t("Model configuration")}</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4">
             <div>
               <div className="text-muted-foreground text-sm font-medium">
-                Match Pattern
+                {t("Match Pattern")}
               </div>
               <div className="mt-1 font-mono text-sm">{model.matchPattern}</div>
             </div>
 
             <div>
               <div className="text-muted-foreground text-sm font-medium">
-                Maintained by
+                {t("Maintained by")}
               </div>
               <div className="mt-1 text-sm">
-                {isLangfuseModel ? "Litefuse" : "User"}
+                {isLangfuseModel ? t("Litefuse") : t("User")}
               </div>
             </div>
 
             <div>
               <div className="text-muted-foreground text-sm font-medium">
-                Tokenizer
+                {t("Tokenizer")}
               </div>
-              <div className="mt-1 text-sm">{model.tokenizerId || "None"}</div>
+              <div className="mt-1 text-sm">
+                {model.tokenizerId || t("None")}
+              </div>
             </div>
 
             {model.tokenizerId && (
               <div>
                 <div className="text-muted-foreground text-sm font-medium">
-                  Tokenizer Config
+                  {t("Tokenizer Config")}
                 </div>
                 <pre className="bg-muted mt-1 rounded p-2 text-sm">
                   <JSONView json={model.tokenizerConfig} />
@@ -207,18 +211,18 @@ export default function ModelDetailPage() {
         <Card id="pricing-section">
           <CardHeader>
             <div className="flex flex-col gap-2">
-              <CardTitle>Pricing</CardTitle>
+              <CardTitle>{t("Pricing")}</CardTitle>
               {model.pricingTiers.length > 1 && (
                 <div className="flex items-center gap-4">
                   <label className="text-muted-foreground text-sm font-medium">
-                    Pricing Tier
+                    {t("Pricing Tier")}
                   </label>
                   <Select
                     value={activeTier?.id ?? ""}
                     onValueChange={setSelectedTierId}
                   >
                     <SelectTrigger className="w-[200px]">
-                      <SelectValue placeholder="Select tier" />
+                      <SelectValue placeholder={t("Select tier")} />
                     </SelectTrigger>
                     <SelectContent>
                       {model.pricingTiers.map((tier) => (
@@ -237,7 +241,7 @@ export default function ModelDetailPage() {
                           size="sm"
                         >
                           <InfoIcon className="h-3 w-3" />
-                          <span>Conditions</span>
+                          <span>{t("Conditions")}</span>
                         </Button>
                       </HoverCardTrigger>
                       <HoverCardContent
@@ -245,11 +249,12 @@ export default function ModelDetailPage() {
                         collisionPadding={20}
                       >
                         <p className="text-sm font-medium">
-                          Pricing Tier Conditions
+                          {t("Pricing Tier Conditions")}
                         </p>
                         <p className="text-muted-foreground pt-2 text-sm">
-                          This tier is applied when the following conditions are
-                          met:
+                          {t(
+                            "This tier is applied when the following conditions are met:",
+                          )}
                         </p>
                         <div className="mt-2">
                           <CodeMirrorEditor
@@ -274,9 +279,9 @@ export default function ModelDetailPage() {
           <CardContent>
             <div className="flex flex-col gap-2">
               <div className="border-border text-muted-foreground grid grid-cols-2 gap-2 border-b text-sm font-medium">
-                <span>Usage Type</span>
+                <span>{t("Usage Type")}</span>
                 <span className="flex items-center gap-2">
-                  <span>Price {priceUnit}</span>
+                  <span>{t("Price {{unit}}", { unit: priceUnit })}</span>
                   <PriceUnitSelector />
                 </span>
               </div>
@@ -305,13 +310,13 @@ export default function ModelDetailPage() {
         <Card className="col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span>Model observations</span>
+              <span>{t("Model observations")}</span>
               <Button variant="ghost" asChild>
                 <Link
                   href={`/project/${projectId}/observations`}
                   className="flex items-center gap-1"
                 >
-                  <span className="text-sm">View all</span>
+                  <span className="text-sm">{t("View all")}</span>
                   <SquareArrowOutUpRight className="h-4 w-4" />
                 </Link>
               </Button>

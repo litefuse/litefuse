@@ -45,6 +45,8 @@ import { Paperclip, Loader2, Trash2 } from "lucide-react";
 import { showErrorToast } from "@/src/features/notifications/showErrorToast";
 import { PLAIN_MAX_FILE_SIZE_BYTES } from "./plain/plainConstants";
 
+import { useTranslation } from "react-i18next";
+import { type TFunction } from "i18next";
 /** Make RHF generics match the resolver (Zod defaults => input can be undefined) */
 type SupportFormInput = z.input<typeof SupportFormSchema>;
 type SupportFormValues = z.output<typeof SupportFormSchema>;
@@ -63,7 +65,10 @@ const FILE_UPLOAD_CONSTRAINTS = {
  * Validates files against upload constraints
  * @returns {isValid: boolean, error?: string}
  */
-function validateFiles(files: File[] | undefined): {
+function validateFiles(
+  files: File[] | undefined,
+  t: TFunction,
+): {
   isValid: boolean;
   error?: string;
 } {
@@ -78,7 +83,7 @@ function validateFiles(files: File[] | undefined): {
   if (files.length > maxFiles) {
     return {
       isValid: false,
-      error: `Please upload at most ${maxFiles} files.`,
+      error: t("Please upload at most {{count}} files.", { count: maxFiles }),
     };
   }
 
@@ -88,7 +93,10 @@ function validateFiles(files: File[] | undefined): {
     const maxMB = (maxFileSizeBytes / (1024 * 1024)).toFixed(0);
     return {
       isValid: false,
-      error: `File "${oversizedFile.name}" is too large. Maximum file size is ${maxMB}MB per file.`,
+      error: t(
+        'File "{{name}}" is too large. Maximum file size is {{max}}MB per file.',
+        { name: oversizedFile.name, max: maxMB },
+      ),
     };
   }
 
@@ -99,7 +107,10 @@ function validateFiles(files: File[] | undefined): {
     const maxMB = (maxCombinedBytes / (1024 * 1024)).toFixed(0);
     return {
       isValid: false,
-      error: `Total attachment size (${totalMB}MB) exceeds the limit of ${maxMB}MB.`,
+      error: t(
+        "Total attachment size ({{total}}MB) exceeds the limit of {{max}}MB.",
+        { total: totalMB, max: maxMB },
+      ),
     };
   }
 
@@ -109,7 +120,7 @@ function validateFiles(files: File[] | undefined): {
 /**
  * Converts technical file error messages to user-friendly ones
  */
-function formatFileError(error: Error): string {
+function formatFileError(error: Error, t: TFunction): string {
   const msg = error.message.toLowerCase();
   const { maxFiles, maxFileSizeBytes, maxCombinedBytes } =
     FILE_UPLOAD_CONSTRAINTS;
@@ -123,7 +134,9 @@ function formatFileError(error: Error): string {
     msg.includes("10mb") ||
     msg.includes("too large")
   ) {
-    return `File is too large. Maximum file size is ${maxMB}MB per file.`;
+    return t("File is too large. Maximum file size is {{max}}MB per file.", {
+      max: maxMB,
+    });
   }
 
   // File count errors
@@ -132,20 +145,25 @@ function formatFileError(error: Error): string {
     msg.includes("maxfiles") ||
     msg.includes("5 files")
   ) {
-    return `Too many files. Maximum ${maxFiles} files allowed.`;
+    return t("Too many files. Maximum {{count}} files allowed.", {
+      count: maxFiles,
+    });
   }
 
   // Combined size errors
   if (msg.includes("total") && (msg.includes("50mb") || msg.includes("size"))) {
-    return `Total attachment size exceeds limit. Maximum combined size is ${maxCombinedMB}MB.`;
+    return t(
+      "Total attachment size exceeds limit. Maximum combined size is {{max}}MB.",
+      { max: maxCombinedMB },
+    );
   }
 
   // File type errors
   if (msg.includes("file type") || msg.includes("accept")) {
-    return "File type not supported. Please select a different file.";
+    return t("File type not supported. Please select a different file.");
   }
 
-  return error.message || "File upload failed. Please try again.";
+  return error.message || t("File upload failed. Please try again.");
 }
 
 export function SupportFormSection({
@@ -155,6 +173,7 @@ export function SupportFormSection({
   onCancel: () => void;
   onSuccess: () => void;
 }) {
+  const { t } = useTranslation();
   const { organization, project } = useQueryProjectOrOrganization();
 
   // Tracks whether we've already warned about a short message
@@ -206,8 +225,8 @@ export function SupportFormSection({
     onError: (error) => {
       setIsSubmittingLocal(false);
       showErrorToast(
-        "Upload Preparation Failed",
-        error.message || "Failed to prepare file uploads. Please try again.",
+        t("Upload Preparation Failed"),
+        error.message || t("Failed to prepare file uploads. Please try again."),
         "ERROR",
       );
     },
@@ -243,7 +262,7 @@ export function SupportFormSection({
       setIsSubmittingLocal(true);
 
       // Validate files using centralized validation function
-      const validation = validateFiles(files);
+      const validation = validateFiles(files, t);
       if (!validation.isValid) {
         throw new Error(validation.error);
       }
@@ -318,11 +337,12 @@ export function SupportFormSection({
   return (
     <div className="mt-1 flex flex-col gap-3">
       <div className="flex items-center gap-2 text-base font-semibold">
-        E-Mail a Support Engineer
+        {t("E-Mail a Support Engineer")}
       </div>
       <p className="text-muted-foreground text-sm">
-        Details speed things up. The clearer your request, the quicker you get
-        the answer you need.
+        {t(
+          "Details speed things up. The clearer your request, the quicker you get the answer you need.",
+        )}
       </p>
 
       <Form {...form}>
@@ -336,7 +356,7 @@ export function SupportFormSection({
             name="messageType"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Message Type</FormLabel>
+                <FormLabel>{t("Message Type")}</FormLabel>
                 <FormControl>
                   <RadioGroup
                     className="grid grid-cols-3 gap-2"
@@ -359,7 +379,7 @@ export function SupportFormSection({
                   </RadioGroup>
                 </FormControl>
                 <FormDescription className="sr-only">
-                  Choose the type of your message.
+                  {t("Choose the type of your message.")}
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -372,11 +392,11 @@ export function SupportFormSection({
             name="severity"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Severity</FormLabel>
+                <FormLabel>{t("Severity")}</FormLabel>
                 <FormControl>
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select severity" />
+                      <SelectValue placeholder={t("Select severity")} />
                     </SelectTrigger>
                     <SelectContent>
                       {SEVERITIES.map((s) => (
@@ -398,19 +418,19 @@ export function SupportFormSection({
             name="topic"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Topic</FormLabel>
+                <FormLabel>{t("Topic")}</FormLabel>
                 <FormControl>
                   <Select
                     value={(field.value as string | undefined) ?? undefined}
                     onValueChange={field.onChange}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a topic" />
+                      <SelectValue placeholder={t("Select a topic")} />
                     </SelectTrigger>
                     <SelectContent>
                       <div className="p-2">
                         <div className="text-muted-foreground mb-2 text-xs font-medium">
-                          Product Features
+                          {t("Product Features")}
                         </div>
                         {TopicGroups["Product Features"].map((t) => (
                           <SelectItem key={t} value={t}>
@@ -420,7 +440,7 @@ export function SupportFormSection({
                       </div>
                       <div className="border-t p-2">
                         <div className="text-muted-foreground mb-2 text-xs font-medium">
-                          Operations
+                          {t("Operations")}
                         </div>
                         {TopicGroups.Operations.map((t) => (
                           <SelectItem key={t} value={t}>
@@ -443,11 +463,13 @@ export function SupportFormSection({
               name="integrationType"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Integration Type (optional)</FormLabel>
+                  <FormLabel>{t("Integration Type (optional)")}</FormLabel>
                   <FormControl>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select integration type" />
+                        <SelectValue
+                          placeholder={t("Select integration type")}
+                        />
                       </SelectTrigger>
                       <SelectContent>
                         {INTEGRATION_TYPES.map((it) => (
@@ -470,10 +492,11 @@ export function SupportFormSection({
             name="message"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Message</FormLabel>
+                <FormLabel>{t("Message")}</FormLabel>
                 <div className="text-muted-foreground text-xs">
-                  We will email you at your account address. Replies may take up
-                  to one business day.
+                  {t(
+                    "We will email you at your account address. Replies may take up to one business day.",
+                  )}
                 </div>
                 <FormControl>
                   <div className="relative w-full">
@@ -483,7 +506,9 @@ export function SupportFormSection({
                       placeholder={
                         isProductFeatureTopic
                           ? "Please explain as fully as possible what you're aiming to do, and what you'd like help with.\n\nIf your question involves a specific trace, prompt, score, etc. please include a link to it."
-                          : "Please explain as fully as possible what you're aiming to do, and what you'd like help with."
+                          : t(
+                              "Please explain as fully as possible what you're aiming to do, and what you'd like help with.",
+                            )
                       }
                     />
                   </div>
@@ -495,9 +520,9 @@ export function SupportFormSection({
                     role="status"
                     aria-live="polite"
                   >
-                    The message seems short — adding a bit more context can help
-                    us get you a quicker, smarter answer. You can submit again
-                    as is, or add more details.
+                    {t(
+                      "The message seems short — adding a bit more context can help us get you a quicker, smarter answer. You can submit again as is, or add more details.",
+                    )}
                   </p>
                 )}
 
@@ -509,8 +534,12 @@ export function SupportFormSection({
                   maxSize={FILE_UPLOAD_CONSTRAINTS.maxFileSizeBytes}
                   onDrop={(accepted) => setFiles(accepted)}
                   onError={(error) => {
-                    const userMessage = formatFileError(error);
-                    showErrorToast("File Upload Error", userMessage, "WARNING");
+                    const userMessage = formatFileError(error, t);
+                    showErrorToast(
+                      t("File Upload Error"),
+                      userMessage,
+                      "WARNING",
+                    );
                   }}
                   src={files}
                 >
@@ -521,7 +550,7 @@ export function SupportFormSection({
                       <span className="truncate">
                         {hasFiles
                           ? `${files!.length} file${files!.length > 1 ? "s" : ""} • ${totalMB} MB`
-                          : "Attach files"}
+                          : t("Attach files")}
                       </span>
                     </div>
                   </DropzoneEmptyState>
@@ -529,7 +558,7 @@ export function SupportFormSection({
                   <DropzoneContent>
                     <div className="flex w-full cursor-pointer items-center justify-start gap-2 p-2 text-xs">
                       <Paperclip className="h-4 w-4" />
-                      <span className="truncate">Attach files</span>
+                      <span className="truncate">{t("Attach files")}</span>
                     </div>
                   </DropzoneContent>
                 </Dropzone>
@@ -537,7 +566,7 @@ export function SupportFormSection({
                 {files && files.length > 0 && (
                   <div className="p-0 text-left text-sm font-medium">
                     <div className="text-muted-foreground mb-2 text-xs font-medium">
-                      Attached files
+                      {t("Attached files")}
                     </div>
                     {files?.map((file) => (
                       <div
@@ -553,7 +582,7 @@ export function SupportFormSection({
                           }
                           className="p-0"
                         >
-                          <span className="sr-only">Remove file</span>
+                          <span className="sr-only">{t("Remove file")}</span>
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                         {file.name}
@@ -577,7 +606,7 @@ export function SupportFormSection({
               }}
               className="w-full"
             >
-              Cancel
+              {t("Cancel")}
             </Button>
 
             <Button
@@ -588,20 +617,21 @@ export function SupportFormSection({
               {isSubmittingLocal ? (
                 <span className="inline-flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Submitting…
+                  {t("Submitting…")}
                 </span>
               ) : messageIsShortAfterWarning ? (
-                "Submit Anyways"
+                t("Submit Anyways")
               ) : (
-                "Submit"
+                t("Submit")
               )}
             </Button>
           </div>
 
           {isSubmittingLocal && (
             <div className="text-muted-foreground text-xs">
-              This can take a few seconds — hang tight while we submit your
-              request.
+              {t(
+                "This can take a few seconds — hang tight while we submit your request.",
+              )}
             </div>
           )}
         </form>

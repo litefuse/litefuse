@@ -1,4 +1,5 @@
 import { z } from "zod/v4";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 import {
   variableMapping,
   observationVariableMapping,
@@ -29,8 +30,9 @@ type ValidationResult =
       error: string;
     };
 
-const OBJECT_FIELD_REQUIRED_ERROR =
-  "Please select an Object Field for every Evaluation Prompt variable before executing the evaluator.";
+const OBJECT_FIELD_REQUIRED_ERROR = i18nKey(
+  "Please select an Object Field for every Evaluation Prompt variable before executing the evaluator.",
+);
 
 /**
  * Validates and transforms variable mappings based on the target type.
@@ -70,7 +72,7 @@ export function validateAndTransformVariableMapping(
     if (missingObjectName.length > 0) {
       return {
         success: false,
-        error: "Please complete all variable mappings",
+        error: i18nKey("Please complete all variable mappings"),
       };
     }
   }

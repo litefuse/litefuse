@@ -10,7 +10,10 @@ import { IOTableCell } from "../../ui/IOTableCell";
 import { useRowHeightLocalStorage } from "@/src/components/table/data-table-row-height-switch";
 import { DataTableToolbar } from "@/src/components/table/data-table-toolbar";
 import useColumnOrder from "@/src/features/column-visibility/hooks/useColumnOrder";
-import { type GetModelResult } from "@/src/features/models/validation";
+import {
+  type GetModelResult,
+  priceUnitLabels,
+} from "@/src/features/models/validation";
 import { DeleteModelButton } from "@/src/features/models/components/DeleteModelButton";
 import { EditModelButton } from "@/src/features/models/components/EditModelButton";
 import { CloneModelButton } from "@/src/features/models/components/CloneModelButton";
@@ -33,6 +36,7 @@ import { usePostHogClientCapture } from "@/src/features/posthog-analytics/usePos
 import { useHasProjectAccess } from "@/src/features/rbac/utils/checkProjectAccess";
 import { SettingsTableCard } from "@/src/components/layouts/settings-table-card";
 
+import { useTranslation } from "react-i18next";
 export type ModelTableRow = {
   modelId: string;
   maintainer: string;
@@ -62,6 +66,7 @@ const modelConfigDescriptions = {
 } as const;
 
 export default function ModelTable({ projectId }: { projectId: string }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const capture = usePostHogClientCapture();
   const [paginationState, setPaginationState] = usePaginationState(0, 50, {
@@ -111,7 +116,7 @@ export default function ModelTable({ projectId }: { projectId: string }) {
     {
       accessorKey: "modelName",
       id: "modelName",
-      header: "Model Name",
+      header: t("Model Name"),
       headerTooltip: {
         description: modelConfigDescriptions.modelName,
       },
@@ -127,7 +132,7 @@ export default function ModelTable({ projectId }: { projectId: string }) {
     {
       accessorKey: "maintainer",
       id: "maintainer",
-      header: "Maintainer",
+      header: t("Maintainer"),
       headerTooltip: {
         description: modelConfigDescriptions.maintainer,
       },
@@ -145,7 +150,7 @@ export default function ModelTable({ projectId }: { projectId: string }) {
                 )}
               </TooltipTrigger>
               <TooltipContent>
-                {isLitefuse ? "Litefuse maintained" : "User maintained"}
+                {isLitefuse ? t("Litefuse maintained") : t("User maintained")}
               </TooltipContent>
             </Tooltip>
           </div>
@@ -158,7 +163,7 @@ export default function ModelTable({ projectId }: { projectId: string }) {
       headerTooltip: {
         description: modelConfigDescriptions.matchPattern,
       },
-      header: "Match Pattern",
+      header: t("Match Pattern"),
       size: 200,
       cell: ({ row }) => {
         const value: string = row.getValue("matchPattern");
@@ -174,7 +179,9 @@ export default function ModelTable({ projectId }: { projectId: string }) {
       header: () => {
         return (
           <div className="flex items-center gap-2">
-            <span>Prices {priceUnit}</span>
+            <span>
+              {t("Prices {{unit}}", { unit: t(priceUnitLabels[priceUnit]) })}
+            </span>
             <PriceUnitSelector />
           </div>
         );
@@ -198,7 +205,7 @@ export default function ModelTable({ projectId }: { projectId: string }) {
     {
       accessorKey: "tokenizerId",
       id: "tokenizerId",
-      header: "Tokenizer",
+      header: t("Tokenizer"),
       headerTooltip: {
         description: modelConfigDescriptions.tokenizerId,
       },
@@ -208,7 +215,7 @@ export default function ModelTable({ projectId }: { projectId: string }) {
     {
       accessorKey: "config",
       id: "config",
-      header: "Tokenizer Configuration",
+      header: t("Tokenizer Configuration"),
       headerTooltip: {
         description: modelConfigDescriptions.config,
       },
@@ -225,7 +232,7 @@ export default function ModelTable({ projectId }: { projectId: string }) {
     {
       accessorKey: "lastUsed",
       id: "lastUsed",
-      header: "Last used",
+      header: t("Last used"),
       headerTooltip: {
         description: modelConfigDescriptions.lastUsed,
       },
@@ -239,7 +246,7 @@ export default function ModelTable({ projectId }: { projectId: string }) {
     },
     {
       accessorKey: "actions",
-      header: "Actions",
+      header: t("Actions"),
       size: 120,
       cell: ({ row }) => {
         return row.original.maintainer !== "Litefuse" ? (
@@ -320,7 +327,7 @@ export default function ModelTable({ projectId }: { projectId: string }) {
                 hasAccess={hasWriteAccess}
                 onClick={() => capture("models:new_form_open")}
               >
-                Add Model Definition
+                {t("Add Model Definition")}
               </ActionButton>
             </UpsertModelFormDialog>
           </>

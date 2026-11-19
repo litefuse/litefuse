@@ -4,12 +4,14 @@ import { Zap, Loader2 } from "lucide-react";
 import { type ButtonProps } from "@/src/components/ui/button";
 import { api } from "@/src/utils/api";
 
+import { useTranslation } from "react-i18next";
 export const AutomationButton = ({
   projectId,
   ...buttonProps
 }: {
   projectId: string;
 } & ButtonProps) => {
+  const { t } = useTranslation();
   const hasAccess = useHasProjectAccess({
     projectId,
     scope: "automations:read",
@@ -38,12 +40,12 @@ export const AutomationButton = ({
       href={`/project/${projectId}/automations`}
       icon={<Zap className="h-4 w-4" aria-hidden="true" />}
       hasAccess={hasAccess}
-      title="Automations"
+      title={t("Automations")}
       variant="outline"
       {...buttonProps}
     >
       <span className="hidden md:ml-1 md:inline">
-        Automations
+        {t("Automations")}
         {numberIndicator}
       </span>
     </ActionButton>

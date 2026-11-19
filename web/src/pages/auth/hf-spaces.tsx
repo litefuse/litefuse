@@ -12,6 +12,7 @@ import { env } from "@/src/env.mjs";
 import { PlusIcon } from "lucide-react";
 import { CodeView } from "@/src/components/ui/CodeJsonViewer";
 
+import { useTranslation } from "react-i18next";
 type PageProps = {
   deploymentDomain: string;
 };
@@ -27,10 +28,11 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async () => {
 };
 
 export default function HfSpaces({ deploymentDomain }: PageProps) {
+  const { t } = useTranslation();
   return (
     <>
       <Head>
-        <title>Litefuse on Hugging Face</title>
+        <title>{t("Litefuse on Hugging Face")}</title>
       </Head>
       <div className="flex flex-1 flex-col py-6 sm:min-h-full sm:justify-center sm:px-6 sm:py-12 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -40,19 +42,19 @@ export default function HfSpaces({ deploymentDomain }: PageProps) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/assets/huggingface-logo.svg"
-              alt="Hugging Face Logo"
+              alt={t("Hugging Face Logo")}
               width={36}
               height={36}
             />
           </div>
           <h2 className="text-primary mt-4 text-center text-2xl leading-9 font-bold tracking-tight">
-            Litefuse on Hugging Face
+            {t("Litefuse on Hugging Face")}
           </h2>
         </div>
 
         <div className="bg-background mt-14 px-6 py-10 shadow-sm sm:mx-auto sm:w-full sm:max-w-[480px] sm:rounded-lg sm:px-10">
           <div className="space-y-8">
-            <CodeView content={deploymentDomain} title="HF Space Host" />
+            <CodeView content={deploymentDomain} title={t("HF Space Host")} />
 
             <Button className="w-full" asChild>
               <Link
@@ -60,7 +62,7 @@ export default function HfSpaces({ deploymentDomain }: PageProps) {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Open in new tab
+                {t("Open in new tab")}
               </Link>
             </Button>
           </div>

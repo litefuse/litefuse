@@ -8,24 +8,29 @@ import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
 import Page from "@/src/components/layouts/page";
 
+import { useTranslation } from "react-i18next";
 const PageTrace = dynamic(
   () => import("@/src/features/discover/views/PageTrace"),
   {
     ssr: false,
-    loading: () => (
-      <div className="text-muted-foreground flex h-full items-center justify-center">
-        Loading…
-      </div>
-    ),
+    loading: function DiscoverLoading() {
+      const { t } = useTranslation();
+      return (
+        <div className="text-muted-foreground flex h-full items-center justify-center">
+          {t("Loading…")}
+        </div>
+      );
+    },
   },
 );
 
 export default function LoggingTracesPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const projectId = router.query.projectId as string;
 
   return (
-    <Page headerProps={{ title: "Traces" }} scrollable>
+    <Page headerProps={{ title: t("Traces") }} scrollable>
       {projectId ? <PageTrace /> : null}
     </Page>
   );

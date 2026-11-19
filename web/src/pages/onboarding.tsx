@@ -4,11 +4,13 @@
 import Head from "next/head";
 import { OnboardingSurvey } from "@/src/features/onboarding/components/OnboardingSurvey";
 
+import { useTranslation } from "react-i18next";
 export default function OnboardingPage() {
+  const { t } = useTranslation();
   return (
     <>
       <Head>
-        <title>Onboarding | Litefuse</title>
+        <title>{t("Onboarding | Litefuse")}</title>
       </Head>
       <OnboardingSurvey />
     </>

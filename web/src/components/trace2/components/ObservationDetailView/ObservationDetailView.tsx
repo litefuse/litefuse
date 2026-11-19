@@ -59,6 +59,7 @@ import { ObservationDetailViewHeader } from "./ObservationDetailViewHeader";
 import { TraceLogView } from "../TraceLogView/TraceLogView";
 import { TRACE_VIEW_CONFIG } from "@/src/components/trace2/config/trace-view-config";
 import { useV4Beta } from "@/src/features/events/hooks/useV4Beta";
+import { useTranslation } from "react-i18next";
 import {
   aggregateTraceMetrics,
   getDescendantIds,
@@ -75,6 +76,7 @@ export function ObservationDetailView({
   projectId,
   traceId,
 }: ObservationDetailViewProps) {
+  const { t } = useTranslation();
   // Tab and view state from URL (via SelectionContext)
   const {
     selectedTab: globalSelectedTab,
@@ -287,18 +289,25 @@ export function ObservationDetailView({
       >
         <TooltipProvider>
           <TabsBarList>
-            <TabsBarTrigger value="preview">Preview</TabsBarTrigger>
-            <TabsBarTrigger value="scores">Scores</TabsBarTrigger>
+            <TabsBarTrigger value="preview">{t("Preview")}</TabsBarTrigger>
+            <TabsBarTrigger value="scores">{t("Scores")}</TabsBarTrigger>
             {showLogViewTab && (
               <TabsBarTrigger value="log">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span>Log View</span>
+                    <span>{t("Log View")}</span>
                   </TooltipTrigger>
                   <TooltipContent className="text-xs">
                     {isLogViewVirtualized
-                      ? `Shows all ${observations.length} observations with virtualization enabled.`
-                      : "Shows all observations concatenated. Great for quickly scanning through them."}
+                      ? t(
+                          "Shows all {{count}} observations with virtualization enabled.",
+                          {
+                            count: observations.length,
+                          },
+                        )
+                      : t(
+                          "Shows all observations concatenated. Great for quickly scanning through them.",
+                        )}
                   </TooltipContent>
                 </Tooltip>
               </TabsBarTrigger>
@@ -330,7 +339,7 @@ export function ObservationDetailView({
                 >
                   <TabsList className="h-fit py-0.5">
                     <TabsTrigger value="pretty" className="h-fit px-1 text-xs">
-                      Formatted
+                      {t("Formatted")}
                     </TabsTrigger>
                     {selectedTab === "log" && isLogViewVirtualized ? (
                       <HoverCard openDelay={200}>
@@ -350,11 +359,18 @@ export function ObservationDetailView({
                           className="w-64 text-sm"
                           sideOffset={8}
                         >
-                          <p className="font-medium">JSON view unavailable</p>
+                          <p className="font-medium">
+                            {t("JSON view unavailable")}
+                          </p>
                           <p className="text-muted-foreground mt-1">
-                            Disabled for traces with{" "}
-                            {TRACE_VIEW_CONFIG.logView.virtualizationThreshold}+
-                            observations to maintain performance.
+                            {t(
+                              "Disabled for traces with {{count}}+ observations to maintain performance.",
+                              {
+                                count:
+                                  TRACE_VIEW_CONFIG.logView
+                                    .virtualizationThreshold,
+                              },
+                            )}
                           </p>
                         </HoverCardContent>
                       </HoverCard>
@@ -375,7 +391,7 @@ export function ObservationDetailView({
                         onCheckedChange={handleBetaToggle}
                       />
                       <span className="text-muted-foreground text-xs">
-                        Beta
+                        {t("Beta")}
                       </span>
                     </div>
                   )}

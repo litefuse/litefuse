@@ -9,6 +9,7 @@ import { StatusBadge } from "@/src/components/layouts/status-badge";
 import { PRODUCTION_LABEL, LATEST_PROMPT_LABEL } from "@langfuse/shared";
 import { cn } from "@/src/utils/tailwind";
 
+import { useTranslation } from "react-i18next";
 interface TruncatedLabelsProps {
   labels: string[];
   maxVisibleLabels?: number;
@@ -24,6 +25,7 @@ export function TruncatedLabels({
   badgeClassName,
   showSimpleBadges = false,
 }: TruncatedLabelsProps) {
+  const { t } = useTranslation();
   // Enhanced sorting: prioritize latest and production labels
   const sortedLabels = [...labels].sort((a, b) => {
     // Production label comes first
@@ -77,12 +79,12 @@ export function TruncatedLabels({
               size="sm"
               className="text-muted-foreground hover:text-foreground h-6 cursor-pointer text-xs"
             >
-              +{hiddenLabels.length} more
+              {t("+{{count}} more", { count: hiddenLabels.length })}
             </Button>
           </HoverCardTrigger>
           <HoverCardContent className="w-80 p-3" side="bottom" align="start">
             <div className="space-y-2">
-              <h4 className="text-sm font-semibold">All Labels</h4>
+              <h4 className="text-sm font-semibold">{t("All Labels")}</h4>
               <div className="flex flex-wrap gap-1">
                 {sortedLabels.map((label) =>
                   showSimpleBadges ? (

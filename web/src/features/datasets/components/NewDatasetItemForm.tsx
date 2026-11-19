@@ -37,6 +37,8 @@ import { Badge } from "@/src/components/ui/badge";
 import { ScrollArea } from "@/src/components/ui/scroll-area";
 import { DialogBody, DialogFooter } from "@/src/components/ui/dialog";
 
+import { useTranslation } from "react-i18next";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 const formSchema = z.object({
   datasetIds: z.array(z.string()).min(1, "Select at least one dataset"),
   input: z.string().refine(
@@ -50,8 +52,9 @@ const formSchema = z.object({
       }
     },
     {
-      message:
+      message: i18nKey(
         "Invalid input. Please provide a JSON object or double-quoted string.",
+      ),
     },
   ),
   expectedOutput: z.string().refine(
@@ -65,8 +68,9 @@ const formSchema = z.object({
       }
     },
     {
-      message:
+      message: i18nKey(
         "Invalid input. Please provide a JSON object or double-quoted string.",
+      ),
     },
   ),
   metadata: z.string().refine(
@@ -80,8 +84,9 @@ const formSchema = z.object({
       }
     },
     {
-      message:
+      message: i18nKey(
         "Invalid input. Please provide a JSON object or double-quoted string.",
+      ),
     },
   ),
 });
@@ -114,6 +119,7 @@ export const NewDatasetItemForm = (props: {
   onFormSuccess?: () => void;
   currentDatasetId?: string;
 }) => {
+  const { t } = useTranslation();
   const [formError, setFormError] = useState<string | null>(null);
   const capture = usePostHogClientCapture();
   const form = useForm({
@@ -255,7 +261,9 @@ export const NewDatasetItemForm = (props: {
         }
 
         setFormError(
-          `Item does not match dataset schema. Errors: ${JSON.stringify(result.validationErrors, null, 2)}`,
+          t("Item does not match dataset schema. Errors: {{errors}}", {
+            errors: JSON.stringify(result.validationErrors, null, 2),
+          }),
         );
         console.error(result.validationErrors);
       })
@@ -277,7 +285,7 @@ export const NewDatasetItemForm = (props: {
               name="datasetIds"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Target datasets</FormLabel>
+                  <FormLabel>{t("Target datasets")}</FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
@@ -291,7 +299,7 @@ export const NewDatasetItemForm = (props: {
                         >
                           {field.value.length > 0
                             ? `${field.value.length} dataset${field.value.length > 1 ? "s" : ""} selected`
-                            : "Select datasets"}
+                            : t("Select datasets")}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </FormControl>
@@ -299,11 +307,11 @@ export const NewDatasetItemForm = (props: {
                     <PopoverContent className="p-0">
                       <InputCommand>
                         <InputCommandInput
-                          placeholder="Search datasets..."
+                          placeholder={t("Search datasets...")}
                           variant="bottom"
                         />
                         <InputCommandEmpty>
-                          No datasets found.
+                          {t("No datasets found.")}
                         </InputCommandEmpty>
                         <InputCommandGroup>
                           <ScrollArea className="h-fit">
@@ -333,7 +341,7 @@ export const NewDatasetItemForm = (props: {
                                 {dataset.name}
                                 {dataset.id === props.currentDatasetId && (
                                   <span className="text-muted-foreground ml-1">
-                                    (current)
+                                    {t("(current)")}
                                   </span>
                                 )}
                               </InputCommandItem>
@@ -374,7 +382,7 @@ export const NewDatasetItemForm = (props: {
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
-                      <FormLabel>Input</FormLabel>
+                      <FormLabel>{t("Input")}</FormLabel>
                       {hasInputSchema &&
                         selectedDatasets
                           .filter((d) => d.inputSchema)
@@ -416,7 +424,7 @@ export const NewDatasetItemForm = (props: {
                 render={({ field }) => (
                   <FormItem className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
-                      <FormLabel>Expected output</FormLabel>
+                      <FormLabel>{t("Expected output")}</FormLabel>
                       {hasOutputSchema &&
                         selectedDatasets
                           .filter((d) => d.expectedOutputSchema)
@@ -459,7 +467,7 @@ export const NewDatasetItemForm = (props: {
               name="metadata"
               render={({ field }) => (
                 <FormItem className="mt-4 flex flex-col gap-2">
-                  <FormLabel>Metadata</FormLabel>
+                  <FormLabel>{t("Metadata")}</FormLabel>
                   <FormControl>
                     <CodeMirrorEditor
                       mode="json"
@@ -485,14 +493,15 @@ export const NewDatasetItemForm = (props: {
                 (validation.hasSchemas && !validation.isValid)
               }
             >
-              Add
               {selectedDatasetCount > 1
-                ? ` to ${selectedDatasetCount} datasets`
-                : " to dataset"}
+                ? t("Add to {{count}} datasets", {
+                    count: selectedDatasetCount,
+                  })
+                : t("Add to dataset")}
             </Button>
             {formError ? (
               <p className="text-red mt-2 text-center">
-                <span className="font-bold">Error:</span> {formError}
+                <span className="font-bold">{t("Error:")}</span> {formError}
               </p>
             ) : null}
           </div>

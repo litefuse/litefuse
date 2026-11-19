@@ -1,4 +1,4 @@
-import { type AppType } from "next/app";
+import App, { type AppContext, type AppProps } from "next/app";
 import { type Session } from "next-auth";
 import { SessionProvider } from "next-auth/react";
 import { setUser } from "@sentry/nextjs";
@@ -13,7 +13,7 @@ import { QueryParamProvider } from "use-query-params";
 
 import "@/src/styles/globals.css";
 import { AppLayout } from "@/src/components/layouts/app-layout";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ComponentType } from "react";
 import { useRouter } from "next/router";
 
 import posthog from "posthog-js";
@@ -76,6 +76,11 @@ import { MarkdownContextProvider } from "@/src/features/theming/useMarkdownConte
 import { SupportDrawerProvider } from "@/src/features/support-chat/SupportDrawerProvider";
 import { useLangfuseCloudRegion } from "@/src/features/organizations/hooks";
 import { ScoreCacheProvider } from "@/src/features/scores/contexts/ScoreCacheContext";
+import {
+  I18nProvider,
+  type I18nAppProps,
+} from "@/src/features/i18n/I18nProvider";
+import { resolveRequestI18n } from "@/src/features/i18n/getI18nAppProps";
 import { CorrectionCacheProvider } from "@/src/features/corrections/contexts/CorrectionCacheContext";
 import { V4_BETA_ENABLED_POSTHOG_PROPERTY } from "@/src/features/posthog-analytics/usePostHogClientCapture";
 
@@ -105,10 +110,15 @@ if (
   });
 }
 
-const MyApp: AppType<{ session: Session | null }> = ({
+type MyAppProps = AppProps<{ session: Session | null }> & {
+  i18n: I18nAppProps;
+};
+
+const MyApp = ({
   Component,
   pageProps: { session, ...pageProps },
-}) => {
+  i18n,
+}: MyAppProps) => {
   const router = useRouter();
 
   useEffect(() => {
@@ -140,26 +150,28 @@ const MyApp: AppType<{ session: Session | null }> = ({
               refetchInterval={5 * 60} // 5 minutes
               basePath={`${env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/auth`}
             >
-              <DetailPageListsProvider>
-                <MarkdownContextProvider>
-                  <ThemeProvider
-                    attribute="class"
-                    enableSystem
-                    disableTransitionOnChange
-                  >
-                    <ScoreCacheProvider>
-                      <CorrectionCacheProvider>
-                        <SupportDrawerProvider defaultOpen={false}>
-                          <AppLayout>
-                            <Component {...pageProps} />
-                            <UserTracking />
-                          </AppLayout>
-                        </SupportDrawerProvider>
-                      </CorrectionCacheProvider>
-                    </ScoreCacheProvider>
-                  </ThemeProvider>
-                </MarkdownContextProvider>
-              </DetailPageListsProvider>
+              <I18nProvider initial={i18n}>
+                <DetailPageListsProvider>
+                  <MarkdownContextProvider>
+                    <ThemeProvider
+                      attribute="class"
+                      enableSystem
+                      disableTransitionOnChange
+                    >
+                      <ScoreCacheProvider>
+                        <CorrectionCacheProvider>
+                          <SupportDrawerProvider defaultOpen={false}>
+                            <AppLayout>
+                              <Component {...pageProps} />
+                              <UserTracking />
+                            </AppLayout>
+                          </SupportDrawerProvider>
+                        </CorrectionCacheProvider>
+                      </ScoreCacheProvider>
+                    </ThemeProvider>
+                  </MarkdownContextProvider>
+                </DetailPageListsProvider>
+              </I18nProvider>
             </SessionProvider>
           </PostHogProvider>
         </CommandMenuProvider>
@@ -168,7 +180,24 @@ const MyApp: AppType<{ session: Session | null }> = ({
   );
 };
 
-export default api.withTRPC(MyApp);
+// withTRPC types its result with empty props; it does forward every prop.
+const AppWithTRPC = api.withTRPC(MyApp) as ComponentType<MyAppProps>;
+
+// Outermost App. Resolves the UI locale (cookie / Accept-Language) on the
+// server so the first render is already translated. No page is statically
+// optimised today, so opting the App into getInitialProps costs nothing. The
+// hook cannot sit on MyApp: withTRPC only forwards an inner getInitialProps
+// when its own `ssr` option is enabled.
+function LocalizedApp(props: MyAppProps) {
+  return <AppWithTRPC {...props} />;
+}
+
+LocalizedApp.getInitialProps = async (appContext: AppContext) => {
+  const appProps = await App.getInitialProps(appContext);
+  return { ...appProps, i18n: resolveRequestI18n(appContext.ctx.req) };
+};
+
+export default LocalizedApp;
 
 function UserTracking() {
   const session = useSession();

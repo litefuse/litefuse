@@ -9,6 +9,8 @@ import { type LangfuseColumnDef } from "@/src/components/table/types";
 import { ScoresTableCell } from "@/src/components/scores-table-cell";
 import { toOrderedScoresList } from "@/src/features/scores/lib/helpers";
 import { getScoreDataTypeIcon } from "@/src/features/scores/lib/scoreColumns";
+import { useTranslation } from "react-i18next";
+import { type TFunction } from "i18next";
 
 // Simple score column creation
 function createScoreColumns<T extends Record<string, any>>(
@@ -20,13 +22,15 @@ function createScoreColumns<T extends Record<string, any>>(
   }>,
   scoreColumnKey: keyof T & string,
   displayFormat: "smart" | "aggregate",
+  t: TFunction,
   prefix?: string,
 ): LangfuseColumnDef<T>[] {
   return scoreColumns.map(({ key, name, source, dataType }) => {
-    // Apply prefix to both column ID/accessor and header
+    // The prefix is part of the accessor, which has to match the keys
+    // `addPrefixToScoreKeys` writes, so only the header is translated.
     const accessorKey = prefix ? `${prefix}-${key}` : key;
     const header = prefix
-      ? `${prefix}: ${getScoreDataTypeIcon(dataType)} ${name} (${source.toLowerCase()})`
+      ? `${t(prefix)}: ${getScoreDataTypeIcon(dataType)} ${name} (${source.toLowerCase()})`
       : `${getScoreDataTypeIcon(dataType)} ${name} (${source.toLowerCase()})`;
 
     return {
@@ -78,6 +82,7 @@ export function useScoreColumns<T extends Record<string, any>>({
   isFilterDataPending?: boolean;
   displayFormat?: "smart" | "aggregate";
 }) {
+  const { t } = useTranslation();
   const scoreColumnsQuery = api.scores.getScoreColumns.useQuery(
     {
       projectId,
@@ -97,9 +102,11 @@ export function useScoreColumns<T extends Record<string, any>>({
       toOrderedScoresList(scoreColumnsQuery.data.scoreColumns),
       scoreColumnKey,
       displayFormat,
+      t,
       prefix,
     );
   }, [
+    t,
     scoreColumnsQuery.data?.scoreColumns,
     scoreColumnKey,
     prefix,

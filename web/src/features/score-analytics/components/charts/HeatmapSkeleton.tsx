@@ -1,6 +1,7 @@
 import { cn } from "@/src/utils/tailwind";
 import { useMemo } from "react";
 
+import { useTranslation } from "react-i18next";
 export interface HeatmapSkeletonProps {
   rows?: number;
   cols?: number;
@@ -91,6 +92,7 @@ export function HeatmapSkeleton({
   showAxisLabels = true,
   className,
 }: HeatmapSkeletonProps) {
+  const { t } = useTranslation();
   // Generate random seed once on component mount for pattern variation
   const randomSeed = useMemo(() => Math.random() * 1000, []);
 
@@ -107,7 +109,7 @@ export function HeatmapSkeleton({
     <div
       className={cn("flex w-full flex-1 flex-col gap-4", className)}
       role="status"
-      aria-label="Loading heatmap visualization"
+      aria-label={t("Loading heatmap visualization")}
     >
       <div className="flex flex-1 items-stretch justify-center gap-1 sm:gap-2">
         {/* Y-axis label placeholder */}

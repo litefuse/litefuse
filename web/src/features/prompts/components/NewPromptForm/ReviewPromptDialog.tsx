@@ -14,6 +14,7 @@ import { type Prompt } from "@langfuse/shared";
 import { type NewPromptFormSchemaType } from "./validation";
 import DiffViewer from "@/src/components/DiffViewer";
 
+import { useTranslation } from "react-i18next";
 type ReviewPromptDialogProps = {
   initialPrompt: Prompt;
   isLoading: boolean;
@@ -43,6 +44,7 @@ const formatMessages = (messages: any[], excludeKeys: string[] = []) => {
 export const ReviewPromptDialog: React.FC<ReviewPromptDialogProps> = (
   props,
 ) => {
+  const { t } = useTranslation();
   const { initialPrompt, children, getNewPromptValues, onConfirm, isLoading } =
     props;
   const [newPromptValue, setNewPromptValues] =
@@ -76,7 +78,7 @@ export const ReviewPromptDialog: React.FC<ReviewPromptDialogProps> = (
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent size="xl">
         <DialogHeader>
-          <DialogTitle>Review Prompt Changes</DialogTitle>
+          <DialogTitle>{t("Review Prompt Changes")}</DialogTitle>
           <DialogDescription className="flex items-center gap-2">
             <span className="font-medium">{initialPrompt.name}</span>
           </DialogDescription>
@@ -87,21 +89,25 @@ export const ReviewPromptDialog: React.FC<ReviewPromptDialogProps> = (
             <div className="space-y-6">
               <div className="space-y-4">
                 <div>
-                  <h3 className="mb-2 text-base font-medium">Content</h3>
+                  <h3 className="mb-2 text-base font-medium">{t("Content")}</h3>
                   <DiffViewer
                     oldString={initialPromptContent}
                     newString={newPromptContent}
-                    oldLabel={`Previous content (v${initialPrompt.version})`}
-                    newLabel="New content (draft)"
+                    oldLabel={t("Previous content (v{{version}})", {
+                      version: initialPrompt.version,
+                    })}
+                    newLabel={t("New content (draft)")}
                   />
                 </div>
                 <div>
-                  <h3 className="mb-2 text-base font-medium">Config</h3>
+                  <h3 className="mb-2 text-base font-medium">{t("Config")}</h3>
                   <DiffViewer
                     oldString={JSON.stringify(initialPrompt.config, null, 2)}
                     newString={newConfig ?? "failed"}
-                    oldLabel={`Previous config (v${initialPrompt.version})`}
-                    newLabel="New config (draft)"
+                    oldLabel={t("Previous config (v{{version}})", {
+                      version: initialPrompt.version,
+                    })}
+                    newLabel={t("New config (draft)")}
                   />
                 </div>
               </div>
@@ -116,7 +122,7 @@ export const ReviewPromptDialog: React.FC<ReviewPromptDialogProps> = (
             onClick={() => setOpen(false)}
             className="min-w-32"
           >
-            Cancel
+            {t("Cancel")}
           </Button>
           <Button
             onClick={onConfirm}
@@ -124,8 +130,9 @@ export const ReviewPromptDialog: React.FC<ReviewPromptDialogProps> = (
             variant={newPromptValue?.isActive ? "destructive" : "default"}
             className="min-w-32"
           >
-            Save new version
-            {newPromptValue?.isActive ? " and promote to production" : ""}
+            {newPromptValue?.isActive
+              ? t("Save new version and promote to production")
+              : t("Save new version")}
           </Button>
         </DialogFooter>
       </DialogContent>

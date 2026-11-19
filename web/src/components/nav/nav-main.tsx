@@ -12,12 +12,20 @@ import Link from "next/link";
 import { type ReactNode } from "react";
 import { cn } from "@/src/utils/tailwind";
 import { RouteGroup } from "@/src/components/layouts/routes";
+import { useTranslation } from "react-i18next";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 
 const NAV_GROUP_ORDER: RouteGroup[] = [
   RouteGroup.Observability,
   RouteGroup.PromptManagement,
   RouteGroup.Evaluation,
 ];
+
+const NAV_GROUP_LABELS: Record<RouteGroup, string> = {
+  [RouteGroup.Observability]: i18nKey("Observability"),
+  [RouteGroup.PromptManagement]: i18nKey("Prompt Management"),
+  [RouteGroup.Evaluation]: i18nKey("Evaluation"),
+};
 
 export type NavMainItem = {
   title: string;
@@ -36,10 +44,11 @@ export type NavMainItem = {
 };
 
 function NavItemContent({ item }: { item: NavMainItem }) {
+  const { t } = useTranslation();
   return (
     <>
       {item.icon && <item.icon />}
-      <span>{item.title}</span>
+      <span>{t(item.title)}</span>
       {item.label &&
         (typeof item.label === "string" ? (
           <span
@@ -47,7 +56,7 @@ function NavItemContent({ item }: { item: NavMainItem }) {
               "-my-0.5 self-center rounded-sm border px-1 py-0.5 text-xs leading-none break-keep whitespace-nowrap",
             )}
           >
-            {item.label}
+            {t(item.label)}
           </span>
         ) : (
           // ReactNode
@@ -65,6 +74,7 @@ export function NavMain({
     ungrouped: NavMainItem[];
   };
 }) {
+  const { t } = useTranslation();
   return (
     <>
       <SidebarGroup>
@@ -75,7 +85,7 @@ export function NavMain({
                 {item.menuNode || (
                   <SidebarMenuButton
                     asChild
-                    tooltip={item.title}
+                    tooltip={t(item.title)}
                     isActive={item.isActive}
                   >
                     <Link
@@ -95,7 +105,9 @@ export function NavMain({
         NAV_GROUP_ORDER.filter((group) => items.grouped?.[group]?.length).map(
           (group) => (
             <SidebarGroup key={group}>
-              <SidebarGroupLabel>{group}</SidebarGroupLabel>
+              <SidebarGroupLabel>
+                {t(NAV_GROUP_LABELS[group])}
+              </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
                   {items.grouped?.[group]?.map((item) => (
@@ -103,7 +115,7 @@ export function NavMain({
                       {item.menuNode || (
                         <SidebarMenuButton
                           asChild
-                          tooltip={item.title}
+                          tooltip={t(item.title)}
                           isActive={item.isActive}
                         >
                           <Link

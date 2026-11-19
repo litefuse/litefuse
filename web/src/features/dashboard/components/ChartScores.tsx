@@ -21,6 +21,7 @@ import { Chart } from "@/src/features/widgets/chart-library/Chart";
 import { timeSeriesToDataPoints } from "@/src/features/dashboard/lib/chart-data-adapters";
 import { useScheduledDashboardExecuteQuery } from "@/src/hooks/useDashboardQueryScheduler";
 
+import { useTranslation } from "react-i18next";
 export function ChartScores(props: {
   className?: string;
   agg: DashboardDateRangeAggregationOption;
@@ -32,6 +33,7 @@ export function ChartScores(props: {
   metricsVersion?: ViewVersion;
   schedulerId?: string;
 }) {
+  const { t } = useTranslation();
   const scoresQuery: QueryType = {
     view: "scores-numeric",
     dimensions: [{ field: "name" }, { field: "dataType" }, { field: "source" }],
@@ -91,8 +93,8 @@ export function ChartScores(props: {
   return (
     <DashboardCard
       className={props.className}
-      title="Scores"
-      description="Moving average per score"
+      title={t("Scores")}
+      description={t("Moving average per score")}
       isLoading={props.isLoading || scores.isPending}
     >
       {!isEmptyTimeSeries({ data: extractedScores }) ? (
@@ -112,7 +114,9 @@ export function ChartScores(props: {
       ) : (
         <NoDataOrLoading
           isLoading={props.isLoading || scores.isPending}
-          description="Scores evaluate LLM quality and can be created manually or using the SDK."
+          description={t(
+            "Scores evaluate LLM quality and can be created manually or using the SDK.",
+          )}
           href="https://litefuse.ai/docs/evaluation/overview"
           className="h-full"
         />

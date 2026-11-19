@@ -11,6 +11,7 @@ import { type FlatLogItem } from "./log-view-types";
 import { LogViewObservationCell } from "./LogViewObservationCell";
 import { formatRelativeTime, formatDuration } from "./log-view-formatters";
 
+import { useTranslation } from "react-i18next";
 export interface UseLogViewColumnsParams {
   /** Whether indent visualization is enabled */
   indentEnabled: boolean;
@@ -31,11 +32,12 @@ export function useLogViewColumns({
   projectId,
   traceId,
 }: UseLogViewColumnsParams): JSONTableViewColumn<FlatLogItem>[] {
+  const { t } = useTranslation();
   return useMemo((): JSONTableViewColumn<FlatLogItem>[] => {
     return [
       {
         key: "observation",
-        header: "Observation",
+        header: t("Observation"),
         width: "flex-1",
         render: (item) => (
           <LogViewObservationCell
@@ -48,7 +50,7 @@ export function useLogViewColumns({
       },
       {
         key: "depth",
-        header: "Depth",
+        header: t("Depth"),
         width: "w-12",
         align: "right" as const,
         render: (item) => (
@@ -59,7 +61,7 @@ export function useLogViewColumns({
       },
       {
         key: "start",
-        header: "Start",
+        header: t("Start"),
         width: showMilliseconds ? "w-20" : "w-12",
         align: "right" as const,
         render: (item) => (
@@ -73,7 +75,7 @@ export function useLogViewColumns({
       },
       {
         key: "duration",
-        header: "Duration",
+        header: t("Duration"),
         width: "w-16",
         align: "right" as const,
         render: (item) => (
@@ -83,5 +85,5 @@ export function useLogViewColumns({
         ),
       },
     ];
-  }, [indentEnabled, showMilliseconds, projectId, traceId]);
+  }, [t, indentEnabled, showMilliseconds, projectId, traceId]);
 }

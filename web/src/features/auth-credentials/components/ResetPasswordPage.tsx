@@ -27,6 +27,11 @@ import { ErrorPage } from "@/src/components/error-page";
 import { usePostHogClientCapture } from "@/src/features/posthog-analytics/usePostHogClientCapture";
 import { passwordSchema } from "@/src/features/auth/lib/signupSchema";
 
+import { Trans, useTranslation } from "react-i18next";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
+
+/** Example address shown in the field, identical in every language. */
+const EXAMPLE_EMAIL = "jsdoe@example.com";
 const resetPasswordSchema = z
   .object({
     email: z.string().email(),
@@ -34,7 +39,7 @@ const resetPasswordSchema = z
     confirmPassword: passwordSchema,
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
+    message: i18nKey("Passwords do not match"),
     path: ["confirmPassword"],
   });
 
@@ -43,6 +48,7 @@ export function ResetPasswordPage({
 }: {
   passwordResetAvailable: boolean;
 }) {
+  const { t } = useTranslation();
   const session = useSession();
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
@@ -97,10 +103,10 @@ export function ResetPasswordPage({
   if (!passwordResetAvailable)
     return (
       <ErrorPage
-        title="Not available"
-        message="Password reset is not configured on this instance"
+        title={t("Not available")}
+        message={t("Password reset is not configured on this instance")}
         additionalButton={{
-          label: "Setup instructions",
+          label: t("Setup instructions"),
           href: "https://litefuse.ai/self-hosting/security/authentication-and-sso#auth-email-password",
         }}
       />
@@ -109,7 +115,7 @@ export function ResetPasswordPage({
   return (
     <>
       <Head>
-        <title>Reset Password | Litefuse</title>
+        <title>{t("Reset Password | Litefuse")}</title>
       </Head>
       <div className="flex flex-1 flex-col py-6 sm:min-h-full sm:justify-center sm:px-6 sm:py-12 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -117,14 +123,14 @@ export function ResetPasswordPage({
             <LangfuseIcon className="mx-auto" />
           </Link>
           <h2 className="text-primary mt-4 text-center text-2xl leading-9 font-bold tracking-tight">
-            Reset your password
+            {t("Reset your password")}
           </h2>
           {session.status !== "authenticated" && (
             <div className="mt-2 flex justify-center">
               <Button asChild variant="ghost">
                 <Link href="/auth/sign-in">
                   <ArrowLeft className="mr-2 h-3 w-3" />
-                  Back to sign in
+                  {t("Back to sign in")}
                 </Link>
               </Button>
             </div>
@@ -143,18 +149,18 @@ export function ResetPasswordPage({
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel>{t("Email")}</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Input
-                            placeholder="jsdoe@example.com"
+                            placeholder={EXAMPLE_EMAIL}
                             disabled={session.status === "authenticated"}
                             allowPasswordManager
                             autoComplete="email"
                             {...field}
                           />
                           {emailVerified.verified && (
-                            <span title="Email verified">
+                            <span title={t("Email verified")}>
                               <ShieldCheck className="text-muted-green absolute top-1/2 right-3 h-5 w-5 -translate-y-1/2 transform" />
                             </span>
                           )}
@@ -171,7 +177,7 @@ export function ResetPasswordPage({
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>New Password</FormLabel>
+                          <FormLabel>{t("New Password")}</FormLabel>
                           <FormControl>
                             <PasswordInput
                               autoComplete="new-password"
@@ -187,7 +193,7 @@ export function ResetPasswordPage({
                       name="confirmPassword"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Confirm New Password</FormLabel>
+                          <FormLabel>{t("Confirm New Password")}</FormLabel>
                           <FormControl>
                             <PasswordInput
                               autoComplete="new-password"
@@ -211,7 +217,7 @@ export function ResetPasswordPage({
                         showResetPasswordEmailButton ? "secondary" : "default"
                       }
                     >
-                      Update Password
+                      {t("Update Password")}
                     </Button>
                   ) : (
                     <RequestResetPasswordEmailButton
@@ -229,7 +235,7 @@ export function ResetPasswordPage({
             ) : null}
             {isSuccess && (
               <div className="text-center text-sm font-medium">
-                Password successfully updated. Redirecting ...
+                {t("Password successfully updated. Redirecting ...")}
               </div>
             )}
             {showResetPasswordEmailButton && (
@@ -242,13 +248,12 @@ export function ResetPasswordPage({
         </div>
         {session.status !== "authenticated" && (
           <div className="text-muted-foreground mx-auto mt-10 max-w-lg text-center text-xs">
-            You will only receive an email if an account with this email exists
-            and you have signed up with email and password. If you used an
-            authentication provider like Google, Gitlab, Okta, or GitHub, please{" "}
-            <Link href="/auth/sign-in" className="underline">
-              sign in
-            </Link>
-            .
+            <Trans
+              i18nKey="You will only receive an email if an account with this email exists and you have signed up with email and password. If you used an authentication provider like Google, Gitlab, Okta, or GitHub, please <0>sign in</0>."
+              components={[
+                <Link key="0" href="/auth/sign-in" className="underline" />,
+              ]}
+            />
           </div>
         )}
       </div>

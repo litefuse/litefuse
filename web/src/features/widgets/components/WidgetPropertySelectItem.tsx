@@ -7,6 +7,7 @@ import { HoverCardPortal } from "@radix-ui/react-hover-card";
 import { SelectItem } from "@/src/components/ui/select";
 import * as React from "react";
 
+import { useTranslation } from "react-i18next";
 interface PropertyHoverCardProps {
   label: string;
   description?: string;
@@ -22,6 +23,7 @@ export const PropertyHoverCard = ({
   type,
   children,
 }: PropertyHoverCardProps) => {
+  const { t } = useTranslation();
   return (
     <HoverCard openDelay={0} closeDelay={0}>
       <HoverCardTrigger asChild>{children}</HoverCardTrigger>
@@ -32,17 +34,19 @@ export const PropertyHoverCard = ({
             <div className="mb-2 flex flex-wrap gap-2 text-xs">
               {unit && (
                 <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5">
-                  Unit: {unit}
+                  {t("Unit: {{value}}", { value: unit })}
                 </span>
               )}
               {type && (
                 <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5">
-                  Type: {type}
+                  {t("Type: {{value}}", { value: type })}
                 </span>
               )}
             </div>
           )}
-          {description && <p className="text-xs leading-snug">{description}</p>}
+          {description && (
+            <p className="text-xs leading-snug">{t(description)}</p>
+          )}
         </HoverCardContent>
       </HoverCardPortal>
     </HoverCard>

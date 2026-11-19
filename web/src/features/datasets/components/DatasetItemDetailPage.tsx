@@ -29,6 +29,7 @@ import { EditDatasetItemDialog } from "@/src/features/datasets/components/EditDa
 import { useDatasetVersion } from "@/src/features/datasets/hooks/useDatasetVersion";
 import { toDatasetSchema } from "@/src/features/datasets/utils/datasetItemUtils";
 
+import { useTranslation } from "react-i18next";
 export const DatasetItemDetailPage = ({
   activeTab,
   withPadding = true,
@@ -38,6 +39,7 @@ export const DatasetItemDetailPage = ({
   withPadding?: boolean;
   children: ReactNode;
 }) => {
+  const { t } = useTranslation();
   const router = useRouter();
   const projectId = router.query.projectId as string;
   const datasetId = router.query.datasetId as string;
@@ -121,13 +123,13 @@ export const DatasetItemDetailPage = ({
         title: itemId,
         itemType: "DATASET_ITEM",
         breadcrumb: [
-          { name: "Datasets", href: `/project/${projectId}/datasets` },
+          { name: t("Datasets"), href: `/project/${projectId}/datasets` },
           {
             name: dataset.data?.name ?? datasetId,
             href: `/project/${projectId}/datasets/${datasetId}`,
           },
           {
-            name: "Items",
+            name: t("Items"),
             href: `/project/${projectId}/datasets/${datasetId}/items`,
           },
         ],
@@ -152,13 +154,17 @@ export const DatasetItemDetailPage = ({
                     <div className="space-y-2">
                       <h4 className="leading-none font-medium">
                         {item.data.status === DatasetStatus.ACTIVE
-                          ? "Archive this item?"
-                          : "Unarchive this item?"}
+                          ? t("Archive this item?")
+                          : t("Unarchive this item?")}
                       </h4>
                       <p className="text-muted-foreground text-sm">
                         {item.data.status === DatasetStatus.ACTIVE
-                          ? "Archiving an item will exclude it from new dataset runs."
-                          : "Unarchiving an item will include it back in new dataset runs."}
+                          ? t(
+                              "Archiving an item will exclude it from new dataset runs.",
+                            )
+                          : t(
+                              "Unarchiving an item will include it back in new dataset runs.",
+                            )}
                       </p>
                     </div>
                     <Button
@@ -172,10 +178,10 @@ export const DatasetItemDetailPage = ({
                       size="sm"
                     >
                       {mutUpdate.isPending
-                        ? "Processing..."
+                        ? t("Processing...")
                         : item.data.status === DatasetStatus.ACTIVE
-                          ? "Archive"
-                          : "Unarchive"}
+                          ? t("Archive")
+                          : t("Unarchive")}
                     </Button>
                   </div>
                 </PopoverContent>
@@ -230,7 +236,7 @@ export const DatasetItemDetailPage = ({
                   disabled={!hasAccess || isViewingOldVersion || !item.data}
                 >
                   <Pencil className="mr-2 h-4 w-4" />
-                  Edit
+                  {t("Edit")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={handleDelete}
@@ -243,7 +249,7 @@ export const DatasetItemDetailPage = ({
                   className="text-destructive"
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
-                  {mutDelete.isPending ? "Deleting..." : "Delete"}
+                  {mutDelete.isPending ? t("Deleting...") : t("Delete")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

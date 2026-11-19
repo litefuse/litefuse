@@ -13,6 +13,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Bug, Sparkles } from "lucide-react";
 
+import { useTranslation } from "react-i18next";
 interface FeedbackDialogProps {
   className?: string;
   children: React.ReactNode;
@@ -26,6 +27,7 @@ export function FeedbackButtonWrapper({
   description = "What do you think about Litefuse? What can be improved? Please share it with the community on GitHub to shape the future of Litefuse.",
   title = "Provide Feedback",
 }: FeedbackDialogProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   return (
@@ -50,7 +52,8 @@ export function FeedbackButtonWrapper({
                 target="_blank"
               >
                 <Button variant="secondary">
-                  <Sparkles className="mr-2 h-4 w-4" /> Submit Feature Request
+                  <Sparkles className="mr-2 h-4 w-4" />{" "}
+                  {t("Submit Feature Request")}
                 </Button>
               </Link>
               <Link
@@ -58,7 +61,7 @@ export function FeedbackButtonWrapper({
                 target="_blank"
               >
                 <Button variant="secondary">
-                  <Bug className="mr-2 h-4 w-4" /> Report a Bug
+                  <Bug className="mr-2 h-4 w-4" /> {t("Report a Bug")}
                 </Button>
               </Link>
             </div>

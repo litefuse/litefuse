@@ -1,4 +1,5 @@
 import { z } from "zod/v4";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 import {
   BlobStorageIntegrationType,
   BlobStorageIntegrationFileType,
@@ -11,7 +12,9 @@ import { validateBlobStorageIntegrationConfig } from "@/src/features/blobstorage
 
 export const blobStorageIntegrationFormSchemaBase = z.object({
   type: z.enum(BlobStorageIntegrationType),
-  bucketName: z.string().min(1, { message: "Bucket name is required" }),
+  bucketName: z
+    .string()
+    .min(1, { message: i18nKey("Bucket name is required") }),
   endpoint: z.string().url().optional().nullable(),
   region: z.string().default("auto"),
   accessKeyId: z.string().optional(),
@@ -19,7 +22,7 @@ export const blobStorageIntegrationFormSchemaBase = z.object({
   prefix: z
     .string()
     .refine((value) => !value || value === "" || value.endsWith("/"), {
-      message: "Prefix must end with a forward slash (/)",
+      message: i18nKey("Prefix must end with a forward slash (/)"),
     })
     .optional()
     .or(z.literal("")),

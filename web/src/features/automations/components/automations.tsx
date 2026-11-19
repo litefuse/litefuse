@@ -22,7 +22,9 @@ import { type AutomationDomain } from "@langfuse/shared";
 import { ErrorPage } from "@/src/components/error-page";
 import { getPathnameWithoutBasePath } from "@/src/utils/api";
 
+import { useTranslation } from "react-i18next";
 export default function AutomationsPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const utils = api.useUtils();
   const projectId = router.query.projectId as string;
@@ -238,10 +240,10 @@ export default function AutomationsPage() {
 
   const renderAutomationNotFoundError = (message: string) => (
     <ErrorPage
-      title="Webhook not found"
+      title={t("Webhook not found")}
       message={message}
       additionalButton={{
-        label: "Back to Webhooks",
+        label: t("Back to Webhooks"),
         onClick: () => {
           setUrlParams({
             view: "list",
@@ -318,10 +320,11 @@ export default function AutomationsPage() {
       <div className="h-full p-6">
         <div className="text-muted-foreground flex h-full items-center justify-center">
           <div className="text-center">
-            <h3 className="text-lg font-medium">Select an automation</h3>
+            <h3 className="text-lg font-medium">{t("Select an automation")}</h3>
             <p className="mt-2 text-sm">
-              Choose an automation from the sidebar to view its details and
-              execution history.
+              {t(
+                "Choose an automation from the sidebar to view its details and execution history.",
+              )}
             </p>
           </div>
         </div>
@@ -332,17 +335,17 @@ export default function AutomationsPage() {
   return (
     <Page
       headerProps={{
-        title: "Automations",
+        title: t("Automations"),
         breadcrumb: [
           {
-            name: "Prompts",
+            name: t("Prompts"),
             href: `/project/${projectId}/prompts/`,
           },
         ],
         actionButtonsRight: (
           <Button onClick={handleCreateAutomation}>
             <Plus className="mr-2 h-4 w-4" />
-            Create Automation
+            {t("Create Automation")}
           </Button>
         ),
       }}
@@ -361,10 +364,11 @@ export default function AutomationsPage() {
       <Dialog open={showSecretDialog} onOpenChange={setShowSecretDialog}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>Webhook Secret Created</DialogTitle>
+            <DialogTitle>{t("Webhook Secret Created")}</DialogTitle>
             <DialogDescription>
-              Your automation has been created successfully. Please copy the
-              webhook secret below - it will only be shown once.
+              {t(
+                "Your automation has been created successfully. Please copy the webhook secret below - it will only be shown once.",
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogBody>
@@ -379,7 +383,7 @@ export default function AutomationsPage() {
                 setWebhookSecret(null);
               }}
             >
-              {"I've saved the secret"}
+              {t("I've saved the secret")}
             </Button>
           </DialogFooter>
         </DialogContent>

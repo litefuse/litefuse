@@ -7,7 +7,9 @@ import { RetryBackgroundMigration } from "@/src/features/background-migrations/c
 import { StatusBadge } from "@/src/components/layouts/status-badge";
 import Page from "@/src/components/layouts/page";
 
+import { useTranslation } from "react-i18next";
 export default function BackgroundMigrationsTable() {
+  const { t } = useTranslation();
   const backgroundMigrations = api.backgroundMigrations.all.useQuery();
 
   const columns = [
@@ -15,25 +17,25 @@ export default function BackgroundMigrationsTable() {
       accessorKey: "name",
       id: "name",
       enableColumnFilter: false,
-      header: "Name",
+      header: t("Name"),
     },
     {
       accessorKey: "script",
       id: "script",
       enableColumnFilter: false,
-      header: "Script",
+      header: t("Script"),
     },
     {
       accessorKey: "args",
       id: "args",
       enableColumnFilter: false,
-      header: "Args",
+      header: t("Args"),
       size: 80,
       cell: (row) => JSON.stringify(row.getValue()),
     },
     {
       id: "status",
-      header: "Status",
+      header: t("Status"),
       size: 80,
       cell: (row) => {
         const failedAt = row.row.original.failedAt;
@@ -56,18 +58,18 @@ export default function BackgroundMigrationsTable() {
       accessorKey: "failedReason",
       id: "failedReason",
       enableColumnFilter: false,
-      header: "Failed Reason",
+      header: t("Failed Reason"),
     },
     {
       accessorKey: "state",
       id: "state",
       enableColumnFilter: false,
-      header: "State",
+      header: t("State"),
       cell: (row) => JSON.stringify(row.getValue()),
     },
     {
       id: "actions",
-      header: "Actions",
+      header: t("Actions"),
       size: 65,
       cell: (row) => {
         const name = row.row.original.name;
@@ -85,7 +87,7 @@ export default function BackgroundMigrationsTable() {
   return (
     <Page
       headerProps={{
-        title: "Background Migrations",
+        title: t("Background Migrations"),
       }}
     >
       <DataTableToolbar columns={columns} />

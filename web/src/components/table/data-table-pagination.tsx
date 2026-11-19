@@ -19,6 +19,7 @@ import { LoaderCircle } from "lucide-react";
 import { Input } from "@/src/components/ui/input";
 import { useEffect, useState } from "react";
 
+import { useTranslation } from "react-i18next";
 interface DataTablePaginationProps<TData> {
   table: Table<TData>;
   isLoading: boolean;
@@ -34,6 +35,7 @@ export function DataTablePagination<TData>({
   hideTotalCount = false,
   canJumpPages = true,
 }: DataTablePaginationProps<TData>) {
+  const { t } = useTranslation();
   const capture = usePostHogClientCapture();
 
   const currentPage = table.getState().pagination.pageIndex + 1;
@@ -83,10 +85,10 @@ export function DataTablePagination<TData>({
       <div className="flex flex-wrap items-center space-x-6 lg:space-x-8">
         <div className="flex items-center space-x-2">
           <p className="text-sm font-medium whitespace-nowrap md:hidden">
-            Rows
+            {t("Rows")}
           </p>
           <p className="hidden text-sm font-medium whitespace-nowrap md:block">
-            Rows per page
+            {t("Rows per page")}
           </p>
           <Select
             value={`${table.getState().pagination.pageSize}`}
@@ -112,7 +114,7 @@ export function DataTablePagination<TData>({
         <div className="flex items-center justify-center gap-1 text-sm font-medium whitespace-nowrap">
           {table.getPageCount() !== -1 ? (
             <>
-              Page
+              {t("Page")}
               {canJumpPages && (
                 <Input
                   type="number"
@@ -140,15 +142,15 @@ export function DataTablePagination<TData>({
               {!canJumpPages && <span>{currentPage}</span>}
             </>
           ) : (
-            `Page ${currentPage}`
+            t("Page {{page}}", { page: currentPage })
           )}
           {!hideTotalCount && (
             <>
               {pageCount !== -1 ? (
-                <span>of {pageCount}</span>
+                <span>{t("of {{count}}", { count: pageCount })}</span>
               ) : (
                 <span>
-                  of{" "}
+                  {t("of")}{" "}
                   {isLoading ? (
                     <LoaderCircle className="text-muted-foreground ml-1 inline-block h-3 w-3 animate-spin" />
                   ) : (
@@ -173,7 +175,7 @@ export function DataTablePagination<TData>({
               }}
               disabled={!table.getCanPreviousPage()}
             >
-              <span className="sr-only">Go to first page</span>
+              <span className="sr-only">{t("Go to first page")}</span>
               <ChevronsLeft className="h-4 w-4" />
             </Button>
           )}
@@ -188,7 +190,7 @@ export function DataTablePagination<TData>({
             }}
             disabled={!table.getCanPreviousPage()}
           >
-            <span className="sr-only">Go to previous page</span>
+            <span className="sr-only">{t("Go to previous page")}</span>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Button
@@ -202,7 +204,7 @@ export function DataTablePagination<TData>({
             }}
             disabled={!table.getCanNextPage() || pageCount === -1}
           >
-            <span className="sr-only">Go to next page</span>
+            <span className="sr-only">{t("Go to next page")}</span>
             <ChevronRight className="h-4 w-4" />
           </Button>
           {canJumpPages && (
@@ -217,7 +219,7 @@ export function DataTablePagination<TData>({
               }}
               disabled={!table.getCanNextPage() || pageCount === -1}
             >
-              <span className="sr-only">Go to last page</span>
+              <span className="sr-only">{t("Go to last page")}</span>
               <ChevronsRight className="h-4 w-4" />
             </Button>
           )}

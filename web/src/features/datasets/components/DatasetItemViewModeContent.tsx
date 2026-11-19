@@ -5,6 +5,7 @@ import {
 } from "../utils/datasetItemUtils";
 import { DatasetItemFields } from "@/src/features/datasets/components/DatasetItemFields";
 
+import { useTranslation } from "react-i18next";
 type DatasetItemViewModeContentProps = {
   item: DatasetItemDomain | null;
   isLoading: boolean;
@@ -20,17 +21,20 @@ export const DatasetItemViewModeContent = ({
   isLoading,
   dataset,
 }: DatasetItemViewModeContentProps) => {
+  const { t } = useTranslation();
   if (isLoading) {
-    return <div className="text-muted-foreground text-sm">Loading...</div>;
+    return (
+      <div className="text-muted-foreground text-sm">{t("Loading...")}</div>
+    );
   }
 
   if (item === null) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center">
         <div className="text-muted-foreground">
-          <p className="text-lg font-medium">Dataset item not found</p>
+          <p className="text-lg font-medium">{t("Dataset item not found")}</p>
           <p className="mt-2 text-sm">
-            This dataset item does not exist or has been deleted.
+            {t("This dataset item does not exist or has been deleted.")}
           </p>
         </div>
       </div>

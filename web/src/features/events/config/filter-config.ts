@@ -3,6 +3,7 @@ import type { FilterConfig } from "@/src/features/filters/lib/filter-config";
 import type { ColumnToBackendKeyMap } from "@/src/features/filters/lib/filter-transform";
 import { renderFilterIcon } from "@/src/components/ItemBadge";
 
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 // Helper function to get column name from eventsTableCols by ID
 export const getEventsColumnName = (id: string): string => {
   const column = eventsTableCols.find((col) => col.id === id);
@@ -42,9 +43,10 @@ export const observationEventsFilterConfig: FilterConfig = {
     {
       type: "boolean" as const,
       column: "hasParentObservation",
-      label: "Is Root Observation",
-      tooltip:
+      label: i18nKey("Is Root Observation"),
+      tooltip: i18nKey(
         "A root observation is the top-level observation in a trace. It has no parent observation ID. Filter to 'True' to see only root-level observations.",
+      ),
       invertValue: true, // "True" = hasParentObservation=false (is root)
     },
     {
@@ -202,58 +204,58 @@ export const observationEventsFilterConfig: FilterConfig = {
     {
       type: "categorical" as const,
       column: "toolNames",
-      label: "Tool Names (Available)",
+      label: i18nKey("Tool Names (Available)"),
     },
     {
       type: "categorical" as const,
       column: "calledToolNames",
-      label: "Tool Names (Called)",
+      label: i18nKey("Tool Names (Called)"),
     },
     {
       type: "numeric" as const,
       column: "toolDefinitions",
-      label: "Available Tools",
+      label: i18nKey("Available Tools"),
       min: 0,
       max: 25,
     },
     {
       type: "numeric" as const,
       column: "toolCalls",
-      label: "Tool Calls",
+      label: i18nKey("Tool Calls"),
       min: 0,
       max: 25,
     },
     {
       type: "keyValue" as const,
       column: "score_categories",
-      label: "Categorical Scores",
+      label: i18nKey("Categorical Scores"),
     },
     {
       type: "numericKeyValue" as const,
       column: "scores_avg",
-      label: "Numeric Scores",
+      label: i18nKey("Numeric Scores"),
     },
     {
       type: "keyValue" as const,
       column: "trace_score_categories",
-      label: "Trace Categorical Scores",
+      label: i18nKey("Trace Categorical Scores"),
     },
     {
       type: "numericKeyValue" as const,
       column: "trace_scores_avg",
-      label: "Trace Numeric Scores",
+      label: i18nKey("Trace Numeric Scores"),
     },
     {
       type: "numeric" as const,
       column: "commentCount",
-      label: "Comment Count",
+      label: i18nKey("Comment Count"),
       min: 0,
       max: 100,
     },
     {
       type: "string" as const,
       column: "commentContent",
-      label: "Comment Content",
+      label: i18nKey("Comment Content"),
     },
   ],
 };

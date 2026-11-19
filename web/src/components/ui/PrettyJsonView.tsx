@@ -54,6 +54,7 @@ import {
 } from "@/src/components/table/ValueCell";
 import { ItemBadge, type LangfuseItemType } from "@/src/components/ItemBadge";
 
+import { useTranslation } from "react-i18next";
 // Constants for table layout
 const INDENTATION_PER_LEVEL = 16;
 const INDENTATION_BASE = 8;
@@ -445,6 +446,7 @@ function JsonPrettyTable({
   stickyTopLevelKey?: boolean;
   showObservationTypeBadge?: boolean;
 }) {
+  const { t } = useTranslation();
   const headerRef = useRef<HTMLTableRowElement>(null);
   const topLevelRowRef = useRef<HTMLTableRowElement>(null);
   const [stickyOffsets, setStickyOffsets] = useState({ header: 32, row: 32 });
@@ -470,7 +472,7 @@ function JsonPrettyTable({
   const columns: LangfuseColumnDef<JsonTableRow, unknown>[] = [
     {
       accessorKey: "key",
-      header: "Path",
+      header: t("Path"),
       size: 35,
       cell: ({ row }) => {
         // we need to calculate the indentation here for a good line break
@@ -562,7 +564,7 @@ function JsonPrettyTable({
     },
     {
       accessorKey: "value",
-      header: "Value",
+      header: t("Value"),
       size: 65,
       cell: ({ row }) => (
         <ValueCell
@@ -743,6 +745,12 @@ export function PrettyJsonView(props: {
   json?: unknown;
   parsedJson?: unknown; // Pre-parsed data (optional, from useParsedObservation hook)
   title?: string;
+  /**
+   * Locale-independent role used to pick the panel background ("Input",
+   * "Output", "assistant", "system", ...). The visible `title` is translated,
+   * so it must never be compared against; pass this alongside it.
+   */
+  titleKey?: string;
   titleIcon?: React.ReactNode;
   className?: string;
   isLoading?: boolean;
@@ -763,6 +771,7 @@ export function PrettyJsonView(props: {
   /** Content to render between header and main content (e.g., thinking blocks) */
   afterHeader?: React.ReactNode;
 }) {
+  const { t } = useTranslation();
   // Use pre-parsed data if available, otherwise parse on-demand
   const parsedJson = useMemo(() => {
     // If pre-parsed data is provided, use it directly (skip parsing)
@@ -1165,12 +1174,13 @@ export function PrettyJsonView(props: {
   const shouldUseTableView =
     isPrettyView && !isChatML && !isMarkdown && !emptyValueDisplay;
 
+  // The visible title is translated, so the role has to come from titleKey.
+  const panelRole = props.titleKey ?? props.title;
+
   const getBackgroundColorClass = () =>
     cn(
-      ASSISTANT_TITLES.includes(props.title || "")
-        ? "bg-accent-light-green"
-        : "",
-      SYSTEM_TITLES.includes(props.title || "") ? "bg-primary-foreground" : "",
+      ASSISTANT_TITLES.includes(panelRole || "") ? "bg-accent-light-green" : "",
+      SYSTEM_TITLES.includes(panelRole || "") ? "bg-primary-foreground" : "",
     );
 
   const body = (
@@ -1180,7 +1190,7 @@ export function PrettyJsonView(props: {
           <div
             className={cn(
               getContainerClasses(
-                props.title,
+                panelRole,
                 props.scrollable,
                 props.codeClassName,
               ),
@@ -1192,7 +1202,7 @@ export function PrettyJsonView(props: {
               <Skeleton className="h-3 w-2/3" />
               {props.isParsing && (
                 <div className="text-muted-foreground mt-2 text-xs">
-                  Parsing in background...
+                  {t("Parsing in background...")}
                 </div>
               )}
             </div>
@@ -1204,7 +1214,7 @@ export function PrettyJsonView(props: {
             className={cn(
               "flex items-center",
               getContainerClasses(
-                props.title,
+                panelRole,
                 props.scrollable,
                 props.codeClassName,
               ),
@@ -1228,7 +1238,7 @@ export function PrettyJsonView(props: {
           >
             <div
               className={getContainerClasses(
-                props.title,
+                panelRole,
                 props.scrollable,
                 props.codeClassName,
                 "flex text-xs wrap-break-word whitespace-pre-wrap",
@@ -1265,7 +1275,8 @@ export function PrettyJsonView(props: {
           >
             <JSONView
               json={props.json}
-              title={props.title} // Title value used for background styling
+              title={props.title}
+              titleKey={panelRole} // Role value used for background styling
               hideTitle={true} // But hide the title, we display it
               className=""
               isLoading={props.isLoading}
@@ -1282,7 +1293,7 @@ export function PrettyJsonView(props: {
       {props.media && props.media.length > 0 && isPrettyView && (
         <>
           <div className="text-muted-foreground my-1 px-2 py-1 text-xs">
-            Media
+            {t("Media")}
           </div>
           <div className="flex flex-wrap gap-2 p-4 pt-1">
             {props.media.map((m) => (
@@ -1322,7 +1333,9 @@ export function PrettyJsonView(props: {
                   onClick={() => expandAllRef.current?.()}
                   className="hover:bg-border -mr-2"
                   title={
-                    allRowsExpanded ? "Collapse all rows" : "Expand all rows"
+                    allRowsExpanded
+                      ? t("Collapse all rows")
+                      : t("Expand all rows")
                   }
                 >
                   {allRowsExpanded ? (
@@ -1338,7 +1351,7 @@ export function PrettyJsonView(props: {
                   size="icon-xs"
                   onClick={handleJsonToggleCollapse}
                   className="hover:bg-border -mr-2"
-                  title={jsonIsCollapsed ? "Expand all" : "Collapse all"}
+                  title={jsonIsCollapsed ? t("Expand all") : t("Collapse all")}
                 >
                   {jsonIsCollapsed ? (
                     <UnfoldVertical className="h-3 w-3" />
@@ -1400,6 +1413,8 @@ function stringifyJsonNode(node: unknown) {
     );
   } catch (error) {
     console.error("JSON stringify error", error);
+    // Module-level helper: no hook in scope, and this is a render
+    // fallback rather than copy, so it stays English.
     return "Error: JSON.stringify failed";
   }
 }

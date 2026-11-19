@@ -33,6 +33,7 @@ import { api } from "@/src/utils/api";
 import { Loader2 } from "lucide-react";
 import { targetOptionsQueryMap } from "@/src/features/table/components/targetOptionsQueryMap";
 
+import { useTranslation } from "react-i18next";
 type TableActionDialogProps = {
   isOpen: boolean;
   onClose: () => void;
@@ -48,6 +49,7 @@ export function TableActionDialog({
   projectId,
   tableName,
 }: TableActionDialogProps) {
+  const { t } = useTranslation();
   const hasAccess = useHasProjectAccess({
     projectId,
     scope: action.accessCheck.scope,
@@ -124,7 +126,7 @@ export function TableActionDialog({
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select..." />
+                            <SelectValue placeholder={t("Select...")} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -144,7 +146,7 @@ export function TableActionDialog({
                   <div className="flex items-center gap-1">
                     <Loader2 className="h-3 w-3 animate-spin" />
                     <p className="text-muted-foreground text-sm">
-                      Batch action is in progress, please wait.
+                      {t("Batch action is in progress, please wait.")}
                     </p>
                   </div>
                 )}
@@ -155,7 +157,7 @@ export function TableActionDialog({
                   loading={isInProgress.isLoading}
                   disabled={isInProgress.data || !form.watch("targetId")}
                 >
-                  Confirm
+                  {t("Confirm")}
                 </ActionButton>
               </DialogFooter>
             </form>
@@ -168,7 +170,7 @@ export function TableActionDialog({
               <div className="flex items-center gap-1">
                 <Loader2 className="h-3 w-3 animate-spin" />
                 <p className="text-muted-foreground text-sm">
-                  Batch action is in progress, please wait.
+                  {t("Batch action is in progress, please wait.")}
                 </p>
               </div>
             )}
@@ -180,7 +182,7 @@ export function TableActionDialog({
               disabled={isInProgress.data}
               onClick={handleConfirm}
             >
-              Confirm
+              {t("Confirm")}
             </ActionButton>
           </DialogFooter>
         )}

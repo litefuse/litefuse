@@ -407,7 +407,8 @@ export async function getBillingStatus(
 
     cancelAtPeriodEnd = hasScheduledCancellation(subscription);
     currentPeriodEnd = subscriptionPeriodEnd(subscription);
-    scheduledPlan = cancelAtPeriodEnd && subscriptionId ? "cloud:developer" : null;
+    scheduledPlan =
+      cancelAtPeriodEnd && subscriptionId ? "cloud:developer" : null;
 
     if (subscriptionId && activeStripeClient) {
       try {

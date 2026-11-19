@@ -15,6 +15,7 @@ import { useRouter } from "next/router";
 import { type ParsedUrlQuery } from "querystring";
 import { type ReactNode } from "react";
 
+import { useTranslation } from "react-i18next";
 type TabDefinition = {
   value: string;
   label: string;
@@ -69,6 +70,7 @@ const PageHeader = ({
   titleBadges,
   breadcrumbBadges,
 }: PageHeaderProps) => {
+  const { t } = useTranslation();
   const router = useRouter();
   return (
     <div
@@ -212,7 +214,7 @@ const PageHeader = ({
                       tab.className,
                     )}
                   >
-                    {tab.label}
+                    {t(tab.label)}
                   </Link>
                 ))}
               </div>

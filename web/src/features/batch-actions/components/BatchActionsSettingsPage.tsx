@@ -4,7 +4,9 @@ import { SettingsTableCard } from "@/src/components/layouts/settings-table-card"
 import { useHasProjectAccess } from "@/src/features/rbac/utils/checkProjectAccess";
 import { BatchActionsTable } from "./BatchActionsTable";
 
+import { useTranslation } from "react-i18next";
 export function BatchActionsSettingsPage(props: { projectId: string }) {
+  const { t } = useTranslation();
   const hasAccess = useHasProjectAccess({
     projectId: props.projectId,
     scope: "datasets:CUD",
@@ -12,12 +14,11 @@ export function BatchActionsSettingsPage(props: { projectId: string }) {
 
   return (
     <>
-      <Header title="Batch Actions" />
+      <Header title={t("Batch Actions")} />
       <p className="mb-4 text-sm">
-        Track the status of bulk operations performed on tables, such as adding
-        observations to datasets, deleting traces, and adding items to
-        annotation queues. Actions are processed asynchronously in the
-        background.
+        {t(
+          "Track the status of bulk operations performed on tables, such as adding observations to datasets, deleting traces, and adding items to annotation queues. Actions are processed asynchronously in the background.",
+        )}
       </p>
       {hasAccess ? (
         <SettingsTableCard>
@@ -25,9 +26,9 @@ export function BatchActionsSettingsPage(props: { projectId: string }) {
         </SettingsTableCard>
       ) : (
         <Alert>
-          <AlertTitle>Access Denied</AlertTitle>
+          <AlertTitle>{t("Access Denied")}</AlertTitle>
           <AlertDescription>
-            You do not have permission to view batch actions.
+            {t("You do not have permission to view batch actions.")}
           </AlertDescription>
         </Alert>
       )}

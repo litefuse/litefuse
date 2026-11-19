@@ -16,6 +16,7 @@ import { useJsonViewerLayout } from "./hooks/useJsonViewerLayout";
 import { pathArrayToJsonPath } from "./utils/pathUtils";
 import { debugLog } from "./utils/debug";
 
+import { useTranslation } from "react-i18next";
 interface SimpleJsonViewerProps {
   tree: TreeState | null;
   expansionVersion: number; // Triggers re-render on expansion changes
@@ -53,6 +54,7 @@ export const SimpleJsonViewer = memo(function SimpleJsonViewer({
   totalLineCount,
   commentedPaths,
 }: SimpleJsonViewerProps) {
+  const { t } = useTranslation();
   debugLog("[SimpleJsonViewer] RENDER");
 
   // Get rows from tree
@@ -209,7 +211,7 @@ export const SimpleJsonViewer = memo(function SimpleJsonViewer({
           className="text-muted-foreground flex items-center justify-center p-8"
           style={{ fontSize: theme.fontSize }}
         >
-          No data to display
+          {t("No data to display")}
         </div>
       )}
     </div>

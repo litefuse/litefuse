@@ -17,6 +17,9 @@ import { BillingSettings } from "@/src/features/billing/components/BillingSettin
 import { useHasOrganizationAccess } from "@/src/features/rbac/utils/checkOrganizationAccess";
 import { OrgAuditLogsSettingsPage } from "@/src/features/audit-logs/OrgAuditLogsSettingsPage";
 
+import { useTranslation } from "react-i18next";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
+import { type TFunction } from "i18next";
 // EE features removed from OSS build:
 //  - SSOSettings (multi-tenant SSO config)
 
@@ -28,6 +31,7 @@ type OrganizationSettingsPage = {
 } & ({ content: React.ReactNode } | { href: string });
 
 export function useOrganizationSettingsPages(): OrganizationSettingsPage[] {
+  const { t } = useTranslation();
   const { organization } = useQueryProjectOrOrganization();
   const showOrgApiKeySettings = useHasEntitlement("admin-api");
   const hasBillingAccess = useHasOrganizationAccess({
@@ -46,6 +50,7 @@ export function useOrganizationSettingsPages(): OrganizationSettingsPage[] {
     showOrgApiKeySettings,
     showBillingSettings,
     showAuditLogsSettings,
+    t,
   });
 }
 
@@ -54,23 +59,25 @@ export const getOrganizationSettingsPages = ({
   showOrgApiKeySettings,
   showBillingSettings,
   showAuditLogsSettings,
+  t,
 }: {
   organization: { id: string; name: string; metadata: Record<string, unknown> };
   showOrgApiKeySettings: boolean;
   showBillingSettings: boolean;
   showAuditLogsSettings: boolean;
+  t: TFunction;
 }): OrganizationSettingsPage[] => [
   {
-    title: "General",
+    title: i18nKey("General"),
     slug: "index",
     cmdKKeywords: ["name", "id", "delete"],
     content: (
       <div className="flex flex-col gap-6">
         <RenameOrganization />
         <div>
-          <Header title="Debug Information" />
+          <Header title={t("Debug Information")} />
           <JSONView
-            title="Metadata"
+            title={t("Metadata")}
             json={{
               name: organization.name,
               id: organization.id,
@@ -84,9 +91,10 @@ export const getOrganizationSettingsPages = ({
         <SettingsDangerZone
           items={[
             {
-              title: "Delete this organization",
-              description:
+              title: i18nKey("Delete this organization"),
+              description: i18nKey(
                 "Once you delete an organization, there is no going back. Please be certain.",
+              ),
               button: <DeleteOrganizationButton />,
             },
           ]}
@@ -95,7 +103,7 @@ export const getOrganizationSettingsPages = ({
     ),
   },
   {
-    title: "API Keys",
+    title: i18nKey("API Keys"),
     slug: "api-keys",
     content: (
       <div className="flex flex-col gap-6">
@@ -105,20 +113,20 @@ export const getOrganizationSettingsPages = ({
     show: showOrgApiKeySettings,
   },
   {
-    title: "Billing",
+    title: i18nKey("Billing"),
     slug: "billing",
     cmdKKeywords: ["plan", "pro", "stripe", "subscription"],
     content: <BillingSettings orgId={organization.id} />,
     show: showBillingSettings,
   },
   {
-    title: "Members",
+    title: i18nKey("Members"),
     slug: "members",
     cmdKKeywords: ["invite", "user", "rbac"],
     content: (
       <div className="flex flex-col gap-6">
         <div>
-          <Header title="Organization Members" />
+          <Header title={t("Organization Members")} />
           <MembersTable orgId={organization.id} />
         </div>
         <div>
@@ -128,20 +136,21 @@ export const getOrganizationSettingsPages = ({
     ),
   },
   {
-    title: "Audit Logs",
+    title: i18nKey("Audit Logs"),
     slug: "audit-logs",
     cmdKKeywords: ["trail"],
     content: <OrgAuditLogsSettingsPage orgId={organization.id} />,
     show: showAuditLogsSettings,
   },
   {
-    title: "Projects",
+    title: i18nKey("Projects"),
     slug: "projects",
     href: `/organization/${organization.id}`,
   },
 ];
 
 const OrgSettingsPage = () => {
+  const { t } = useTranslation();
   const organization = useQueryOrganization();
   const router = useRouter();
   const { page } = router.query;
@@ -152,7 +161,7 @@ const OrgSettingsPage = () => {
   return (
     <ContainerPage
       headerProps={{
-        title: "Organization Settings",
+        title: t("Organization Settings"),
       }}
     >
       <PagedSettingsContainer

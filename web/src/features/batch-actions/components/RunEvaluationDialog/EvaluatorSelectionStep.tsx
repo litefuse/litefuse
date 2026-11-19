@@ -7,9 +7,13 @@ import { Badge } from "@/src/components/ui/badge";
 import { Checkbox } from "@/src/components/ui/checkbox";
 import { Input } from "@/src/components/ui/input";
 import { EvaluatorPromptPreview } from "./EvaluatorPromptPreview";
-import { renderPromptPreviewFromObservation } from "./utils";
+import {
+  renderPromptPreviewFromObservation,
+  TEMPLATE_HAS_NO_PROMPT,
+} from "./utils";
 import { Eye, Plus, X } from "lucide-react";
 
+import { useTranslation } from "react-i18next";
 type Evaluator = RouterOutputs["evals"]["jobConfigsByTarget"][number];
 type ObservationPreview = RouterOutputs["observations"]["byId"];
 
@@ -29,6 +33,7 @@ type EvaluatorSelectionStepProps = {
 };
 
 export function EvaluatorSelectionStep(props: EvaluatorSelectionStepProps) {
+  const { t } = useTranslation();
   const {
     eligibleEvaluators,
     selectedEvaluators,
@@ -66,11 +71,11 @@ export function EvaluatorSelectionStep(props: EvaluatorSelectionStepProps) {
 
   const getPromptPreview = (evaluator: Evaluator) => {
     if (isPreviewLoading) {
-      return "Loading preview...";
+      return t("Loading preview...");
     }
 
     if (!previewObservation) {
-      return "Preview unavailable for the current selection.";
+      return t("Preview unavailable for the current selection.");
     }
 
     const mappingResult = observationVariableMappingList.safeParse(
@@ -78,32 +83,39 @@ export function EvaluatorSelectionStep(props: EvaluatorSelectionStepProps) {
     );
 
     if (!mappingResult.success) {
-      return "Evaluator mapping is not valid for observation preview.";
+      return t("Evaluator mapping is not valid for observation preview.");
     }
 
-    return renderPromptPreviewFromObservation({
+    const preview = renderPromptPreviewFromObservation({
       prompt: evaluator.evalTemplate?.prompt,
       variableMapping: mappingResult.data,
       observation: previewObservation,
     });
+    // Only the sentinel is copy; the rest is the rendered prompt.
+    return preview === TEMPLATE_HAS_NO_PROMPT ? t(preview) : preview;
   };
 
   return (
     <div className="flex h-full flex-col gap-2">
       <div className="min-h-0 flex-1">
         {isQueryLoading ? (
-          <p className="text-muted-foreground text-sm">Loading evaluators...</p>
+          <p className="text-muted-foreground text-sm">
+            {t("Loading evaluators...")}
+          </p>
         ) : isQueryError ? (
           <Card>
             <CardContent className="text-destructive p-4 text-sm">
-              Failed to load evaluators: {queryErrorMessage}
+              {t("Failed to load evaluators: {{error}}", {
+                error: queryErrorMessage,
+              })}
             </CardContent>
           </Card>
         ) : eligibleEvaluators.length === 0 ? (
           <Card>
             <CardContent className="text-muted-foreground p-4 text-sm">
-              No observation-scoped evaluators found. Create a new
-              observation-scoped evaluator and it will appear here.
+              {t(
+                "No observation-scoped evaluators found. Create a new observation-scoped evaluator and it will appear here.",
+              )}
             </CardContent>
           </Card>
         ) : (
@@ -112,7 +124,7 @@ export function EvaluatorSelectionStep(props: EvaluatorSelectionStepProps) {
               <Input
                 autoFocus
                 className="pr-10"
-                placeholder="Search evaluators..."
+                placeholder={t("Search evaluators...")}
                 value={evaluatorSearchQuery}
                 onChange={(event) =>
                   onSearchQueryChange(event.currentTarget.value)
@@ -125,7 +137,7 @@ export function EvaluatorSelectionStep(props: EvaluatorSelectionStepProps) {
                   size="icon-sm"
                   className="absolute top-1/2 right-1.5 h-7 w-7 -translate-y-1/2"
                   onClick={() => onSearchQueryChange("")}
-                  aria-label="Clear evaluator search"
+                  aria-label={t("Clear evaluator search")}
                 >
                   <X className="h-3 w-3" />
                 </Button>
@@ -161,7 +173,7 @@ export function EvaluatorSelectionStep(props: EvaluatorSelectionStepProps) {
                   ))
                 ) : (
                   <p className="text-muted-foreground text-xs">
-                    No evaluators selected
+                    {t("No evaluators selected")}
                   </p>
                 )}
               </div>
@@ -170,7 +182,7 @@ export function EvaluatorSelectionStep(props: EvaluatorSelectionStepProps) {
             {filteredEvaluators.length === 0 ? (
               <div className="flex min-h-0 flex-1 items-center justify-center rounded-md border">
                 <p className="text-muted-foreground p-4 text-sm">
-                  No evaluators match your search.
+                  {t("No evaluators match your search.")}
                 </p>
               </div>
             ) : (
@@ -186,8 +198,10 @@ export function EvaluatorSelectionStep(props: EvaluatorSelectionStepProps) {
                           {item.scoreName}
                         </p>
                         <p className="text-muted-foreground truncate text-[11px]">
-                          Template:{" "}
-                          {item.evalTemplate?.name ?? "Deleted template"}
+                          {t("Template: {{name}}", {
+                            name:
+                              item.evalTemplate?.name ?? t("Deleted template"),
+                          })}
                         </p>
                       </div>
                       <EvaluatorPromptPreview
@@ -234,7 +248,7 @@ export function EvaluatorSelectionStep(props: EvaluatorSelectionStepProps) {
         onClick={onCreateEvaluator}
       >
         <Plus className="mr-1 h-4 w-4" />
-        Create new Evaluator
+        {t("Create new Evaluator")}
       </Button>
     </div>
   );

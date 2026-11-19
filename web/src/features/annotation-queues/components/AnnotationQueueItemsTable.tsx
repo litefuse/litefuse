@@ -1,3 +1,4 @@
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 import { DataTable } from "@/src/components/table/data-table";
 import TableLink from "@/src/components/table/table-link";
 import { type LangfuseColumnDef } from "@/src/components/table/types";
@@ -38,6 +39,7 @@ import { useHasProjectAccess } from "@/src/features/rbac/utils/checkProjectAcces
 import { StatusBadge } from "@/src/components/layouts/status-badge";
 import TableIdOrName from "@/src/components/table/table-id";
 
+import { useTranslation } from "react-i18next";
 const QueueItemTableMultiSelectAction = ({
   selectedItemIds,
   projectId,
@@ -47,6 +49,7 @@ const QueueItemTableMultiSelectAction = ({
   projectId: string;
   onDeleteSuccess: () => void;
 }) => {
+  const { t } = useTranslation();
   const utils = api.useUtils();
   const [open, setOpen] = useState(false);
 
@@ -66,7 +69,9 @@ const QueueItemTableMultiSelectAction = ({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button disabled={selectedItemIds.length < 1}>
-            Actions ({selectedItemIds.length} selected)
+            {t("Actions ({{count}} selected)", {
+              count: selectedItemIds.length,
+            })}
             <ChevronDown className="h-5 w-5" />
           </Button>
         </DropdownMenuTrigger>
@@ -78,7 +83,7 @@ const QueueItemTableMultiSelectAction = ({
             }}
           >
             <Trash className="mr-2 h-4 w-4" />
-            <span>Delete</span>
+            <span>{t("Delete")}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -92,11 +97,12 @@ const QueueItemTableMultiSelectAction = ({
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Delete queue items</DialogTitle>
+            <DialogTitle>{t("Delete queue items")}</DialogTitle>
             <DialogDescription>
-              This action cannot be undone and removes the selected annotation
-              queue item(s), but
-              <strong> does not delete associated scores.</strong>
+              {t(
+                "This action cannot be undone and removes the selected annotation queue item(s), but",
+              )}
+              <strong> {t("does not delete associated scores.")}</strong>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="sm:justify-start">
@@ -116,13 +122,20 @@ const QueueItemTableMultiSelectAction = ({
                   });
               }}
             >
-              Delete {selectedItemIds.length} item(s)
+              {t("Delete {{count}} item(s)", { count: selectedItemIds.length })}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
   );
+};
+
+/** The stored value is the API's enum, so the label is looked up here. */
+const QUEUE_OBJECT_TYPE_LABELS: Record<string, string> = {
+  TRACE: i18nKey("Trace"),
+  OBSERVATION: i18nKey("Observation"),
+  SESSION: i18nKey("Session"),
 };
 
 export type QueueItemRowData = {
@@ -164,6 +177,7 @@ export function AnnotationQueueItemsTable({
   projectId: string;
   queueId: string;
 }) {
+  const { t } = useTranslation();
   const [paginationState, setPaginationState] = useQueryParams({
     pageIndex: withDefault(NumberParam, 0),
     pageSize: withDefault(NumberParam, 50),
@@ -202,7 +216,7 @@ export function AnnotationQueueItemsTable({
                   setSelectedRows({});
                 }
               }}
-              aria-label="Select all"
+              aria-label={t("Select all")}
               className="opacity-60"
             />
           </div>
@@ -213,7 +227,7 @@ export function AnnotationQueueItemsTable({
           <Checkbox
             checked={row.getIsSelected()}
             onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Select row"
+            aria-label={t("Select row")}
             className="mt-1 opacity-60 data-[state=checked]:mt-[5px]"
           />
         );
@@ -221,7 +235,7 @@ export function AnnotationQueueItemsTable({
     },
     {
       accessorKey: "id",
-      header: "Id",
+      header: t("Id"),
       id: "id",
       size: 70,
       isFixedPosition: true,
@@ -237,21 +251,22 @@ export function AnnotationQueueItemsTable({
     },
     {
       accessorKey: "objectType",
-      header: "Type",
+      header: t("Type"),
       id: "objectType",
       size: 50,
       cell: ({ row }) => {
         const objectType: QueueItemRowData["objectType"] =
           row.getValue("objectType");
-        return <span className="capitalize">{objectType.toLowerCase()}</span>;
+        return <span>{t(QUEUE_OBJECT_TYPE_LABELS[objectType])}</span>;
       },
     },
     {
       accessorKey: "source",
-      header: "Source",
+      header: t("Source"),
       headerTooltip: {
-        description:
+        description: t(
           "Link to the source trace, observation or session based on which this item was added",
+        ),
       },
       id: "source",
       size: 50,
@@ -291,7 +306,7 @@ export function AnnotationQueueItemsTable({
     },
     {
       accessorKey: "sourceId",
-      header: "Source ID",
+      header: t("Source ID"),
       id: "sourceId",
       size: 50,
       cell: ({ row }) => {
@@ -303,7 +318,7 @@ export function AnnotationQueueItemsTable({
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: t("Status"),
       id: "status",
       size: 60,
       cell: ({ row }) => {
@@ -319,7 +334,7 @@ export function AnnotationQueueItemsTable({
     },
     {
       accessorKey: "completedAt",
-      header: "Completed At",
+      header: t("Completed At"),
       id: "completedAt",
       defaultHidden: true,
       enableHiding: true,
@@ -327,7 +342,7 @@ export function AnnotationQueueItemsTable({
     },
     {
       accessorKey: "annotatorUser",
-      header: "Completed by",
+      header: t("Completed by"),
       id: "annotatorUser",
       enableHiding: true,
       size: 80,
@@ -342,7 +357,7 @@ export function AnnotationQueueItemsTable({
             <Avatar className="h-7 w-7">
               <AvatarImage
                 src={image ?? undefined}
-                alt={userName ?? "User Avatar"}
+                alt={userName ?? t("User Avatar")}
               />
               <AvatarFallback>
                 {userName
@@ -466,8 +481,9 @@ export function AnnotationQueueItemsTable({
                 }
         }
         help={{
-          description:
+          description: t(
             "Add traces and/or observations to your annotation queue to have them annotated by your team across predefined dimensions.",
+          ),
           href: "https://litefuse.ai/docs/evaluation/evaluation-methods/llm-as-a-judge",
         }}
         pagination={{

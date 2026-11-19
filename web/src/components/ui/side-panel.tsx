@@ -15,6 +15,7 @@ import { useIsMobile } from "@/src/hooks/use-mobile";
 import { Separator } from "@/src/components/ui/separator";
 import useSessionStorage from "@/src/components/useSessionStorage";
 
+import { useTranslation } from "react-i18next";
 const SidePanelContext = React.createContext<{
   showPanel: boolean;
   setShowPanel: (value: boolean) => void;
@@ -152,6 +153,7 @@ const SidePanel = ({
 };
 
 const SidePanelHeader = ({ children }: { children: ReactNode }) => {
+  const { t } = useTranslation();
   const context = React.useContext(SidePanelContext);
 
   if (!context) return null;
@@ -175,7 +177,7 @@ const SidePanelHeader = ({ children }: { children: ReactNode }) => {
         variant="ghost"
         size="icon"
         onClick={() => setShowPanel(true)}
-        title="Show details"
+        title={t("Show details")}
       >
         <ChevronLeft className="h-4 w-4" />
       </Button>
@@ -190,7 +192,7 @@ const SidePanelHeader = ({ children }: { children: ReactNode }) => {
           variant="outline"
           size="icon"
           onClick={() => setShowPanel(false)}
-          title="Hide details"
+          title={t("Hide details")}
         >
           <ChevronRight className="h-4 w-4" />
         </Button>

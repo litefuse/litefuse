@@ -9,6 +9,7 @@ import type { FlatJSONRow, JSONTheme, SearchMatch } from "../types";
 import { ExpandButton } from "./ExpandButton";
 import { LineNumber } from "./LineNumber";
 
+import { useTranslation } from "react-i18next";
 export interface JsonRowFixedProps {
   row: FlatJSONRow;
   theme: JSONTheme;
@@ -40,6 +41,7 @@ export function JsonRowFixed({
   className,
   isToggling = false,
 }: JsonRowFixedProps) {
+  const { t } = useTranslation();
   // Calculate background based on search match
   const backgroundColor = isCurrentMatch
     ? theme.searchCurrentBackground
@@ -107,8 +109,8 @@ export function JsonRowFixed({
             }}
             title={
               row.isExpandable
-                ? `${matchCount} match${matchCount === 1 ? "" : "es"} in this section`
-                : `${matchCount} match${matchCount === 1 ? "" : "es"} in this value`
+                ? t("{{count}} match in this section", { count: matchCount })
+                : t("{{count}} match in this value", { count: matchCount })
             }
           >
             {currentMatchIndexInRow !== undefined

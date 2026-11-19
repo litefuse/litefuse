@@ -12,6 +12,7 @@ import { useRouter } from "next/router";
 import useProjectIdFromURL from "@/src/hooks/useProjectIdFromURL";
 import { usePostHogClientCapture } from "@/src/features/posthog-analytics/usePostHogClientCapture";
 
+import { useTranslation } from "react-i18next";
 export function DeletePromptVersion({
   promptVersionId,
   version,
@@ -21,6 +22,7 @@ export function DeletePromptVersion({
   version: number;
   countVersions: number;
 }) {
+  const { t } = useTranslation();
   const capture = usePostHogClientCapture();
   const projectId = useProjectIdFromURL();
   const utils = api.useUtils();
@@ -73,21 +75,21 @@ export function DeletePromptVersion({
           }}
         >
           <Trash className="mr-2 h-4 w-4" />
-          Delete version
+          {t("Delete version")}
         </Button>
       </PopoverTrigger>
       <PopoverContent>
-        <h2 className="text-md mb-3 font-semibold">Please confirm</h2>
+        <h2 className="text-md mb-3 font-semibold">{t("Please confirm")}</h2>
         <p className="mb-3 text-sm">
-          This action deletes the prompt version. Requests of version{" "}
+          {t("This action deletes the prompt version. Requests of version")}{" "}
           <code className="bg-muted relative rounded px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold">
             {version}
           </code>
-          of this prompt will return an error.
+          {t("of this prompt will return an error.")}
         </p>
         {error && (
           <div className="mb-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            <p className="font-medium">Error:</p>
+            <p className="font-medium">{t("Error:")}</p>
             <p className="whitespace-pre-wrap">{error}</p>
           </div>
         )}
@@ -110,7 +112,7 @@ export function DeletePromptVersion({
               });
             }}
           >
-            Delete Prompt Version
+            {t("Delete Prompt Version")}
           </Button>
         </div>
       </PopoverContent>

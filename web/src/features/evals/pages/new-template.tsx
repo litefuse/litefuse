@@ -3,7 +3,9 @@ import { EvalTemplateForm } from "@/src/features/evals/components/template-form"
 import { useHasProjectAccess } from "@/src/features/rbac/utils/checkProjectAccess";
 import { useRouter } from "next/router";
 
+import { useTranslation } from "react-i18next";
 export default function NewTemplatesPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const projectId = router.query.projectId as string;
 
@@ -21,10 +23,10 @@ export default function NewTemplatesPage() {
       withPadding
       scrollable
       headerProps={{
-        title: "Create custom evaluator",
+        title: t("Create custom evaluator"),
         breadcrumb: [
           {
-            name: "Evaluators",
+            name: t("Evaluators"),
             href: `/project/${projectId}/evals/templates`,
           },
         ],

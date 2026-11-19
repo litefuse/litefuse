@@ -4,7 +4,9 @@ import { Trace } from "@/src/components/trace2/Trace";
 import { Skeleton } from "@/src/components/ui/skeleton";
 import { StringParam, useQueryParam, withDefault } from "use-query-params";
 
+import { useTranslation } from "react-i18next";
 export const PeekViewTraceDetail = ({ projectId }: { projectId: string }) => {
+  const { t } = useTranslation();
   const router = useRouter();
   const peekId = router.query.peek as string | undefined;
   const peekProjectId =
@@ -32,10 +34,13 @@ export const PeekViewTraceDetail = ({ projectId }: { projectId: string }) => {
   if (!trace.data) {
     return (
       <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-2 p-8 text-center text-sm">
-        <p className="font-medium">未找到 Trace</p>
+        <p className="font-medium">{t("Trace not found")}</p>
         <p className="text-xs opacity-70">
-          Trace ID：{peekId}
-          <br />该 Trace 可能尚未同步到 Litefuse，或所属项目与当前项目不一致。
+          {t("Trace ID: {{id}}", { id: peekId })}
+          <br />
+          {t(
+            "This trace may not have reached Litefuse yet, or it belongs to a different project.",
+          )}
         </p>
       </div>
     );

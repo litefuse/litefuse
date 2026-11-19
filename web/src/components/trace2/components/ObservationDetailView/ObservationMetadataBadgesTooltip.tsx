@@ -8,6 +8,7 @@ import { Badge } from "@/src/components/ui/badge";
 import { BreakdownTooltip } from "@/src/components/trace2/components/_shared/BreakdownToolTip";
 import { usdFormatter, formatTokenCounts } from "@/src/utils/numbers";
 import { InfoIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function CostBadge({
   totalCost,
@@ -42,6 +43,8 @@ export function UsageBadge({
   totalUsage: number;
   usageDetails: Record<string, number> | undefined;
 }) {
+  const { t } = useTranslation();
+
   // Only show for generation-like observations
   if (!isGenerationLike(type) || !usageDetails) return null;
 
@@ -50,6 +53,7 @@ export function UsageBadge({
     outputUsage,
     totalUsage,
     true,
+    t,
   );
   const hasText = tokenText.length > 0;
 

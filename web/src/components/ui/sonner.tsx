@@ -2,9 +2,11 @@
 
 import { Toaster as Sonner } from "sonner";
 
+import { useTranslation } from "react-i18next";
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
 const Toaster = ({ ...props }: ToasterProps) => {
+  const { t } = useTranslation();
   return (
     <Sonner
       theme={"light"}

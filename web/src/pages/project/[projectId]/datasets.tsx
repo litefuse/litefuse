@@ -6,7 +6,9 @@ import { api } from "@/src/utils/api";
 import { DatasetsOnboarding } from "@/src/components/onboarding/DatasetsOnboarding";
 import { useQueryParam, StringParam } from "use-query-params";
 
+import { useTranslation } from "react-i18next";
 export default function Datasets() {
+  const { t } = useTranslation();
   const router = useRouter();
   const projectId = router.query.projectId as string;
   const [currentFolderPath] = useQueryParam("folder", StringParam);
@@ -30,10 +32,11 @@ export default function Datasets() {
     return (
       <Page
         headerProps={{
-          title: "Datasets",
+          title: t("Datasets"),
           help: {
-            description:
+            description: t(
               "Datasets in Litefuse are a collection of inputs (and expected outputs) of an LLM application. They are used to benchmark new releases before deployment to production. See docs to learn more.",
+            ),
             href: "https://litefuse.ai/docs/evaluation/dataset-runs/datasets",
           },
         }}
@@ -47,10 +50,11 @@ export default function Datasets() {
   return (
     <Page
       headerProps={{
-        title: "Datasets",
+        title: t("Datasets"),
         help: {
-          description:
+          description: t(
             "Datasets in Litefuse are a collection of inputs (and expected outputs) of an LLM application. They are used to benchmark new releases before deployment to production. See docs to learn more.",
+          ),
           href: "https://litefuse.ai/docs/evaluation/dataset-runs/datasets",
         },
         actionButtonsRight: (

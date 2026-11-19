@@ -13,6 +13,10 @@ import { formatChartTimestamp } from "../../lib/chart-formatters";
 import { ScoreChartTooltip } from "../../lib/ScoreChartTooltip";
 import { ScoreChartLegendContent } from "./ScoreChartLegendContent";
 
+import { useTranslation } from "react-i18next";
+
+/** Recharts label placement, not user-facing text. */
+const AXIS_LABEL_POSITION = "insideLeft";
 export interface BooleanTimeSeriesChartProps {
   data: Array<{
     timestamp: Date;
@@ -40,6 +44,7 @@ export function ScoreTimeSeriesBooleanChart({
   timeRange,
   colors,
 }: BooleanTimeSeriesChartProps) {
+  const { t } = useTranslation();
   // Transform categorical data into pivot format for Recharts
   const { chartData, categories } = useMemo(() => {
     // Group by timestamp and collect all categories
@@ -130,7 +135,7 @@ export function ScoreTimeSeriesBooleanChart({
   if (chartData.length === 0 || categories.length === 0) {
     return (
       <div className="text-muted-foreground flex h-[200px] items-center justify-center text-sm">
-        No time series data available
+        {t("No time series data available")}
       </div>
     );
   }
@@ -143,7 +148,7 @@ export function ScoreTimeSeriesBooleanChart({
   if (!hasAnyData) {
     return (
       <div className="text-muted-foreground flex h-[200px] items-center justify-center text-sm">
-        No data points available for the selected time range
+        {t("No data points available for the selected time range")}
       </div>
     );
   }
@@ -164,7 +169,11 @@ export function ScoreTimeSeriesBooleanChart({
           fontSize={12}
           tickLine={false}
           axisLine={false}
-          label={{ value: "Count", angle: -90, position: "insideLeft" }}
+          label={{
+            value: t("Count"),
+            angle: -90,
+            position: AXIS_LABEL_POSITION,
+          }}
           tickFormatter={(value) => value.toLocaleString()}
         />
         {categories.map((category) => {

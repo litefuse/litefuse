@@ -40,7 +40,10 @@ import { EvaluatorForm } from "@/src/features/evals/components/evaluator-form";
 import useLocalStorage from "@/src/components/useLocalStorage";
 import { createBreadcrumbItems } from "@/src/features/folders/utils";
 
+import { useTranslation } from "react-i18next";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 export default function Dataset() {
+  const { t } = useTranslation();
   const router = useRouter();
   const capture = usePostHogClientCapture();
   const projectId = router.query.projectId as string;
@@ -113,10 +116,10 @@ export default function Dataset() {
     void utils.datasets.runsByDatasetId.invalidate();
     void utils.datasets.baseRunDataByDatasetId.invalidate();
     showSuccessToast({
-      title: "Experiment triggered successfully",
-      description: "Waiting for experiment to complete...",
+      title: t("Experiment triggered successfully"),
+      description: t("Waiting for experiment to complete..."),
       link: {
-        text: "View experiment",
+        text: i18nKey(t("View experiment")),
         href: `/project/${projectId}/datasets/${data.datasetId}/compare?runs=${data.runId}`,
       },
     });
@@ -178,7 +181,7 @@ export default function Dataset() {
         title: dataset.data?.name ?? "",
         itemType: "DATASET",
         breadcrumb: [
-          { name: "Datasets", href: `/project/${projectId}/datasets` },
+          { name: t("Datasets"), href: `/project/${projectId}/datasets` },
           ...breadcrumbItems.map((item) => ({
             name: item.name,
             href: `/project/${projectId}/datasets?folder=${encodeURIComponent(item.folderPath)}`,
@@ -205,7 +208,9 @@ export default function Dataset() {
                   onClick={() => capture("dataset_run:new_form_open")}
                 >
                   <FlaskConical className="h-4 w-4" />
-                  <span className="ml-2 hidden md:block">Run experiment</span>
+                  <span className="ml-2 hidden md:block">
+                    {t("Run experiment")}
+                  </span>
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
@@ -296,7 +301,7 @@ export default function Dataset() {
                   <DropdownMenuItem asChild>
                     <Link href={`/project/${projectId}/evals?target=dataset`}>
                       <Bot className="mr-2 ml-1 h-4 w-4" />
-                      Manage Evaluators
+                      {t("Manage Evaluators")}
                     </Link>
                   </DropdownMenuItem>
                 )}
@@ -325,8 +330,9 @@ export default function Dataset() {
           <DialogContent className="max-h-[90vh] max-w-(--breakpoint-md) overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                {selectedEvaluatorData.evaluator.id ? "Edit" : "Configure"}{" "}
-                Evaluator
+                {selectedEvaluatorData.evaluator.id
+                  ? t("Edit Evaluator")
+                  : t("Configure Evaluator")}
               </DialogTitle>
             </DialogHeader>
             <EvaluatorForm

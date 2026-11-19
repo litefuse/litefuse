@@ -6,6 +6,7 @@ import { z } from "zod/v4";
 import { usePostHogClientCapture } from "@/src/features/posthog-analytics/usePostHogClientCapture";
 import { env } from "@/src/env.mjs";
 
+import { useTranslation } from "react-i18next";
 export function RequestResetPasswordEmailButton({
   email,
   className,
@@ -15,6 +16,7 @@ export function RequestResetPasswordEmailButton({
   className?: string;
   variant?: "default" | "secondary";
 }) {
+  const { t } = useTranslation();
   const [isEmailSent, setIsEmailSent] = useState(false);
   const [code, setCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -81,7 +83,7 @@ export function RequestResetPasswordEmailButton({
       {isEmailSent ? (
         <div>
           <label htmlFor="otp-code" className="mb-2 block text-sm font-medium">
-            Check your inbox for the code
+            {t("Check your inbox for the code")}
           </label>
           <Input
             id="otp-code"
@@ -90,7 +92,7 @@ export function RequestResetPasswordEmailButton({
             maxLength={6}
             value={code}
             onChange={(e) => setCode(e.target.value.trim())}
-            placeholder="One time passcode"
+            placeholder={t("One time passcode")}
             className="mb-8 w-full"
           />
           <Button
@@ -100,7 +102,7 @@ export function RequestResetPasswordEmailButton({
             disabled={!code || code.length !== 6}
             variant={variant}
           >
-            Verify code
+            {t("Verify code")}
           </Button>
         </div>
       ) : (
@@ -112,8 +114,8 @@ export function RequestResetPasswordEmailButton({
           variant={variant}
         >
           {session.status === "authenticated"
-            ? "Verify email to change password"
-            : "Request password reset"}
+            ? t("Verify email to change password")
+            : t("Request password reset")}
         </Button>
       )}
       {errorMessage && (

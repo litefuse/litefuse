@@ -19,6 +19,7 @@ import React from "react";
 import { copyTextToClipboard } from "@/src/utils/clipboard";
 import { Button } from "@/src/components/ui/button";
 
+import { useTranslation } from "react-i18next";
 const COLOR_MAP = new Map([
   ["True", "bg-light-green p-0.5 text-dark-green"],
   ["False", "bg-light-red p-0.5 text-dark-red"],
@@ -54,6 +55,7 @@ export const ScoresTableCell = ({
   wrap?: boolean;
   hasMetadata?: boolean;
 }) => {
+  const { t } = useTranslation();
   const projectId = useProjectIdFromURL();
   const [copied, setCopied] = React.useState(false);
 
@@ -89,7 +91,7 @@ export const ScoresTableCell = ({
                   variant="ghost"
                   size="icon-xs"
                   className="hover:bg-accent rounded p-1"
-                  aria-label={copied ? "Copied" : "Copy to clipboard"}
+                  aria-label={copied ? t("Copied") : t("Copy to clipboard")}
                 >
                   {copied ? (
                     <Check className="h-3 w-3" />
@@ -160,6 +162,7 @@ function AggregateScoreMetadataPeek({
   scoreId: string;
   projectId: string;
 }) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = React.useState(false);
 
   const { data: metadata } = api.scores.getScoreMetadataById.useQuery(

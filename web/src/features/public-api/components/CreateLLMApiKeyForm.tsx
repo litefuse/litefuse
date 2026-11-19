@@ -15,14 +15,24 @@ import {
   FormMessage,
 } from "@/src/components/ui/form";
 import { Input } from "@/src/components/ui/input";
+import { Label } from "@/src/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/src/components/ui/select";
 import { Switch } from "@/src/components/ui/switch";
+import {
+  CUSTOM_PRESET_ID,
+  getLlmProviderPreset,
+  groupLlmProviderPresets,
+  inferLlmProviderPresetId,
+  type LlmProviderPreset,
+} from "@/src/features/llm-api-key/providerPresets";
 import { api } from "@/src/utils/api";
 import { cn } from "@/src/utils/tailwind";
 import { usePostHogClientCapture } from "@/src/features/posthog-analytics/usePostHogClientCapture";
@@ -31,6 +41,8 @@ import { type UiCustomization } from "@/src/features/ui-customization/useUiCusto
 import { DialogBody } from "@/src/components/ui/dialog";
 import { env } from "@/src/env.mjs";
 
+import { useTranslation } from "react-i18next";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 const isLangfuseCloud = Boolean(env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION);
 
 const createFormSchema = (mode: "create" | "update") =>
@@ -64,13 +76,14 @@ const createFormSchema = (mode: "create" | "update") =>
         return data.withDefaultModels || data.customModels.length > 0;
       },
       {
-        message:
+        message: i18nKey(
           "At least one custom model name is required when default models are disabled.",
+        ),
         path: ["withDefaultModels"],
       },
     )
     .refine((data) => mode === "update" || data.secretKey, {
-      message: "Secret key is required.",
+      message: i18nKey("Secret key is required."),
       path: ["secretKey"],
     });
 
@@ -89,6 +102,7 @@ export function CreateLLMApiKeyForm({
   mode = "create",
   existingKey,
 }: CreateLLMApiKeyFormProps) {
+  const { t } = useTranslation();
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const utils = api.useUtils();
   const capture = usePostHogClientCapture();
@@ -173,10 +187,44 @@ export function CreateLLMApiKeyForm({
     adapter === LLMAdapter.Anthropic ||
     adapter === LLMAdapter.GoogleAIStudio;
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: "customModels",
   });
+
+  // Which provider preset is currently selected. "custom" keeps the previous
+  // behaviour where the user configures adapter/baseURL/model names by hand.
+  const [presetId, setPresetId] = useState<string>(() =>
+    mode === "update" && existingKey
+      ? inferLlmProviderPresetId({
+          adapter: existingKey.adapter,
+          baseURL: existingKey.baseURL,
+        })
+      : CUSTOM_PRESET_ID,
+  );
+
+  const selectedPreset: LlmProviderPreset | undefined =
+    getLlmProviderPreset(presetId);
+
+  const applyPreset = (nextPresetId: string) => {
+    setPresetId(nextPresetId);
+
+    const preset = getLlmProviderPreset(nextPresetId);
+
+    if (!preset) return;
+
+    form.setValue("adapter", preset.adapter, { shouldValidate: true });
+    form.setValue("provider", preset.provider, { shouldValidate: true });
+    form.setValue("baseURL", preset.baseURL, { shouldValidate: true });
+    form.setValue("withDefaultModels", preset.withDefaultModels);
+    replace(preset.customModels.map((value) => ({ value })));
+
+    // Model names live behind the advanced settings toggle, so open it when the
+    // preset ships an explicit model list.
+    if (!preset.withDefaultModels) {
+      setShowAdvancedSettings(true);
+    }
+  };
 
   const {
     fields: headerFields,
@@ -193,16 +241,18 @@ export function CreateLLMApiKeyForm({
       name="customModels"
       render={() => (
         <FormItem>
-          <FormLabel>Custom models</FormLabel>
+          <FormLabel>{t("Custom models")}</FormLabel>
           <FormDescription>
-            Custom model names accepted by given endpoint.
+            {t("Custom model names accepted by given endpoint.")}
           </FormDescription>
 
           {fields.map((customModel, index) => (
             <span key={customModel.id} className="flex flex-row space-x-2">
               <Input
                 {...form.register(`customModels.${index}.value`)}
-                placeholder={`Custom model name ${index + 1}`}
+                placeholder={t("Custom model name {{index}}", {
+                  index: index + 1,
+                })}
               />
               <Button
                 type="button"
@@ -220,7 +270,7 @@ export function CreateLLMApiKeyForm({
             className="w-full"
           >
             <PlusIcon className="mr-1.5 -ml-0.5 h-5 w-5" aria-hidden="true" />
-            Add custom model name
+            {t("Add custom model name")}
           </Button>
         </FormItem>
       )}
@@ -233,18 +283,19 @@ export function CreateLLMApiKeyForm({
       name="extraHeaders"
       render={() => (
         <FormItem>
-          <FormLabel>Extra Headers</FormLabel>
+          <FormLabel>{t("Extra Headers")}</FormLabel>
           <FormDescription>
-            Optional additional HTTP headers to include with requests towards
-            LLM provider. All header values stored encrypted{" "}
-            {isLangfuseCloud ? "on our servers" : "in your database"}.
+            {t(
+              "Optional additional HTTP headers to include with requests towards LLM provider. All header values stored encrypted",
+            )}{" "}
+            {isLangfuseCloud ? t("on our servers") : t("in your database")}.
           </FormDescription>
 
           {headerFields.map((header, index) => (
             <div key={header.id} className="flex flex-row space-x-2">
               <Input
                 {...form.register(`extraHeaders.${index}.key`)}
-                placeholder="Header name"
+                placeholder={t("Header name")}
               />
               <Input
                 {...form.register(`extraHeaders.${index}.value`)}
@@ -253,7 +304,7 @@ export function CreateLLMApiKeyForm({
                   existingKey?.extraHeaderKeys &&
                   existingKey.extraHeaderKeys[index]
                     ? "***"
-                    : "Header value"
+                    : t("Header value")
                 }
               />
               <Button
@@ -273,7 +324,7 @@ export function CreateLLMApiKeyForm({
             className="w-full"
           >
             <PlusIcon className="mr-1.5 -ml-0.5 h-5 w-5" aria-hidden="true" />
-            Add Header
+            {t("Add Header")}
           </Button>
         </FormItem>
       )}
@@ -297,7 +348,7 @@ export function CreateLLMApiKeyForm({
       ) {
         form.setError("provider", {
           type: "manual",
-          message: "There already exists an API key for this provider.",
+          message: t("There already exists an API key for this provider."),
         });
         return;
       }
@@ -379,20 +430,81 @@ export function CreateLLMApiKeyForm({
         }}
       >
         <DialogBody>
+          {/* Provider preset (create mode only; update mode locks adapter+provider) */}
+          {mode === "create" && (
+            <div className="space-y-2">
+              <Label>Provider preset</Label>
+              <p className="text-muted-foreground text-sm">
+                Prefills the adapter, base URL and model names for a provider.
+                Choose “Custom” to configure the connection entirely by hand.
+              </p>
+              <Select value={presetId} onValueChange={applyPreset}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a provider" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[50vh]">
+                  <SelectItem value={CUSTOM_PRESET_ID}>
+                    Custom (configure manually)
+                  </SelectItem>
+                  {groupLlmProviderPresets().map(
+                    ({ group, label, presets }) => (
+                      <SelectGroup key={group}>
+                        <SelectLabel>{label}</SelectLabel>
+                        {presets.map((preset) => (
+                          <SelectItem key={preset.id} value={preset.id}>
+                            {preset.label}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ),
+                  )}
+                </SelectContent>
+              </Select>
+              {selectedPreset && (
+                <p className="text-muted-foreground text-sm">
+                  {selectedPreset.note ? `${selectedPreset.note} ` : ""}
+                  <a
+                    href={selectedPreset.docsUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline"
+                  >
+                    Docs
+                  </a>
+                  {" · "}
+                  <a
+                    href={selectedPreset.apiKeyUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline"
+                  >
+                    Get an API key
+                  </a>
+                </p>
+              )}
+            </div>
+          )}
+
           {/* LLM adapter */}
           <FormField
             control={form.control}
             name="adapter"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>LLM adapter</FormLabel>
+                <FormLabel>{t("LLM adapter")}</FormLabel>
                 <FormDescription>
-                  Schema that is accepted at that provider endpoint.
+                  {t("Schema that is accepted at that provider endpoint.")}
                 </FormDescription>
                 <Select
-                  defaultValue={field.value}
+                  // Controlled, not defaultValue: selecting a provider preset
+                  // writes the adapter through form.setValue, which an
+                  // uncontrolled Select would not reflect.
+                  value={field.value}
                   onValueChange={(value) => {
                     field.onChange(value as LLMAdapter);
+                    // Manual adapter edits leave the preset context, so fall
+                    // back to "custom" instead of showing a stale preset.
+                    setPresetId(CUSTOM_PRESET_ID);
                     form.setValue(
                       "baseURL",
                       getCustomizedBaseURL(value as LLMAdapter),
@@ -402,7 +514,7 @@ export function CreateLLMApiKeyForm({
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a LLM provider" />
+                      <SelectValue placeholder={t("Select a LLM provider")} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -423,10 +535,11 @@ export function CreateLLMApiKeyForm({
             name="provider"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Provider name</FormLabel>
+                <FormLabel>{t("Provider name")}</FormLabel>
                 <FormDescription>
-                  Key to identify the connection within Litefuse. Cannot contain
-                  colons.
+                  {t(
+                    "Key to identify the connection within Litefuse. Cannot contain colons.",
+                  )}
                 </FormDescription>
                 <FormControl>
                   <Input
@@ -445,11 +558,11 @@ export function CreateLLMApiKeyForm({
             name="secretKey"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>API Key</FormLabel>
+                <FormLabel>{t("API Key")}</FormLabel>
                 <FormDescription>
                   {isLangfuseCloud
-                    ? "Your API keys are stored encrypted on our servers."
-                    : "Your API keys are stored encrypted in your database."}
+                    ? t("Your API keys are stored encrypted on our servers.")
+                    : t("Your API keys are stored encrypted in your database.")}
                 </FormDescription>
                 <FormControl>
                   <Input
@@ -480,8 +593,8 @@ export function CreateLLMApiKeyForm({
               >
                 <span>
                   {showAdvancedSettings
-                    ? "Hide advanced settings"
-                    : "Show advanced settings"}
+                    ? t("Hide advanced settings")
+                    : t("Show advanced settings")}
                 </span>
                 <ChevronDown
                   className={`ml-1 h-4 w-4 transition-transform ${showAdvancedSettings ? "rotate-180" : "rotate-0"}`}
@@ -498,23 +611,27 @@ export function CreateLLMApiKeyForm({
                 name="baseURL"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>API Base URL</FormLabel>
+                    <FormLabel>{t("API Base URL")}</FormLabel>
                     <FormDescription>
-                      Leave blank to use the default base URL for the given LLM
-                      adapter.{" "}
+                      {t(
+                        "Leave blank to use the default base URL for the given LLM adapter.",
+                      )}{" "}
                       {currentAdapter === LLMAdapter.OpenAI && (
-                        <span>OpenAI default: https://api.openai.com/v1</span>
+                        <span>
+                          {t("OpenAI default: https://api.openai.com/v1")}
+                        </span>
                       )}
                       {currentAdapter === LLMAdapter.Anthropic && (
                         <span>
-                          Anthropic default: https://api.anthropic.com
-                          (excluding /v1/messages)
+                          {t(
+                            "Anthropic default: https://api.anthropic.com (excluding /v1/messages)",
+                          )}
                         </span>
                       )}
                     </FormDescription>
 
                     <FormControl>
-                      <Input {...field} placeholder="default" />
+                      <Input {...field} placeholder={t("default")} />
                     </FormControl>
 
                     <FormMessage />
@@ -535,10 +652,11 @@ export function CreateLLMApiKeyForm({
                   <FormItem>
                     <span className="row flex">
                       <span className="flex-1">
-                        <FormLabel>Enable default models</FormLabel>
+                        <FormLabel>{t("Enable default models")}</FormLabel>
                         <FormDescription>
-                          Default models for the selected adapter will be
-                          available in Litefuse features.
+                          {t(
+                            "Default models for the selected adapter will be available in Litefuse features.",
+                          )}
                         </FormDescription>
                       </span>
 
@@ -568,7 +686,7 @@ export function CreateLLMApiKeyForm({
               className="w-full"
               loading={form.formState.isSubmitting}
             >
-              {mode === "create" ? "Create connection" : "Save changes"}
+              {mode === "create" ? t("Create connection") : t("Save changes")}
             </Button>
             {form.formState.errors.root && (
               <FormMessage>{form.formState.errors.root.message}</FormMessage>

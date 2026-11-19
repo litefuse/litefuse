@@ -8,6 +8,7 @@ import { useState } from "react";
 import Decimal from "decimal.js";
 import { getMaxDecimals } from "@/src/features/models/utils";
 
+import { useTranslation } from "react-i18next";
 interface Details {
   [key: string]: number | undefined;
 }
@@ -75,6 +76,7 @@ export const BreakdownTooltip = ({
   pricingTierName,
   onOpenChange,
 }: BreakdownTooltipProps) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const setOpen = (open: boolean) => {
     setIsOpen(open);
@@ -120,17 +122,18 @@ export const BreakdownTooltip = ({
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
               <span className="font-semibold">
-                {isCost ? "Cost breakdown" : "Usage breakdown"}
+                {isCost ? t("Cost breakdown") : t("Usage breakdown")}
               </span>
               {Array.isArray(details) && details.length > 0 && (
                 <span className="text-muted-foreground text-xs italic">
-                  Aggregate across {details.length}{" "}
-                  {details.length === 1 ? "generation" : "generations"}
+                  {t("Aggregate across {{count}} generation", {
+                    count: details.length,
+                  })}
                 </span>
               )}
               {pricingTierName && (
                 <div className="text-muted-foreground flex justify-between text-xs">
-                  <span>Pricing Tier:</span>
+                  <span>{t("Pricing Tier:")}</span>
                   <span className="font-mono">{pricingTierName}</span>
                 </div>
               )}
@@ -138,7 +141,7 @@ export const BreakdownTooltip = ({
 
             {/* Input Section */}
             <Section
-              title={isCost ? "Input cost" : "Input usage"}
+              title={isCost ? t("Input cost") : t("Input usage")}
               details={aggregatedDetails}
               filterFn={(key) => key.includes("input")}
               formatValue={(v) => formatValueWithPadding(v, maxDecimals)}
@@ -146,7 +149,7 @@ export const BreakdownTooltip = ({
 
             {/* Output Section */}
             <Section
-              title={isCost ? "Output cost" : "Output usage"}
+              title={isCost ? t("Output cost") : t("Output usage")}
               details={aggregatedDetails}
               filterFn={(key) => key.includes("output")}
               formatValue={(v) => formatValueWithPadding(v, maxDecimals)}
@@ -162,7 +165,7 @@ export const BreakdownTooltip = ({
             {/* Total */}
             <div className="flex justify-between border-t border-b-4 border-double py-1">
               <span className="text-xs font-semibold">
-                {isCost ? "Total cost" : "Total usage"}
+                {isCost ? t("Total cost") : t("Total usage")}
               </span>
               <span className="font-mono text-xs font-semibold">
                 {formatValueWithPadding(
@@ -224,6 +227,7 @@ interface OtherSectionProps {
 }
 
 const OtherSection = ({ details, isCost, formatValue }: OtherSectionProps) => {
+  const { t } = useTranslation();
   const otherEntries = Object.entries(details)
     .filter(
       ([key]) =>
@@ -243,7 +247,7 @@ const OtherSection = ({ details, isCost, formatValue }: OtherSectionProps) => {
     <div className="flex flex-col gap-2">
       <div className="flex justify-between border-b pb-2">
         <span className="text-xs font-medium">
-          {isCost ? "Other cost" : "Other usage"}
+          {isCost ? t("Other cost") : t("Other usage")}
         </span>
         <span className="text-right font-mono text-xs font-medium">
           {formatValue(otherTotal)}

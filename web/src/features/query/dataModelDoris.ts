@@ -1,6 +1,7 @@
 import { type ViewDeclarationType } from "./types";
 import { tableFor } from "@langfuse/shared/src/server";
 
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 // Hybrid model over the spans deployment (migrations 0037/0039/0040):
 // - tracesViewDoris reads traces_scalar (one row per trace — the root span's
 //   scalar fields, written by the OTel-lane job) for its base and scalar
@@ -56,75 +57,79 @@ const traceMetricsAggRelationSql = (projectId: string) => `(
 
 export const tracesViewDoris = (projectId: string): ViewDeclarationType => ({
   name: "traces",
-  description:
+  description: i18nKey(
     "Traces represent a group of observations and typically represent a single request or operation.",
+  ),
   dimensions: {
     id: {
       sql: "id",
       alias: "id",
       type: "string",
-      description: "Unique identifier of the trace.",
+      description: i18nKey("Unique identifier of the trace."),
     },
     name: {
       sql: "coalesce(traces.name, '')",
       alias: "name",
       type: "string",
-      description:
+      description: i18nKey(
         "Name assigned to the trace (often the endpoint or operation).",
+      ),
     },
     tags: {
       sql: "tags",
       type: "string[]",
-      description: "User-defined tags associated with the trace.",
+      description: i18nKey("User-defined tags associated with the trace."),
     },
     userId: {
       sql: "coalesce(traces.user_id, '')",
       alias: "userId",
       type: "string",
-      description: "Identifier of the user triggering the trace.",
+      description: i18nKey("Identifier of the user triggering the trace."),
     },
     sessionId: {
       sql: "coalesce(traces.session_id, '')",
       alias: "sessionId",
       type: "string",
-      description: "Identifier of the session triggering the trace.",
+      description: i18nKey("Identifier of the session triggering the trace."),
     },
     release: {
       sql: "coalesce(traces.`release`, '')",
       alias: "`release`",
       type: "string",
-      description: "Release version of the trace.",
+      description: i18nKey("Release version of the trace."),
     },
     version: {
       sql: "coalesce(traces.version, '')",
       alias: "version",
       type: "string",
-      description: "Version of the trace.",
+      description: i18nKey("Version of the trace."),
     },
     environment: {
       sql: "environment",
       type: "string",
-      description: "Deployment environment (e.g., production, staging).",
+      description: i18nKey(
+        "Deployment environment (e.g., production, staging).",
+      ),
     },
     timestampMonth: {
       sql: "date_format(traces.start_time, '%Y-%m')",
       alias: "timestampMonth",
       type: "string",
-      description: "Month of the trace timestamp in YYYY-MM format.",
+      description: i18nKey("Month of the trace timestamp in YYYY-MM format."),
     },
     observationName: {
       sql: "name",
       alias: "observationName",
       type: "string",
       relationTable: "observations",
-      description: "Name of the observation.",
+      description: i18nKey("Name of the observation."),
     },
     scoreName: {
       sql: "name",
       alias: "scoreName",
       type: "string",
       relationTable: "scores",
-      description: "Name of the score.",
+      description: i18nKey("Name of the score."),
     },
   },
   measures: {
@@ -132,7 +137,7 @@ export const tracesViewDoris = (projectId: string): ViewDeclarationType => ({
       sql: "count(*)",
       alias: "count",
       type: "integer",
-      description: "Total number of traces.",
+      description: i18nKey("Total number of traces."),
       unit: "traces",
     },
     observationsCount: {
@@ -144,7 +149,7 @@ export const tracesViewDoris = (projectId: string): ViewDeclarationType => ({
       alias: "observationsCount",
       type: "integer",
       relationTable: "observations_agg",
-      description: "Number of observations within the trace.",
+      description: i18nKey("Number of observations within the trace."),
       unit: "observations",
     },
     scoresCount: {
@@ -152,7 +157,7 @@ export const tracesViewDoris = (projectId: string): ViewDeclarationType => ({
       alias: "scoresCount",
       type: "integer",
       relationTable: "scores",
-      description: "Unique scores attached to the trace.",
+      description: i18nKey("Unique scores attached to the trace."),
       unit: "scores",
     },
     latency: {
@@ -163,8 +168,9 @@ export const tracesViewDoris = (projectId: string): ViewDeclarationType => ({
       alias: "latency",
       type: "integer",
       relationTable: "observations_agg",
-      description:
+      description: i18nKey(
         "Elapsed time between the first and last observation inside the trace.",
+      ),
       unit: "millisecond",
     },
     totalTokens: {
@@ -172,7 +178,9 @@ export const tracesViewDoris = (projectId: string): ViewDeclarationType => ({
       alias: "totalTokens",
       type: "integer",
       relationTable: "observations_agg",
-      description: "Sum of tokens consumed by all observations in the trace.",
+      description: i18nKey(
+        "Sum of tokens consumed by all observations in the trace.",
+      ),
       unit: "tokens",
     },
     totalCost: {
@@ -180,21 +188,23 @@ export const tracesViewDoris = (projectId: string): ViewDeclarationType => ({
       alias: "totalCost",
       type: "decimal",
       relationTable: "observations_agg",
-      description: "Total cost accumulated across observations in the trace.",
+      description: i18nKey(
+        "Total cost accumulated across observations in the trace.",
+      ),
       unit: "USD",
     },
     uniqueUserIds: {
       sql: "count(distinct coalesce(traces.user_id, ''))",
       alias: "uniqueUserIds",
       type: "integer",
-      description: "Count of unique userIds.",
+      description: i18nKey("Count of unique userIds."),
       unit: "users",
     },
     uniqueSessionIds: {
       sql: "count(distinct coalesce(traces.session_id, ''))",
       alias: "uniqueSessionIds",
       type: "integer",
-      description: "Count of unique sessionIds.",
+      description: i18nKey("Count of unique sessionIds."),
       unit: "sessions",
     },
   },
@@ -230,62 +240,71 @@ export const tracesViewDoris = (projectId: string): ViewDeclarationType => ({
   baseCte: `${tableFor(projectId, "traces_scalar")} traces`,
 });
 
-export const observationsViewDoris = (projectId: string): ViewDeclarationType => ({
+export const observationsViewDoris = (
+  projectId: string,
+): ViewDeclarationType => ({
   name: "observations",
-  description:
+  description: i18nKey(
     "Observations represent individual requests or operations within a trace. They are grouped into Spans, Generations, and Events.",
+  ),
   dimensions: {
     id: {
       sql: "span_id",
       alias: "id",
       type: "string",
-      description: "Unique identifier for the observation.",
+      description: i18nKey("Unique identifier for the observation."),
     },
     traceId: {
       sql: "trace_id",
       alias: "traceId",
       type: "string",
-      description: "Identifier linking the observation to its parent trace.",
+      description: i18nKey(
+        "Identifier linking the observation to its parent trace.",
+      ),
     },
     traceName: {
       sql: "coalesce(traces.name, '')",
       alias: "traceName",
       type: "string",
       relationTable: "traces",
-      description: "Name of the parent trace.",
+      description: i18nKey("Name of the parent trace."),
     },
     environment: {
       sql: "environment",
       type: "string",
-      description: "Deployment environment (e.g., production, staging).",
+      description: i18nKey(
+        "Deployment environment (e.g., production, staging).",
+      ),
     },
     parentObservationId: {
       sql: "parent_span_id",
       alias: "parentObservationId",
       type: "string",
-      description:
+      description: i18nKey(
         "Identifier of the parent observation. Empty for the root span.",
+      ),
     },
     type: {
       sql: "`type`",
       type: "string",
-      description:
+      description: i18nKey(
         "Type of the observation. Can be a SPAN, GENERATION, or EVENT.",
+      ),
     },
     name: {
       sql: "name",
       type: "string",
-      description: "Name of the observation.",
+      description: i18nKey("Name of the observation."),
     },
     level: {
       sql: "level",
       type: "string",
-      description: "Logging level of the observation.",
+      description: i18nKey("Logging level of the observation."),
     },
     version: {
       sql: "version",
       type: "string",
-      description: "Version of the observation.",
+      description: i18nKey("Version of the observation."),
     },
     tags: {
       // Trace-level fields are NOT denormalized onto child spans under OTel
@@ -297,87 +316,100 @@ export const observationsViewDoris = (projectId: string): ViewDeclarationType =>
       alias: "tags",
       type: "string[]",
       relationTable: "traces",
-      description: "User-defined tags associated with the parent trace.",
+      description: i18nKey(
+        "User-defined tags associated with the parent trace.",
+      ),
     },
     providedModelName: {
       sql: "provided_model_name",
       alias: "providedModelName",
       type: "string",
-      description: "Name of the model used for the observation.",
+      description: i18nKey("Name of the model used for the observation."),
     },
     promptName: {
       sql: "prompt_name",
       alias: "promptName",
       type: "string",
-      description: "Name of the prompt used for the observation.",
+      description: i18nKey("Name of the prompt used for the observation."),
     },
     promptVersion: {
       sql: "prompt_version",
       alias: "promptVersion",
       type: "string",
-      description: "Version of the prompt used for the observation.",
+      description: i18nKey("Version of the prompt used for the observation."),
     },
     userId: {
       sql: "coalesce(traces.user_id, '')",
       alias: "userId",
       type: "string",
       relationTable: "traces",
-      description: "Identifier of the user triggering the parent trace.",
+      description: i18nKey(
+        "Identifier of the user triggering the parent trace.",
+      ),
     },
     sessionId: {
       sql: "coalesce(traces.session_id, '')",
       alias: "sessionId",
       type: "string",
       relationTable: "traces",
-      description: "Identifier of the session triggering the parent trace.",
+      description: i18nKey(
+        "Identifier of the session triggering the parent trace.",
+      ),
     },
     traceRelease: {
       sql: "coalesce(traces.`release`, '')",
       alias: "traceRelease",
       type: "string",
       relationTable: "traces",
-      description: "Release version of the parent trace.",
+      description: i18nKey("Release version of the parent trace."),
     },
     traceVersion: {
       sql: "coalesce(traces.version, '')",
       alias: "traceVersion",
       type: "string",
       relationTable: "traces",
-      description: "Version of the parent trace.",
+      description: i18nKey("Version of the parent trace."),
     },
     scoreName: {
       sql: "name",
       alias: "scoreName",
       type: "string",
       relationTable: "scores",
-      description: "Name of the score.",
+      description: i18nKey("Name of the score."),
     },
     startTimeMonth: {
       sql: "date_format(start_time, '%Y-%m')",
       alias: "startTimeMonth",
       type: "string",
-      description: "Month of the observation start_time in YYYY-MM format.",
+      description: i18nKey(
+        "Month of the observation start_time in YYYY-MM format.",
+      ),
     },
     toolNames: {
       sql: "map_keys(tool_definitions)",
       alias: "toolNames",
       type: "string[]",
       explodeArray: true,
-      description: "Names of available tools defined for the observation.",
+      description: i18nKey(
+        "Names of available tools defined for the observation.",
+      ),
     },
     calledToolNames: {
       sql: "tool_call_names",
       alias: "calledToolNames",
       type: "string[]",
       explodeArray: true,
-      description: "Names of tools that were called by the observation.",
+      description: i18nKey(
+        "Names of tools that were called by the observation.",
+      ),
     },
     costType: {
       sql: "cost_key",
       alias: "costType",
       type: "string",
-      description:
+      description: i18nKey(
         "Cost category key from cost_details map (e.g. 'input', 'output', 'total').",
+      ),
       pairExpand: {
         valuesSql: "cost_details",
         valueAlias: "cost_value",
@@ -387,8 +419,9 @@ export const observationsViewDoris = (projectId: string): ViewDeclarationType =>
       sql: "usage_key",
       alias: "usageType",
       type: "string",
-      description:
+      description: i18nKey(
         "Token usage category key from usage_details map (e.g. 'input', 'output', 'total').",
+      ),
       pairExpand: {
         valuesSql: "usage_details",
         valueAlias: "usage_value",
@@ -400,44 +433,46 @@ export const observationsViewDoris = (projectId: string): ViewDeclarationType =>
       sql: "count(*)",
       alias: "count",
       type: "integer",
-      description: "Total number of observations.",
+      description: i18nKey("Total number of observations."),
       unit: "observations",
     },
     latency: {
       sql: "MILLISECONDS_DIFF(any_value(observations.end_time), any_value(observations.start_time))",
       alias: "latency",
       type: "integer",
-      description:
+      description: i18nKey(
         "Latency of an individual observation (start time to end time).",
+      ),
       unit: "millisecond",
     },
     streamingLatency: {
       sql: "if(any_value(observations.completion_start_time) is null, CAST(NULL AS Bigint), MILLISECONDS_DIFF(any_value(observations.end_time), any_value(observations.completion_start_time)))",
       alias: "streamingLatency",
       type: "integer",
-      description:
+      description: i18nKey(
         "Latency of the generation step (completion start time to end time).",
+      ),
       unit: "millisecond",
     },
     inputTokens: {
       sql: "sum(observations.input_tokens_calculated)",
       alias: "inputTokens",
       type: "integer",
-      description: "Sum of input tokens consumed by the observation.",
+      description: i18nKey("Sum of input tokens consumed by the observation."),
       unit: "tokens",
     },
     outputTokens: {
       sql: "sum(observations.output_tokens_calculated)",
       alias: "outputTokens",
       type: "integer",
-      description: "Sum of output tokens produced by the observation.",
+      description: i18nKey("Sum of output tokens produced by the observation."),
       unit: "tokens",
     },
     totalTokens: {
       sql: "sum(observations.total_tokens_calculated)",
       alias: "totalTokens",
       type: "integer",
-      description: "Sum of tokens consumed by the observation.",
+      description: i18nKey("Sum of tokens consumed by the observation."),
       unit: "tokens",
     },
     outputTokensPerSecond: {
@@ -447,37 +482,39 @@ export const observationsViewDoris = (projectId: string): ViewDeclarationType =>
       sql: "sum(observations.output_tokens_calculated) / nullIf(SECONDS_DIFF(any_value(observations.end_time), any_value(observations.completion_start_time)), 0)",
       alias: "outputTokensPerSecond",
       type: "decimal",
-      description:
+      description: i18nKey(
         "Average number of output tokens produced per second between completion start time and span end time.",
+      ),
       unit: "tokens/s",
     },
     tokensPerSecond: {
       sql: "sum(observations.total_tokens_calculated) / SECONDS_DIFF(any_value(observations.end_time), any_value(observations.start_time))",
       alias: "tokensPerSecond",
       type: "decimal",
-      description:
+      description: i18nKey(
         "Average number of tokens consumed per second by the observation.",
+      ),
       unit: "tokens/s",
     },
     inputCost: {
       sql: "sum(observations.input_cost_calculated)",
       alias: "inputCost",
       type: "decimal",
-      description: "Sum of input cost incurred by the observation.",
+      description: i18nKey("Sum of input cost incurred by the observation."),
       unit: "USD",
     },
     outputCost: {
       sql: "sum(observations.output_cost_calculated)",
       alias: "outputCost",
       type: "decimal",
-      description: "Sum of output cost incurred by the observation.",
+      description: i18nKey("Sum of output cost incurred by the observation."),
       unit: "USD",
     },
     totalCost: {
       sql: "sum(observations.total_cost)",
       alias: "totalCost",
       type: "decimal",
-      description: "Total cost of the observation.",
+      description: i18nKey("Total cost of the observation."),
       unit: "USD",
     },
     timeToFirstToken: {
@@ -485,7 +522,7 @@ export const observationsViewDoris = (projectId: string): ViewDeclarationType =>
       sql: "if(isNull(any_value(observations.completion_start_time)), CAST(NULL AS Bigint), milliseconds_diff(any_value(observations.completion_start_time),any_value(observations.start_time)))",
       alias: "timeToFirstToken",
       type: "integer",
-      description: "Time to first token for the observation.",
+      description: i18nKey("Time to first token for the observation."),
       unit: "millisecond",
     },
     countScores: {
@@ -493,21 +530,21 @@ export const observationsViewDoris = (projectId: string): ViewDeclarationType =>
       alias: "countScores",
       type: "integer",
       relationTable: "scores",
-      description: "Unique scores attached to the observation.",
+      description: i18nKey("Unique scores attached to the observation."),
       unit: "scores",
     },
     toolDefinitions: {
       sql: "ifNull(size(observations.tool_definitions), 0)",
       alias: "toolDefinitions",
       type: "integer",
-      description: "Number of available tools per observation.",
+      description: i18nKey("Number of available tools per observation."),
       unit: "tools",
     },
     toolCalls: {
       sql: "ifNull(size(observations.tool_calls), 0)",
       alias: "toolCalls",
       type: "integer",
-      description: "Number of tool calls per observation.",
+      description: i18nKey("Number of tool calls per observation."),
       unit: "calls",
     },
     costByType: {
@@ -516,8 +553,9 @@ export const observationsViewDoris = (projectId: string): ViewDeclarationType =>
       type: "decimal",
       unit: "USD",
       requiresDimension: "costType",
-      description:
+      description: i18nKey(
         "Sum of cost per category. The costType dimension is auto-included to emit the LATERAL VIEW that brings cost_value into scope.",
+      ),
     },
     usageByType: {
       sql: "usage_value",
@@ -525,8 +563,9 @@ export const observationsViewDoris = (projectId: string): ViewDeclarationType =>
       type: "integer",
       unit: "tokens",
       requiresDimension: "usageType",
-      description:
+      description: i18nKey(
         "Sum of token usage per category. The usageType dimension is auto-included to emit the LATERAL VIEW that brings usage_value into scope.",
+      ),
     },
   },
   tableRelations: {
@@ -558,123 +597,131 @@ export const scoreBaseDimensionsDoris = {
   id: {
     sql: "id",
     type: "string",
-    description: "Unique identifier of the score entry.",
+    description: i18nKey("Unique identifier of the score entry."),
   },
   environment: {
     sql: "environment",
     type: "string",
-    description: "Deployment environment (e.g., production, staging).",
+    description: i18nKey("Deployment environment (e.g., production, staging)."),
   },
   name: {
     sql: "name",
     type: "string",
-    description: "Name of the score (e.g., accuracy, toxicity).",
+    description: i18nKey("Name of the score (e.g., accuracy, toxicity)."),
   },
   source: {
     sql: "source",
     type: "string",
-    description: "Origin of the score. Can be API, ANNOTATION, or EVAL.",
+    description: i18nKey(
+      "Origin of the score. Can be API, ANNOTATION, or EVAL.",
+    ),
   },
   dataType: {
     sql: "data_type",
     alias: "dataType",
     type: "string",
-    description:
+    description: i18nKey(
       "Internal data type of the score (NUMERIC, BOOLEAN, CATEGORICAL).",
+    ),
   },
   traceId: {
     sql: "trace_id",
     alias: "traceId",
     type: "string",
-    description: "Identifier of the parent trace.",
+    description: i18nKey("Identifier of the parent trace."),
   },
   traceName: {
     sql: "coalesce(traces.name, '')",
     alias: "traceName",
     type: "string",
     relationTable: "traces",
-    description: "Name of the parent trace.",
+    description: i18nKey("Name of the parent trace."),
   },
   tags: {
     sql: "tags",
     type: "string[]",
     relationTable: "traces",
-    description: "User-defined tags associated with the trace.",
+    description: i18nKey("User-defined tags associated with the trace."),
   },
   userId: {
     sql: "coalesce(traces.user_id, '')",
     alias: "userId",
     type: "string",
     relationTable: "traces",
-    description: "Identifier of the user triggering the trace.",
+    description: i18nKey("Identifier of the user triggering the trace."),
   },
   sessionId: {
     sql: "coalesce(traces.session_id, '')",
     alias: "sessionId",
     type: "string",
     relationTable: "traces",
-    description: "Identifier of the session triggering the trace.",
+    description: i18nKey("Identifier of the session triggering the trace."),
   },
   traceRelease: {
     sql: "coalesce(traces.`release`, '')",
     alias: "traceRelease",
     type: "string",
     relationTable: "traces",
-    description: "Release version of the parent trace.",
+    description: i18nKey("Release version of the parent trace."),
   },
   traceVersion: {
     sql: "coalesce(traces.version, '')",
     alias: "traceVersion",
     type: "string",
     relationTable: "traces",
-    description: "Version of the parent trace.",
+    description: i18nKey("Version of the parent trace."),
   },
   observationId: {
     sql: "observation_id",
     alias: "observationId",
     type: "string",
-    description: "Identifier of the observation associated with the score.",
+    description: i18nKey(
+      "Identifier of the observation associated with the score.",
+    ),
   },
   observationName: {
     sql: "name",
     alias: "observationName",
     type: "string",
     relationTable: "observations",
-    description: "Name of the observation associated with the score.",
+    description: i18nKey("Name of the observation associated with the score."),
   },
   observationModelName: {
     sql: "provided_model_name",
     alias: "observationModelName",
     type: "string",
     relationTable: "observations",
-    description: "Name of the model used for the observation.",
+    description: i18nKey("Name of the model used for the observation."),
   },
   observationPromptName: {
     sql: "prompt_name",
     alias: "observationPromptName",
     type: "string",
     relationTable: "observations",
-    description: "Name of the prompt used for the observation.",
+    description: i18nKey("Name of the prompt used for the observation."),
   },
   observationPromptVersion: {
     sql: "prompt_version",
     alias: "observationPromptVersion",
     type: "string",
     relationTable: "observations",
-    description: "Version of the prompt used for the observation.",
+    description: i18nKey("Version of the prompt used for the observation."),
   },
   configId: {
     sql: "config_id",
     alias: "configId",
     type: "string",
-    description: "Identifier of the config associated with the score.",
+    description: i18nKey("Identifier of the config associated with the score."),
   },
 };
 
-export const scoresNumericViewDoris = (projectId: string): ViewDeclarationType => ({
+export const scoresNumericViewDoris = (
+  projectId: string,
+): ViewDeclarationType => ({
   name: "scores_numeric",
-  description:
+  description: i18nKey(
     "Scores are flexible objects that are used for evaluations. This view contains numeric scores.",
+  ),
   dimensions: {
     ...scoreBaseDimensionsDoris,
   },
@@ -683,14 +730,14 @@ export const scoresNumericViewDoris = (projectId: string): ViewDeclarationType =
       sql: "count(*)",
       alias: "count",
       type: "integer",
-      description: "Total number of scores.",
+      description: i18nKey("Total number of scores."),
       unit: "scores",
     },
     value: {
       sql: "any_value(`value`)",
       alias: "value",
       type: "number",
-      description: "Value of the score.",
+      description: i18nKey("Value of the score."),
     },
   },
   tableRelations: {
@@ -720,17 +767,20 @@ export const scoresNumericViewDoris = (projectId: string): ViewDeclarationType =
   baseCte: `scores scores_numeric`,
 });
 
-export const scoresCategoricalViewDoris = (projectId: string): ViewDeclarationType => ({
+export const scoresCategoricalViewDoris = (
+  projectId: string,
+): ViewDeclarationType => ({
   name: "scores_categorical",
-  description:
+  description: i18nKey(
     "Scores are flexible objects that are used for evaluations. This view contains categorical scores.",
+  ),
   dimensions: {
     ...scoreBaseDimensionsDoris,
     stringValue: {
       sql: "string_value",
       alias: "stringValue",
       type: "string",
-      description: "Value of the score.",
+      description: i18nKey("Value of the score."),
     },
   },
   measures: {
@@ -738,7 +788,7 @@ export const scoresCategoricalViewDoris = (projectId: string): ViewDeclarationTy
       sql: "count(*)",
       alias: "count",
       type: "integer",
-      description: "Total number of scores.",
+      description: i18nKey("Total number of scores."),
       unit: "scores",
     },
   },

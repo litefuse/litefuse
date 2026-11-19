@@ -9,6 +9,7 @@
 import { ChevronRight, ChevronDown, Loader2 } from "lucide-react";
 import { type JSONTheme } from "../types";
 
+import { useTranslation } from "react-i18next";
 interface ExpandButtonProps {
   isExpanded: boolean;
   isExpandable: boolean;
@@ -24,6 +25,7 @@ export function ExpandButton({
   theme,
   isToggling = false,
 }: ExpandButtonProps) {
+  const { t } = useTranslation();
   if (!isExpandable) {
     // Empty placeholder to maintain alignment
     return <span className="inline-block w-4" />;
@@ -51,7 +53,11 @@ export function ExpandButton({
         opacity: isToggling ? 0.5 : 0.3,
       }}
       aria-label={
-        isToggling ? "Processing..." : isExpanded ? "Collapse" : "Expand"
+        isToggling
+          ? t("Processing...")
+          : isExpanded
+            ? t("Collapse")
+            : t("Expand")
       }
       disabled={isToggling}
     >

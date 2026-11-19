@@ -14,6 +14,7 @@ import {
 import { isSchemaField } from "@/src/features/datasets/lib/csv/helpers";
 import { Switch } from "@/src/components/ui/switch";
 import { Label } from "@/src/components/ui/label";
+import { useTranslation } from "react-i18next";
 import {
   Tooltip,
   TooltipContent,
@@ -175,11 +176,12 @@ export function MappingCard({
   onToggleDirectMappingForInput,
   onToggleDirectMappingForExpectedOutput,
 }: MappingCardProps) {
+  const { t } = useTranslation();
   return (
     <Card className="flex h-full flex-col overflow-hidden">
       <CardHeader className="shrink-0 border-b p-3">
         <CardTitle className="text-base font-semibold">
-          Map to Dataset Items
+          {t("Map to Dataset Items")}
         </CardTitle>
       </CardHeader>
       <CardContent className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3">
@@ -187,7 +189,7 @@ export function MappingCard({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h3 className="text-muted-foreground text-sm font-semibold tracking-wide">
-              Input
+              {t("Input")}
             </h3>
             {inputSchemaKeys && inputSchemaKeys.length > 0 && (
               <div className="flex items-center gap-1.5">
@@ -201,7 +203,7 @@ export function MappingCard({
                   htmlFor="direct-mapping-input"
                   className="text-muted-foreground cursor-pointer text-xs font-normal"
                 >
-                  Direct Mapping
+                  {t("Direct Mapping")}
                 </Label>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -209,8 +211,8 @@ export function MappingCard({
                   </TooltipTrigger>
                   <TooltipContent className="max-w-[250px]" side="left">
                     {useDirectMappingForInput
-                      ? "Map entire CSV columns directly to the input field."
-                      : "Map CSV columns to individual schema fields."}
+                      ? t("Map entire CSV columns directly to the input field.")
+                      : t("Map CSV columns to individual schema fields.")}
                   </TooltipContent>
                 </Tooltip>
               </div>
@@ -243,7 +245,7 @@ export function MappingCard({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h3 className="text-muted-foreground text-sm font-semibold tracking-wide">
-              Expected Output
+              {t("Expected Output")}
             </h3>
             {expectedOutputSchemaKeys &&
               expectedOutputSchemaKeys.length > 0 && (
@@ -258,7 +260,7 @@ export function MappingCard({
                     htmlFor="direct-mapping-expected"
                     className="text-muted-foreground cursor-pointer text-xs font-normal"
                   >
-                    Direct mapping
+                    {t("Direct mapping")}
                   </Label>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -266,8 +268,10 @@ export function MappingCard({
                     </TooltipTrigger>
                     <TooltipContent className="max-w-[250px]" side="left">
                       {useDirectMappingForExpectedOutput
-                        ? "Map entire CSV columns directly to the expected output field."
-                        : "Map CSV columns to individual schema fields."}
+                        ? t(
+                            "Map entire CSV columns directly to the expected output field.",
+                          )
+                        : t("Map CSV columns to individual schema fields.")}
                     </TooltipContent>
                   </Tooltip>
                 </div>
@@ -299,7 +303,7 @@ export function MappingCard({
         {/* METADATA SECTION */}
         <div className="space-y-2">
           <h3 className="text-muted-foreground text-sm font-semibold tracking-wide">
-            Metadata
+            {t("Metadata")}
           </h3>
           <FreeformDropZone
             id="metadata"

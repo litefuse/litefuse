@@ -32,6 +32,7 @@ import {
 import ContainerPage from "@/src/components/layouts/container-page";
 import { type User } from "next-auth";
 
+import { useTranslation } from "react-i18next";
 const OrganizationProjectTiles = ({
   org,
   search,
@@ -39,6 +40,7 @@ const OrganizationProjectTiles = ({
   org: User["organizations"][number];
   search?: string;
 }) => {
+  const { t } = useTranslation();
   return (
     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
       {org.projects
@@ -55,7 +57,9 @@ const OrganizationProjectTiles = ({
             {!project.deletedAt ? (
               <CardFooter className="gap-2">
                 <Button asChild variant="secondary">
-                  <Link href={`/project/${project.id}`}>Go to project</Link>
+                  <Link href={`/project/${project.id}`}>
+                    {t("Go to project")}
+                  </Link>
                 </Button>
                 <Button asChild variant="ghost">
                   <Link href={`/project/${project.id}/settings`}>
@@ -65,7 +69,9 @@ const OrganizationProjectTiles = ({
               </CardFooter>
             ) : (
               <CardContent>
-                <CardDescription>Project is being deleted</CardDescription>
+                <CardDescription>
+                  {t("Project is being deleted")}
+                </CardDescription>
               </CardContent>
             )}
           </Card>
@@ -75,19 +81,21 @@ const OrganizationProjectTiles = ({
 };
 
 const DemoOrganizationTile = () => {
+  const { t } = useTranslation();
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Try Litefuse Demo</CardTitle>
+        <CardTitle>{t("Try Litefuse Demo")}</CardTitle>
       </CardHeader>
       <CardContent>
-        We have built a Q&A chatbot that answers questions based on the Litefuse
-        Docs. Interact with it to see traces in Litefuse.
+        {t(
+          "We have built a Q&A chatbot that answers questions based on the Litefuse Docs. Interact with it to see traces in Litefuse.",
+        )}
       </CardContent>
       <CardFooter>
         <Button asChild variant="secondary">
           <Link href={`/project/${env.NEXT_PUBLIC_DEMO_PROJECT_ID}/traces`}>
-            View Demo Project
+            {t("View Demo Project")}
           </Link>
         </Button>
       </CardFooter>
@@ -102,6 +110,7 @@ const OrganizationActionButtons = ({
   orgId: string;
   primaryButtonVariant?: "default" | "secondary";
 }) => {
+  const { t } = useTranslation();
   const membersViewAccess = useHasOrganizationAccess({
     organizationId: orgId,
     scope: "organizationMembers:read",
@@ -129,13 +138,13 @@ const OrganizationActionButtons = ({
         <Button asChild variant={primaryButtonVariant}>
           <Link href={createProjectRoute(orgId)}>
             <PlusIcon className="mr-2 h-4 w-4" aria-hidden="true" />
-            New project
+            {t("New project")}
           </Link>
         </Button>
       ) : (
         <Button disabled variant={primaryButtonVariant}>
           <LockIcon className="mr-2 h-4 w-4" aria-hidden="true" />
-          New project
+          {t("New project")}
         </Button>
       )}
     </>
@@ -149,6 +158,7 @@ const SingleOrganizationPage = ({
   orgId: string;
   search?: string;
 }) => {
+  const { t } = useTranslation();
   const session = useSession();
   const org = session.data?.user?.organizations.find((o) => o.id === orgId);
 
@@ -164,7 +174,7 @@ const SingleOrganizationPage = ({
     return (
       <ContainerPage
         headerProps={{
-          title: "Demo Organization",
+          title: t("Demo Organization"),
         }}
       >
         <DemoOrganizationTile />
@@ -175,7 +185,7 @@ const SingleOrganizationPage = ({
   return (
     <ContainerPage
       headerProps={{
-        title: org?.name ?? "Organization",
+        title: org?.name ?? t("Organization"),
         actionButtonsRight: <OrganizationActionButtons orgId={orgId} />,
       }}
     >
@@ -191,6 +201,7 @@ const SingleOrganizationProjectOverviewTile = ({
   orgId: string;
   search?: string;
 }) => {
+  const { t } = useTranslation();
   const session = useSession();
   const org = session.data?.user?.organizations.find((o) => o.id === orgId);
 
@@ -215,7 +226,9 @@ const SingleOrganizationProjectOverviewTile = ({
       <Header
         title={org.name}
         className="truncate"
-        status={orgId === env.NEXT_PUBLIC_DEMO_ORG_ID ? "Demo Org" : undefined}
+        status={
+          orgId === env.NEXT_PUBLIC_DEMO_ORG_ID ? t("Demo Org") : undefined
+        }
         actionButtons={
           <OrganizationActionButtons
             orgId={orgId}
@@ -229,6 +242,7 @@ const SingleOrganizationProjectOverviewTile = ({
 };
 
 export const OrganizationProjectOverview = () => {
+  const { t } = useTranslation();
   const router = useRouter();
   const queryOrgId = router.query.organizationId;
   const session = useSession();
@@ -259,15 +273,16 @@ export const OrganizationProjectOverview = () => {
   return (
     <ContainerPage
       headerProps={{
-        title: "Organizations",
+        title: t("Organizations"),
         help: {
-          description:
+          description: t(
             "Organizations help you manage access to projects. Each organization can have multiple projects and team members with different roles.",
+          ),
           href: "https://litefuse.ai/docs/rbac",
         },
         breadcrumb: [
           {
-            name: "Organizations",
+            name: t("Organizations"),
             href: "/",
           },
         ],
@@ -275,14 +290,14 @@ export const OrganizationProjectOverview = () => {
           <>
             <Input
               className="mr-1 w-36 lg:w-56"
-              placeholder="Search projects"
+              placeholder={t("Search projects")}
               onChange={(e) => setQueryParams({ search: e.target.value })}
             />
             {canCreateOrg && (
               <Button data-testid="create-organization-btn" asChild>
                 <Link href={createOrganizationRoute}>
                   <PlusIcon className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                  New Organization
+                  {t("New Organization")}
                 </Link>
               </Button>
             )}
@@ -316,20 +331,25 @@ export const OrganizationProjectOverview = () => {
 };
 
 const Onboarding = () => {
+  const { t } = useTranslation();
   const session = useSession();
   const canCreateOrgs = session.data?.user?.canCreateOrganizations;
   return (
     <Card className="mt-5">
       <CardHeader>
         <CardTitle data-testid="create-new-project-title">
-          Get Started
+          {t("Get Started")}
         </CardTitle>
       </CardHeader>
       <CardContent>
         <CardDescription>
           {canCreateOrgs
-            ? "Create an organization to get started. Alternatively, ask your organization admin to invite you."
-            : "You need to get invited to an organization to get started with Litefuse."}
+            ? t(
+                "Create an organization to get started. Alternatively, ask your organization admin to invite you.",
+              )
+            : t(
+                "You need to get invited to an organization to get started with Litefuse.",
+              )}
         </CardDescription>
       </CardContent>
       <CardFooter className="flex gap-4">
@@ -337,20 +357,20 @@ const Onboarding = () => {
           <Button data-testid="create-project-btn" asChild>
             <Link href={createOrganizationRoute}>
               <PlusIcon className="mr-2 h-4 w-4" aria-hidden="true" />
-              New Organization
+              {t("New Organization")}
             </Link>
           </Button>
         )}
         <Button variant="secondary" asChild>
           <Link href="https://litefuse.ai/docs" target="_blank">
             <BookOpen className="mr-2 h-4 w-4" aria-hidden="true" />
-            Docs
+            {t("Docs")}
           </Link>
         </Button>
         <Button variant="secondary" asChild>
           <Link href="https://litefuse.ai/docs/ask-ai" target="_blank">
             <MessageSquareText className="mr-2 h-4 w-4" aria-hidden="true" />
-            Ask AI
+            {t("Ask AI")}
           </Link>
         </Button>
       </CardFooter>

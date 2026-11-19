@@ -16,6 +16,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { type SelectionData } from "./contexts/InlineCommentSelectionContext";
 
+import { useTranslation } from "react-i18next";
 export function CommentDrawerButton({
   projectId,
   objectId,
@@ -41,6 +42,7 @@ export function CommentDrawerButton({
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [isMentionDropdownOpen, setIsMentionDropdownOpen] = useState(false);
   const [internalIsDrawerOpen, setInternalIsDrawerOpen] = useState(false);
@@ -167,7 +169,7 @@ export function CommentDrawerButton({
               <MessageCircleIcon
                 className={size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4"}
               />
-              <span>Add comment</span>
+              <span>{t("Add comment")}</span>
               <span className="bg-primary/50 text-primary-foreground flex h-3.5 w-fit items-center justify-center rounded-sm px-1 text-xs shadow-xs">
                 {count > 99 ? "99+" : count}
               </span>
@@ -177,7 +179,7 @@ export function CommentDrawerButton({
               <MessageCircleIcon
                 className={size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4"}
               />
-              <span>Add comment</span>
+              <span>{t("Add comment")}</span>
             </div>
           )}
         </Button>
@@ -196,7 +198,7 @@ export function CommentDrawerButton({
         >
           <DrawerHeader className="bg-background sr-only shrink-0 rounded-sm">
             <DrawerTitle>
-              <Header title="Comments"></Header>
+              <Header title={t("Comments")}></Header>
             </DrawerTitle>
           </DrawerHeader>
           <DrawerClose asChild>
@@ -205,7 +207,7 @@ export function CommentDrawerButton({
               variant="ghost"
               size="icon-sm"
               className="absolute top-2 right-2 z-10"
-              aria-label="Close comments"
+              aria-label={t("Close comments")}
             >
               <X className="h-4 w-4" />
             </Button>

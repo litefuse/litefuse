@@ -2,6 +2,7 @@
 
 import { ChevronsUpDown } from "lucide-react";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 
 import {
   Avatar,
@@ -41,6 +42,7 @@ export type UserNavigationProps = {
 };
 
 export function NavUser({ user, items }: UserNavigationProps) {
+  const { t } = useTranslation();
   const { isMobile } = useSidebar();
 
   const initials = user.name
@@ -101,11 +103,11 @@ export function NavUser({ user, items }: UserNavigationProps) {
               {items.map((item) =>
                 item.href ? (
                   <DropdownMenuItem key={item.name} asChild>
-                    <Link href={item.href}>{item.content ?? item.name}</Link>
+                    <Link href={item.href}>{item.content ?? t(item.name)}</Link>
                   </DropdownMenuItem>
                 ) : (
                   <DropdownMenuItem key={item.name} onClick={item.onClick}>
-                    {item.content ?? item.name}
+                    {item.content ?? t(item.name)}
                   </DropdownMenuItem>
                 ),
               )}

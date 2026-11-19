@@ -14,7 +14,15 @@ import {
   MessageSearchToolbar,
 } from "@/src/components/ChatMessages/MessageSearch";
 import useProjectIdFromURL from "@/src/hooks/useProjectIdFromURL";
+import { useSession } from "next-auth/react";
+import { useHasProjectAccess } from "@/src/features/rbac/utils/checkProjectAccess";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/src/components/ui/alert";
 
+import { useTranslation } from "react-i18next";
 /**
  * PlaygroundPage Component
  *
@@ -37,7 +45,13 @@ import useProjectIdFromURL from "@/src/hooks/useProjectIdFromURL";
  * - Clean single-header design
  */
 export default function PlaygroundPage() {
+  const { t } = useTranslation();
   const projectId = useProjectIdFromURL();
+  const session = useSession();
+  const hasPlaygroundAccess = useHasProjectAccess({
+    projectId,
+    scope: "playground:execute",
+  });
   const { windowIds, isLoaded, addWindowWithCopy, removeWindowId } =
     usePersistedWindowIds();
 
@@ -94,21 +108,43 @@ export default function PlaygroundPage() {
   );
 
   // Don't render until window IDs are loaded
-  if (!isLoaded) {
+  if (!isLoaded || session.status === "loading") {
     return (
       <Page
         withPadding={false}
         headerProps={{
-          title: "Playground",
+          title: t("Playground"),
           help: {
-            description:
+            description: t(
               "A sandbox to test and iterate your prompts across multiple windows",
+            ),
             href: "https://litefuse.ai/docs/prompt-management/features/playground",
           },
         }}
       >
         <div className="flex h-full items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </Page>
+    );
+  }
+
+  // Hide the Playground entirely for roles without playground:execute access
+  if (!hasPlaygroundAccess) {
+    return (
+      <Page
+        withPadding={false}
+        headerProps={{
+          title: "Playground",
+        }}
+      >
+        <div className="p-4">
+          <Alert>
+            <AlertTitle>Access Denied</AlertTitle>
+            <AlertDescription>
+              You do not have permission to use the Playground in this project.
+            </AlertDescription>
+          </Alert>
         </div>
       </Page>
     );
@@ -135,10 +171,11 @@ export default function PlaygroundPage() {
         scrollable={false}
         withPadding={false}
         headerProps={{
-          title: "Playground",
+          title: t("Playground"),
           help: {
-            description:
+            description: t(
               "A sandbox to test and iterate your prompts across multiple windows",
+            ),
             href: "https://litefuse.ai/docs/prompt-management/features/playground",
           },
           actionButtonsRight: (
@@ -148,8 +185,7 @@ export default function PlaygroundPage() {
               {/* Window Count Display - Hidden on mobile */}
               <div className="text-muted-foreground hidden items-center gap-2 text-sm md:flex">
                 <span className="whitespace-nowrap">
-                  {windowIds.length} window
-                  {windowIds.length === 1 ? "" : "s"}
+                  {t("{{count}} window", { count: windowIds.length })}
                 </span>
                 {executionStatus && (
                   <>
@@ -172,8 +208,8 @@ export default function PlaygroundPage() {
                 className="hidden shrink-0 gap-1 md:flex"
                 title={
                   !hasAnyModelConfigured
-                    ? "Please configure a model in Project Settings first"
-                    : "Execute all playground windows simultaneously"
+                    ? t("Please configure a model in Project Settings first")
+                    : t("Execute all playground windows simultaneously")
                 }
               >
                 {globalIsExecutingAll ? (
@@ -181,7 +217,9 @@ export default function PlaygroundPage() {
                 ) : (
                   <Play className="h-3 w-3" />
                 )}
-                <span className="hidden lg:inline">Run All (Ctrl + Enter)</span>
+                <span className="hidden lg:inline">
+                  {t("Run All (Ctrl + Enter)")}
+                </span>
               </Button>
 
               {/* Reset Playground Button */}

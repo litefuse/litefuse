@@ -1,5 +1,6 @@
 import { usePostHogClientCapture } from "@/src/features/posthog-analytics/usePostHogClientCapture";
 import { X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import type { JSX } from "react";
 
@@ -23,6 +24,7 @@ export const Notification: React.FC<NotificationProps> = ({
   dismissToast,
   toast,
 }) => {
+  const { t } = useTranslation();
   const capture = usePostHogClientCapture();
   return (
     <div className="flex justify-between">
@@ -45,7 +47,7 @@ export const Notification: React.FC<NotificationProps> = ({
           setLastSeenId(notification.id);
           dismissToast(toast);
         }}
-        aria-label="Close"
+        aria-label={t("Close")}
       >
         <X size={14} />
       </button>

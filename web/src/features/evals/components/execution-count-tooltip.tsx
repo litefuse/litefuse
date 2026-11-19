@@ -3,6 +3,7 @@ import { api } from "@/src/utils/api";
 import { compactNumberFormatter } from "@/src/utils/numbers";
 import { useEvalTargetCount } from "@/src/features/evals/hooks/useEvalTargetCount";
 
+import { useTranslation } from "react-i18next";
 type ExecutionCountTooltipProps = {
   projectId: string;
   item: string;
@@ -14,6 +15,7 @@ export const ExecutionCountTooltip = ({
   item,
   filter,
 }: ExecutionCountTooltipProps) => {
+  const { t } = useTranslation();
   const globalConfig = api.evals.globalJobConfigs.useQuery({
     projectId,
   });
@@ -28,17 +30,27 @@ export const ExecutionCountTooltip = ({
   return (
     <>
       <span className="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-        (
         {isLoading ? (
           <span className="inline-block font-mono">...</span>
+        ) : isTraceTarget ? (
+          t("({{total}} traces)", {
+            total: compactNumberFormatter(
+              !globalConfig.data ||
+                (totalCount && totalCount < globalConfig.data)
+                ? totalCount
+                : globalConfig.data,
+            ),
+          })
         ) : (
-          compactNumberFormatter(
-            !globalConfig.data || (totalCount && totalCount < globalConfig.data)
-              ? totalCount
-              : globalConfig.data,
-          )
+          t("({{total}} dataset run items)", {
+            total: compactNumberFormatter(
+              !globalConfig.data ||
+                (totalCount && totalCount < globalConfig.data)
+                ? totalCount
+                : globalConfig.data,
+            ),
+          })
         )}
-        {isTraceTarget ? " traces" : " dataset run items"})
       </span>
     </>
   );

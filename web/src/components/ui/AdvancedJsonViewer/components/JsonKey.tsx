@@ -9,6 +9,7 @@ import { isArrayIndex } from "../utils/jsonTypes";
 import {
   highlightTextWithComments,
   COMMENT_HIGHLIGHT_COLOR,
+  NO_HIGHLIGHT_COLOR,
 } from "../utils/highlightText";
 import {
   Tooltip,
@@ -63,7 +64,7 @@ export function JsonKey({
             ? theme.searchMatchBackground
             : segment.type === "comment"
               ? COMMENT_HIGHLIGHT_COLOR
-              : "transparent";
+              : NO_HIGHLIGHT_COLOR;
 
         const highlightedSpan = (
           <span key={index} style={{ backgroundColor }}>

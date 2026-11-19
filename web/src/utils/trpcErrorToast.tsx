@@ -3,6 +3,15 @@ import { showErrorToast } from "@/src/features/notifications/showErrorToast";
 
 // Catch network level errors, e.g. by proxy rate-limiting
 
+/**
+ * Deliberately not translated.
+ *
+ * The body of this toast is `error.message`, raised by the server and printed
+ * verbatim, and server errors stay English. Translating only the title would
+ * produce a Chinese heading over an English message, which is the mixed state
+ * this migration exists to avoid. Keep the whole error surface in one language.
+ * The same applies to the `TRPCError` messages under `src/server`.
+ */
 const httpStatusOverride: Record<number, keyof typeof errorTitleMap> = {
   429: "TOO_MANY_REQUESTS",
   524: "TIMEOUT",

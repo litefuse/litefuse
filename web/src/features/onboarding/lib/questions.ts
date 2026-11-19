@@ -1,37 +1,38 @@
 import type { SurveyQuestion } from "./surveyTypes";
 
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 export const SURVEY_QUESTIONS: SurveyQuestion[] = [
   {
     id: "role",
     type: "radio",
-    question: "What describes you best?",
+    question: i18nKey("What describes you best?"),
     options: [
-      "Software Engineer",
-      "ML Engineer / Data Scientist",
-      "Product Manager",
-      "Domain Expert",
-      "Executive or Manager",
-      "Other",
+      i18nKey("Software Engineer"),
+      i18nKey("ML Engineer / Data Scientist"),
+      i18nKey("Product Manager"),
+      i18nKey("Domain Expert"),
+      i18nKey("Executive or Manager"),
+      i18nKey("Other"),
     ],
   },
   {
     id: "signupReason",
     type: "radio",
-    question: "Why are you signing up?",
+    question: i18nKey("Why are you signing up?"),
     options: [
-      "Invited by team",
-      "Just looking around",
-      "Evaluating / Testing Litefuse",
-      "Start using Litefuse",
-      "Migrating from other solution",
-      "Migrating from self-hosted",
+      i18nKey("Invited by team"),
+      i18nKey("Just looking around"),
+      i18nKey("Evaluating / Testing Litefuse"),
+      i18nKey("Start using Litefuse"),
+      i18nKey("Migrating from other solution"),
+      i18nKey("Migrating from self-hosted"),
     ],
   },
   {
     id: "referralSource",
     type: "text",
-    question: "Where did you hear about us?",
-    placeholder: "GitHub, X, Reddit, colleague etc.",
+    question: i18nKey("Where did you hear about us?"),
+    placeholder: i18nKey("GitHub, X, Reddit, colleague etc."),
   },
 ];
 

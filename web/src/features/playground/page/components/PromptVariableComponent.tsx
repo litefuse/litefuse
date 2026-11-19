@@ -6,9 +6,11 @@ import { CodeMirrorEditor } from "@/src/components/editor";
 import { usePlaygroundContext } from "../context";
 import { useNamingConflicts } from "../hooks/useNamingConflicts";
 
+import { useTranslation } from "react-i18next";
 export const PromptVariableComponent: React.FC<{
   promptVariable: PromptVariable;
 }> = ({ promptVariable }) => {
+  const { t } = useTranslation();
   const {
     updatePromptVariableValue,
     deletePromptVariable,
@@ -52,7 +54,7 @@ export const PromptVariableComponent: React.FC<{
         <Button
           variant="ghost"
           size="icon"
-          title="Delete variable"
+          title={t("Delete variable")}
           disabled={isUsed}
           onClick={handleDeleteVariable}
           className="p-0"
@@ -74,7 +76,7 @@ export const PromptVariableComponent: React.FC<{
 
       {hasConflict && (
         <p className="mt-1 text-xs text-red-500">
-          Variable name conflicts with placeholder. Names must be unique.
+          {t("Variable name conflicts with placeholder. Names must be unique.")}
         </p>
       )}
     </div>

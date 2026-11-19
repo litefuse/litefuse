@@ -16,6 +16,7 @@ import { castToNumberMap } from "@/src/utils/map-utils";
 import { useIsAuthenticatedAndProjectMember } from "@/src/features/auth/hooks";
 import { buildTraceUiData } from "@/src/components/trace2/lib/helpers";
 
+import { useTranslation } from "react-i18next";
 interface TraceAnnotationProcessorProps {
   item: AnnotationQueueItem & {
     parentTraceId?: string | null;
@@ -30,6 +31,7 @@ interface TraceAnnotationProcessorProps {
 export const TraceAnnotationProcessor: React.FC<
   TraceAnnotationProcessorProps
 > = ({ item, data, view, configs, projectId }) => {
+  const { t } = useTranslation();
   const traceId = item.parentTraceId ?? item.objectId;
 
   const [currentObservationId, setCurrentObservationId] = useQueryParam(
@@ -89,7 +91,7 @@ export const TraceAnnotationProcessor: React.FC<
     return buildTraceUiData(data, data.observations);
   }, [data]);
 
-  if (!data) return <div className="p-3">Loading...</div>;
+  if (!data) return <div className="p-3">{t("Loading...")}</div>;
 
   let isValidObservationId = false;
 

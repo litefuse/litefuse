@@ -13,6 +13,7 @@ import { useUiCustomization } from "@/src/features/ui-customization/useUiCustomi
 import { useHasProjectAccess } from "@/src/features/rbac/utils/checkProjectAccess";
 import { PencilIcon } from "lucide-react";
 
+import { useTranslation } from "react-i18next";
 export function UpdateLLMApiKeyDialog({
   apiKey,
   projectId,
@@ -24,6 +25,7 @@ export function UpdateLLMApiKeyDialog({
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const [internalOpen, setInternalOpen] = useState(false);
   const uiCustomization = useUiCustomization();
 
@@ -50,7 +52,7 @@ export function UpdateLLMApiKeyDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <DialogHeader>
-          <DialogTitle>Update LLM Connection</DialogTitle>
+          <DialogTitle>{t("Update LLM Connection")}</DialogTitle>
         </DialogHeader>
         {isOpen && (
           <CreateLLMApiKeyForm

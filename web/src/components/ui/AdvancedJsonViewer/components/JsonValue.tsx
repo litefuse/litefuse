@@ -10,6 +10,7 @@ import { formatValuePreview } from "../utils/jsonTypes";
 import {
   highlightTextWithComments,
   COMMENT_HIGHLIGHT_COLOR,
+  NO_HIGHLIGHT_COLOR,
 } from "../utils/highlightText";
 import { TruncatedString } from "./TruncatedString";
 import {
@@ -129,7 +130,7 @@ export function JsonValue({
               ? theme.searchMatchBackground
               : segment.type === "comment"
                 ? COMMENT_HIGHLIGHT_COLOR
-                : "transparent";
+                : NO_HIGHLIGHT_COLOR;
 
           const highlightedSpan = (
             <span key={index} style={{ backgroundColor }}>
@@ -197,7 +198,7 @@ export function JsonValue({
             ? theme.searchMatchBackground
             : segment.type === "comment"
               ? COMMENT_HIGHLIGHT_COLOR
-              : "transparent";
+              : NO_HIGHLIGHT_COLOR;
 
         const highlightedSpan = (
           <span key={index} style={{ backgroundColor }}>

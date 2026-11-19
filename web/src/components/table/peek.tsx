@@ -15,6 +15,7 @@ import { memo } from "react";
 import { useRouter } from "next/router";
 import { PeekTableStateProvider } from "@/src/components/table/peek/contexts/PeekTableStateContext";
 
+import { useTranslation } from "react-i18next";
 type PeekViewItemType = Extract<
   LangfuseItemType,
   "TRACE" | "DATASET_ITEM" | "RUNNING_EVALUATOR" | "EVALUATOR"
@@ -81,6 +82,7 @@ type TablePeekViewProps = {
 };
 
 function TablePeekViewComponent(props: TablePeekViewProps) {
+  const { t } = useTranslation();
   const { peekView } = props;
   const router = useRouter();
   const eventHandler = createPeekEventHandler(peekView.peekEventOptions);
@@ -138,7 +140,7 @@ function TablePeekViewComponent(props: TablePeekViewProps) {
                 <Button
                   variant="ghost"
                   size="icon-xs"
-                  title="Open in current tab"
+                  title={t("Open in current tab")}
                   className="ml-2"
                   onClick={() => peekView.expandPeek?.(false)}
                 >
@@ -147,7 +149,7 @@ function TablePeekViewComponent(props: TablePeekViewProps) {
                 <Button
                   variant="ghost"
                   size="icon-xs"
-                  title="Open in new tab"
+                  title={t("Open in new tab")}
                   onClick={() => peekView.expandPeek?.(true)}
                 >
                   <ExternalLink className="h-4 w-4" />

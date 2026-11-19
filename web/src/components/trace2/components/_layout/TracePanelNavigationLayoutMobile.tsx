@@ -24,6 +24,7 @@ import { Button } from "@/src/components/ui/button";
 import { TracePanelNavigationHiddenNotice } from "./TracePanelNavigationHiddenNotice";
 import { TraceFullscreenDialog } from "./TraceFullscreenDialog";
 
+import { useTranslation } from "react-i18next";
 export function TracePanelNavigationLayoutMobile({
   children,
   secondaryContent,
@@ -31,6 +32,7 @@ export function TracePanelNavigationLayoutMobile({
   children: ReactNode;
   secondaryContent?: ReactNode;
 }) {
+  const { t } = useTranslation();
   const [isGraphExpanded, setIsGraphExpanded] = useState(false);
 
   return (
@@ -46,7 +48,7 @@ export function TracePanelNavigationLayoutMobile({
               onClick={() => setIsGraphExpanded(!isGraphExpanded)}
               className="flex flex-1 items-center justify-between px-2 py-1"
             >
-              <span className="text-xs font-medium">Graph View</span>
+              <span className="text-xs font-medium">{t("Graph View")}</span>
               {isGraphExpanded ? (
                 <ChevronUp className="h-3.5 w-3.5" />
               ) : (
@@ -59,8 +61,8 @@ export function TracePanelNavigationLayoutMobile({
               onKeyDown={(e) => e.stopPropagation()}
             >
               <TraceFullscreenDialog
-                title="Graph View"
-                triggerTitle="Open Graph fullscreen"
+                title={t("Graph View")}
+                triggerTitle={t("Open Graph fullscreen")}
               >
                 {secondaryContent}
               </TraceFullscreenDialog>

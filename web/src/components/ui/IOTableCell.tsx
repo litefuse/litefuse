@@ -13,6 +13,7 @@ import {
 } from "@/src/components/ui/hover-card";
 import { decodeUnicodeEscapesOnly } from "@/src/utils/unicode";
 
+import { useTranslation } from "react-i18next";
 const IOTableCellContent = ({
   data,
   singleLine,
@@ -22,6 +23,7 @@ const IOTableCellContent = ({
   singleLine: boolean;
   className?: string;
 }) => {
+  const { t } = useTranslation();
   const stringifiedJson =
     data !== null && data !== undefined ? stringifyJsonNode(data) : undefined;
 
@@ -54,7 +56,7 @@ const IOTableCellContent = ({
         borderless
       />
       <div className="text-muted-foreground text-xs">
-        Content was truncated.
+        {t("Content was truncated.")}
       </div>
     </div>
   ) : (
@@ -83,6 +85,7 @@ export const IOTableCell = ({
   singleLine?: boolean;
   enableExpandOnHover?: boolean;
 }) => {
+  const { t } = useTranslation();
   if (isLoading) {
     return (
       <JsonSkeleton

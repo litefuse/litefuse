@@ -25,6 +25,7 @@ import { parseJsonPrioritised } from "@langfuse/shared";
 import { ActionButton } from "@/src/components/ActionButton";
 import { type MetadataDomainClient } from "@/src/utils/clientSideDomainTypes";
 
+import { useTranslation } from "react-i18next";
 /**
  * Component for creating a new dataset item from an existing object.
  *
@@ -46,6 +47,7 @@ export const NewDatasetItemFromExistingObject = (props: {
   buttonVariant?: ButtonProps["variant"];
   size?: ButtonProps["size"];
 }) => {
+  const { t } = useTranslation();
   const parsedInput =
     props.input && typeof props.input === "string"
       ? (parseJsonPrioritised(props.input) ?? null)
@@ -86,8 +88,8 @@ export const NewDatasetItemFromExistingObject = (props: {
           variant="outline"
           size={buttonSize === "sm" ? "icon-xs" : "icon"}
           hasAccess={hasAccess}
-          title="Copy item"
-          aria-label="Copy item"
+          title={t("Copy item")}
+          aria-label={t("Copy item")}
           onClick={() => {
             setIsFormOpen(true);
           }}
@@ -132,7 +134,7 @@ export const NewDatasetItemFromExistingObject = (props: {
                 }}
               >
                 <PlusIcon size={16} className={cn("mr-2")} aria-hidden="true" />
-                Add to more datasets
+                {t("Add to more datasets")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -158,7 +160,7 @@ export const NewDatasetItemFromExistingObject = (props: {
               aria-hidden="true"
             />
           ) : null}
-          Add to datasets
+          {t("Add to datasets")}
           {!hasAccess ? (
             <LockIcon className={cn("ml-1.5 h-3 w-3")} aria-hidden="true" />
           ) : null}
@@ -167,7 +169,7 @@ export const NewDatasetItemFromExistingObject = (props: {
       <Dialog open={hasAccess && isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="h-[calc(100vh-5rem)] max-h-none w-[calc(100vw-5rem)] max-w-none">
           <DialogHeader>
-            <DialogTitle>Add item to datasets</DialogTitle>
+            <DialogTitle>{t("Add item to datasets")}</DialogTitle>
           </DialogHeader>
           {isFormOpen && (
             <NewDatasetItemForm

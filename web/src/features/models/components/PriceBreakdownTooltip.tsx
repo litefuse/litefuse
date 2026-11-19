@@ -13,6 +13,7 @@ import { usePriceUnitMultiplier } from "@/src/features/models/hooks/usePriceUnit
 import { getMaxDecimals } from "@/src/features/models/utils";
 import { type PriceUnit } from "@/src/features/models/validation";
 
+import { useTranslation } from "react-i18next";
 export const PriceBreakdownTooltip = ({
   modelName,
   prices,
@@ -24,6 +25,7 @@ export const PriceBreakdownTooltip = ({
   priceUnit: PriceUnit;
   rowHeight: RowHeight;
 }) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const { priceUnitMultiplier } = usePriceUnitMultiplier();
 
@@ -42,7 +44,7 @@ export const PriceBreakdownTooltip = ({
   return (
     <>
       {Object.keys(prices).length === 0 ? (
-        <p>No prices</p>
+        <p>{t("No prices")}</p>
       ) : Object.keys(prices).length <= (rowHeight === "m" ? 4 : 2) ? (
         <div className="grid w-full grid-cols-[2fr_3fr] gap-x-2">
           {Object.entries(prices).map(([type, price]) => (
@@ -74,20 +76,20 @@ export const PriceBreakdownTooltip = ({
               onClick={() => setIsOpen(!isOpen)}
             >
               <InfoIcon className="h-3 w-3" />
-              {Object.keys(prices).length} prices set
+              {t("{{count}} prices set", { count: Object.keys(prices).length })}
             </TooltipTrigger>
             <TooltipContent className="min-w-64 grow p-4">
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
-                  <span className="font-semibold">Price breakdown</span>
+                  <span className="font-semibold">{t("Price breakdown")}</span>
                   <span className="font-mono text-xs font-medium">
                     {modelName}
                   </span>
                 </div>
                 <div className="flex flex-col gap-2">
                   <div className="flex justify-between font-mono text-xs font-semibold">
-                    <span className="mr-4">Usage Type</span>
-                    <span>Price {priceUnit}</span>
+                    <span className="mr-4">{t("Usage Type")}</span>
+                    <span>{t("Price {{unit}}", { unit: priceUnit })}</span>
                   </div>
                   {Object.entries(prices).map(([usageType, price]) => (
                     <div

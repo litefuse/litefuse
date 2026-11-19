@@ -18,11 +18,13 @@ import { Card } from "@/src/components/ui/card";
 import { Skeleton } from "@/src/components/ui/skeleton";
 import { type EvalTemplate } from "@langfuse/shared";
 
+import { useTranslation } from "react-i18next";
 type SelectEvaluatorListProps = {
   projectId: string;
 };
 
 export function SelectEvaluatorList({ projectId }: SelectEvaluatorListProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [isCreateTemplateOpen, setIsCreateTemplateOpen] = useState(false);
 
@@ -67,11 +69,11 @@ export function SelectEvaluatorList({ projectId }: SelectEvaluatorListProps) {
             <Skeleton className="h-full w-full" />
           ) : templates.isError ? (
             <div className="text-destructive py-8 text-center">
-              Error: {templates.error.message}
+              {t("Error: {{message}}", { message: templates.error.message })}
             </div>
           ) : templates.data?.templates.length === 0 ? (
             <div className="text-muted-foreground py-8 text-center">
-              No evaluators found. Create a new evaluator to get started.
+              {t("No evaluators found. Create a new evaluator to get started.")}
             </div>
           ) : (
             <div className="flex-1 overflow-hidden">
@@ -98,7 +100,7 @@ export function SelectEvaluatorList({ projectId }: SelectEvaluatorListProps) {
         <div className="flex justify-end gap-2">
           <Button onClick={handleOpenCreateEvaluator}>
             <PlusIcon className="mr-2 h-4 w-4" />
-            Create Custom Evaluator
+            {t("Create Custom Evaluator")}
           </Button>
         </div>
       </div>
@@ -109,7 +111,7 @@ export function SelectEvaluatorList({ projectId }: SelectEvaluatorListProps) {
       >
         <DialogContent className="max-h-[90vh] max-w-(--breakpoint-md) overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create new evaluator</DialogTitle>
+            <DialogTitle>{t("Create new evaluator")}</DialogTitle>
           </DialogHeader>
           <EvalTemplateForm
             projectId={projectId}
@@ -123,8 +125,8 @@ export function SelectEvaluatorList({ projectId }: SelectEvaluatorListProps) {
                 setSelectedTemplate(newTemplate);
               }
               showSuccessToast({
-                title: "Evaluator created successfully",
-                description: "You can now use this evaluator.",
+                title: t("Evaluator created successfully"),
+                description: t("You can now use this evaluator."),
               });
             }}
           />

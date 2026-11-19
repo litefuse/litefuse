@@ -25,12 +25,14 @@ import { LocalIsoDate } from "@/src/components/LocalIsoDate";
 import { useQueryFilterState } from "@/src/features/filters/hooks/useFilterState";
 import { useDebounce } from "@/src/hooks/useDebounce";
 
+import { useTranslation } from "react-i18next";
 export function DatasetRunItemsByRunTable(props: {
   projectId: string;
   datasetId: string;
   datasetRunId: string;
   datasetVersion?: Date | null;
 }) {
+  const { t } = useTranslation();
   const { setDetailPageList } = useDetailPageLists();
   const [paginationState, setPaginationState] = useQueryParams({
     pageIndex: withDefault(NumberParam, 0),
@@ -97,7 +99,7 @@ export function DatasetRunItemsByRunTable(props: {
   const columns: LangfuseColumnDef<DatasetRunItemByRunRowData>[] = [
     {
       accessorKey: "datasetItemId",
-      header: "Dataset Item",
+      header: t("Dataset Item"),
       id: "datasetItemId",
       size: 110,
       isPinnedLeft: true,
@@ -116,7 +118,7 @@ export function DatasetRunItemsByRunTable(props: {
     },
     {
       accessorKey: "runAt",
-      header: "Run At",
+      header: t("Run At"),
       id: "runAt",
       size: 150,
       cell: ({ row }) => {
@@ -127,7 +129,7 @@ export function DatasetRunItemsByRunTable(props: {
     },
     {
       accessorKey: "trace",
-      header: "Trace",
+      header: t("Trace"),
       id: "trace",
       size: 60,
       cell: ({ row }) => {
@@ -151,7 +153,7 @@ export function DatasetRunItemsByRunTable(props: {
     },
     {
       accessorKey: "latency",
-      header: "Latency",
+      header: t("Latency"),
       id: "latency",
       size: 70,
       enableHiding: true,
@@ -163,7 +165,7 @@ export function DatasetRunItemsByRunTable(props: {
     },
     {
       accessorKey: "totalCost",
-      header: "Cost",
+      header: t("Cost"),
       id: "totalCost",
       size: 60,
       enableHiding: true,
@@ -175,7 +177,7 @@ export function DatasetRunItemsByRunTable(props: {
     },
     {
       accessorKey: "scores",
-      header: "Scores",
+      header: t("Scores"),
       id: "scores",
       enableHiding: true,
       defaultHidden: true,
@@ -186,7 +188,7 @@ export function DatasetRunItemsByRunTable(props: {
     },
     {
       accessorKey: "input",
-      header: "Trace Input",
+      header: t("Trace Input"),
       id: "input",
       size: 200,
       enableHiding: true,
@@ -209,7 +211,7 @@ export function DatasetRunItemsByRunTable(props: {
     },
     {
       accessorKey: "output",
-      header: "Output",
+      header: t("Output"),
       id: "output",
       size: 200,
       enableHiding: true,
@@ -232,7 +234,7 @@ export function DatasetRunItemsByRunTable(props: {
     },
     {
       accessorKey: "expectedOutput",
-      header: "Expected Output",
+      header: t("Expected Output"),
       id: "expectedOutput",
       size: 200,
       enableHiding: true,

@@ -5,6 +5,7 @@ import { api } from "@/src/utils/api";
 import { showSuccessToast } from "@/src/features/notifications/showSuccessToast";
 import { showErrorToast } from "@/src/features/notifications/showErrorToast";
 
+import { useTranslation } from "react-i18next";
 /**
  * Props for the SlackConnectButton component
  */
@@ -38,11 +39,12 @@ export const SlackConnectButton: React.FC<SlackConnectButtonProps> = ({
   disabled = false,
   variant = "default",
   size = "default",
-  buttonText = "Connect Slack",
+  buttonText,
   onSuccess,
   onError,
   showText = true,
 }) => {
+  const { t } = useTranslation();
   const [isConnecting, setIsConnecting] = useState(false);
   const popupRef = useRef<Window | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -81,7 +83,7 @@ export const SlackConnectButton: React.FC<SlackConnectButtonProps> = ({
     if (!integrationStatus?.installUrl) {
       const errorMessage = "Install URL not available. Please try again.";
       onError?.(new Error(errorMessage));
-      showErrorToast("Connection Failed", errorMessage);
+      showErrorToast(t("Connection Failed"), errorMessage);
       return;
     }
 
@@ -114,8 +116,10 @@ export const SlackConnectButton: React.FC<SlackConnectButtonProps> = ({
           setIsConnecting(false);
 
           showSuccessToast({
-            title: "Slack Connected",
-            description: `Successfully connected to ${event.data.teamName}.`,
+            title: t("Slack Connected"),
+            description: t("Successfully connected to {{team}}.", {
+              team: event.data.teamName,
+            }),
           });
 
           onSuccess?.();
@@ -132,7 +136,7 @@ export const SlackConnectButton: React.FC<SlackConnectButtonProps> = ({
           popup.close();
           setIsConnecting(false);
 
-          showErrorToast("Connection Failed", event.data.error);
+          showErrorToast(t("Connection Failed"), event.data.error);
           onError?.(new Error(event.data.error));
 
           // Clean up event listener and interval
@@ -171,7 +175,7 @@ export const SlackConnectButton: React.FC<SlackConnectButtonProps> = ({
       const errorMessage =
         error instanceof Error ? error.message : "Failed to connect to Slack";
       onError?.(new Error(errorMessage));
-      showErrorToast("Connection Failed", errorMessage);
+      showErrorToast(t("Connection Failed"), errorMessage);
     }
   };
 
@@ -184,7 +188,13 @@ export const SlackConnectButton: React.FC<SlackConnectButtonProps> = ({
       className="flex items-center gap-2"
     >
       <Slack className="h-4 w-4" />
-      {showText && <span>{isConnecting ? "Connecting..." : buttonText}</span>}
+      {showText && (
+        <span>
+          {isConnecting
+            ? t("Connecting...")
+            : (buttonText ?? t("Connect Slack"))}
+        </span>
+      )}
     </Button>
   );
 };

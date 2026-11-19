@@ -49,6 +49,7 @@ import { type AggregatedTraceMetrics } from "@/src/components/trace2/lib/trace-a
 import type Decimal from "decimal.js";
 import { DetailHeaderActionsMenu } from "@/src/components/trace2/components/_shared/DetailHeaderActionsMenu";
 
+import { useTranslation } from "react-i18next";
 export interface ObservationDetailViewHeaderProps {
   observation: ObservationReturnTypeWithMetadata;
   observationWithIO:
@@ -89,6 +90,7 @@ export const ObservationDetailViewHeader = memo(
     subtreeMetrics,
     treeNodeTotalCost,
   }: ObservationDetailViewHeaderProps) {
+    const { t } = useTranslation();
     // Format cost and usage values
     const totalCost = observation.totalCost;
     const totalUsage = observation.totalUsage;
@@ -108,8 +110,8 @@ export const ObservationDetailViewHeader = memo(
             </span>
             <DetailHeaderActionsMenu
               idItems={[
-                { id: traceId, name: "Trace ID" },
-                { id: observation.id, name: "Observation ID" },
+                { id: traceId, name: t("Trace ID") },
+                { id: observation.id, name: t("Observation ID") },
               ]}
               observationType={observation.type}
               projectId={projectId}

@@ -1,6 +1,8 @@
 import { Alert, AlertDescription } from "@/src/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 import { type EvalCapabilities } from "@/src/features/evals/hooks/useEvalCapabilities";
+import { Trans, useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import {
   isTraceTarget,
   isEventTarget,
@@ -20,6 +22,7 @@ interface CalloutContent {
 }
 
 const getCalloutContent = (
+  t: TFunction,
   targetObject: string,
   evalCapabilities: EvalCapabilities,
 ): CalloutContent => {
@@ -33,9 +36,9 @@ const getCalloutContent = (
 
     return {
       visible: true,
-      title: "Please verify your SDK version",
+      title: t("Please verify your SDK version"),
       description: (
-        <>
+        <Trans>
           This evaluator targets observations, which require JS SDK v4+ or
           Python SDK v3+. You can still configure this evaluator now—it will
           start running once you upgrade.{" "}
@@ -48,7 +51,7 @@ const getCalloutContent = (
             Learn more
           </a>
           .
-        </>
+        </Trans>
       ),
     };
   }
@@ -58,9 +61,9 @@ const getCalloutContent = (
     if (!evalCapabilities.isNewCompatible) {
       return {
         visible: true,
-        title: "Please verify you are using the Experiment Runner SDK",
+        title: t("Please verify you are using the Experiment Runner SDK"),
         description: (
-          <>
+          <Trans>
             The Experiment Runner SDK requires JS SDK v4.4+ or Python SDK v3.9+.
             You can still configure this evaluator now—it will start running
             once you upgrade.{" "}
@@ -73,7 +76,7 @@ const getCalloutContent = (
               Learn more about the Experiment Runner SDK.
             </a>
             .
-          </>
+          </Trans>
         ),
       };
     }
@@ -85,9 +88,9 @@ const getCalloutContent = (
   if (isDatasetTarget(targetObject)) {
     return {
       visible: true,
-      title: "Legacy low-level SDK methods",
+      title: t("Legacy low-level SDK methods"),
       description: (
-        <>
+        <Trans>
           This evaluator targets traces from legacy low-level SDK methods for
           dataset runs that manually linked dataset items to traces. Consider
           upgrading to the Experiment Runner SDK for improved performance and
@@ -101,7 +104,7 @@ const getCalloutContent = (
             Learn more
           </a>
           .
-        </>
+        </Trans>
       ),
     };
   }
@@ -110,9 +113,9 @@ const getCalloutContent = (
   if (isTraceTarget(targetObject)) {
     return {
       visible: true,
-      title: "Consider upgrading to observation evaluators",
+      title: t("Consider upgrading to observation evaluators"),
       description: (
-        <>
+        <Trans>
           Observation evaluators provide more granular control and an easier
           workflow. We strongly recommend upgrading to observation evaluators.{" "}
           <a
@@ -124,7 +127,7 @@ const getCalloutContent = (
             Learn more
           </a>
           .
-        </>
+        </Trans>
       ),
     };
   }
@@ -136,7 +139,8 @@ export function EvalVersionCallout({
   targetObject,
   evalCapabilities,
 }: EvalVersionCalloutProps) {
-  const content = getCalloutContent(targetObject, evalCapabilities);
+  const { t } = useTranslation();
+  const content = getCalloutContent(t, targetObject, evalCapabilities);
 
   if (!content.visible) {
     return null;

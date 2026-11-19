@@ -14,6 +14,7 @@ import { V4BetaIntroDialog } from "@/src/features/events/components/V4BetaIntroD
 import { usePostHogClientCapture } from "@/src/features/posthog-analytics/usePostHogClientCapture";
 import { useLangfuseCloudRegion } from "@/src/features/organizations/hooks";
 
+import { useTranslation } from "react-i18next";
 const CHANGELOG_URL =
   "https://litefuse.ai/changelog/2026-03-10-simplify-for-scale";
 const DISMISSED_STORAGE_KEY = "v4-beta-promo-banner:v1:dismissed";
@@ -30,6 +31,7 @@ const PAGE_MESSAGES: Record<string, string> = {
 };
 
 export function V4BetaPromoBanner() {
+  const { t } = useTranslation();
   const router = useRouter();
   const session = useSession();
   const {
@@ -93,7 +95,7 @@ export function V4BetaPromoBanner() {
       <div className="flex items-center gap-2 py-1.5 pl-3">
         <ZapIcon className="h-4 w-4 shrink-0" />
         <p className="flex flex-1 flex-row gap-1 text-sm">
-          <span className="font-semibold">{pageMessage}</span> Enable the{" "}
+          <span className="font-semibold">{pageMessage}</span> {t("Enable the")}{" "}
           <button
             className="inline cursor-pointer font-semibold underline underline-offset-2"
             onClick={() => {
@@ -105,15 +107,15 @@ export function V4BetaPromoBanner() {
             }}
             disabled={isLoading}
           >
-            Fast (Preview)
+            {t("Fast (Preview)")}
           </button>{" "}
-          toggle for a more performant experience.{" "}
+          {t("toggle for a more performant experience.")}{" "}
           <Link
             href={CHANGELOG_URL}
             target="_blank"
             className="flex flex-row items-center gap-1 underline underline-offset-2"
           >
-            Learn more
+            {t("Learn more")}
             <ExternalLink className="h-3 w-3" />
           </Link>
         </p>
@@ -122,8 +124,8 @@ export function V4BetaPromoBanner() {
           size="sm"
           className="h-6 w-6 p-0"
           onClick={() => setIsDismissed(true)}
-          aria-label="Dismiss banner"
-          title="Dismiss"
+          aria-label={t("Dismiss banner")}
+          title={t("Dismiss")}
         >
           <X className="h-4 w-4" />
         </Button>

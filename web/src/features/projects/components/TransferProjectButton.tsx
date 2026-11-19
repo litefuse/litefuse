@@ -40,7 +40,9 @@ import { Alert, AlertDescription, AlertTitle } from "@/src/components/ui/alert";
 import { TriangleAlert } from "lucide-react";
 import { showSuccessToast } from "@/src/features/notifications/showSuccessToast";
 
+import { useTranslation } from "react-i18next";
 export function TransferProjectButton() {
+  const { t } = useTranslation();
   const capture = usePostHogClientCapture();
   const session = useSession();
   const { project, organization } = useQueryProject();
@@ -63,7 +65,9 @@ export function TransferProjectButton() {
 
   const formSchema = z.object({
     name: z.string().includes(confirmMessage, {
-      message: `Please confirm with "${confirmMessage}"`,
+      message: t('Please confirm with "{{value}}"', {
+        value: confirmMessage,
+      }),
     }),
     projectId: z.string(),
   });
@@ -71,9 +75,12 @@ export function TransferProjectButton() {
   const transferProject = api.projects.transfer.useMutation({
     onSuccess: async () => {
       showSuccessToast({
-        title: "Project transferred",
-        description:
-          "The project is successfully transferred to the new organization. Redirecting...",
+        title: t("Project transferred"),
+        description: t(
+          t(
+            "The project is successfully transferred to the new organization. Redirecting...",
+          ),
+        ),
       });
       await new Promise((resolve) => setTimeout(resolve, 5000));
       void session.update();
@@ -102,28 +109,31 @@ export function TransferProjectButton() {
     <Dialog>
       <DialogTrigger asChild>
         <Button variant="destructive-secondary" disabled={!hasAccess}>
-          Transfer Project
+          {t("Transfer Project")}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">
-            Transfer Project
+            {t("Transfer Project")}
           </DialogTitle>
           <Alert className="mt-2">
             <TriangleAlert className="h-4 w-4" />
-            <AlertTitle>Warning</AlertTitle>
+            <AlertTitle>{t("Warning")}</AlertTitle>
             <AlertDescription>
-              Transferring the project will move it to a different organization:
+              {t(
+                "Transferring the project will move it to a different organization:",
+              )}
               <ul className="list-disc pl-4">
                 <li>
-                  Members who are not part of the new organization will lose
-                  access.
+                  {t(
+                    "Members who are not part of the new organization will lose access.",
+                  )}
                 </li>
                 <li>
-                  The project remains fully operational as API keys, settings,
-                  and data will remain unchanged. All features (e.g. tracing,
-                  prompt management) will continue to work without interruption.
+                  {t(
+                    "The project remains fully operational as API keys, settings, and data will remain unchanged. All features (e.g. tracing, prompt management) will continue to work without interruption.",
+                  )}
                 </li>
               </ul>
             </AlertDescription>
@@ -137,7 +147,7 @@ export function TransferProjectButton() {
                 name="projectId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Select New Organization</FormLabel>
+                    <FormLabel>{t("Select New Organization")}</FormLabel>
                     <FormControl>
                       <Select
                         onValueChange={field.onChange}
@@ -145,7 +155,7 @@ export function TransferProjectButton() {
                         disabled={transferProject.isPending}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Select organization" />
+                          <SelectValue placeholder={t("Select organization")} />
                         </SelectTrigger>
                         <SelectContent>
                           {organizationsToTransferTo
@@ -159,8 +169,9 @@ export function TransferProjectButton() {
                       </Select>
                     </FormControl>
                     <FormDescription>
-                      Transfer this project to another organization where you
-                      have the ability to create projects.
+                      {t(
+                        "Transfer this project to another organization where you have the ability to create projects.",
+                      )}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -171,12 +182,14 @@ export function TransferProjectButton() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Confirm</FormLabel>
+                    <FormLabel>{t("Confirm")}</FormLabel>
                     <FormControl>
                       <Input placeholder={confirmMessage} {...field} />
                     </FormControl>
                     <FormDescription>
-                      {`To confirm, type "${confirmMessage}" in the input box `}
+                      {t('To confirm, type "{{value}}" in the input box', {
+                        value: confirmMessage,
+                      })}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -190,7 +203,7 @@ export function TransferProjectButton() {
                 loading={transferProject.isPending}
                 className="w-full"
               >
-                Transfer project
+                {t("Transfer project")}
               </Button>
             </DialogFooter>
           </form>

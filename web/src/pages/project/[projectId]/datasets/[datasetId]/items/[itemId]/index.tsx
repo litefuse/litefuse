@@ -15,7 +15,9 @@ import useSessionStorage from "@/src/components/useSessionStorage";
 import { History, PanelRightOpen } from "lucide-react";
 import { useState } from "react";
 
+import { useTranslation } from "react-i18next";
 function DatasetItemContent() {
+  const { t } = useTranslation();
   const router = useRouter();
   const projectId = router.query.projectId as string;
   const datasetId = router.query.datasetId as string;
@@ -103,19 +105,19 @@ function DatasetItemContent() {
               onClick={() => setIsVersionPanelOpen(!isVersionPanelOpen)}
               title={
                 isVersionPanelOpen
-                  ? "Hide version history"
-                  : "Show version history"
+                  ? t("Hide version history")
+                  : t("Show version history")
               }
             >
               {isVersionPanelOpen ? (
                 <>
                   <History className="mr-2 h-4 w-4" />
-                  Hide Version History
+                  {t("Hide Version History")}
                 </>
               ) : (
                 <>
                   <PanelRightOpen className="mr-2 h-4 w-4" />
-                  Show Version History
+                  {t("Show Version History")}
                 </>
               )}
             </Button>
@@ -133,7 +135,7 @@ function DatasetItemContent() {
                     onCheckedChange={setShowDiffMode}
                   />
                   <Label htmlFor="diff-mode" className="cursor-pointer text-sm">
-                    Show diff with latest version
+                    {t("Show diff with latest version")}
                   </Label>
                 </div>
               </div>
@@ -144,7 +146,7 @@ function DatasetItemContent() {
               selectedVersion &&
               !itemChangedAtVersion && (
                 <div className="text-muted-foreground mb-4 text-sm">
-                  Item unchanged in this version
+                  {t("Item unchanged in this version")}
                 </div>
               )}
 

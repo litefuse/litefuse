@@ -31,6 +31,7 @@ import useSessionStorage from "@/src/components/useSessionStorage";
 import type { FilterConfig } from "../lib/filter-config";
 import { usePeekTableState } from "@/src/components/table/peek/contexts/PeekTableStateContext";
 
+import { useTranslation } from "react-i18next";
 /**
  * Decodes filters from URL query string and normalizes display names to column IDs.
  * This prevents duplicates when old URLs use display names and new filters use column IDs.
@@ -141,6 +142,7 @@ export interface CategoricalUIFilter extends BaseUIFilter {
   onOnlyChange?: (value: string) => void;
   /** Optional function to render an icon next to filter option labels */
   renderIcon?: (value: string) => React.ReactNode;
+  formatLabel?: (value: string) => string;
   /**
    * Current operator for arrayOptions columns (tags, labels, etc.)
    * - "any of": OR logic - match if item has ANY selected value
@@ -414,6 +416,7 @@ export function useSidebarFilterState(
   >,
   hookOptions: UseSidebarFilterStateOptions = {},
 ) {
+  const { t } = useTranslation();
   const {
     loading,
     disableUrlPersistence,
@@ -1032,7 +1035,10 @@ export function useSidebarFilterState(
               activeColumn;
             return {
               isDisabled: true,
-              reason: `Disabled because "${facet.label}" cannot be used with "${blockingLabel}".`,
+              reason: t(
+                'Disabled because "{{facet}}" cannot be used with "{{blocking}}".',
+                { facet: t(facet.label), blocking: t(blockingLabel) },
+              ),
             };
           }
         }
@@ -1648,6 +1654,8 @@ export function useSidebarFilterState(
           disabledReason: disableState.reason,
           renderIcon:
             facet.type === "categorical" ? facet.renderIcon : undefined,
+          formatLabel:
+            facet.type === "categorical" ? facet.formatLabel : undefined,
           onChange: (values: string[]) => updateFilter(facet.column, values),
           onOnlyChange: (value: string) => {
             if (selectedValues.length === 1 && selectedValues.includes(value)) {
@@ -1709,6 +1717,7 @@ export function useSidebarFilterState(
     mutualExclusionContext,
     managedEnvironmentColumn,
     managedEnvironmentPolicyConfig.hiddenEnvironments,
+    t,
   ]);
 
   return {

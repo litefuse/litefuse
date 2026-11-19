@@ -6,8 +6,10 @@ import { Card, CardContent } from "@/src/components/ui/card";
 import { Label } from "@/src/components/ui/label";
 import { Switch } from "@/src/components/ui/switch";
 import { useHasProjectAccess } from "@/src/features/rbac/utils/checkProjectAccess";
+import { useTranslation } from "react-i18next";
 
 export function NotificationSettings() {
+  const { t } = useTranslation();
   const router = useRouter();
   const projectId = router.query.projectId as string;
   const [isSaving, setIsSaving] = useState(false);
@@ -46,11 +48,11 @@ export function NotificationSettings() {
   if (isLoading || !preferences) {
     return (
       <div>
-        <Header title="Notification Settings" />
+        <Header title={t("Notification Settings")} />
         <Card className="mt-4">
           <CardContent className="p-6">
             <p className="text-muted-foreground text-sm">
-              Loading preferences...
+              {t("Loading preferences...")}
             </p>
           </CardContent>
         </Card>
@@ -64,13 +66,15 @@ export function NotificationSettings() {
 
   return (
     <div>
-      <Header title="Notification Settings" />
+      <Header title={t("Notification Settings")} />
       <Card className="mt-4">
         <CardContent className="space-y-6 p-6">
           <div>
-            <h3 className="text-lg font-medium">Email Notifications</h3>
+            <h3 className="text-lg font-medium">{t("Email Notifications")}</h3>
             <p className="text-muted-foreground text-sm">
-              Manage your email notification preferences for this project.
+              {t(
+                "Manage your email notification preferences for this project.",
+              )}
             </p>
           </div>
 
@@ -78,10 +82,10 @@ export function NotificationSettings() {
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
                 <Label htmlFor="comment-mention" className="text-base">
-                  Comment Mentions
+                  {t("Comment Mentions")}
                 </Label>
                 <p className="text-muted-foreground text-sm">
-                  Receive an email when someone mentions you in a comment
+                  {t("Receive an email when someone mentions you in a comment")}
                 </p>
               </div>
               <Switch
@@ -98,7 +102,7 @@ export function NotificationSettings() {
       {updatePreference.isError && (
         <div className="border-destructive bg-destructive/10 mt-4 rounded-lg border p-4">
           <p className="text-destructive text-sm">
-            Failed to update notification preference. Please try again.
+            {t("Failed to update notification preference. Please try again.")}
           </p>
         </div>
       )}

@@ -17,12 +17,14 @@ import { TraceAnnotationProcessor } from "./processors/TraceAnnotationProcessor"
 import { SessionAnnotationProcessor } from "./processors/SessionAnnotationProcessor";
 import { ObjectNotFoundCard } from "@/src/components/ui/object-not-found-card";
 
+import { useTranslation } from "react-i18next";
 export const AnnotationQueueItemPage: React.FC<{
   annotationQueueId: string;
   projectId: string;
   view: "showTree" | "hideTree";
   queryItemId?: string;
 }> = ({ annotationQueueId, projectId, view, queryItemId }) => {
+  const { t } = useTranslation();
   const router = useRouter();
   const isSingleItem = router.query.singleItem === "true";
   const [nextItemData, setNextItemData] = useState<
@@ -148,7 +150,7 @@ export const AnnotationQueueItemPage: React.FC<{
   }
 
   if (!relevantItem && !(itemId && seenItemIds.includes(itemId))) {
-    return <div>No more items left to annotate!</div>;
+    return <div>{t("No more items left to annotate!")}</div>;
   }
 
   const isNextItemAvailable = totalItems > progressIndex + 1;
@@ -193,9 +195,11 @@ export const AnnotationQueueItemPage: React.FC<{
         <Card className="flex h-full w-full flex-col items-center justify-center overflow-hidden">
           <SearchXIcon className="text-muted-foreground mb-2 h-8 w-8" />
           <span className="text-muted-foreground max-w-96 text-sm text-wrap">
-            Item has been <strong>deleted from annotation queue</strong>.
-            Previously added scores and underlying reference trace are
-            unaffected by this action.
+            {t("Item has been")}{" "}
+            <strong>{t("deleted from annotation queue")}</strong>
+            {t(
+              ". Previously added scores and underlying reference trace are unaffected by this action.",
+            )}
           </span>
         </Card>
       );
@@ -269,11 +273,11 @@ export const AnnotationQueueItemPage: React.FC<{
                   completeMutation.isPending || !hasAccess || objectData.isError
                 }
               >
-                Mark Completed
+                {t("Mark Completed")}
               </Button>
             ) : (
               <div className="text-dark-gree border-dark-green bg-light-green inline-flex h-9 w-full items-center justify-center rounded-md border px-8 text-sm font-medium">
-                Completed
+                {t("Completed")}
               </div>
             ))}
         </div>

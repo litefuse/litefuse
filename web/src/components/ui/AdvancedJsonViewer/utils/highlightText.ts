@@ -9,6 +9,9 @@ import { type CommentRange } from "./commentRanges";
  */
 export const COMMENT_HIGHLIGHT_COLOR = "rgba(147, 112, 219, 0.3)";
 
+/** CSS keyword, never user-facing text. */
+export const NO_HIGHLIGHT_COLOR = "transparent";
+
 /**
  * Creates text segments with both search and comment highlights.
  * Merges multiple highlight ranges and assigns types for different styling.

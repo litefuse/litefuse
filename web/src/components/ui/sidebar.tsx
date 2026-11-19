@@ -20,6 +20,7 @@ import {
 } from "@/src/components/ui/tooltip";
 import { Portal } from "@radix-ui/react-tooltip";
 
+import { useTranslation } from "react-i18next";
 const SIDEBAR_STORAGE_KEY = "sidebar:state";
 const SIDEBAR_WIDTH = "11.5rem";
 const SIDEBAR_WIDTH_MOBILE = "12rem";
@@ -277,6 +278,7 @@ const SidebarTrigger = React.forwardRef<
   React.ElementRef<typeof Button>,
   React.ComponentProps<typeof Button>
 >(({ className, onClick, ...props }, ref) => {
+  const { t } = useTranslation();
   const { toggleSidebar } = useSidebar();
 
   return (
@@ -293,7 +295,7 @@ const SidebarTrigger = React.forwardRef<
       {...props}
     >
       <PanelLeft />
-      <span className="sr-only">Toggle Sidebar</span>
+      <span className="sr-only">{t("Toggle Sidebar")}</span>
     </Button>
   );
 });
@@ -303,16 +305,17 @@ const SidebarRail = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<"button">
 >(({ className, ...props }, ref) => {
+  const { t } = useTranslation();
   const { toggleSidebar } = useSidebar();
 
   return (
     <button
       ref={ref}
       data-sidebar="rail"
-      aria-label="Toggle Sidebar"
+      aria-label={t("Toggle Sidebar")}
       tabIndex={-1}
       onClick={toggleSidebar}
-      title="Toggle Sidebar"
+      title={t("Toggle Sidebar")}
       className={cn(
         "hover:after:bg-sidebar-border absolute inset-y-0 z-50 hidden w-4 -translate-x-1/2 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] sm:flex",
         "in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize",

@@ -8,8 +8,10 @@ import {
 } from "@/src/components/ui/drawer";
 import { useSupportDrawer } from "@/src/features/support-chat/SupportDrawerProvider";
 import { SupportDrawer } from "@/src/features/support-chat/SupportDrawer";
+import { useTranslation } from "react-i18next";
 
 export function MobileDrawer({ children }: PropsWithChildren) {
+  const { t } = useTranslation();
   const { open, setOpen } = useSupportDrawer();
 
   return (
@@ -29,9 +31,11 @@ export function MobileDrawer({ children }: PropsWithChildren) {
               <div className="bg-muted h-2 w-20 rounded-full" />
             </div>
             {/* sr-only for screen readers and accessibility */}
-            <DrawerTitle className="sr-only">Support</DrawerTitle>
+            <DrawerTitle className="sr-only">{t("Support")}</DrawerTitle>
             <DrawerDescription className="sr-only">
-              A list of resources and options to help you with your questions.
+              {t(
+                "A list of resources and options to help you with your questions.",
+              )}
             </DrawerDescription>
           </DrawerHeader>
           <div className="mt-4 max-h-full">

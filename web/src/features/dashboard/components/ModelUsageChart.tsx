@@ -28,6 +28,8 @@ import { Chart } from "@/src/features/widgets/chart-library/Chart";
 import { timeSeriesToDataPoints } from "@/src/features/dashboard/lib/chart-data-adapters";
 import { useScheduledDashboardExecuteQuery } from "@/src/hooks/useDashboardQueryScheduler";
 
+import { useTranslation } from "react-i18next";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 export const ModelUsageChart = ({
   className,
   projectId,
@@ -51,6 +53,7 @@ export const ModelUsageChart = ({
   metricsVersion?: ViewVersion;
   schedulerId?: string;
 }) => {
+  const { t } = useTranslation();
   const {
     allModels,
     selectedModels,
@@ -321,41 +324,41 @@ export const ModelUsageChart = ({
 
   const data = [
     {
-      tabTitle: "Cost by model",
+      tabTitle: i18nKey("Cost by model"),
       data: costByModel,
       totalMetric: totalCostDashboardFormatted(totalCost),
-      metricDescription: `Cost`,
+      metricDescription: t("Cost"),
       formatter: totalCostDashboardFormatted,
     },
     {
-      tabTitle: "Cost by type",
+      tabTitle: i18nKey("Cost by type"),
       data: costByType,
       totalMetric: totalCostDashboardFormatted(totalCost),
-      metricDescription: `Cost`,
+      metricDescription: t("Cost"),
       formatter: totalCostDashboardFormatted,
     },
     {
-      tabTitle: "Usage by model",
+      tabTitle: i18nKey("Usage by model"),
       data: unitsByModel,
       totalMetric: totalTokens
         ? compactNumberFormatter(totalTokens)
         : compactNumberFormatter(0),
-      metricDescription: `Model Units`,
+      metricDescription: t("Model Units"),
     },
     {
-      tabTitle: "Usage by type",
+      tabTitle: i18nKey("Usage by type"),
       data: unitsByType,
       totalMetric: totalTokens
         ? compactNumberFormatter(totalTokens)
         : compactNumberFormatter(0),
-      metricDescription: `Model Units`,
+      metricDescription: t("Model Units"),
     },
   ];
 
   return (
     <DashboardCard
       className={className}
-      title="Model Usage"
+      title={t("Model Usage")}
       isLoading={
         isLoading || (queryResult.isPending && selectedModels.length > 0)
       }

@@ -14,7 +14,7 @@ import {
   StringFilter,
   FilterList,
   createFilterFromFilterState,
-  observationsTableUiColumnDefinitions,
+  observationsTableUiColumnDefinitionsForDoris,
   enrichObservationWithModelData,
   dorisSearchCondition,
   convertObservation,
@@ -99,10 +99,17 @@ export const getObservationStream = async (props: {
 
   // Doris doesn't need skipDedup - it doesn't have FINAL modifier
 
+  // The source below is `spans_<projectId>` aliased `o`, so the filters have to
+  // be built from the Doris mapping: the legacy one selects `o.`id``, a column
+  // that does not exist on spans (it is `span_id`), and every batch action or
+  // export over selected rows died on
+  // `Unknown column 'id' in 'o' in FILTER clause`. Same reasoning as the note
+  // in trace-stream.ts.
+
   // Filter out trace-level filters since we don't join the traces table for filtering
   // This prevents batch export failures when trace-level filters are present
   const observationOnlyFilters = (filter ?? []).filter((f) => {
-    const columnDef = observationsTableUiColumnDefinitions.find(
+    const columnDef = observationsTableUiColumnDefinitionsForDoris.find(
       (col) => col.uiTableName === f.column || col.uiTableId === f.column,
     );
     // Keep the filter if it's not a trace-level filter
@@ -150,7 +157,7 @@ export const getObservationStream = async (props: {
           type: "datetime" as const,
         },
       ],
-      observationsTableUiColumnDefinitions,
+      observationsTableUiColumnDefinitionsForDoris,
     ),
   );
 

@@ -85,6 +85,7 @@ import { useDefaultViewMutations } from "../hooks/useDefaultViewMutations";
 import { DropdownMenuSeparator } from "@/src/components/ui/dropdown-menu";
 import { summarizeTableViewPreset } from "../lib/viewPreview";
 
+import { useTranslation } from "react-i18next";
 /**
  * Prefix for system preset IDs. These are page-specific presets defined in code
  * (not stored in DB). Using this prefix prevents DB lookups and allows special handling.
@@ -174,6 +175,7 @@ export function TableViewPresetsDrawer({
   currentState,
   systemFilterPresets,
 }: TableViewPresetsDrawerProps) {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQueryLocal] = useState("");
   const { tableName, projectId, controllers } = viewConfig;
   const { handleSetViewId, applyViewState, selectedViewId } = controllers;
@@ -246,7 +248,7 @@ export function TableViewPresetsDrawer({
     currentName: form.watch("name"),
     allNames: allViewNames,
     form,
-    errorMessage: "View name already exists.",
+    errorMessage: t("View name already exists."),
   });
 
   const handleSelectView = (view: TableViewPresetState & { id: string }) => {
@@ -365,8 +367,8 @@ export function TableViewPresetsDrawer({
       });
     } else {
       showErrorToast(
-        "Failed to generate permalink",
-        "Please reach out to Litefuse support and report this issue.",
+        t("Failed to generate permalink"),
+        t("Please reach out to Litefuse support and report this issue."),
         "WARNING",
       );
     }
@@ -387,10 +389,16 @@ export function TableViewPresetsDrawer({
         <DrawerTrigger asChild>
           <Button
             variant="outline"
-            title={selectedViewName ? `View: ${selectedViewName}` : "Views"}
+            title={
+              selectedViewName
+                ? t("View: {{name}}", { name: selectedViewName })
+                : t("Views")
+            }
           >
             <span>
-              {selectedViewName ? `View: ${selectedViewName}` : "Views"}
+              {selectedViewName
+                ? t("View: {{name}}", { name: selectedViewName })
+                : t("Views")}
             </span>
             {selectedViewId ? (
               <ChevronDown className="ml-1 h-4 w-4" />
@@ -405,13 +413,15 @@ export function TableViewPresetsDrawer({
           <div className="mx-auto w-full">
             <DrawerHeader className="bg-background flex flex-row items-center justify-between rounded-sm px-3 py-1.5">
               <DrawerTitle className="flex flex-row items-center gap-1">
-                Views{" "}
+                {t("Views")}{" "}
                 <a
                   href="https://github.com/orgs/langfuse/discussions/4657"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center"
-                  title="Saving table view presets is currently in beta. Click here to provide feedback!"
+                  title={t(
+                    "Saving table view presets is currently in beta. Click here to provide feedback!",
+                  )}
                 ></a>
               </DrawerTitle>
               <DrawerClose asChild>
@@ -424,13 +434,13 @@ export function TableViewPresetsDrawer({
 
             <Command className="h-fit rounded-none border-none pb-1 shadow-none">
               <CommandInput
-                placeholder="Search views..."
+                placeholder={t("Search views...")}
                 value={searchQuery}
                 onValueChange={setSearchQueryLocal}
                 className="h-9 border-none focus:ring-0"
               />
               <CommandList className="max-h-[calc(100vh-150px)]">
-                <CommandEmpty>No views found</CommandEmpty>
+                <CommandEmpty>{t("No views found")}</CommandEmpty>
                 <CommandGroup className="pb-0">
                   {/* System Preset: Langfuse Default - hidden when page-specific presets exist */}
                   {!systemFilterPresets?.length && (
@@ -441,14 +451,16 @@ export function TableViewPresetsDrawer({
                         "group hover:bg-muted/50 mt-1 flex cursor-pointer items-center justify-between rounded-md p-2 transition-colors",
                         selectedViewId === null && "bg-muted",
                       )}
-                      title="Reflects your current table settings without applying any saved custom table views"
+                      title={t(
+                        "Reflects your current table settings without applying any saved custom table views",
+                      )}
                     >
                       <div className="flex flex-col">
                         <span className="text-muted-foreground text-sm">
                           {SYSTEM_PRESETS.DEFAULT.name}
                         </span>
                         <span className="text-muted-foreground w-fit pl-0 text-xs">
-                          Your working view
+                          {t("Your working view")}
                         </span>
                       </div>
                     </CommandItem>
@@ -472,11 +484,11 @@ export function TableViewPresetsDrawer({
                       <div className="flex flex-col">
                         <span className="flex items-center gap-1.5 text-sm">
                           <LangfuseIcon size={14} />
-                          {preset.name}
+                          {t(preset.name)}
                         </span>
                         {preset.description && (
                           <span className="text-muted-foreground w-fit pl-0 text-xs">
-                            {preset.description}
+                            {t(preset.description)}
                           </span>
                         )}
                       </div>
@@ -513,12 +525,12 @@ export function TableViewPresetsDrawer({
                             </span>
                             {isUserDefault && (
                               <Badge variant="secondary" className="text-xs">
-                                Your default
+                                {t("Your default")}
                               </Badge>
                             )}
                             {isProjectDefault && (
                               <Badge variant="outline" className="text-xs">
-                                Project default
+                                {t("Project default")}
                               </Badge>
                             )}
                           </div>
@@ -548,7 +560,7 @@ export function TableViewPresetsDrawer({
                               }}
                               disabled={!hasWriteAccess}
                             >
-                              Update view with current filters
+                              {t("Update view with current filters")}
                             </Button>
                           )}
                         </div>
@@ -613,14 +625,14 @@ export function TableViewPresetsDrawer({
                                       ) : (
                                         <Lock className="mr-2 h-4 w-4" />
                                       )}
-                                      Rename
+                                      {t("Rename")}
                                     </Button>
                                   </PopoverTrigger>
                                   <PopoverContent
                                     onClick={(e) => e.stopPropagation()}
                                   >
                                     <h2 className="text-md mb-3 font-semibold">
-                                      Edit
+                                      {t("Edit")}
                                     </h2>
                                     <Form {...form}>
                                       <form
@@ -634,7 +646,9 @@ export function TableViewPresetsDrawer({
                                           name="name"
                                           render={({ field }) => (
                                             <FormItem>
-                                              <FormLabel>View name</FormLabel>
+                                              <FormLabel>
+                                                {t("View name")}
+                                              </FormLabel>
                                               <FormControl>
                                                 <Input
                                                   defaultValue={view.name}
@@ -656,7 +670,7 @@ export function TableViewPresetsDrawer({
                                               !!form.formState.errors.name
                                             }
                                           >
-                                            Save
+                                            {t("Save")}
                                           </Button>
                                         </div>
                                       </form>
@@ -678,11 +692,9 @@ export function TableViewPresetsDrawer({
                                 }}
                                 disabled={isSettingDefault}
                               >
-                                {isUserDefault ? (
-                                  <>Remove as my default</>
-                                ) : (
-                                  <>Set as my default</>
-                                )}
+                                {isUserDefault
+                                  ? t("Remove as my default")
+                                  : t("Set as my default")}
                               </DropdownMenuItem>
                               {/* Set as project default - requires write access */}
                               <DropdownMenuItem
@@ -697,11 +709,9 @@ export function TableViewPresetsDrawer({
                                 }}
                                 disabled={!hasWriteAccess || isSettingDefault}
                               >
-                                {isProjectDefault ? (
-                                  <>Remove as project default</>
-                                ) : (
-                                  <>Set as project default</>
-                                )}
+                                {isProjectDefault
+                                  ? t("Remove as project default")
+                                  : t("Set as project default")}
                                 {!hasWriteAccess && (
                                   <Lock className="ml-auto h-4 w-4" />
                                 )}
@@ -712,7 +722,7 @@ export function TableViewPresetsDrawer({
                                   itemId={view.id}
                                   projectId={projectId}
                                   scope="TableViewPresets:CUD"
-                                  entityToDeleteName="view"
+                                  entityToDeleteName={t("view")}
                                   executeDeleteMutation={async () => {
                                     await handleDeleteView(view.id);
                                   }}
@@ -737,7 +747,9 @@ export function TableViewPresetsDrawer({
                             <Avatar className="h-6 w-6">
                               <AvatarImage
                                 src={view.createdByUser?.image ?? undefined}
-                                alt={view.createdByUser?.name ?? "User Avatar"}
+                                alt={
+                                  view.createdByUser?.name ?? t("User Avatar")
+                                }
                               />
                               <AvatarFallback className="bg-tertiary">
                                 {view.createdByUser?.name
@@ -770,7 +782,7 @@ export function TableViewPresetsDrawer({
                 className="w-full justify-start px-1"
               >
                 <Plus className="mr-2 h-4 w-4" />
-                Create Custom View
+                {t("Create Custom View")}
               </Button>
             </div>
           </div>
@@ -789,7 +801,7 @@ export function TableViewPresetsDrawer({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Save Current Table View</DialogTitle>
+            <DialogTitle>{t("Save Current Table View")}</DialogTitle>
           </DialogHeader>
           <Form {...form}>
             <form
@@ -802,7 +814,7 @@ export function TableViewPresetsDrawer({
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>View name</FormLabel>
+                      <FormLabel>{t("View name")}</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -812,18 +824,24 @@ export function TableViewPresetsDrawer({
                 />
 
                 <div className="text-muted-foreground mt-4 text-sm">
-                  <p>This will save the current:</p>
+                  <p>{t("This will save the current:")}</p>
                   <ul className="mt-2 list-disc pl-5">
                     <li>
-                      Column arrangement ({currentState.columnOrder.length}{" "}
-                      columns)
+                      {t("Column arrangement ({{count}} columns)", {
+                        count: currentState.columnOrder.length,
+                      })}
                     </li>
-                    <li>Filters ({currentState.filters.length} active)</li>
                     <li>
-                      Sort order ({formatOrderBy(currentState.orderBy)}{" "}
-                      criteria)
+                      {t("Filters ({{count}} active)", {
+                        count: currentState.filters.length,
+                      })}
                     </li>
-                    {currentState.searchQuery && <li>Search term</li>}
+                    <li>
+                      {t("Sort order ({{order}})", {
+                        order: formatOrderBy(currentState.orderBy),
+                      })}
+                    </li>
+                    {currentState.searchQuery && <li>{t("Search term")}</li>}
                   </ul>
                 </div>
               </DialogBody>
@@ -833,7 +851,7 @@ export function TableViewPresetsDrawer({
                   variant="outline"
                   onClick={() => setIsCreateDialogOpen(false)}
                 >
-                  Cancel
+                  {t("Cancel")}
                 </Button>
                 <Button
                   type="submit"
@@ -844,7 +862,7 @@ export function TableViewPresetsDrawer({
                   }
                 >
                   {!hasWriteAccess && <Lock className="mr-2 h-4 w-4" />}
-                  {createMutation.isPending ? "Saving..." : "Save View"}
+                  {createMutation.isPending ? t("Saving...") : t("Save View")}
                 </Button>
               </DialogFooter>
             </form>

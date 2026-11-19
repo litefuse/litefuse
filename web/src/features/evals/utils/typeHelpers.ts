@@ -1,3 +1,4 @@
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 import {
   type EvalTemplate,
   EvalTargetObject,
@@ -18,12 +19,20 @@ export const getMaintainer = (
 ) => {
   if (evalTemplate.projectId === null) {
     if (evalTemplate.partner) {
+      // Also an i18n key, see MAINTAINER_LABELS below.
       return `${getPartnerName(evalTemplate.partner)} maintained`;
     }
-    return "Litefuse maintained";
+    return i18nKey("Litefuse maintained");
   }
-  return "User maintained";
+  return i18nKey("User maintained");
 };
+
+/**
+ * The maintainer string doubles as the discriminator the icon and the row
+ * actions branch on, so it stays English and is translated where it is shown.
+ * The partner branch builds its value, so its keys are listed here.
+ */
+export const MAINTAINER_LABELS = [i18nKey("Ragas maintained")];
 
 /**
  * Determines if an eval target object is using the legacy (deprecated) eval system.

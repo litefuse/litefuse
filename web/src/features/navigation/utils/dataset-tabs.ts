@@ -1,3 +1,4 @@
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 export const DATASET_TABS = {
   RUNS: "runs",
   ITEMS: "items",
@@ -9,12 +10,12 @@ export const getDatasetTabs = (projectId: string, datasetId: string) => {
   return [
     {
       value: DATASET_TABS.RUNS,
-      label: "Runs",
+      label: i18nKey("Runs"),
       href: `/project/${projectId}/datasets/${datasetId}`,
     },
     {
       value: DATASET_TABS.ITEMS,
-      label: "Items",
+      label: i18nKey("Items"),
       href: `/project/${projectId}/datasets/${datasetId}/items`,
     },
   ];

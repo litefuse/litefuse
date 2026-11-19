@@ -9,6 +9,7 @@ import {
 import { cn } from "@/src/utils/tailwind";
 import { useRouter } from "next/router";
 
+import { useTranslation } from "react-i18next";
 interface Project {
   id: string;
   name: string;
@@ -24,6 +25,7 @@ export const ProjectNavigation: React.FC<ProjectNavigationProps> = ({
   currentProjectId,
   projects,
 }) => {
+  const { t } = useTranslation();
   const router = useRouter();
   return (
     <Select
@@ -61,7 +63,7 @@ export const ProjectNavigation: React.FC<ProjectNavigationProps> = ({
                       : "border-border text-muted-foreground group-hover:border-primary group-hover:text-primary",
                   )}
                 >
-                  view-only
+                  {t("view-only")}
                 </span>
               ) : null}
             </div>

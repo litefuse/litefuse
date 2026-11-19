@@ -16,6 +16,7 @@ import { useCallback } from "react";
 import { SamplingDetailsHoverCard } from "../SamplingDetailsHoverCard";
 import { type ScoreDataTypeType } from "@langfuse/shared";
 
+import { useTranslation } from "react-i18next";
 interface HeatmapTooltipContentProps {
   cell: HeatmapCell;
   dataType: ScoreDataTypeType;
@@ -42,6 +43,7 @@ function HeatmapTooltipContent({
   score2Color,
   totalMatchedPairs,
 }: HeatmapTooltipContentProps) {
+  const { t } = useTranslation();
   const percentage = (cell.metadata?.percentage as number) ?? 0;
 
   return (
@@ -58,11 +60,15 @@ function HeatmapTooltipContent({
       {/* Primary Metrics Section */}
       <div className="space-y-1">
         <p className="text-foreground text-base font-semibold">
-          {cell.value.toLocaleString()} observations
+          {t("{{total}} observations", {
+            total: cell.value.toLocaleString(),
+          })}
         </p>
         <p className="text-muted-foreground text-xs">
-          {percentage.toFixed(1)}% of {totalMatchedPairs.toLocaleString()}{" "}
-          matched pairs
+          {t("{{percent}}% of {{total}} matched pairs", {
+            percent: percentage.toFixed(1),
+            total: totalMatchedPairs.toLocaleString(),
+          })}
         </p>
       </div>
 
@@ -139,6 +145,7 @@ function HeatmapTooltipContent({
  * - Numeric vs categorical data types
  */
 export function HeatmapCard() {
+  const { t } = useTranslation();
   const { data, isLoading, params, getColorForScore } = useScoreAnalytics();
 
   // Compute max value for color scaling (must be before early returns)
@@ -162,8 +169,8 @@ export function HeatmapCard() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Score Comparison</CardTitle>
-          <CardDescription>Loading heatmap...</CardDescription>
+          <CardTitle>{t("Score Comparison")}</CardTitle>
+          <CardDescription>{t("Loading heatmap...")}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-1 flex-col items-center justify-center pl-1">
           <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
@@ -177,11 +184,11 @@ export function HeatmapCard() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Score Comparison</CardTitle>
-          <CardDescription>No data available</CardDescription>
+          <CardTitle>{t("Score Comparison")}</CardTitle>
+          <CardDescription>{t("No data available")}</CardDescription>
         </CardHeader>
         <CardContent className="text-muted-foreground flex flex-1 flex-col items-center justify-center pl-0 text-sm">
-          Select a score to view comparison
+          {t("Select a score to view comparison")}
         </CardContent>
       </Card>
     );
@@ -195,16 +202,22 @@ export function HeatmapCard() {
   const totalMatchedPairs = statistics.comparison?.matchedCount ?? 0;
 
   const title =
-    dataType === "NUMERIC" ? "Score Comparison Heatmap" : "Confusion Matrix";
+    dataType === "NUMERIC"
+      ? t("Score Comparison Heatmap")
+      : t("Confusion Matrix");
 
   const description =
     mode === "single"
       ? dataType === "NUMERIC"
-        ? "Distribution of matched score pairs showing correlation patterns"
-        : "Agreement matrix between categorical scores"
+        ? t("Distribution of matched score pairs showing correlation patterns")
+        : t("Agreement matrix between categorical scores")
       : dataType === "NUMERIC"
-        ? `${totalMatchedPairs.toLocaleString()} matched pairs showing correlation patterns`
-        : `${totalMatchedPairs.toLocaleString()} matched pairs showing agreement`;
+        ? t("{{total}} matched pairs showing correlation patterns", {
+            total: totalMatchedPairs.toLocaleString(),
+          })
+        : t("{{total}} matched pairs showing agreement", {
+            total: totalMatchedPairs.toLocaleString(),
+          });
 
   // Single score mode - show placeholder
   if (mode === "single") {
@@ -223,7 +236,7 @@ export function HeatmapCard() {
             showAxisLabels={true}
           />
           <p className="text-muted-foreground text-center text-sm font-light">
-            Select a second score to view comparison heatmap
+            {t("Select a second score to view comparison heatmap")}
           </p>
         </CardContent>
       </Card>

@@ -56,6 +56,10 @@ export const env = createEnv({
     STRIPE_TEAMS_MONTHLY_ADDON_PRICE_ID: z.string().min(1).optional(),
     STRIPE_USAGE_PRICE_ID: z.string().min(1).optional(),
     // Add `.min(1) on ID and SECRET if you want to make sure they're not empty
+    // UI locales exposed to users, comma separated. "en" is always enabled;
+    // the language switcher only shows with >1 locale. Set to "en" for an
+    // English-only deployment.
+    LITEFUSE_I18N_LOCALES: z.string().default("en,zh-CN"),
     LITEFUSE_ENABLE_EXPERIMENTAL_FEATURES: z.enum(["true", "false"]).optional(),
     SALT: z.string({
       required_error:
@@ -343,7 +347,11 @@ export const env = createEnv({
     LITEFUSE_INIT_ORG_CLOUD_PLAN: z.string().optional(), // for use in CI
     LITEFUSE_INIT_PROJECT_ID: z.string().optional(),
     LITEFUSE_INIT_PROJECT_NAME: z.string().optional(),
-    LITEFUSE_INIT_PROJECT_RETENTION: z.coerce.number().int().gte(RETENTION_FLOOR_DAYS).optional(),
+    LITEFUSE_INIT_PROJECT_RETENTION: z.coerce
+      .number()
+      .int()
+      .gte(RETENTION_FLOOR_DAYS)
+      .optional(),
     LITEFUSE_INIT_PROJECT_PUBLIC_KEY: z.string().optional(),
     LITEFUSE_INIT_PROJECT_SECRET_KEY: z.string().optional(),
     LITEFUSE_INIT_USER_EMAIL: z
@@ -478,6 +486,7 @@ export const env = createEnv({
     STRIPE_TEST_CLOCK_ID: process.env.STRIPE_TEST_CLOCK_ID,
     LITEFUSE_ENABLE_EXPERIMENTAL_FEATURES:
       process.env.LITEFUSE_ENABLE_EXPERIMENTAL_FEATURES,
+    LITEFUSE_I18N_LOCALES: process.env.LITEFUSE_I18N_LOCALES,
     LITEFUSE_TEAM_SLACK_WEBHOOK: process.env.LITEFUSE_TEAM_SLACK_WEBHOOK,
     LITEFUSE_NEW_USER_SIGNUP_WEBHOOK:
       process.env.LITEFUSE_NEW_USER_SIGNUP_WEBHOOK,

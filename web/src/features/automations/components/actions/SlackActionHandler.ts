@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import React from "react";
 import { type UseFormReturn } from "react-hook-form";
 import { type BaseActionHandler } from "./BaseActionHandler";
@@ -49,18 +50,21 @@ export class SlackActionHandler
     };
   }
 
-  validateFormData(formData: SlackActionFormData): {
+  validateFormData(
+    formData: SlackActionFormData,
+    t: TFunction,
+  ): {
     isValid: boolean;
     errors?: string[];
   } {
     const errors: string[] = [];
 
     if (!formData.slack?.channelId) {
-      errors.push("Slack channel is required");
+      errors.push(t("Slack channel is required"));
     }
 
     if (!formData.slack?.channelName) {
-      errors.push("Channel name is required");
+      errors.push(t("Channel name is required"));
     }
 
     return {

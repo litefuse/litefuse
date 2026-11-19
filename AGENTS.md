@@ -110,6 +110,8 @@ Minimum verification matrix:
 ## Release Channel
 
 - Release workflow is managed at root (`pnpm run release`).
+- Docker Hub publishing is managed by `.github/workflows/docker-publish.yml`
+  and targets `litefuse/litefuse-web` and `litefuse/litefuse-worker`.
 - Litefuse Cloud deployments are triggered by pushes to `production` (`.github/workflows/deploy.yml`).
 - Promote `main` to `production` via `.github/workflows/promote-main-to-production.yml` (manual `workflow_dispatch`).
 - Use `pnpm run release:cloud` for CLI-triggered Cloud promotions with preflight branch/migration checks.

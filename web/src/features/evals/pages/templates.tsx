@@ -12,7 +12,9 @@ import {
 } from "@/src/features/navigation/utils/evals-tabs";
 import { ManageDefaultEvalModel } from "@/src/features/evals/components/manage-default-eval-model";
 
+import { useTranslation } from "react-i18next";
 export default function TemplatesPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const projectId = router.query.projectId as string;
   const capture = usePostHogClientCapture();
@@ -33,9 +35,9 @@ export default function TemplatesPage() {
   return (
     <Page
       headerProps={{
-        title: "LLM-as-a-Judge Evaluators",
+        title: t("LLM-as-a-Judge Evaluators"),
         help: {
-          description: "View all Litefuse managed and custom evaluators.",
+          description: t("View all Litefuse managed and custom evaluators."),
           href: "https://litefuse.ai/docs/evaluation/evaluation-methods/llm-as-a-judge",
         },
         tabsProps: {
@@ -63,7 +65,7 @@ export default function TemplatesPage() {
                 ) : (
                   <Lock className="mr-2 h-4 w-4" />
                 )}
-                Custom Evaluator
+                {t("Custom Evaluator")}
               </Link>
             </Button>
           </>

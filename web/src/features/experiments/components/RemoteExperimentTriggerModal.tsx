@@ -28,6 +28,7 @@ import { Loader2 } from "lucide-react";
 import { getFormattedPayload } from "@/src/features/experiments/utils/format";
 import { type Prisma } from "@langfuse/shared";
 
+import { Trans, useTranslation } from "react-i18next";
 const RemoteExperimentTriggerSchema = z.object({
   payload: z.string(),
 });
@@ -50,6 +51,7 @@ export const RemoteExperimentTriggerModal = ({
   };
   setShowTriggerModal: (show: boolean) => void;
 }) => {
+  const { t } = useTranslation();
   const hasDatasetAccess = useHasProjectAccess({
     projectId,
     scope: "datasets:CUD",
@@ -72,15 +74,18 @@ export const RemoteExperimentTriggerModal = ({
       onSuccess: (data) => {
         if (data.success) {
           showSuccessToast({
-            title: "Remote experiment triggered",
-            description:
-              "Your remote experiment may take a few minutes to complete.",
+            title: t("Remote experiment triggered"),
+            description: t(
+              t("Your remote experiment may take a few minutes to complete."),
+            ),
           });
         } else {
           showErrorToast(
-            "Failed to trigger remote experiment",
+            t("Failed to trigger remote experiment"),
             data.error ||
-              "Please try again or check your remote experiment configuration.",
+              t(
+                "Please try again or check your remote experiment configuration.",
+              ),
           );
         }
         setShowTriggerModal(false);
@@ -93,7 +98,7 @@ export const RemoteExperimentTriggerModal = ({
         JSON.parse(data.payload);
       } catch {
         form.setError("payload", {
-          message: "Invalid JSON format",
+          message: t("Invalid JSON format"),
         });
         return;
       }
@@ -118,12 +123,13 @@ export const RemoteExperimentTriggerModal = ({
           onClick={() => setShowTriggerModal(false)}
           className="inline-block self-start"
         >
-          ← Back
+          {t("← Back")}
         </Button>
-        <DialogTitle>Run remote dataset run</DialogTitle>
+        <DialogTitle>{t("Run remote dataset run")}</DialogTitle>
         <DialogDescription>
-          This action will send the following information to{" "}
-          <strong>{remoteExperimentConfig.url}</strong>.
+          {t("This action will send the following information to {{url}}.", {
+            url: remoteExperimentConfig.url,
+          })}
         </DialogDescription>
       </DialogHeader>
 
@@ -136,11 +142,13 @@ export const RemoteExperimentTriggerModal = ({
                 name="payload"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Config</FormLabel>
+                    <FormLabel>{t("Config")}</FormLabel>
                     <FormDescription>
-                      Confirm the config you want to send to the remote dataset
-                      run URL along with the{" "}
-                      <strong>{dataset.data?.name}</strong> dataset information.
+                      <Trans
+                        i18nKey="Confirm the config you want to send to the remote dataset run URL along with the <0>{{dataset}}</0> dataset information."
+                        values={{ dataset: dataset.data?.name ?? "" }}
+                        components={[<strong key="0" />]}
+                      />
                     </FormDescription>
                     <FormControl>
                       <CodeMirrorEditor
@@ -167,7 +175,7 @@ export const RemoteExperimentTriggerModal = ({
                 onClick={() => setShowTriggerModal(false)}
                 disabled={runRemoteExperimentMutation.isPending}
               >
-                Cancel
+                {t("Cancel")}
               </Button>
               <Button
                 type="submit"
@@ -176,7 +184,7 @@ export const RemoteExperimentTriggerModal = ({
                 {runRemoteExperimentMutation.isPending && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                Run
+                {t("Run")}
               </Button>
             </div>
           </DialogFooter>

@@ -13,6 +13,7 @@ import {
 import { compactNumberFormatter } from "@/src/utils/numbers";
 import { cn } from "@/src/utils/tailwind";
 
+import { useTranslation } from "react-i18next";
 /**
  * LineChartTimeSeries component
  * @param data - Data to be displayed. Expects an array of objects with time_dimension, dimension, and metric properties.
@@ -34,6 +35,7 @@ export const LineChartTimeSeries: React.FC<ChartProps> = ({
   legendPosition = "none",
   showDataPointDots = true,
 }) => {
+  const { t } = useTranslation();
   const [highlightedDimension, setHighlightedDimension] = useState<
     string | null
   >(null);
@@ -69,7 +71,9 @@ export const LineChartTimeSeries: React.FC<ChartProps> = ({
                   )}
                   aria-pressed={isHighlighted}
                   aria-label={
-                    isHighlighted ? `Show only ${dimension}` : "Show all series"
+                    isHighlighted
+                      ? t("Show only {{dimension}}", { dimension })
+                      : t("Show all series")
                   }
                 >
                   <div

@@ -10,6 +10,7 @@ import {
 } from "@/src/features/top-banner";
 import { useV4Beta } from "@/src/features/events/hooks/useV4Beta";
 
+import { useTranslation } from "react-i18next";
 const CHANGELOG_URL =
   "https://litefuse.ai/changelog/2026-03-10-simplify-for-scale";
 const DISMISSED_STORAGE_KEY = "v4-beta-enabled-banner:v1:dismissed";
@@ -17,6 +18,7 @@ const V4_BETA_BANNER_ID = "v4-beta-enabled-banner";
 const V4_BETA_BANNER_ORDER = 20;
 
 export function V4BetaEnabledBanner() {
+  const { t } = useTranslation();
   const session = useSession();
   const { isBetaEnabled } = useV4Beta();
   const { getTopBannerOffset } = useTopBanner();
@@ -65,16 +67,17 @@ export function V4BetaEnabledBanner() {
         <ZapIcon className="h-4 w-4 shrink-0" />
         <p className="flex flex-1 flex-row gap-1 text-sm">
           <span className="font-semibold">
-            Faster Litefuse experience enabled (preview).
+            {t("Faster Litefuse experience enabled (preview).")}
           </span>{" "}
-          Missing real-time data? Upgrade your Litefuse SDK to the latest major
-          version.{" "}
+          {t(
+            "Missing real-time data? Upgrade your Litefuse SDK to the latest major version.",
+          )}{" "}
           <Link
             href={CHANGELOG_URL}
             target="_blank"
             className="flex flex-row items-center gap-1 underline underline-offset-2"
           >
-            Learn more
+            {t("Learn more")}
             <ExternalLink className="h-3 w-3" />
           </Link>
         </p>
@@ -83,8 +86,8 @@ export function V4BetaEnabledBanner() {
           size="sm"
           className="h-6 w-6 p-0"
           onClick={dismissBanner}
-          aria-label="Dismiss Preview (fast) banner"
-          title="Dismiss"
+          aria-label={t("Dismiss Preview (fast) banner")}
+          title={t("Dismiss")}
         >
           <X className="h-4 w-4" />
         </Button>

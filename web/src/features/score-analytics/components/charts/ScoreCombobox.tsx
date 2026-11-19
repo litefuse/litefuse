@@ -6,6 +6,7 @@ import {
 import { Button } from "@/src/components/ui/button";
 import { X } from "lucide-react";
 
+import { useTranslation } from "react-i18next";
 export interface ScoreOption {
   value: string; // "name-dataType-source"
   name: string;
@@ -32,6 +33,7 @@ export function ScoreCombobox({
   disabled = false,
   className,
 }: ScoreComboboxProps) {
+  const { t } = useTranslation();
   // 1. Filter options by dataType
   const filteredOptions = useMemo(() => {
     if (!filterByDataType) return options;
@@ -56,9 +58,9 @@ export function ScoreCombobox({
     );
 
     const typeLabels: Record<string, string> = {
-      BOOLEAN: "Boolean",
-      CATEGORICAL: "Categorical",
-      NUMERIC: "Numeric",
+      BOOLEAN: t("Boolean"),
+      CATEGORICAL: t("Categorical"),
+      NUMERIC: t("Numeric"),
     };
     const typeOrder = ["BOOLEAN", "CATEGORICAL", "NUMERIC"];
 
@@ -71,7 +73,7 @@ export function ScoreCombobox({
           label: `${opt.name} • ${opt.source}`,
         })),
       }));
-  }, [filteredOptions]);
+  }, [filteredOptions, t]);
 
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -89,8 +91,8 @@ export function ScoreCombobox({
         onValueChange={handleValueChange}
         options={groupedOptions}
         placeholder={placeholder}
-        searchPlaceholder="Search scores..."
-        emptyText="No scores found."
+        searchPlaceholder={t("Search scores...")}
+        emptyText={t("No scores found.")}
         disabled={disabled}
         className={className}
       />
@@ -100,7 +102,7 @@ export function ScoreCombobox({
           variant="ghost"
           size="icon"
           onClick={handleClear}
-          title="Clear selection"
+          title={t("Clear selection")}
           className="h-6 w-6 shrink-0"
         >
           <X className="h-3 w-3" />

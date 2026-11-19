@@ -31,6 +31,7 @@ import { usePeekNavigation } from "@/src/components/table/peek/hooks/usePeekNavi
 import { PeekViewTraceDetail } from "@/src/components/table/peek/peek-trace-detail";
 import { TablePeekView } from "@/src/components/table/peek";
 
+import { useTranslation } from "react-i18next";
 export type DatasetCompareRunRowData = {
   id: string;
   input: Prisma.JsonValue;
@@ -46,6 +47,7 @@ function DatasetCompareRunsTableInternal(props: {
   runIds: string[];
   localExperiments: { key: string; value: string }[];
 }) {
+  const { t } = useTranslation();
   const { toggleField, isFieldSelected } = useDatasetCompareFields();
   const [isFieldsDropdownOpen, setIsFieldsDropdownOpen] = useState(false);
   const {
@@ -136,7 +138,7 @@ function DatasetCompareRunsTableInternal(props: {
   const columns: LangfuseColumnDef<DatasetCompareRunRowData>[] = [
     {
       accessorKey: "id",
-      header: "Item id",
+      header: t("Item id"),
       id: "id",
       size: 90,
       enableHiding: true,
@@ -153,7 +155,7 @@ function DatasetCompareRunsTableInternal(props: {
     },
     {
       accessorKey: "input",
-      header: "Input",
+      header: t("Input"),
       id: "input",
       size: 200,
       enableHiding: true,
@@ -170,7 +172,7 @@ function DatasetCompareRunsTableInternal(props: {
     },
     {
       accessorKey: "expectedOutput",
-      header: "Expected Output",
+      header: t("Expected Output"),
       id: "expectedOutput",
       size: 200,
       enableHiding: true,
@@ -190,7 +192,7 @@ function DatasetCompareRunsTableInternal(props: {
     },
     {
       accessorKey: "metadata",
-      header: "Metadata",
+      header: t("Metadata"),
       id: "metadata",
       size: 200,
       enableHiding: true,
@@ -236,7 +238,7 @@ function DatasetCompareRunsTableInternal(props: {
                 onClick={() => setIsFieldsDropdownOpen(!isFieldsDropdownOpen)}
               >
                 <LayoutList className="mr-2 h-4 w-4" />
-                <span>Fields</span>
+                <span>{t("Fields")}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
@@ -246,19 +248,19 @@ function DatasetCompareRunsTableInternal(props: {
                 checked={isFieldSelected("output")}
                 onCheckedChange={() => toggleField("output")}
               >
-                Output
+                {t("Output")}
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
                 checked={isFieldSelected("scores")}
                 onCheckedChange={() => toggleField("scores")}
               >
-                Scores
+                {t("Scores")}
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
                 checked={isFieldSelected("resourceMetrics")}
                 onCheckedChange={() => toggleField("resourceMetrics")}
               >
-                Latency and cost
+                {t("Latency and cost")}
               </DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>

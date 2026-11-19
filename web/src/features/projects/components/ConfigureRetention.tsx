@@ -21,6 +21,7 @@ import { projectRetentionSchema } from "@/src/features/auth/lib/projectRetention
 import { ActionButton } from "@/src/components/ActionButton";
 import { useHasEntitlement } from "@/src/features/entitlements/hooks";
 
+import { useTranslation } from "react-i18next";
 export default function ConfigureRetention() {
   const { project } = useQueryProject();
 
@@ -34,6 +35,7 @@ function ConfigureRetentionForm({
 }: {
   project: { id: string; retentionDays?: number | null };
 }) {
+  const { t } = useTranslation();
   const { update: updateSession } = useSession();
   const capture = usePostHogClientCapture();
   const hasAccess = useHasProjectAccess({
@@ -73,34 +75,36 @@ function ConfigureRetentionForm({
 
   return (
     <div>
-      <Header title="Data Retention" />
+      <Header title={t("Data Retention")} />
       <Card className="mb-4 p-3">
         <p className="text-primary mb-4 text-sm">
-          Data retention automatically deletes events older than the specified
-          number of days. The value must be 0 or at least 7 days. Set to 0 to
-          retain data indefinitely. The deletion happens asynchronously, i.e.
-          event may be available for a while after they expired.
+          {t(
+            "Data retention automatically deletes events older than the specified number of days. The value must be 0 or at least 7 days. Set to 0 to retain data indefinitely. The deletion happens asynchronously, i.e. event may be available for a while after they expired.",
+          )}
         </p>
         {Boolean(form.getValues().retention) &&
         form.getValues().retention !== project.retentionDays ? (
           <p className="text-primary mb-4 text-sm">
-            Your Project&#39;s retention will be set from &quot;
-            {project.retentionDays ?? "Indefinite"}
-            &quot; to &quot;
-            {Number(form.watch("retention")) === 0
-              ? "Indefinite"
-              : Number(form.watch("retention"))}
-            &quot; days.
+            {t(
+              'Your Project\'s retention will be set from "{{from}}" to "{{to}}" days.',
+              {
+                from: project.retentionDays ?? t("Indefinite"),
+                to:
+                  Number(form.watch("retention")) === 0
+                    ? t("Indefinite")
+                    : Number(form.watch("retention")),
+              },
+            )}
           </p>
         ) : !Boolean(project.retentionDays) ? (
           <p className="text-primary mb-4 text-sm">
-            Your Project retains data indefinitely.
+            {t("Your Project retains data indefinitely.")}
           </p>
         ) : (
           <p className="text-primary mb-4 text-sm">
-            Your Project&#39;s current retention is &quot;
-            {project.retentionDays ?? ""}
-            &quot; days.
+            {t('Your Project\'s current retention is "{{days}}" days.', {
+              days: project.retentionDays ?? "",
+            })}
           </p>
         )}
         <Form {...form}>
@@ -126,7 +130,7 @@ function ConfigureRetentionForm({
                         disabled={!hasAccess || !hasEntitlement}
                       />
                       {!hasAccess && (
-                        <span title="No access">
+                        <span title={t("No access")}>
                           <LockIcon className="text-muted absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 transform" />
                         </span>
                       )}
@@ -145,7 +149,7 @@ function ConfigureRetentionForm({
               className="mt-4"
               type="submit"
             >
-              Save
+              {t("Save")}
             </ActionButton>
           </form>
         </Form>

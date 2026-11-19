@@ -14,6 +14,7 @@ import { formatChartTimestamp } from "../../lib/chart-formatters";
 import { ScoreChartTooltip } from "../../lib/ScoreChartTooltip";
 import { ScoreChartLegendContent } from "./ScoreChartLegendContent";
 
+import { useTranslation } from "react-i18next";
 export interface NumericTimeSeriesChartProps {
   data: Array<{
     timestamp: Date;
@@ -42,6 +43,7 @@ export function ScoreTimeSeriesNumericChart({
   timeRange,
   colors,
 }: NumericTimeSeriesChartProps) {
+  const { t } = useTranslation();
   const isComparisonMode = Boolean(score2Name);
 
   // Transform data for Recharts
@@ -121,7 +123,7 @@ export function ScoreTimeSeriesNumericChart({
   if (chartData.length === 0) {
     return (
       <div className="text-muted-foreground flex h-[200px] items-center justify-center text-sm">
-        No time series data available
+        {t("No time series data available")}
       </div>
     );
   }
@@ -137,7 +139,7 @@ export function ScoreTimeSeriesNumericChart({
   if (!hasAnyData) {
     return (
       <div className="text-muted-foreground flex h-[200px] items-center justify-center text-sm">
-        No data points available for the selected time range
+        {t("No data points available for the selected time range")}
       </div>
     );
   }

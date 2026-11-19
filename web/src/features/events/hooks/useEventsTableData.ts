@@ -10,6 +10,7 @@ import { showSuccessToast } from "@/src/features/notifications/showSuccessToast"
 import { joinTableCoreAndMetrics } from "@/src/components/table/utils/joinTableCoreAndMetrics";
 import { type EventBatchIOOutput } from "@/src/features/events/server/eventsRouter";
 
+import { useTranslation } from "react-i18next";
 type FullEventsObservation = FullEventsObservations[number] & {
   scores?: ScoreAggregate;
   traceScores?: ScoreAggregate;
@@ -44,6 +45,7 @@ export function useEventsTableData({
   selectAll,
   setSelectedRows,
 }: UseEventsTableDataParams) {
+  const { t } = useTranslation();
   // Prepare query payloads
   const getCountPayload = useMemo(
     () => ({
@@ -166,11 +168,14 @@ export function useEventsTableData({
   const addToQueueMutation = api.annotationQueueItems.createMany.useMutation({
     onSuccess: (data) => {
       showSuccessToast({
-        title: "Observations added to queue",
-        description: `Selected observations will be added to queue "${data.queueName}". This may take a minute.`,
+        title: t("Observations added to queue"),
+        description: t(
+          'Selected observations will be added to queue "{{queue}}". This may take a minute.',
+          { queue: data.queueName },
+        ),
         link: {
           href: `/project/${projectId}/annotation-queues/${data.queueId}`,
-          text: `View queue "${data.queueName}"`,
+          text: t('View queue "{{queue}}"', { queue: data.queueName }),
         },
       });
     },

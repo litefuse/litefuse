@@ -9,6 +9,8 @@ import { useState, useEffect } from "react";
 import { ChevronUp, ChevronDown, X } from "lucide-react";
 import { type SearchMatch } from "../types";
 
+import { useTranslation } from "react-i18next";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 interface SearchBarProps {
   onSearch: (query: string) => void;
   matches: SearchMatch[];
@@ -30,10 +32,11 @@ export function SearchBar({
   onNext,
   onPrevious,
   onClear,
-  placeholder = "Search JSON...",
+  placeholder = i18nKey("Search JSON..."),
   value: controlledValue,
   onValueChange,
 }: SearchBarProps) {
+  const { t } = useTranslation();
   const [internalQuery, setInternalQuery] = useState("");
 
   const isControlled =
@@ -95,12 +98,12 @@ export function SearchBar({
       <div className="bg-background flex min-w-0 flex-1 items-center gap-1 rounded-md border px-2 py-1">
         <input
           type="text"
-          placeholder={placeholder}
+          placeholder={t(placeholder)}
           value={query}
           onChange={(e) => handleChange(e.target.value)}
           onKeyDown={handleKeyDown}
           className="min-w-0 flex-1 border-none bg-transparent text-sm focus:ring-0 focus:outline-hidden"
-          aria-label="Search JSON"
+          aria-label={t("Search JSON")}
         />
 
         {/* Match counter */}
@@ -110,8 +113,11 @@ export function SearchBar({
             aria-live="polite"
           >
             {hasMatches
-              ? `${currentIndex + 1} of ${matches.length}`
-              : "No matches"}
+              ? t("{{current}} of {{total}}", {
+                  current: currentIndex + 1,
+                  total: matches.length,
+                })
+              : t("No matches")}
           </span>
         )}
       </div>
@@ -124,8 +130,8 @@ export function SearchBar({
             onClick={onPrevious}
             disabled={!hasMatches}
             className="hover:bg-accent hover:text-accent-foreground inline-flex items-center justify-center rounded-md p-1 transition-colors disabled:cursor-not-allowed disabled:opacity-30"
-            aria-label="Previous match (Shift+Enter)"
-            title="Previous match (Shift+Enter)"
+            aria-label={t("Previous match (Shift+Enter)")}
+            title={t("Previous match (Shift+Enter)")}
           >
             <ChevronUp size={16} />
           </button>
@@ -135,8 +141,8 @@ export function SearchBar({
             onClick={onNext}
             disabled={!hasMatches}
             className="hover:bg-accent hover:text-accent-foreground inline-flex items-center justify-center rounded-md p-1 transition-colors disabled:cursor-not-allowed disabled:opacity-30"
-            aria-label="Next match (Enter)"
-            title="Next match (Enter)"
+            aria-label={t("Next match (Enter)")}
+            title={t("Next match (Enter)")}
           >
             <ChevronDown size={16} />
           </button>
@@ -145,8 +151,8 @@ export function SearchBar({
             type="button"
             onClick={handleClear}
             className="hover:bg-accent hover:text-accent-foreground inline-flex items-center justify-center rounded-md p-1 transition-colors"
-            aria-label="Clear search (Escape)"
-            title="Clear search (Escape)"
+            aria-label={t("Clear search (Escape)")}
+            title={t("Clear search (Escape)")}
           >
             <X size={16} />
           </button>

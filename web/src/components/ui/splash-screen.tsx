@@ -5,6 +5,7 @@ import { InfoIcon } from "lucide-react";
 import { ActionButton } from "@/src/components/ActionButton";
 import { Alert, AlertTitle, AlertDescription } from "@/src/components/ui/alert";
 
+import { useTranslation } from "react-i18next";
 export interface ValueProposition {
   title: string;
   description: string;
@@ -80,6 +81,7 @@ export function SplashScreen({
   gettingStarted,
   children,
 }: SplashScreenProps) {
+  const { t } = useTranslation();
   return (
     <div className={cn("mx-auto flex max-w-4xl flex-col items-center p-8")}>
       <div className="mb-6 text-center">
@@ -115,7 +117,7 @@ export function SplashScreen({
       {gettingStarted && (
         <Alert className="w-full max-w-3xl">
           <InfoIcon className="mr-2 h-4 w-4" />
-          <AlertTitle>Getting Started</AlertTitle>
+          <AlertTitle>{t("Getting Started")}</AlertTitle>
           <AlertDescription>{gettingStarted}</AlertDescription>
         </Alert>
       )}

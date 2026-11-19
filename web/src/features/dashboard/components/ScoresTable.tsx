@@ -21,6 +21,7 @@ import {
 import { type DatabaseRow } from "@/src/server/api/services/sqlInterface";
 import { NoDataOrLoading } from "@/src/components/NoDataOrLoading";
 
+import { useTranslation } from "react-i18next";
 const dropValuesForCategoricalScores = (
   value: number,
   scoreDataType: ScoreDataTypeType,
@@ -56,6 +57,7 @@ export const ScoresTable = ({
   isLoading?: boolean;
   metricsVersion?: ViewVersion;
 }) => {
+  const { t } = useTranslation();
   const localFilters = createTracesTimeFilter(
     globalFilterState,
     "scoreTimestamp",
@@ -146,7 +148,7 @@ export const ScoresTable = ({
 
   if (!zeroValueScores || !oneValueScores) {
     return (
-      <DashboardCard title={"Scores"} isLoading={false}>
+      <DashboardCard title={t("Scores")} isLoading={false}>
         <NoDataOrLoading isLoading={false} />
       </DashboardCard>
     );
@@ -194,7 +196,7 @@ export const ScoresTable = ({
   return (
     <DashboardCard
       className={className}
-      title="Scores"
+      title={t("Scores")}
       isLoading={
         isLoading ||
         metrics.isPending ||
@@ -204,9 +206,9 @@ export const ScoresTable = ({
     >
       <DashboardTable
         headers={[
-          "Name",
+          t("Name"),
           <RightAlignedCell key="count">#</RightAlignedCell>,
-          <RightAlignedCell key="average">Avg</RightAlignedCell>,
+          <RightAlignedCell key="average">{t("Avg")}</RightAlignedCell>,
           <RightAlignedCell key="zero">0</RightAlignedCell>,
           <RightAlignedCell key="one">1</RightAlignedCell>,
         ]}
@@ -241,14 +243,15 @@ export const ScoresTable = ({
           oneValueScores.isPending
         }
         noDataProps={{
-          description:
+          description: t(
             "Scores evaluate LLM quality and can be created manually or using the SDK.",
+          ),
           href: "https://litefuse.ai/docs/evaluation/overview",
         }}
       >
         <TotalMetric
           metric={totalScores ? compactNumberFormatter(totalScores) : "0"}
-          description="Total scores tracked"
+          description={t("Total scores tracked")}
         />
       </DashboardTable>
     </DashboardCard>

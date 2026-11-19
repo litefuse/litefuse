@@ -2,6 +2,7 @@ import { z } from "zod/v4";
 import { addMinutes, format } from "date-fns";
 import { type DateTrunc } from "@langfuse/shared/src/server";
 
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 interface TimeRangeDefinition {
   label: string;
   abbreviation: string;
@@ -11,85 +12,85 @@ interface TimeRangeDefinition {
 
 export const TIME_RANGES = {
   last5Minutes: {
-    label: "Past 5 min",
+    label: i18nKey("Past 5 min"),
     abbreviation: "5m",
     minutes: 5,
     dateTrunc: "minute",
   },
   last30Minutes: {
-    label: "Past 30 min",
+    label: i18nKey("Past 30 min"),
     abbreviation: "30m",
     minutes: 30,
     dateTrunc: "minute",
   },
   last1Hour: {
-    label: "Past 1 hour",
+    label: i18nKey("Past 1 hour"),
     abbreviation: "1h",
     minutes: 60,
     dateTrunc: "minute",
   },
   last3Hours: {
-    label: "Past 3 hours",
+    label: i18nKey("Past 3 hours"),
     abbreviation: "3h",
     minutes: 3 * 60,
     dateTrunc: "minute",
   },
   last6Hours: {
-    label: "Past 6 hours",
+    label: i18nKey("Past 6 hours"),
     abbreviation: "6h",
     minutes: 6 * 60,
     dateTrunc: "minute",
   },
   last1Day: {
-    label: "Past 1 day",
+    label: i18nKey("Past 1 day"),
     abbreviation: "1d",
     minutes: 24 * 60,
     dateTrunc: "hour",
   },
   last3Days: {
-    label: "Past 3 days",
+    label: i18nKey("Past 3 days"),
     abbreviation: "3d",
     minutes: 3 * 24 * 60,
     dateTrunc: "hour",
   },
   last7Days: {
-    label: "Past 7 days",
+    label: i18nKey("Past 7 days"),
     abbreviation: "7d",
     minutes: 7 * 24 * 60,
     dateTrunc: "hour",
   },
   last14Days: {
-    label: "Past 14 days",
+    label: i18nKey("Past 14 days"),
     abbreviation: "14d",
     minutes: 14 * 24 * 60,
     dateTrunc: "day",
   },
   last30Days: {
-    label: "Past 30 days",
+    label: i18nKey("Past 30 days"),
     abbreviation: "30d",
     minutes: 30 * 24 * 60,
     dateTrunc: "day",
   },
   last90Days: {
-    label: "Past 90 days",
+    label: i18nKey("Past 90 days"),
     abbreviation: "90d",
     minutes: 90 * 24 * 60,
     dateTrunc: "week",
   },
   last1Year: {
-    label: "Past 1 year",
+    label: i18nKey("Past 1 year"),
     abbreviation: "1y",
     minutes: 365 * 24 * 60,
     dateTrunc: "month",
   },
   allTime: {
-    label: "All time",
+    label: i18nKey("All time"),
     abbreviation: "All",
     minutes: null,
     dateTrunc: null,
   },
   custom: {
-    label: "Custom",
+    label: i18nKey("Custom"),
     abbreviation: "Custom",
     minutes: null,
     dateTrunc: null,

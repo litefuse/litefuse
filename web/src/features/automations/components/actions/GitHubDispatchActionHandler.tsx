@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import React from "react";
 import { type UseFormReturn } from "react-hook-form";
 import { type BaseActionHandler } from "./BaseActionHandler";
@@ -56,20 +57,23 @@ export class GitHubDispatchActionHandler
     };
   }
 
-  validateFormData(formData: GitHubDispatchActionFormData): {
+  validateFormData(
+    formData: GitHubDispatchActionFormData,
+    t: TFunction,
+  ): {
     isValid: boolean;
     errors?: string[];
   } {
     const errors: string[] = [];
 
     if (!formData.githubDispatch?.url) {
-      errors.push("GitHub dispatch URL is required");
+      errors.push(t("GitHub dispatch URL is required"));
     }
 
     if (!formData.githubDispatch?.eventType) {
-      errors.push("Event type is required");
+      errors.push(t("Event type is required"));
     } else if (formData.githubDispatch.eventType.length > 100) {
-      errors.push("Event type must be 100 characters or less");
+      errors.push(t("Event type must be 100 characters or less"));
     }
 
     // Token is required only if there's no existing token (displayGitHubToken)
@@ -77,7 +81,7 @@ export class GitHubDispatchActionHandler
       !formData.githubDispatch?.githubToken &&
       !formData.githubDispatch?.displayGitHubToken
     ) {
-      errors.push("GitHub token is required");
+      errors.push(t("GitHub token is required"));
     }
 
     return {

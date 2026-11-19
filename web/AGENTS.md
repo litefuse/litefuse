@@ -87,6 +87,9 @@ Use root [AGENTS.md](../AGENTS.md) for monorepo-level rules.
 - In `src/__tests__/server`, avoid `pruneDatabase` calls.
 - Confirm the target `*.clienttest.*` or `*.servertest.*` file exists before using `--testPathPatterns`; source files do not always have a matching colocated test file.
 - Do not hand-edit build artifacts: `.next/*`, `.next-check/*`, `dist/*`.
+- Next.js and `typecheck` use `tsconfig.build.json` to exclude tests from
+  production typechecking. Keep this aligned: Docker prunes the worker package,
+  which may contain fixtures imported by web tests.
 - Node initialization must await the first Doris split-cache snapshot before
   request handlers can issue telemetry queries. Cross-project server features
   pass explicit active project IDs to shared aggregation repositories.

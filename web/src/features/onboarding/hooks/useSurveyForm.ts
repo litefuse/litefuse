@@ -9,20 +9,22 @@ import { useSession } from "next-auth/react";
 import { showErrorToast } from "@/src/features/notifications/showErrorToast";
 import { showSuccessToast } from "@/src/features/notifications/showSuccessToast";
 
+import { useTranslation } from "react-i18next";
 export function useSurveyForm() {
+  const { t } = useTranslation();
   const [state, dispatch] = useReducer(surveyReducer, initialSurveyState);
   const { data: session } = useSession();
   const createSurveyMutation = api.surveys.create.useMutation({
     onSuccess: () => {
       showSuccessToast({
-        title: "Survey submitted",
-        description: "Thank you for your feedback!",
+        title: t("Survey submitted"),
+        description: t("Thank you for your feedback!"),
       });
     },
     onError: (error) => {
       showErrorToast(
-        "Failed to submit survey",
-        error.message || "Please try again later.",
+        t("Failed to submit survey"),
+        error.message || t("Please try again later."),
       );
     },
   });

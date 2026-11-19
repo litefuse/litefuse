@@ -32,6 +32,9 @@ import { ScoreConfigSettings } from "@/src/features/score-configs/components/Sco
 import { env } from "@/src/env.mjs";
 import { NotificationSettings } from "@/src/features/notifications/components/NotificationSettings";
 
+import { useTranslation } from "react-i18next";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
+import { type TFunction } from "i18next";
 type ProjectSettingsPage = {
   title: string;
   slug: string;
@@ -40,6 +43,7 @@ type ProjectSettingsPage = {
 } & ({ content: React.ReactNode } | { href: string });
 
 export function useProjectSettingsPages(): ProjectSettingsPage[] {
+  const { t } = useTranslation();
   const router = useRouter();
   const { project, organization } = useQueryProject();
   // Data retention is gated to self-hosted enterprise only (license litefuse_ee_).
@@ -79,6 +83,7 @@ export function useProjectSettingsPages(): ProjectSettingsPage[] {
     showExportsSettings,
     showBatchActionsSettings,
     showIntegrationsSettings,
+    t,
   });
 }
 
@@ -92,6 +97,7 @@ export const getProjectSettingsPages = ({
   showExportsSettings,
   showBatchActionsSettings,
   showIntegrationsSettings,
+  t,
 }: {
   project: { id: string; name: string; metadata: Record<string, unknown> };
   organization: { id: string; name: string; metadata: Record<string, unknown> };
@@ -102,9 +108,10 @@ export const getProjectSettingsPages = ({
   showExportsSettings: boolean;
   showBatchActionsSettings: boolean;
   showIntegrationsSettings: boolean;
+  t: TFunction;
 }): ProjectSettingsPage[] => [
   {
-    title: "General",
+    title: i18nKey("General"),
     slug: "index",
     cmdKKeywords: ["name", "id", "delete", "transfer", "ownership"],
     content: (
@@ -113,9 +120,9 @@ export const getProjectSettingsPages = ({
         <RenameProject />
         {showRetentionSettings && <ConfigureRetention />}
         <div>
-          <Header title="Debug Information" />
+          <Header title={t("Debug Information")} />
           <JSONView
-            title="Metadata"
+            title={t("Metadata")}
             json={{
               project: {
                 name: project.name,
@@ -136,15 +143,17 @@ export const getProjectSettingsPages = ({
         <SettingsDangerZone
           items={[
             {
-              title: "Transfer ownership",
-              description:
+              title: i18nKey("Transfer ownership"),
+              description: i18nKey(
                 "Transfer this project to another organization where you have the ability to create projects.",
+              ),
               button: <TransferProjectButton />,
             },
             {
-              title: "Delete this project",
-              description:
+              title: i18nKey("Delete this project"),
+              description: i18nKey(
                 "Once you delete a project, there is no going back. Please be certain.",
+              ),
               button: <DeleteProjectButton />,
             },
           ]}
@@ -153,7 +162,7 @@ export const getProjectSettingsPages = ({
     ),
   },
   {
-    title: "API Keys",
+    title: i18nKey("API Keys"),
     slug: "api-keys",
     cmdKKeywords: ["auth", "public key", "secret key"],
     content: (
@@ -163,7 +172,7 @@ export const getProjectSettingsPages = ({
     ),
   },
   {
-    title: "LLM Connections",
+    title: i18nKey("LLM Connections"),
     slug: "llm-connections",
     cmdKKeywords: [
       "llm",
@@ -184,31 +193,31 @@ export const getProjectSettingsPages = ({
     show: showLLMConnectionsSettings,
   },
   {
-    title: "Model Definitions",
+    title: i18nKey("Model Definitions"),
     slug: "models",
     cmdKKeywords: ["cost", "token"],
     content: <ModelsSettings projectId={project.id} />,
   },
   {
-    title: "Protected Prompt Labels",
+    title: i18nKey("Protected Prompt Labels"),
     slug: "protected-prompt-labels",
     cmdKKeywords: ["prompt", "label", "protect", "lock"],
     content: <ProtectedLabelsSettings projectId={project.id} />,
     show: showProtectedLabelsSettings,
   },
   {
-    title: "Scores Configs",
+    title: i18nKey("Scores Configs"),
     slug: "scores",
     cmdKKeywords: ["config"],
     content: <ScoreConfigSettings projectId={project.id} />,
   },
   {
-    title: "Members",
+    title: i18nKey("Members"),
     slug: "members",
     cmdKKeywords: ["invite", "user"],
     content: (
       <div>
-        <Header title="Project Members" />
+        <Header title={t("Project Members")} />
         <MembersTable
           orgId={organization.id}
           project={{ id: project.id, name: project.name }}
@@ -224,47 +233,48 @@ export const getProjectSettingsPages = ({
     ),
   },
   {
-    title: "Integrations",
+    title: i18nKey("Integrations"),
     slug: "integrations",
     cmdKKeywords: ["posthog", "mixpanel", "analytics"],
     content: <Integrations projectId={project.id} />,
     show: showIntegrationsSettings,
   },
   {
-    title: "Exports",
+    title: i18nKey("Exports"),
     slug: "exports",
     cmdKKeywords: ["csv", "download", "json", "batch"],
     content: <BatchExportsSettingsPage projectId={project.id} />,
     show: showExportsSettings,
   },
   {
-    title: "Batch Actions",
+    title: i18nKey("Batch Actions"),
     slug: "batch-actions",
     cmdKKeywords: ["bulk", "batch", "action", "dataset", "delete"],
     content: <BatchActionsSettingsPage projectId={project.id} />,
     show: showBatchActionsSettings,
   },
   {
-    title: "Audit Logs",
+    title: i18nKey("Audit Logs"),
     slug: "audit-logs",
     cmdKKeywords: ["trail"],
     content: <AuditLogsSettingsPage projectId={project.id} />,
     show: showAuditLogsSettings,
   },
   {
-    title: "Notifications",
+    title: i18nKey("Notifications"),
     slug: "notifications",
     cmdKKeywords: ["inbox", "email", "mention", "alert"],
     content: <NotificationSettings />,
   },
   {
-    title: "Organization Settings",
+    title: i18nKey("Organization Settings"),
     slug: "organization",
     href: `/organization/${organization.id}/settings`,
   },
 ];
 
 export default function SettingsPage() {
+  const { t } = useTranslation();
   const { project, organization } = useQueryProject();
   const router = useRouter();
   const pages = useProjectSettingsPages();
@@ -274,7 +284,7 @@ export default function SettingsPage() {
   return (
     <ContainerPage
       headerProps={{
-        title: "Project Settings",
+        title: t("Project Settings"),
       }}
     >
       <PagedSettingsContainer
@@ -286,6 +296,7 @@ export default function SettingsPage() {
 }
 
 const Integrations = (props: { projectId: string }) => {
+  const { t } = useTranslation();
   const hasAccess = useHasProjectAccess({
     projectId: props.projectId,
     scope: "integrations:CRUD",
@@ -297,14 +308,15 @@ const Integrations = (props: { projectId: string }) => {
 
   return (
     <div>
-      <Header title="Integrations" />
+      <Header title={t("Integrations")} />
       <div className="space-y-6">
         <Card className="p-3">
           {}
           <PostHogLogo className="text-foreground mb-4 w-40" />
           <p className="text-primary mb-4 text-sm">
-            We have teamed up with PostHog (OSS product analytics) to make
-            Litefuse Events/Metrics available in your Posthog Dashboards.
+            {t(
+              "We have teamed up with PostHog (OSS product analytics) to make Litefuse Events/Metrics available in your Posthog Dashboards.",
+            )}
           </p>
           <div className="flex items-center gap-2">
             <ActionButton
@@ -312,14 +324,14 @@ const Integrations = (props: { projectId: string }) => {
               hasAccess={hasAccess}
               href={`/project/${props.projectId}/settings/integrations/posthog`}
             >
-              Configure
+              {t("Configure")}
             </ActionButton>
             <Button asChild variant="ghost">
               <Link
                 href="https://litefuse.ai/integrations/analytics/posthog"
                 target="_blank"
               >
-                Integration Docs ↗
+                {t("Integration Docs ↗")}
               </Link>
             </Button>
           </div>
@@ -328,8 +340,9 @@ const Integrations = (props: { projectId: string }) => {
         <Card className="p-3" hidden={true}>
           <MixpanelLogo className="text-foreground mb-4 w-20" />
           <p className="text-primary mb-4 text-sm">
-            Integrate with Mixpanel to sync your Litefuse traces, generations,
-            and scores for advanced product analytics and insights.
+            {t(
+              "Integrate with Mixpanel to sync your Litefuse traces, generations, and scores for advanced product analytics and insights.",
+            )}
           </p>
           <div className="flex items-center gap-2">
             <ActionButton
@@ -337,25 +350,25 @@ const Integrations = (props: { projectId: string }) => {
               hasAccess={hasAccess}
               href={`/project/${props.projectId}/settings/integrations/mixpanel`}
             >
-              Configure
+              {t("Configure")}
             </ActionButton>
             <Button asChild variant="ghost">
               <Link
                 href="https://litefuse.ai/integrations/analytics/mixpanel"
                 target="_blank"
               >
-                Integration Docs ↗
+                {t("Integration Docs ↗")}
               </Link>
             </Button>
           </div>
         </Card>
 
         <Card className="p-3">
-          <span className="font-semibold">Blob Storage</span>
+          <span className="font-semibold">{t("Blob Storage")}</span>
           <p className="text-primary mb-4 text-sm">
-            Configure scheduled exports of your trace data to S3 compatible
-            storages or Azure Blob Storage. Set up a scheduled export to your
-            own storage for data analysis or backup purposes.
+            {t(
+              "Configure scheduled exports of your trace data to S3 compatible storages or Azure Blob Storage. Set up a scheduled export to your own storage for data analysis or backup purposes.",
+            )}
           </p>
           <div className="flex items-center gap-2">
             <ActionButton
@@ -364,14 +377,14 @@ const Integrations = (props: { projectId: string }) => {
               hasEntitlement={allowBlobStorageIntegration}
               href={`/project/${props.projectId}/settings/integrations/blobstorage`}
             >
-              Configure
+              {t("Configure")}
             </ActionButton>
             <Button asChild variant="ghost">
               <Link
                 href="https://litefuse.ai/docs/query-traces#blob-storage"
                 target="_blank"
               >
-                Integration Docs ↗
+                {t("Integration Docs ↗")}
               </Link>
             </Button>
           </div>
@@ -380,11 +393,12 @@ const Integrations = (props: { projectId: string }) => {
         <Card className="p-3" hidden={true}>
           <div className="mb-4 flex items-center gap-2">
             <Slack className="text-foreground h-5 w-5" />
-            <span className="font-semibold">Slack</span>
+            <span className="font-semibold">{t("Slack")}</span>
           </div>
           <p className="text-primary mb-4 text-sm">
-            Connect a Slack workspace and create channel automations to receive
-            Litefuse alerts natively in Slack.
+            {t(
+              "Connect a Slack workspace and create channel automations to receive Litefuse alerts natively in Slack.",
+            )}
           </p>
           <div className="flex items-center gap-2">
             <ActionButton
@@ -392,7 +406,7 @@ const Integrations = (props: { projectId: string }) => {
               hasAccess={hasAccess}
               href={`/project/${props.projectId}/settings/integrations/slack`}
             >
-              Configure
+              {t("Configure")}
             </ActionButton>
           </div>
         </Card>

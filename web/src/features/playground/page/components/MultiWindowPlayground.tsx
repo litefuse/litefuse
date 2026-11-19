@@ -17,6 +17,7 @@ import {
 } from "@/src/components/ui/tooltip";
 import { useIsMobile } from "@/src/hooks/use-mobile";
 
+import { useTranslation } from "react-i18next";
 /**
  * MultiWindowPlayground Component
  *
@@ -153,6 +154,7 @@ function PlaygroundWindowContent({
   canRemove: boolean;
   isMobile?: boolean;
 }) {
+  const { t } = useTranslation();
   const playgroundContext = usePlaygroundContext();
   const { registerPageTarget, unregisterPageTarget } =
     useMessageSearchActions();
@@ -203,11 +205,11 @@ function PlaygroundWindowContent({
                         className="h-7 gap-1.5 px-2.5 text-xs @xl:hidden"
                       >
                         <Plus size={14} />
-                        <span className="sr-only">New split window</span>
+                        <span className="sr-only">{t("New split window")}</span>
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent className="text-xs">
-                      New split window
+                      {t("New split window")}
                     </TooltipContent>
                   </Tooltip>
                   <Button
@@ -216,7 +218,7 @@ function PlaygroundWindowContent({
                     className="hidden h-7 gap-1.5 px-2.5 text-xs @xl:flex"
                   >
                     <Plus size={14} />
-                    <span>New split window</span>
+                    <span>{t("New split window")}</span>
                   </Button>
                 </>
               )}
@@ -229,11 +231,11 @@ function PlaygroundWindowContent({
                       className="hover:bg-destructive/10 hover:text-destructive h-6 w-6 p-0"
                     >
                       <X size={14} />
-                      <span className="sr-only">Remove window</span>
+                      <span className="sr-only">{t("Remove window")}</span>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent className="text-xs">
-                    Remove window
+                    {t("Remove window")}
                   </TooltipContent>
                 </Tooltip>
               )}

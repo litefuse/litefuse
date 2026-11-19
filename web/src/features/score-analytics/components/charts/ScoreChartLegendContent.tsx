@@ -8,6 +8,12 @@ import {
   PopoverTrigger,
 } from "@/src/components/ui/popover";
 import { cn } from "@/src/utils/tailwind";
+import { useTranslation } from "react-i18next";
+
+/** CSS colour token, not user-facing text. */
+const FALLBACK_SERIES_COLOR = "hsl(var(--chart-1))";
+/** Recharts payload key, not user-facing text. */
+const DEFAULT_PAYLOAD_KEY = "value";
 import {
   useChart,
   getPayloadConfigFromPayload,
@@ -51,13 +57,18 @@ const LegendItem = ({
   onClick,
   noTruncate = false,
 }: LegendItemProps) => {
+  const { t } = useTranslation();
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={!interactive}
       aria-pressed={visible}
-      aria-label={`${visible ? "Hide" : "Show"} ${label}`}
+      aria-label={
+        visible
+          ? t("Hide {{label}}", { label })
+          : t("Show {{label}}", { label })
+      }
       className={cn(
         "flex items-center gap-1.5 text-sm transition-opacity",
         interactive && "cursor-pointer hover:opacity-80",
@@ -117,6 +128,7 @@ export const ScoreChartLegendContent = React.forwardRef<
     },
     ref,
   ) => {
+    const { t } = useTranslation();
     const { config } = useChart();
     const containerRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
@@ -305,7 +317,7 @@ export const ScoreChartLegendContent = React.forwardRef<
       const groups: Record<string, typeof payload> = {};
 
       payload.forEach((item) => {
-        const key = `${nameKey || item.dataKey || "value"}`;
+        const key = `${nameKey || item.dataKey || DEFAULT_PAYLOAD_KEY}`;
         let groupName = "Categories";
 
         // Try to extract score name from key (e.g., "sentiment-negative" → "sentiment")
@@ -372,7 +384,7 @@ export const ScoreChartLegendContent = React.forwardRef<
 
     // Format label for display
     const getFormattedLabel = (item: (typeof payload)[0]): string => {
-      const key = `${nameKey || item.dataKey || "value"}`;
+      const key = `${nameKey || item.dataKey || DEFAULT_PAYLOAD_KEY}`;
 
       // Try to get label from ChartConfig first
       const itemConfig = getPayloadConfigFromPayload(config, item, key);
@@ -412,7 +424,7 @@ export const ScoreChartLegendContent = React.forwardRef<
           className="flex max-h-[48px] flex-1 flex-wrap items-center justify-center gap-x-3 gap-y-1 overflow-hidden"
         >
           {visibleItems.map((item) => {
-            const key = `${nameKey || item.dataKey || "value"}`;
+            const key = `${nameKey || item.dataKey || DEFAULT_PAYLOAD_KEY}`;
             const visible = visibilityState?.[key] ?? true;
             const color =
               item.color ||
@@ -420,7 +432,7 @@ export const ScoreChartLegendContent = React.forwardRef<
               item.payload &&
               "fill" in item.payload
                 ? (item.payload as { fill: string }).fill
-                : "hsl(var(--chart-1))");
+                : FALLBACK_SERIES_COLOR);
 
             return (
               <LegendItem
@@ -443,9 +455,13 @@ export const ScoreChartLegendContent = React.forwardRef<
                   variant="ghost"
                   size="sm"
                   className="text-muted-foreground hover:bg-accent h-6 shrink-0 gap-1 px-2 text-xs"
-                  aria-label={`Show all ${payload.length} categories`}
+                  aria-label={t("Show all {{count}} categories", {
+                    count: payload.length,
+                  })}
                 >
-                  <span>Show all {payload.length}</span>
+                  <span>
+                    {t("Show all {{count}}", { count: payload.length })}
+                  </span>
                   {hiddenCount > 0 && (
                     <span className="font-medium">(+{hiddenCount})</span>
                   )}
@@ -459,9 +475,9 @@ export const ScoreChartLegendContent = React.forwardRef<
               >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium">All Categories</p>
+                    <p className="text-sm font-medium">{t("All Categories")}</p>
                     <span className="text-muted-foreground text-xs">
-                      {payload.length} total
+                      {t("{{count}} total", { count: payload.length })}
                     </span>
                   </div>
                   <div className="space-y-3">
@@ -476,7 +492,7 @@ export const ScoreChartLegendContent = React.forwardRef<
                           )}
                           <div className="space-y-1">
                             {items.map((item) => {
-                              const key = `${nameKey || item.dataKey || "value"}`;
+                              const key = `${nameKey || item.dataKey || DEFAULT_PAYLOAD_KEY}`;
                               const visible = visibilityState?.[key] ?? true;
                               const color =
                                 item.color ||
@@ -484,7 +500,7 @@ export const ScoreChartLegendContent = React.forwardRef<
                                 item.payload &&
                                 "fill" in item.payload
                                   ? (item.payload as { fill: string }).fill
-                                  : "hsl(var(--chart-1))");
+                                  : FALLBACK_SERIES_COLOR);
 
                               return (
                                 <div

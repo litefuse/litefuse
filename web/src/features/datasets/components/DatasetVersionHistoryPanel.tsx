@@ -27,6 +27,7 @@ import {
 import { cn } from "@/src/utils/tailwind";
 import { showSuccessToast } from "@/src/features/notifications/showSuccessToast";
 
+import { useTranslation } from "react-i18next";
 type DatasetVersionHistoryPanelProps = {
   projectId: string;
   datasetId: string;
@@ -70,6 +71,7 @@ export function DatasetVersionHistoryPanel({
   datasetId,
   itemVersions,
 }: DatasetVersionHistoryPanelProps) {
+  const { t } = useTranslation();
   const { selectedVersion, setSelectedVersion, resetToLatest } =
     useDatasetVersion();
 
@@ -83,8 +85,10 @@ export function DatasetVersionHistoryPanel({
     const isoTimestamp = version.toISOString();
     navigator.clipboard.writeText(isoTimestamp);
     showSuccessToast({
-      title: "Copied!",
-      description: `Version timestamp: ${isoTimestamp}`,
+      title: t("Copied!"),
+      description: t("Version timestamp: {{timestamp}}", {
+        timestamp: isoTimestamp,
+      }),
     });
   };
 
@@ -110,7 +114,7 @@ export function DatasetVersionHistoryPanel({
       <div className="flex h-full items-center justify-center p-4">
         <div className="text-muted-foreground text-center text-sm">
           <Clock className="mx-auto mb-2 h-8 w-8" />
-          <p>No versions found</p>
+          <p>{t("No versions found")}</p>
         </div>
       </div>
     );
@@ -154,16 +158,16 @@ export function DatasetVersionHistoryPanel({
               {isItemVersion && (
                 <span
                   className="bg-primary h-1.5 w-1.5 shrink-0 rounded-full"
-                  title="Item modified in this version"
+                  title={t("Item modified in this version")}
                 />
               )}
               <span className={cn("truncate", isSelected && "text-foreground")}>
-                {format(version, "MMM d, yyyy 'at' h:mm a")}
+                {format(version, "PPp")}
               </span>
             </div>
             {isLatest && (
               <span className="bg-accent-light-green text-accent-dark-green dark:bg-accent-dark-green dark:text-accent-light-green shrink-0 rounded-md px-2 py-0.5 text-xs font-medium">
-                Latest
+                {t("Latest")}
               </span>
             )}
           </div>
@@ -185,7 +189,7 @@ export function DatasetVersionHistoryPanel({
               onClick={(e) => e.stopPropagation()}
             >
               <MoreVertical className="h-4 w-4" />
-              <span className="sr-only">Version actions</span>
+              <span className="sr-only">{t("Version actions")}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -196,7 +200,7 @@ export function DatasetVersionHistoryPanel({
               }}
             >
               <Copy className="mr-2 h-4 w-4" />
-              Copy version timestamp (UTC)
+              {t("Copy version timestamp (UTC)")}
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={(e) => {
@@ -205,7 +209,7 @@ export function DatasetVersionHistoryPanel({
               }}
             >
               <ExternalLink className="mr-2 h-4 w-4" />
-              How to use in experiments
+              {t("How to use in experiments")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -217,9 +221,9 @@ export function DatasetVersionHistoryPanel({
     <div className="flex h-full w-full flex-col">
       {/* Header */}
       <div className="border-b p-4">
-        <h3 className="text-lg font-semibold">Version History</h3>
+        <h3 className="text-lg font-semibold">{t("Version History")}</h3>
         <p className="text-muted-foreground text-sm">
-          {versions.length} version{versions.length !== 1 ? "s" : ""}
+          {t("{{count}} version", { count: versions.length })}
         </p>
       </div>
 
@@ -230,7 +234,9 @@ export function DatasetVersionHistoryPanel({
           {groupedVersions.today.length > 0 && (
             <AccordionItem value="today" className="px-2">
               <AccordionTrigger className="text-sm font-medium">
-                Today ({groupedVersions.today.length})
+                {t("Today ({{count}})", {
+                  count: groupedVersions.today.length,
+                })}
               </AccordionTrigger>
               <AccordionContent>
                 <div className="flex flex-col gap-1">
@@ -244,7 +250,9 @@ export function DatasetVersionHistoryPanel({
           {groupedVersions.yesterday.length > 0 && (
             <AccordionItem value="yesterday" className="px-2">
               <AccordionTrigger className="text-sm font-medium">
-                Yesterday ({groupedVersions.yesterday.length})
+                {t("Yesterday ({{count}})", {
+                  count: groupedVersions.yesterday.length,
+                })}
               </AccordionTrigger>
               <AccordionContent>
                 <div className="flex flex-col gap-1">
@@ -260,7 +268,9 @@ export function DatasetVersionHistoryPanel({
           {groupedVersions.last7Days.length > 0 && (
             <AccordionItem value="last7days" className="px-2">
               <AccordionTrigger className="text-sm font-medium">
-                Last 7 Days ({groupedVersions.last7Days.length})
+                {t("Last 7 Days ({{count}})", {
+                  count: groupedVersions.last7Days.length,
+                })}
               </AccordionTrigger>
               <AccordionContent>
                 <div className="flex flex-col gap-1">
@@ -276,7 +286,9 @@ export function DatasetVersionHistoryPanel({
           {groupedVersions.last30Days.length > 0 && (
             <AccordionItem value="last30days" className="px-2">
               <AccordionTrigger className="text-sm font-medium">
-                Last 30 Days ({groupedVersions.last30Days.length})
+                {t("Last 30 Days ({{count}})", {
+                  count: groupedVersions.last30Days.length,
+                })}
               </AccordionTrigger>
               <AccordionContent>
                 <div className="flex flex-col gap-1">
@@ -292,7 +304,9 @@ export function DatasetVersionHistoryPanel({
           {groupedVersions.older.length > 0 && (
             <AccordionItem value="older" className="px-2">
               <AccordionTrigger className="text-sm font-medium">
-                Older ({groupedVersions.older.length})
+                {t("Older ({{count}})", {
+                  count: groupedVersions.older.length,
+                })}
               </AccordionTrigger>
               <AccordionContent>
                 <div className="flex flex-col gap-1">

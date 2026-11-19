@@ -12,6 +12,7 @@ import { type AnnotateDrawerProps } from "@/src/features/scores/types";
 import { type ScoreTarget } from "@/src/features/scores/types";
 import { AnnotationForm } from "@/src/features/scores/components/AnnotationForm";
 
+import { useTranslation } from "react-i18next";
 export function AnnotateDrawer<Target extends ScoreTarget>({
   projectId,
   scoreTarget,
@@ -26,6 +27,7 @@ export function AnnotateDrawer<Target extends ScoreTarget>({
 }: AnnotateDrawerProps<Target> & {
   size?: "default" | "sm" | "xs" | "lg" | "icon" | "icon-xs" | "icon-sm";
 }) {
+  const { t } = useTranslation();
   const capture = usePostHogClientCapture();
   const hasAccess = useHasProjectAccess({
     projectId,
@@ -62,7 +64,7 @@ export function AnnotateDrawer<Target extends ScoreTarget>({
               }
             />
           )}
-          <span>Annotate</span>
+          <span>{t("Annotate")}</span>
         </Button>
       </DrawerTrigger>
       <DrawerContent className="p-3">
@@ -74,7 +76,9 @@ export function AnnotateDrawer<Target extends ScoreTarget>({
         />
         {hasNonAnnotationScores && (
           <div className="text-muted-foreground mt-4 text-xs">
-            API and eval scores visible on left. Add manual annotations above.
+            {t(
+              "API and eval scores visible on left. Add manual annotations above.",
+            )}
           </div>
         )}
       </DrawerContent>

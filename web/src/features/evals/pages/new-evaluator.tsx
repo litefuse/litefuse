@@ -16,11 +16,13 @@ import { MaintainerTooltip } from "@/src/features/evals/components/maintainer-to
 import { ManageDefaultEvalModel } from "@/src/features/evals/components/manage-default-eval-model";
 import { DefaultEvalModelSetup } from "@/src/features/evals/components/default-eval-model-setup";
 
+import { useTranslation } from "react-i18next";
 // Multi-step setup process
 // 0. Set up default model (optional, only if no default model exists): /project/:projectId/evals/new
 // 1. Select Evaluator: /project/:projectId/evals/new
 // 2. Configure Evaluator: /project/:projectId/evals/new?evaluator=:evaluatorId
 export default function NewEvaluatorPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const projectId = router.query.projectId as string;
   const evaluatorId = router.query.evaluator as string | undefined;
@@ -61,17 +63,17 @@ export default function NewEvaluatorPage() {
   );
 
   if (!hasAccess) {
-    return <div>You do not have access to this page.</div>;
+    return <div>{t("You do not have access to this page.")}</div>;
   }
 
   return (
     <Page
       withPadding
       headerProps={{
-        title: "Set up evaluator",
+        title: t("Set up evaluator"),
         breadcrumb: [
           {
-            name: "Running Evaluators",
+            name: t("Running Evaluators"),
             href: `/project/${projectId}/evals`,
           },
         ],
@@ -90,7 +92,7 @@ export default function NewEvaluatorPage() {
                       : "text-foreground font-semibold",
                   )}
                 >
-                  0. Set up default model
+                  {t("0. Set up default model")}
                   {stepInt > 0 && (
                     <Check className="ml-1 inline-block h-3 w-3" />
                   )}
@@ -110,7 +112,7 @@ export default function NewEvaluatorPage() {
                   : "text-foreground font-semibold",
               )}
             >
-              1. Select Evaluator
+              {t("1. Select Evaluator")}
               {stepInt > 1 && <Check className="ml-1 inline-block h-3 w-3" />}
             </BreadcrumbPage>
           </BreadcrumbItem>
@@ -124,7 +126,7 @@ export default function NewEvaluatorPage() {
               )}
             >
               <div className="flex flex-row">
-                2. Run Evaluator
+                {t("2. Run Evaluator")}
                 {currentTemplate && (
                   <div className="flex flex-row gap-2">
                     <span>

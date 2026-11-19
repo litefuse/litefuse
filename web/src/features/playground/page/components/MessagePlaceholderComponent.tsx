@@ -8,9 +8,11 @@ import { usePlaygroundContext } from "../context";
 import { type PlaceholderMessageFillIn } from "../types";
 import { useNamingConflicts } from "../hooks/useNamingConflicts";
 
+import { useTranslation } from "react-i18next";
 export const MessagePlaceholderComponent: React.FC<{
   messagePlaceholder: PlaceholderMessageFillIn;
 }> = ({ messagePlaceholder }) => {
+  const { t } = useTranslation();
   const {
     updateMessagePlaceholderValue,
     deleteMessagePlaceholder,
@@ -69,13 +71,13 @@ export const MessagePlaceholderComponent: React.FC<{
             className={`min-w-[90px] truncate font-mono ${hasConflict ? "text-red-500" : ""}`}
             title={name}
           >
-            {name ? name : "Unnamed placeholder"}
+            {name ? name : t("Unnamed placeholder")}
           </p>
         </span>
         <Button
           variant="ghost"
           size="icon"
-          title="Delete placeholder"
+          title={t("Delete placeholder")}
           disabled={isUsed}
           onClick={() => deleteMessagePlaceholder(name)}
           className="p-0"
@@ -101,7 +103,7 @@ export const MessagePlaceholderComponent: React.FC<{
 
       {hasConflict && (
         <p className="mt-1 text-xs text-red-500">
-          Placeholder name conflicts with variable. Names must be unique.
+          {t("Placeholder name conflicts with variable. Names must be unique.")}
         </p>
       )}
       {error && <p className="mt-1 text-xs text-red-500">{error}</p>}

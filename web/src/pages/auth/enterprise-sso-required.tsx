@@ -2,7 +2,7 @@ import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod/v4";
 import { useForm } from "react-hook-form";
@@ -20,6 +20,12 @@ import { Input } from "@/src/components/ui/input";
 import { env } from "@/src/env.mjs";
 import { captureException } from "@sentry/nextjs";
 
+import { Trans, useTranslation } from "react-i18next";
+
+/** Example address shown in the field, identical in every language. */
+const EXAMPLE_EMAIL = "jsdoe@example.com";
+/** Support inbox, never translated. */
+const SUPPORT_EMAIL = "support@litefuse.ai";
 const enterpriseSsoFormSchema = z.object({
   email: z.string().email(),
 });
@@ -42,9 +48,11 @@ const PROVIDER_LABELS: Record<string, string> = {
 };
 
 export default function EnterpriseSsoRequiredPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { status: sessionStatus } = useSession();
 
   const emailFromQuery =
     typeof router.query.email === "string" ? router.query.email : "";
@@ -52,10 +60,15 @@ export default function EnterpriseSsoRequiredPage() {
     typeof router.query.attemptedProvider === "string"
       ? router.query.attemptedProvider
       : undefined;
+  // callbackUrl must be an internal path; fall back to "/" (app home) so sign-in
+  // lands on the workspace instead of looping back to this page (NextAuth treats
+  // an empty callbackUrl as "current page").
+  const rawCallbackUrl =
+    typeof router.query.callbackUrl === "string" ? router.query.callbackUrl : "";
   const callbackUrl =
-    typeof router.query.callbackUrl === "string"
-      ? router.query.callbackUrl
-      : undefined;
+    rawCallbackUrl.startsWith("/") && !rawCallbackUrl.startsWith("//")
+      ? rawCallbackUrl
+      : "/";
 
   const friendlyProviderName = useMemo(() => {
     if (!attemptedProvider) return undefined;
@@ -77,13 +90,21 @@ export default function EnterpriseSsoRequiredPage() {
     }
   }, [emailFromQuery, form]);
 
+  // If already signed in (e.g. arriving here after an OAuth round-trip or from a
+  // stale bookmark), go to the destination instead of showing the form again.
+  useEffect(() => {
+    if (sessionStatus === "authenticated") {
+      router.replace(callbackUrl);
+    }
+  }, [sessionStatus, callbackUrl, router]);
+
   async function onSubmit(values: z.infer<typeof enterpriseSsoFormSchema>) {
     setError(null);
     setLoading(true);
 
     const domain = values.email.split("@")[1]?.toLowerCase();
     if (!domain) {
-      form.setError("email", { message: "Invalid email address" });
+      form.setError("email", { message: t("Invalid email address") });
       setLoading(false);
       return;
     }
@@ -132,24 +153,35 @@ export default function EnterpriseSsoRequiredPage() {
     }
   }
 
+  // Avoid flashing the form while an already-authenticated session is being
+  // redirected to its destination.
+  if (sessionStatus === "authenticated") {
+    return null;
+  }
+
   const description = friendlyProviderName
-    ? `You tried signing in with ${friendlyProviderName}, but this domain requires your company's custom Enterprise SSO.`
-    : "This domain requires your company's custom Enterprise SSO.";
+    ? t(
+        "You tried signing in with {{provider}}, but this domain requires your company's custom Enterprise SSO.",
+        { provider: friendlyProviderName },
+      )
+    : t("This domain requires your company's custom Enterprise SSO.");
 
   return (
     <>
       <Head>
-        <title>Enterprise SSO Required | Litefuse</title>
+        <title>{t("Enterprise SSO Required | Litefuse")}</title>
       </Head>
       <div className="min-h-screen-with-banner bg-background flex flex-col justify-center px-6 py-12 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <LangfuseIcon className="mx-auto" />
           <h1 className="text-primary mt-6 text-center text-2xl font-bold">
-            Use your Enterprise SSO
+            {t("Use your Enterprise SSO")}
           </h1>
           <p className="text-muted-foreground mt-2 text-center text-sm leading-6">
-            {description} Enter your company email so we can send you to the
-            correct identity provider.
+            {description}{" "}
+            {t(
+              "Enter your company email so we can send you to the correct identity provider.",
+            )}
           </p>
         </div>
 
@@ -161,10 +193,10 @@ export default function EnterpriseSsoRequiredPage() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>{t("Email")}</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="jsdoe@example.com"
+                        placeholder={EXAMPLE_EMAIL}
                         allowPasswordManager
                         autoComplete="email"
                         {...field}
@@ -181,7 +213,7 @@ export default function EnterpriseSsoRequiredPage() {
                 loading={loading}
                 disabled={loading}
               >
-                Continue with Enterprise SSO
+                {t("Continue with Enterprise SSO")}
               </Button>
             </form>
           </Form>
@@ -189,14 +221,16 @@ export default function EnterpriseSsoRequiredPage() {
             <div className="text-destructive mt-4 text-center text-sm font-medium">
               {error}
               <br />
-              Contact{" "}
-              <a
-                href="mailto:support@litefuse.ai"
-                className="text-primary-accent hover:text-hover-primary-accent"
-              >
-                support@litefuse.ai
-              </a>{" "}
-              if this keeps happening.
+              <Trans
+                i18nKey="Contact <0>support@litefuse.ai</0> if this keeps happening."
+                components={[
+                  <a
+                    key="0"
+                    href={`mailto:${SUPPORT_EMAIL}`}
+                    className="text-primary-accent hover:text-hover-primary-accent"
+                  />,
+                ]}
+              />
             </div>
           ) : null}
           <div className="text-muted-foreground mt-6 text-center text-sm">
@@ -204,18 +238,18 @@ export default function EnterpriseSsoRequiredPage() {
               href="/auth/sign-in"
               className="text-primary-accent hover:text-hover-primary-accent"
             >
-              Back to other sign-in options
+              {t("Back to other sign-in options")}
             </Link>
           </div>
         </div>
 
         <div className="text-muted-foreground mt-4 text-center text-xs">
-          Need help? Contact{" "}
+          {t("Need help? Contact")}{" "}
           <a
-            href="mailto:support@litefuse.ai"
+            href={`mailto:${SUPPORT_EMAIL}`}
             className="text-primary-accent hover:text-hover-primary-accent"
           >
-            support@litefuse.ai
+            {SUPPORT_EMAIL}
           </a>
           .
         </div>

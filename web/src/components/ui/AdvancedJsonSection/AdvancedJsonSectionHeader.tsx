@@ -12,6 +12,7 @@ import { useState } from "react";
 import { Button } from "@/src/components/ui/button";
 import { Check, ChevronDown, ChevronRight, Copy } from "lucide-react";
 
+import { useTranslation } from "react-i18next";
 export interface AdvancedJsonSectionHeaderProps {
   /** Section title (can be string or React node for custom rendering) */
   title: string | React.ReactNode;
@@ -44,6 +45,7 @@ export function AdvancedJsonSectionHeader({
   onToggleCollapse,
   sectionCollapsed,
 }: AdvancedJsonSectionHeaderProps) {
+  const { t } = useTranslation();
   const [isCopied, setIsCopied] = useState(false);
 
   return (
@@ -71,7 +73,7 @@ export function AdvancedJsonSectionHeader({
             }}
             className="hover:bg-accent inline-flex items-center justify-center rounded-sm p-0.5 transition-colors"
             aria-label={
-              sectionCollapsed ? "Expand section" : "Collapse section"
+              sectionCollapsed ? t("Expand section") : t("Collapse section")
             }
           >
             {sectionCollapsed ? (
@@ -87,7 +89,7 @@ export function AdvancedJsonSectionHeader({
       <div className="mr-1 flex min-w-0 shrink flex-row items-center gap-1">
         {controlButtons}
         <Button
-          title="Copy to clipboard"
+          title={t("Copy to clipboard")}
           variant="ghost"
           size="icon-xs"
           type="button"

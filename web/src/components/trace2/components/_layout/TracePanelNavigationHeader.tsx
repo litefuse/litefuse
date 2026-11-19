@@ -25,6 +25,7 @@ import { TracePanelNavigationButton } from "./TracePanelNavigationButton";
 import { TraceFullscreenDialog } from "./TraceFullscreenDialog";
 import { TraceTimeline } from "../TraceTimeline";
 
+import { useTranslation } from "react-i18next";
 interface TracePanelNavigationHeaderProps {
   isPanelCollapsed: boolean;
   onTogglePanel: () => void;
@@ -61,6 +62,7 @@ function TracePanelNavigationHeaderExpanded({
   onTogglePanel,
   shouldPulseToggle = false,
 }: TracePanelNavigationHeaderProps) {
+  const { t } = useTranslation();
   const { searchInputValue, setSearchInputValue, setSearchQueryImmediate } =
     useSearch();
   const { expandAll, collapseAll, collapsedNodes } = useSelection();
@@ -121,7 +123,7 @@ function TracePanelNavigationHeaderExpanded({
         <div className="relative flex-1">
           <CommandInput
             showBorder={false}
-            placeholder="Search"
+            placeholder={t("Search")}
             className="h-7 min-w-20 border-0 pr-0 focus:ring-0"
             value={searchInputValue}
             onValueChange={setSearchInputValue}
@@ -134,7 +136,7 @@ function TracePanelNavigationHeaderExpanded({
             onClick={handleToggleTreeNodes}
             variant="ghost"
             size="icon"
-            title={isEverythingCollapsed ? "Expand all" : "Collapse all"}
+            title={isEverythingCollapsed ? t("Expand all") : t("Collapse all")}
             className="h-7 w-7"
           >
             {isEverythingCollapsed ? (
@@ -152,7 +154,7 @@ function TracePanelNavigationHeaderExpanded({
             variant="ghost"
             size="icon"
             onClick={handleDownload}
-            title="Download trace as JSON"
+            title={t("Download trace as JSON")}
             className="h-7 w-7"
           >
             <Download className="h-3.5 w-3.5" />
@@ -168,13 +170,13 @@ function TracePanelNavigationHeaderExpanded({
               isTimelineView && "bg-primary text-primary-foreground",
             )}
           >
-            <span className="text-xs">Timeline</span>
+            <span className="text-xs">{t("Timeline")}</span>
           </Button>
 
           {isTimelineView && (
             <TraceFullscreenDialog
-              title="Timeline"
-              triggerTitle="Open Timeline fullscreen"
+              title={t("Timeline")}
+              triggerTitle={t("Open Timeline fullscreen")}
             >
               <TraceTimeline />
             </TraceFullscreenDialog>

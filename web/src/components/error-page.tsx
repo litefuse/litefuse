@@ -7,6 +7,7 @@ import Link from "next/link";
 import { captureException } from "@sentry/nextjs";
 import { stripBasePath } from "@/src/utils/redirect";
 
+import { useTranslation } from "react-i18next";
 export const ErrorPage = ({
   title = "Error",
   message,
@@ -24,6 +25,7 @@ export const ErrorPage = ({
         onClick: () => void;
       };
 }) => {
+  const { t } = useTranslation();
   const session = useSession();
   const router = useRouter();
   const newTargetPath = stripBasePath(router.asPath || "/");
@@ -43,7 +45,7 @@ export const ErrorPage = ({
           <Button
             onClick={() => void router.push(`/auth/sign-in${targetPathQuery}`)}
           >
-            Sign In
+            {t("Sign In")}
           </Button>
         ) : null}
         {additionalButton ? (

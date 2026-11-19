@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 
+import { useTranslation } from "react-i18next";
 export const ExpandListButton = ({
   isExpanded,
   setExpanded,
@@ -14,6 +15,7 @@ export const ExpandListButton = ({
   maxLength: number;
   expandText?: string;
 }) => {
+  const { t } = useTranslation();
   if (totalLength <= maxLength) {
     return null;
   }
@@ -26,7 +28,7 @@ export const ExpandListButton = ({
     >
       {isExpanded ? (
         <>
-          <ChevronUp className="mr-2 h-4 w-4" /> See less
+          <ChevronUp className="mr-2 h-4 w-4" /> {t("See less")}
         </>
       ) : (
         <>

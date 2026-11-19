@@ -16,6 +16,7 @@ import { useHasProjectAccess } from "@/src/features/rbac/utils/checkProjectAcces
 import { usePostHogClientCapture } from "@/src/features/posthog-analytics/usePostHogClientCapture";
 import { cn } from "@/src/utils/tailwind";
 
+import { useTranslation } from "react-i18next";
 interface DatasetItemEntryPointRowProps {
   icon: React.ReactNode;
   title: string;
@@ -38,6 +39,7 @@ const DatasetItemEntryPointRow = ({
   comingSoon = false,
   docPopup,
 }: DatasetItemEntryPointRowProps) => {
+  const { t } = useTranslation();
   const disabled = !hasAccess || comingSoon;
   return (
     <div
@@ -52,7 +54,9 @@ const DatasetItemEntryPointRow = ({
       onClick={!disabled ? onClick : undefined}
       title={
         !hasAccess
-          ? "You don't have access to this feature, please contact your administrator"
+          ? t(
+              "You don't have access to this feature, please contact your administrator",
+            )
           : undefined
       }
     >
@@ -77,6 +81,7 @@ export const DatasetItemsOnboarding = ({
   projectId: string;
   datasetId: string;
 }) => {
+  const { t } = useTranslation();
   const capture = usePostHogClientCapture();
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [isNewItemDialogOpen, setIsNewItemDialogOpen] = useState(false);
@@ -88,8 +93,10 @@ export const DatasetItemsOnboarding = ({
 
   return (
     <SplashScreen
-      title="Add items to your dataset"
-      description="Datasets are collections of specific edge cases and underrepresented patterns used to evaluate your application."
+      title={t("Add items to your dataset")}
+      description={t(
+        "Datasets are collections of specific edge cases and underrepresented patterns used to evaluate your application.",
+      )}
     >
       <div className="flex flex-col gap-4">
         <CsvUploadDialog
@@ -101,8 +108,8 @@ export const DatasetItemsOnboarding = ({
           <DialogTrigger asChild disabled={!hasProjectAccess}>
             <DatasetItemEntryPointRow
               icon={<Upload className="h-5 w-5" />}
-              title="Upload CSV"
-              description="Import dataset items from a CSV file"
+              title={t("Upload CSV")}
+              description={t("Import dataset items from a CSV file")}
               onClick={() => {
                 if (hasProjectAccess) {
                   capture("dataset_item:upload_csv_button_click");
@@ -120,8 +127,8 @@ export const DatasetItemsOnboarding = ({
           <DialogTrigger asChild disabled={!hasProjectAccess}>
             <DatasetItemEntryPointRow
               icon={<Braces className="h-5 w-5" />}
-              title="Add Manually"
-              description="Manually input a single item"
+              title={t("Add Manually")}
+              description={t("Manually input a single item")}
               onClick={() => {
                 if (hasProjectAccess) {
                   capture("dataset_item:new_form_open");
@@ -132,7 +139,7 @@ export const DatasetItemsOnboarding = ({
           </DialogTrigger>
           <DialogContent size="lg">
             <DialogHeader>
-              <DialogTitle>Create dataset item</DialogTitle>
+              <DialogTitle>{t("Create dataset item")}</DialogTitle>
             </DialogHeader>
             <NewDatasetItemForm
               projectId={projectId}
@@ -149,19 +156,20 @@ export const DatasetItemsOnboarding = ({
         >
           <DatasetItemEntryPointRow
             icon={<Code className="h-5 w-5" />}
-            title="Add via Code"
-            description="Use our Python/TS/JS SDKs or custom API"
+            title={t("Add via Code")}
+            description={t("Use our Python/TS/JS SDKs or custom API")}
           />
         </Link>
 
         <DatasetItemEntryPointRow
           icon={<ListTree className="h-5 w-5" />}
-          title="Select Traces"
-          description="Coming soon!"
+          title={t("Select Traces")}
+          description={t("Coming soon!")}
           comingSoon
           docPopup={{
-            description:
+            description: t(
               "Creating items from production data is supported on single trace level. Click to view docs for more details.",
+            ),
             href: "https://litefuse.ai/docs/evaluation/experiments/datasets#create-items-from-production-data",
           }}
         />

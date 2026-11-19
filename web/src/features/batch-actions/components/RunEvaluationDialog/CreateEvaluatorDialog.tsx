@@ -15,6 +15,7 @@ import { EvaluatorSelector } from "@/src/features/evals/components/evaluator-sel
 import { EvaluatorForm } from "@/src/features/evals/components/evaluator-form";
 import { ChevronLeft } from "lucide-react";
 
+import { useTranslation } from "react-i18next";
 type CreateEvaluatorDialogProps = {
   projectId: string;
   open: boolean;
@@ -22,6 +23,7 @@ type CreateEvaluatorDialogProps = {
 };
 
 export function CreateEvaluatorDialog(props: CreateEvaluatorDialogProps) {
+  const { t } = useTranslation();
   const { projectId, open, onOpenChange } = props;
   const [templateId, setTemplateId] = useState<string | null>(null);
   const utils = api.useUtils();
@@ -49,10 +51,10 @@ export function CreateEvaluatorDialog(props: CreateEvaluatorDialogProps) {
       <DialogContent className="max-h-[90vh] max-w-(--breakpoint-md) pb-0">
         <DialogHeader>
           <DialogTitle>
-            Create Evaluator for batched observation runs
+            {t("Create Evaluator for batched observation runs")}
           </DialogTitle>
           <DialogDescription>
-            This form creates an evaluator for batched observation runs.
+            {t("This form creates an evaluator for batched observation runs.")}
           </DialogDescription>
         </DialogHeader>
 
@@ -60,15 +62,17 @@ export function CreateEvaluatorDialog(props: CreateEvaluatorDialogProps) {
           {!templateId ? (
             <div className="space-y-4 px-1 pb-1">
               <p className="text-muted-foreground text-sm">
-                Select an evaluator template to configure.
+                {t("Select an evaluator template to configure.")}
               </p>
               {templatesQuery.isLoading ? (
                 <p className="text-muted-foreground text-sm">
-                  Loading templates...
+                  {t("Loading templates...")}
                 </p>
               ) : templatesQuery.isError ? (
                 <p className="text-destructive text-sm">
-                  Failed to load templates: {templatesQuery.error.message}
+                  {t("Failed to load templates: {{error}}", {
+                    error: templatesQuery.error.message,
+                  })}
                 </p>
               ) : (
                 <div className="max-h-[55vh] overflow-y-auto rounded-md border p-2">
@@ -89,7 +93,7 @@ export function CreateEvaluatorDialog(props: CreateEvaluatorDialogProps) {
                 onClick={() => setTemplateId(null)}
               >
                 <ChevronLeft className="mr-1 h-4 w-4" />
-                Back to template selection
+                {t("Back to template selection")}
               </Button>
               <EvaluatorForm
                 useDialog
@@ -106,9 +110,12 @@ export function CreateEvaluatorDialog(props: CreateEvaluatorDialogProps) {
                     targetObject: EvalTargetObject.EVENT,
                   });
                   showSuccessToast({
-                    title: "Evaluator created",
-                    description:
-                      "Select it in the previous step to run it on selected observations.",
+                    title: t("Evaluator created"),
+                    description: t(
+                      t(
+                        "Select it in the previous step to run it on selected observations.",
+                      ),
+                    ),
                   });
                 }}
                 preprocessFormValues={(values) => ({

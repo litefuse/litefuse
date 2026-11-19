@@ -9,7 +9,9 @@ import Page from "@/src/components/layouts/page";
 import PageDiscover from "@/src/features/discover/views/PageDiscover";
 import { env } from "@/src/env.mjs";
 
+import { useTranslation } from "react-i18next";
 export default function LoggingPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const projectId = router.query.projectId as string;
   const isLoggingEnabled = env.NEXT_PUBLIC_ENABLE_LOGGING === "true";
@@ -25,7 +27,7 @@ export default function LoggingPage() {
   }
 
   return (
-    <Page headerProps={{ title: "Logging" }}>
+    <Page headerProps={{ title: t("Logging") }}>
       {projectId ? <PageDiscover /> : null}
     </Page>
   );

@@ -3,6 +3,7 @@ import { Separator } from "@/src/components/ui/separator";
 import { numberFormatter } from "@/src/utils/numbers";
 import { Skeleton } from "@/src/components/ui/skeleton";
 
+import { useTranslation } from "react-i18next";
 export type LevelCount = {
   level: string;
   count: number | bigint;
@@ -19,6 +20,7 @@ export function LevelCountsDisplay({
   counts,
   isLoading,
 }: LevelCountsDisplayProps) {
+  const { t } = useTranslation();
   if (isLoading) return <Skeleton className="h-3 w-1/2" />;
 
   const nonZeroCounts = counts.filter((item) => item.count > 0);

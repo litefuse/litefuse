@@ -2,6 +2,7 @@ import { sessionsViewCols } from "@langfuse/shared";
 import type { FilterConfig } from "@/src/features/filters/lib/filter-config";
 import type { ColumnToBackendKeyMap } from "@/src/features/filters/lib/filter-transform";
 
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 /**
  * Maps frontend column IDs to backend-expected column IDs
  * Frontend uses "tags" but backend CH mapping expects "traceTags" for trace tags on sessions table
@@ -21,34 +22,34 @@ export const sessionFilterConfig: FilterConfig = {
     {
       type: "categorical" as const,
       column: "environment",
-      label: "Environment",
+      label: i18nKey("Environment"),
     },
     {
       type: "string" as const,
       column: "id",
-      label: "Session ID",
+      label: i18nKey("Session ID"),
     },
     {
       type: "categorical" as const,
       column: "userIds",
-      label: "User IDs",
+      label: i18nKey("User IDs"),
     },
     {
       type: "categorical" as const,
       column: "tags",
-      label: "Trace Tags",
+      label: i18nKey("Trace Tags"),
     },
     {
       type: "boolean" as const,
       column: "bookmarked",
-      label: "Bookmarked",
+      label: i18nKey("Bookmarked"),
       trueLabel: "Bookmarked",
       falseLabel: "Not bookmarked",
     },
     {
       type: "numeric" as const,
       column: "sessionDuration",
-      label: "Session Duration",
+      label: i18nKey("Session Duration"),
       min: 0,
       max: 3600,
       unit: "s",
@@ -56,35 +57,35 @@ export const sessionFilterConfig: FilterConfig = {
     {
       type: "numeric" as const,
       column: "countTraces",
-      label: "Traces Count",
+      label: i18nKey("Traces Count"),
       min: 0,
       max: 1000,
     },
     {
       type: "numeric" as const,
       column: "inputTokens",
-      label: "Input Tokens",
+      label: i18nKey("Input Tokens"),
       min: 0,
       max: 1000000,
     },
     {
       type: "numeric" as const,
       column: "outputTokens",
-      label: "Output Tokens",
+      label: i18nKey("Output Tokens"),
       min: 0,
       max: 1000000,
     },
     {
       type: "numeric" as const,
       column: "totalTokens",
-      label: "Total Tokens",
+      label: i18nKey("Total Tokens"),
       min: 0,
       max: 1000000,
     },
     {
       type: "numeric" as const,
       column: "inputCost",
-      label: "Input Cost",
+      label: i18nKey("Input Cost"),
       min: 0,
       max: 100,
       unit: "$",
@@ -92,7 +93,7 @@ export const sessionFilterConfig: FilterConfig = {
     {
       type: "numeric" as const,
       column: "outputCost",
-      label: "Output Cost",
+      label: i18nKey("Output Cost"),
       min: 0,
       max: 100,
       unit: "$",
@@ -100,7 +101,7 @@ export const sessionFilterConfig: FilterConfig = {
     {
       type: "numeric" as const,
       column: "totalCost",
-      label: "Total Cost",
+      label: i18nKey("Total Cost"),
       min: 0,
       max: 100,
       unit: "$",
@@ -108,24 +109,24 @@ export const sessionFilterConfig: FilterConfig = {
     {
       type: "keyValue" as const,
       column: "score_categories",
-      label: "Categorical Scores",
+      label: i18nKey("Categorical Scores"),
     },
     {
       type: "numericKeyValue" as const,
       column: "scores_avg",
-      label: "Numeric Scores",
+      label: i18nKey("Numeric Scores"),
     },
     {
       type: "numeric" as const,
       column: "commentCount",
-      label: "Comment Count",
+      label: i18nKey("Comment Count"),
       min: 0,
       max: 100,
     },
     {
       type: "string" as const,
       column: "commentContent",
-      label: "Comment Content",
+      label: i18nKey("Comment Content"),
     },
   ],
 };

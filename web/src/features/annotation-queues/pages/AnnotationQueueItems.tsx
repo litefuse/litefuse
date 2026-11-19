@@ -20,7 +20,9 @@ import {
 import { SubHeaderLabel } from "@/src/components/layouts/header";
 import { getScoreDataTypeIcon } from "@/src/features/scores/lib/scoreColumns";
 
+import { useTranslation } from "react-i18next";
 export default function QueueItems() {
+  const { t } = useTranslation();
   const router = useRouter();
   const projectId = router.query.projectId as string;
   const queueId = router.query.queueId as string;
@@ -48,14 +50,14 @@ export default function QueueItems() {
         itemType: "ANNOTATION_QUEUE",
         breadcrumb: [
           {
-            name: "Annotation Queues",
+            name: t("Annotation Queues"),
             href: `/project/${projectId}/annotation-queues`,
           },
         ],
         actionButtonsRight: !hasWriteAccess ? (
           <Button disabled>
             <Lock className="mr-1 h-4 w-4" />
-            <span className="text-sm">Process queue</span>
+            <span className="text-sm">{t("Process queue")}</span>
           </Button>
         ) : (
           <Button asChild>
@@ -63,7 +65,7 @@ export default function QueueItems() {
               href={`/project/${projectId}/annotation-queues/${queueId}/items`}
             >
               <ClipboardPen className="mr-1 h-4 w-4" />
-              <span className="text-sm">Process queue</span>
+              <span className="text-sm">{t("Process queue")}</span>
             </Link>
           </Button>
         ),
@@ -74,12 +76,12 @@ export default function QueueItems() {
           <AnnotationQueueItemsTable projectId={projectId} queueId={queueId} />
         </div>
         <SidePanel
-          mobileTitle={queue.data?.name ?? "Queue details"}
+          mobileTitle={queue.data?.name ?? t("Queue details")}
           id="queue-details"
         >
           <SidePanelHeader>
             <SidePanelTitle>
-              {queue.data?.name ?? "Queue details"}
+              {queue.data?.name ?? t("Queue details")}
             </SidePanelTitle>
             <CreateOrEditAnnotationQueueButton
               projectId={projectId}
@@ -97,7 +99,7 @@ export default function QueueItems() {
                   </CardDescription>
                 )}
                 <div className="flex flex-col gap-2">
-                  <SubHeaderLabel title="Score Configs" />
+                  <SubHeaderLabel title={t("Score Configs")} />
                   <div className="flex flex-wrap gap-2">
                     {queue.data?.scoreConfigs.map((scoreConfig) => (
                       <Badge key={scoreConfig.id} variant="outline">

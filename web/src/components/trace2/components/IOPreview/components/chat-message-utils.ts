@@ -1,14 +1,39 @@
 import type { z } from "zod/v4";
 import type { ChatMlMessageSchema } from "@/src/components/schemas/ChatMlSchema";
 import type { combineInputOutputMessages } from "@/src/utils/chatml";
+import type { TFunction } from "i18next";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 
 export type ChatMlMessage = z.infer<typeof ChatMlMessageSchema>;
 
 /**
  * Get display title for a message based on name or role.
+ *
+ * Returns the raw value: it doubles as the panel-role discriminator in the
+ * viewers. Use getMessageLabel for the text a person reads.
  */
 export function getMessageTitle(message: ChatMlMessage): string {
   return message.name ?? message.role ?? "";
+}
+
+/** Chat roles arrive from the SDK; these are the labels shown for them. */
+const roleLabels: Record<string, string> = {
+  system: i18nKey("System"),
+  developer: i18nKey("Developer"),
+  assistant: i18nKey("Assistant"),
+  user: i18nKey("User"),
+  tool: i18nKey("Tool"),
+};
+
+/**
+ * The visible caption. A message `name` is user data and is shown verbatim;
+ * only a known role gets translated.
+ */
+export function getMessageLabel(message: ChatMlMessage, t: TFunction): string {
+  if (message.name) return message.name;
+  const role = message.role ?? "";
+  const label = roleLabels[role.toLowerCase()];
+  return label ? t(label) : role;
 }
 
 /**

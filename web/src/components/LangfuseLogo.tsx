@@ -5,24 +5,29 @@ import { env } from "@/src/env.mjs";
 import { PlusIcon } from "lucide-react";
 import { useUiCustomization } from "@/src/features/ui-customization/useUiCustomization";
 
+import { useTranslation } from "react-i18next";
 export const LangfuseIcon = ({
   size = 32,
   className,
 }: {
   size?: number;
   className?: string;
-}) => (
-  // eslint-disable-next-line @next/next/no-img-element
-  <img
-    src={`${env.NEXT_PUBLIC_BASE_PATH ?? ""}/litefuse-icon.svg`}
-    width={size}
-    height={size}
-    alt="Litefuse Icon"
-    className={className}
-  />
-);
+}) => {
+  const { t } = useTranslation();
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={`${env.NEXT_PUBLIC_BASE_PATH ?? ""}/litefuse-icon.svg`}
+      width={size}
+      height={size}
+      alt={t("Litefuse Icon")}
+      className={className}
+    />
+  );
+};
 
 const LangfuseLogotypeOrCustomized = ({ size }: { size: "sm" | "xl" }) => {
+  const { t } = useTranslation();
   const uiCustomization = useUiCustomization();
 
   if (uiCustomization?.logoLightModeHref && uiCustomization?.logoDarkModeHref) {
@@ -32,7 +37,7 @@ const LangfuseLogotypeOrCustomized = ({ size }: { size: "sm" | "xl" }) => {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={uiCustomization.logoLightModeHref}
-          alt="Litefuse Logo"
+          alt={t("Litefuse Logo")}
           className={cn(
             "group-data-[collapsible=icon]:hidden dark:hidden",
             size === "sm" ? "max-h-4 max-w-14" : "max-h-5 max-w-16",
@@ -41,7 +46,7 @@ const LangfuseLogotypeOrCustomized = ({ size }: { size: "sm" | "xl" }) => {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={uiCustomization.logoDarkModeHref}
-          alt="Litefuse Logo"
+          alt={t("Litefuse Logo")}
           className={cn(
             "hidden group-data-[collapsible=icon]:hidden dark:block",
             size === "sm" ? "max-h-4 max-w-14" : "max-h-5 max-w-16",
@@ -65,7 +70,7 @@ const LangfuseLogotypeOrCustomized = ({ size }: { size: "sm" | "xl" }) => {
           size === "sm" ? "text-sm" : "text-xl",
         )}
       >
-        Litefuse
+        {t("Litefuse")}
       </span>
     </div>
   );

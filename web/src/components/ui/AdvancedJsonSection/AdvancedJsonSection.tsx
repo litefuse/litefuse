@@ -28,6 +28,8 @@ import { type PartialJSONTheme } from "@/src/components/ui/AdvancedJsonViewer/ty
 import { buildTreeFromJSON } from "@/src/components/ui/AdvancedJsonViewer/utils/treeStructure";
 import { searchInTree } from "@/src/components/ui/AdvancedJsonViewer/utils/searchJson";
 
+import { useTranslation } from "react-i18next";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 export interface AdvancedJsonSectionProps {
   /** Section title */
   title: string;
@@ -101,7 +103,7 @@ export function AdvancedJsonSection({
   className,
   hideIfNull = false,
   enableSearch = true,
-  searchPlaceholder = "Search JSON...",
+  searchPlaceholder = i18nKey("Search JSON..."),
   showLineNumbers = true,
   enableCopy = true,
   truncateStringsAt = 100,
@@ -111,6 +113,7 @@ export function AdvancedJsonSection({
   commentedPaths,
   virtualized,
 }: AdvancedJsonSectionProps) {
+  const { t } = useTranslation();
   // String wrap mode state (persisted in localStorage)
   const { stringWrapMode, setStringWrapMode } = useJsonViewPreferences();
 
@@ -291,7 +294,9 @@ export function AdvancedJsonSection({
             <div className="flex items-center gap-2">
               <span>{title}</span>
               <span className="text-muted-foreground text-xs font-normal">
-                {totalRowCount} rows{isVirtualized ? " (virtualized)" : ""}
+                {isVirtualized
+                  ? t("{{count}} rows (virtualized)", { count: totalRowCount })
+                  : t("{{count}} rows", { count: totalRowCount })}
               </span>
             </div>
           }
@@ -323,7 +328,7 @@ export function AdvancedJsonSection({
                         }
                       }}
                       className="h-6 w-[180px] pr-16 text-xs"
-                      aria-label="Search JSON"
+                      aria-label={t("Search JSON")}
                     />
                     {searchQuery && (
                       <span
@@ -332,7 +337,7 @@ export function AdvancedJsonSection({
                       >
                         {searchMatches.length > 0
                           ? `${currentMatchIndex + 1} of ${searchMatches.length}`
-                          : "No matches"}
+                          : t("No matches")}
                       </span>
                     )}
                   </div>
@@ -342,8 +347,8 @@ export function AdvancedJsonSection({
                         type="button"
                         onClick={handlePreviousMatch}
                         className="hover:bg-accent hover:text-accent-foreground inline-flex items-center justify-center rounded-md p-1 transition-colors"
-                        aria-label="Previous match (Shift+Enter)"
-                        title="Previous match (Shift+Enter)"
+                        aria-label={t("Previous match (Shift+Enter)")}
+                        title={t("Previous match (Shift+Enter)")}
                       >
                         <ChevronUp size={14} />
                       </button>
@@ -351,8 +356,8 @@ export function AdvancedJsonSection({
                         type="button"
                         onClick={handleNextMatch}
                         className="hover:bg-accent hover:text-accent-foreground inline-flex items-center justify-center rounded-md p-1 transition-colors"
-                        aria-label="Next match (Enter)"
-                        title="Next match (Enter)"
+                        aria-label={t("Next match (Enter)")}
+                        title={t("Next match (Enter)")}
                       >
                         <ChevronDown size={14} />
                       </button>
@@ -373,10 +378,10 @@ export function AdvancedJsonSection({
                   className="hover:bg-border"
                   title={
                     stringWrapMode === "truncate"
-                      ? "Truncate long strings (click to wrap)"
+                      ? t("Truncate long strings (click to wrap)")
                       : stringWrapMode === "wrap"
-                        ? "Wrap long strings (click for single line)"
-                        : "Single line (click to truncate)"
+                        ? t("Wrap long strings (click for single line)")
+                        : t("Single line (click to truncate)")
                   }
                 >
                   {stringWrapMode === "truncate" ? (
@@ -396,7 +401,7 @@ export function AdvancedJsonSection({
                   size="icon-xs"
                   onClick={handleToggleExpandAll}
                   className="-mr-2 hover:bg-border"
-                  title={allExpanded ? "Collapse all" : "Expand all"}
+                  title={allExpanded ? t("Collapse all") : t("Expand all")}
                 >
                   {allExpanded ? (
                     <FoldVertical className="h-3 w-3" />
@@ -426,7 +431,7 @@ export function AdvancedJsonSection({
         >
           {!hasData ? (
             <div className="text-muted-foreground flex h-full items-center justify-center p-4 text-sm">
-              {isLoading ? "Loading..." : "No data"}
+              {isLoading ? t("Loading...") : t("No data")}
             </div>
           ) : (
             <AdvancedJsonViewer

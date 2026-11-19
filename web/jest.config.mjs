@@ -11,6 +11,9 @@ const clientTestConfig = {
   testMatch: ["/**/*.clienttest.[jt]s?(x)"],
   testEnvironment: "jest-environment-jsdom",
   testEnvironmentOptions: { globalsCleanup: "on" },
+  // Components call useTranslation() without a provider, so the default
+  // i18next instance has to be initialised or t() skips interpolation.
+  setupFilesAfterEnv: ["<rootDir>/src/__tests__/i18n-client-setup.ts"],
 };
 
 const serverTestConfig = {

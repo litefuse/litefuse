@@ -2,6 +2,7 @@ import { Info } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/src/components/ui/button";
 
+import { useTranslation } from "react-i18next";
 type DatasetVersionWarningBannerProps = {
   selectedVersion: Date;
   resetToLatest: () => void;
@@ -18,6 +19,7 @@ export function DatasetVersionWarningBanner({
   className = "",
   changeCounts,
 }: DatasetVersionWarningBannerProps) {
+  const { t } = useTranslation();
   const totalChanges = changeCounts
     ? changeCounts.upserts + changeCounts.deletes
     : 0;
@@ -31,27 +33,27 @@ export function DatasetVersionWarningBanner({
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div className="flex items-center justify-between gap-4">
           <p className="text-muted-foreground text-sm wrap-break-word">
-            Viewing version from{" "}
-            <span className="text-foreground font-medium">
-              {format(selectedVersion, "MMM d, yyyy 'at' h:mm a")}
-            </span>
+            {t("Viewing version from {{time}}", {
+              time: format(selectedVersion, "PPp"),
+            })}
           </p>
           <Button
             onClick={resetToLatest}
             variant="link"
             className="h-auto shrink-0 p-0 text-sm underline-offset-4"
           >
-            Return to latest
+            {t("Return to latest")}
           </Button>
         </div>
         {changeCounts && hasChanges && (
           <p className="text-muted-foreground text-xs">
-            {totalChanges} change{totalChanges !== 1 ? "s" : ""} since this
-            version,
+            {t("{{count}} change since this version,", {
+              count: totalChanges,
+            })}
             {changeCounts.upserts > 0 &&
-              ` ${changeCounts.upserts} upsert${changeCounts.upserts !== 1 ? "s" : ""}`}
+              ` ${t("{{count}} upsert", { count: changeCounts.upserts })}`}
             {changeCounts.deletes > 0 &&
-              ` ${changeCounts.deletes} delete${changeCounts.deletes !== 1 ? "s" : ""}`}
+              ` ${t("{{count}} delete", { count: changeCounts.deletes })}`}
           </p>
         )}
       </div>

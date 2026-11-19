@@ -12,6 +12,7 @@ import {
 import Link from "next/link";
 import { Check, AlertCircle, Loader2 } from "lucide-react";
 
+import { Trans, useTranslation } from "react-i18next";
 type StatusStepProps = {
   projectId: string;
   batchActionId: string;
@@ -27,6 +28,7 @@ export function StatusStep({
   expectedCount,
   onClose,
 }: StatusStepProps) {
+  const { t } = useTranslation();
   // Poll for status updates
   const status = api.batchAction.byId.useQuery(
     {
@@ -77,32 +79,43 @@ export function StatusStep({
           )}
 
           <h2 className="mb-2 text-2xl font-semibold">
-            {!isComplete && "Adding Observations to Dataset"}
-            {isSuccess && "Successfully Added!"}
-            {isComplete && !isSuccess && "Completed with Issues"}
+            {!isComplete && t("Adding Observations to Dataset")}
+            {isSuccess && t("Successfully Added!")}
+            {isComplete && !isSuccess && t("Completed with Issues")}
           </h2>
           <p className="text-muted-foreground text-sm">
             {!isComplete &&
-              `Adding ${totalCount} observations to ${dataset.name}`}
+              t("Adding {{count}} observations to {{dataset}}", {
+                count: totalCount,
+                dataset: dataset.name,
+              })}
             {isSuccess &&
-              `${processedCount} observations have been added to ${dataset.name}`}
+              t("{{count}} observations have been added to {{dataset}}", {
+                count: processedCount,
+                dataset: dataset.name,
+              })}
             {isComplete &&
               !isSuccess &&
-              `${processedCount} observations added, ${failedCount} failed`}
+              t("{{added}} observations added, {{failed}} failed", {
+                added: processedCount,
+                failed: failedCount,
+              })}
           </p>
           {!isComplete && (
             <p className="text-muted-foreground mt-2 text-sm">
-              You can safely close this dialog. The action is running in the
-              background and you can track its progress in the{" "}
-              <Link
-                href={`/project/${projectId}/settings/batch-actions`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary underline hover:no-underline"
-              >
-                batch actions table
-              </Link>
-              .
+              <Trans>
+                You can safely close this dialog. The action is running in the
+                background and you can track its progress in the{" "}
+                <Link
+                  href={`/project/${projectId}/settings/batch-actions`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary underline hover:no-underline"
+                >
+                  batch actions table
+                </Link>
+                .
+              </Trans>
             </p>
           )}
         </div>
@@ -113,7 +126,7 @@ export function StatusStep({
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">
-                  {isComplete ? "Results" : "Progress"}
+                  {isComplete ? t("Results") : t("Progress")}
                 </CardTitle>
                 <StatusBadge
                   type={status.data?.status?.toLowerCase() ?? "pending"}
@@ -126,7 +139,10 @@ export function StatusStep({
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">
-                        {processedCount} of {totalCount} processed
+                        {t("{{processed}} of {{total}} processed", {
+                          processed: processedCount,
+                          total: totalCount,
+                        })}
                       </span>
                       <span className="font-medium">{progressPercent}%</span>
                     </div>
@@ -135,11 +151,15 @@ export function StatusStep({
 
                   <div className="bg-muted/50 grid grid-cols-2 gap-4 rounded-lg p-3 text-sm">
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Processed</span>
+                      <span className="text-muted-foreground">
+                        {t("Processed")}
+                      </span>
                       <span className="font-semibold">{processedCount}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Failed</span>
+                      <span className="text-muted-foreground">
+                        {t("Failed")}
+                      </span>
                       <span
                         className={`font-semibold ${failedCount > 0 ? "text-destructive" : ""}`}
                       >
@@ -154,12 +174,12 @@ export function StatusStep({
                 <div className="bg-muted/50 rounded-lg p-4 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">
-                      Successfully processed
+                      {t("Successfully processed")}
                     </span>
                     <span className="font-semibold">{processedCount}</span>
                   </div>
                   <div className="mt-2 flex items-center justify-between">
-                    <span className="text-muted-foreground">Failed</span>
+                    <span className="text-muted-foreground">{t("Failed")}</span>
                     <span className="text-destructive font-semibold">
                       {failedCount}
                     </span>
@@ -170,7 +190,7 @@ export function StatusStep({
               {status.data?.log && (
                 <div className="border-destructive/50 bg-destructive/5 space-y-2 rounded-lg border p-3">
                   <p className="text-destructive text-xs font-medium">
-                    Error Summary:
+                    {t("Error Summary:")}
                   </p>
                   <pre className="text-muted-foreground max-h-32 overflow-auto text-[10px]">
                     {status.data.log}
@@ -189,14 +209,14 @@ export function StatusStep({
               onClick={onClose}
               className={isComplete && hasPartialSuccess ? "flex-1" : "w-full"}
             >
-              Close
+              {t("Close")}
             </Button>
             {isComplete && hasPartialSuccess && (
               <Link
                 href={`/project/${projectId}/datasets/${dataset.id}/items`}
                 className="flex-1"
               >
-                <Button className="w-full">Go to Dataset</Button>
+                <Button className="w-full">{t("Go to Dataset")}</Button>
               </Link>
             )}
           </div>

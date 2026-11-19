@@ -5,7 +5,9 @@ import { useRouter } from "next/router";
 import { ErrorPageWithSentry } from "@/src/components/error-page";
 import { Spinner } from "@/src/components/layouts/spinner";
 
+import { useTranslation } from "react-i18next";
 export default function SSOInitiate() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
 
@@ -44,9 +46,9 @@ export default function SSOInitiate() {
     return (
       <>
         <Head>
-          <title>Sign-in Error | Litefuse</title>
+          <title>{t("Sign-in Error | Litefuse")}</title>
         </Head>
-        <ErrorPageWithSentry title="SSO Sign-in Failed" message={error} />
+        <ErrorPageWithSentry title={t("SSO Sign-in Failed")} message={error} />
       </>
     );
   }
@@ -55,9 +57,9 @@ export default function SSOInitiate() {
   return (
     <>
       <Head>
-        <title>Signing in | Litefuse</title>
+        <title>{t("Signing in | Litefuse")}</title>
       </Head>
-      <Spinner message="Redirecting to your identity provider..." />
+      <Spinner message={t("Redirecting to your identity provider...")} />
     </>
   );
 }

@@ -9,8 +9,12 @@ import {
 } from "@/src/components/ui/dropdown-menu";
 import { cn } from "@/src/utils/tailwind";
 
+import { useTranslation } from "react-i18next";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
+// Labels are duration shorthand shown as-is; the null entry is rendered
+// through a translation key instead of its label.
 export const REFRESH_INTERVALS = [
-  { label: "Off", value: null },
+  { label: i18nKey("Off"), value: null },
   { label: "30s", value: 30_000 },
   { label: "1m", value: 60_000 },
   { label: "5m", value: 300_000 },
@@ -32,6 +36,7 @@ export function DataTableRefreshButton({
   interval,
   setInterval,
 }: DataTableRefreshButtonProps) {
+  const { t } = useTranslation();
   const activeInterval = REFRESH_INTERVALS.find((i) => i.value === interval);
 
   return (
@@ -42,7 +47,7 @@ export function DataTableRefreshButton({
         onClick={onRefresh}
         disabled={isRefreshing}
         className="rounded-r-none border-r-0"
-        title="Refresh"
+        title={t("Refresh")}
       >
         <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
       </Button>
@@ -55,7 +60,9 @@ export function DataTableRefreshButton({
           >
             <ChevronDown className="h-4 w-4" />
             <span className="ml-1 text-sm">
-              {activeInterval?.label ?? "Off"}
+              {activeInterval && activeInterval.value !== null
+                ? activeInterval.label
+                : t("Off")}
             </span>
           </Button>
         </DropdownMenuTrigger>
@@ -73,9 +80,9 @@ export function DataTableRefreshButton({
                 key={String(option.value)}
                 value={String(option.value)}
               >
-                {option.label === "Off"
-                  ? "Auto-refresh off"
-                  : `Every ${option.label}`}
+                {option.value === null
+                  ? t("Auto-refresh off")
+                  : t("Every {{interval}}", { interval: option.label })}
               </DropdownMenuRadioItem>
             ))}
           </DropdownMenuRadioGroup>

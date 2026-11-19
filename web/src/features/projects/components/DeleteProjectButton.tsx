@@ -26,7 +26,9 @@ import { useQueryProject } from "@/src/features/projects/hooks";
 import { useHasProjectAccess } from "@/src/features/rbac/utils/checkProjectAccess";
 import { env } from "@/src/env.mjs";
 
+import { useTranslation } from "react-i18next";
 export function DeleteProjectButton() {
+  const { t } = useTranslation();
   const capture = usePostHogClientCapture();
 
   //code for dynamic confirmation message
@@ -37,7 +39,9 @@ export function DeleteProjectButton() {
 
   const formSchema = z.object({
     name: z.string().includes(confirmMessage, {
-      message: `Please confirm with "${confirmMessage}"`,
+      message: t('Please confirm with "{{value}}"', {
+        value: confirmMessage,
+      }),
     }),
   });
 
@@ -75,13 +79,13 @@ export function DeleteProjectButton() {
     <Dialog>
       <DialogTrigger asChild>
         <Button variant="destructive-secondary" disabled={!hasAccess}>
-          Delete Project
+          {t("Delete Project")}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">
-            Delete Project
+            {t("Delete Project")}
           </DialogTitle>
           <DialogDescription className=" ">
             {`To confirm, type "${confirmMessage}" in the input box `}
@@ -110,7 +114,7 @@ export function DeleteProjectButton() {
                 loading={deleteProject.isPending}
                 className="w-full"
               >
-                Delete project
+                {t("Delete project")}
               </Button>
             </DialogFooter>
           </form>

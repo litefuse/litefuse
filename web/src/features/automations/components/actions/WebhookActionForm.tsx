@@ -45,6 +45,8 @@ import { WebhookSecretRender } from "../WebhookSecretRender";
 import { CodeView } from "@/src/components/ui/CodeJsonViewer";
 import { showSuccessToast } from "@/src/features/notifications/showSuccessToast";
 
+import { useTranslation } from "react-i18next";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 export const webhookSchema = z.object({
   url: z.url(),
   headers: z.array(
@@ -56,8 +58,9 @@ export const webhookSchema = z.object({
           return !defaultHeaderKeys.includes(name.trim().toLowerCase());
         },
         {
-          message:
+          message: i18nKey(
             "This header is automatically added by Litefuse and cannot be customized",
+          ),
         },
       ),
       value: z.string(),
@@ -84,6 +87,7 @@ export const WebhookActionForm: React.FC<WebhookActionFormProps> = ({
   projectId,
   action,
 }) => {
+  const { t } = useTranslation();
   const {
     fields: headerFields,
     append: appendHeader,
@@ -124,11 +128,12 @@ export const WebhookActionForm: React.FC<WebhookActionFormProps> = ({
       <FormField
         control={form.control}
         name="webhook.url"
-        rules={{ required: "Webhook URL is required" }}
+        rules={{ required: t("Webhook URL is required") }}
         render={({ field }) => (
           <FormItem>
             <FormLabel className="flex items-center">
-              Webhook URL <span className="text-destructive ml-1">*</span>
+              {t("Webhook URL")}{" "}
+              <span className="text-destructive ml-1">*</span>
             </FormLabel>
             <FormControl>
               <Input
@@ -138,8 +143,9 @@ export const WebhookActionForm: React.FC<WebhookActionFormProps> = ({
               />
             </FormControl>
             <FormDescription>
-              The HTTP URL to call when the trigger fires. We will send a POST
-              request to this URL. Only HTTPS URLs are allowed for security.
+              {t(
+                "The HTTP URL to call when the trigger fires. We will send a POST request to this URL. Only HTTPS URLs are allowed for security.",
+              )}
             </FormDescription>
             <FormMessage />
           </FormItem>
@@ -151,7 +157,7 @@ export const WebhookActionForm: React.FC<WebhookActionFormProps> = ({
         name="webhook.apiVersion.prompt"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>API Version</FormLabel>
+            <FormLabel>{t("API Version")}</FormLabel>
             <Select
               onValueChange={field.onChange}
               value={field.value}
@@ -159,16 +165,17 @@ export const WebhookActionForm: React.FC<WebhookActionFormProps> = ({
             >
               <FormControl>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select API version" />
+                  <SelectValue placeholder={t("Select API version")} />
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                <SelectItem value="v1">v1</SelectItem>
+                <SelectItem value="v1">{"v1"}</SelectItem>
               </SelectContent>
             </Select>
             <FormDescription>
-              The API version to use for the webhook payload format when prompt
-              events are triggered.
+              {t(
+                "The API version to use for the webhook payload format when prompt events are triggered.",
+              )}
             </FormDescription>
             <FormMessage />
           </FormItem>
@@ -176,12 +183,12 @@ export const WebhookActionForm: React.FC<WebhookActionFormProps> = ({
       />
 
       <div>
-        <FormLabel>Headers</FormLabel>
+        <FormLabel>{t("Headers")}</FormLabel>
 
         {/* Default Headers Section */}
         <div className="mb-4">
           <FormDescription className="mb-2">
-            Default headers (automatically added by Litefuse):
+            {t("Default headers (automatically added by Litefuse):")}
           </FormDescription>
           {Object.entries({
             ...WebhookDefaultHeaders,
@@ -211,7 +218,7 @@ export const WebhookActionForm: React.FC<WebhookActionFormProps> = ({
 
         {/* Custom Headers Section */}
         <FormDescription className="mb-2">
-          Optional custom headers to include in the webhook request:
+          {t("Optional custom headers to include in the webhook request:")}
         </FormDescription>
 
         {customHeaderFields.map((field) => {
@@ -238,7 +245,7 @@ export const WebhookActionForm: React.FC<WebhookActionFormProps> = ({
                   <FormItem>
                     <FormControl>
                       <Input
-                        placeholder="Header Name"
+                        placeholder={t("Header Name")}
                         {...field}
                         disabled={disabled}
                       />
@@ -274,7 +281,9 @@ export const WebhookActionForm: React.FC<WebhookActionFormProps> = ({
                 size="icon"
                 onClick={() => toggleHeaderSecret(originalIndex)}
                 disabled={disabled}
-                title={isSecret ? "Make header public" : "Make header secret"}
+                title={
+                  isSecret ? t("Make header public") : t("Make header secret")
+                }
               >
                 {isSecret ? (
                   <Lock className="h-4 w-4 text-orange-500" />
@@ -303,16 +312,17 @@ export const WebhookActionForm: React.FC<WebhookActionFormProps> = ({
           className="mt-2"
         >
           <Plus className="mr-1 h-4 w-4" />
-          Add Custom Header
+          {t("Add Custom Header")}
         </Button>
       </div>
 
       {/* Webhook Secret Section */}
       <div>
-        <FormLabel>Webhook Secret</FormLabel>
+        <FormLabel>{t("Webhook Secret")}</FormLabel>
         <FormDescription className="mb-2">
-          Use this secret to verify webhook signatures for security. The secret
-          is automatically included in the x-langfuse-signature header.
+          {t(
+            "Use this secret to verify webhook signatures for security. The secret is automatically included in the x-langfuse-signature header.",
+          )}
         </FormDescription>
 
         {action?.id ? (
@@ -335,13 +345,16 @@ export const WebhookActionForm: React.FC<WebhookActionFormProps> = ({
               </div>
             </div>
             <div className="text-muted-foreground mt-1 text-xs">
-              Secret is encrypted and can only be viewed when generated or
-              regenerated
+              {t(
+                "Secret is encrypted and can only be viewed when generated or regenerated",
+              )}
             </div>
           </div>
         ) : (
           <div className="bg-muted/50 text-muted-foreground rounded-md border p-3 text-sm">
-            Webhook secret will be generated when the automation is created.
+            {t(
+              "Webhook secret will be generated when the automation is created.",
+            )}
           </div>
         )}
       </div>
@@ -356,6 +369,7 @@ export const RegenerateWebhookSecretButton = ({
   projectId: string;
   action: ActionDomain | ActionDomainWithSecrets;
 }) => {
+  const { t } = useTranslation();
   const [showConfirmPopover, setShowConfirmPopover] = useState(false);
   const [showRegenerateDialog, setShowRegenerateDialog] = useState(false);
   const [regeneratedSecret, setRegeneratedSecret] = useState<string | null>(
@@ -367,8 +381,10 @@ export const RegenerateWebhookSecretButton = ({
     api.automations.regenerateWebhookSecret.useMutation({
       onSuccess: (data) => {
         showSuccessToast({
-          title: "Webhook Secret Regenerated",
-          description: "Your webhook secret has been successfully regenerated.",
+          title: t("Webhook Secret Regenerated"),
+          description: t(
+            t("Your webhook secret has been successfully regenerated."),
+          ),
         });
         setRegeneratedSecret(data.webhookSecret);
         setShowRegenerateDialog(true);
@@ -403,15 +419,15 @@ export const RegenerateWebhookSecretButton = ({
             <RefreshCw
               className={`mr-2 h-4 w-4 ${regenerateSecretMutation.isPending ? "animate-spin" : ""}`}
             />
-            Regenerate
+            {t("Regenerate")}
           </Button>
         </PopoverTrigger>
         <PopoverContent>
-          <h2 className="text-md mb-3 font-semibold">Please confirm</h2>
+          <h2 className="text-md mb-3 font-semibold">{t("Please confirm")}</h2>
           <p className="mb-3 max-w-sm text-sm">
-            This action will invalidate the current webhook secret and generate
-            a new one. Any existing integrations using the old secret will stop
-            working until updated.
+            {t(
+              "This action will invalidate the current webhook secret and generate a new one. Any existing integrations using the old secret will stop working until updated.",
+            )}
           </p>
           <div className="flex justify-end space-x-4">
             <Button
@@ -420,7 +436,7 @@ export const RegenerateWebhookSecretButton = ({
               onClick={() => setShowConfirmPopover(false)}
               disabled={regenerateSecretMutation.isPending}
             >
-              Cancel
+              {t("Cancel")}
             </Button>
             <Button
               type="button"
@@ -428,7 +444,7 @@ export const RegenerateWebhookSecretButton = ({
               loading={regenerateSecretMutation.isPending}
               onClick={handleRegenerateSecret}
             >
-              Regenerate Secret
+              {t("Regenerate Secret")}
             </Button>
           </div>
         </PopoverContent>
@@ -441,10 +457,11 @@ export const RegenerateWebhookSecretButton = ({
       >
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>Webhook Secret Regenerated</DialogTitle>
+            <DialogTitle>{t("Webhook Secret Regenerated")}</DialogTitle>
             <DialogDescription>
-              Your webhook secret has been regenerated. Please copy the new
-              secret below - it will only be shown once.
+              {t(
+                "Your webhook secret has been regenerated. Please copy the new secret below - it will only be shown once.",
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogBody>
@@ -459,7 +476,7 @@ export const RegenerateWebhookSecretButton = ({
                 setRegeneratedSecret(null);
               }}
             >
-              {"I've saved the secret"}
+              {t("I've saved the secret")}
             </Button>
           </DialogFooter>
         </DialogContent>

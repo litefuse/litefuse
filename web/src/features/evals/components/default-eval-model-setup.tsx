@@ -23,7 +23,9 @@ import {
 import { Label } from "@/src/components/ui/label";
 import { Input } from "@/src/components/ui/input";
 
+import { useTranslation } from "react-i18next";
 export function DefaultEvalModelSetup({ projectId }: { projectId: string }) {
+  const { t } = useTranslation();
   const utils = api.useUtils();
   const [isEditing, setIsEditing] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -52,8 +54,8 @@ export function DefaultEvalModelSetup({ projectId }: { projectId: string }) {
     api.defaultLlmModel.upsertDefaultModel.useMutation({
       onSuccess: () => {
         showSuccessToast({
-          title: "Default evaluation model updated",
-          description: "All running evaluators will use the new model.",
+          title: t("Default evaluation model updated"),
+          description: t("All running evaluators will use the new model."),
         });
 
         utils.defaultLlmModel.fetchDefaultModel.invalidate({ projectId });
@@ -83,11 +85,13 @@ export function DefaultEvalModelSetup({ projectId }: { projectId: string }) {
     <>
       <Card className="mt-3 flex flex-col gap-6">
         <CardContent>
-          <p className="my-2 text-lg font-semibold">Default model</p>
+          <p className="my-2 text-lg font-semibold">{t("Default model")}</p>
           <ManageDefaultEvalModel
             projectId={projectId}
             variant="color-coded"
-            setUpMessage="No default model set. Set up default evaluation model"
+            setUpMessage={t(
+              "No default model set. Set up default evaluation model",
+            )}
             className="text-sm font-normal"
             showEditButton={false}
           />
@@ -119,14 +123,14 @@ export function DefaultEvalModelSetup({ projectId }: { projectId: string }) {
               }}
             >
               <Pencil className="mr-2 h-4 w-4" />
-              {selectedModel ? "Edit" : "Set up"}
+              {selectedModel ? t("Edit") : t("Set up")}
             </Button>
           </DialogTrigger>
           <DialogContent className="px-3 py-10">
             <ModelParameters
               customHeader={
                 <p className="leading-none font-medium">
-                  Default model configuration
+                  {t("Default model configuration")}
                 </p>
               }
               {...{
@@ -140,12 +144,12 @@ export function DefaultEvalModelSetup({ projectId }: { projectId: string }) {
               formDisabled={!hasWriteAccess}
             />
             <div className="text-muted-foreground my-2 text-xs">
-              Select a model which supports function calling.
+              {t("Select a model which supports function calling.")}
             </div>
             <div className="flex flex-col gap-2">
               <div className="mt-2 flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setIsEditing(false)}>
-                  Cancel
+                  {t("Cancel")}
                 </Button>
                 {selectedModel ? (
                   <UpdateButton
@@ -158,13 +162,13 @@ export function DefaultEvalModelSetup({ projectId }: { projectId: string }) {
                     disabled={!hasWriteAccess || !modelParams.provider.value}
                     onClick={executeUpsertMutation}
                   >
-                    Save
+                    {t("Save")}
                   </Button>
                 )}
               </div>
               {formError ? (
                 <p className="text-red w-full text-center">
-                  <span className="font-bold">Error:</span> {formError}
+                  <span className="font-bold">{t("Error:")}</span> {formError}
                 </p>
               ) : null}
             </div>
@@ -184,6 +188,7 @@ function UpdateButton({
   isLoading: boolean;
   executeUpsertMutation: () => void;
 }) {
+  const { t } = useTranslation();
   const [confirmationInput, setConfirmationInput] = useState("");
   const hasWriteAccess = useHasProjectAccess({
     projectId,
@@ -201,22 +206,22 @@ function UpdateButton({
             e.stopPropagation();
           }}
         >
-          Update
+          {t("Update")}
         </Button>
       </PopoverTrigger>
       <PopoverContent
         onClick={(e) => e.stopPropagation()}
         className="w-fit max-w-[500px]"
       >
-        <h2 className="text-md mb-3 font-semibold">Please confirm</h2>
+        <h2 className="text-md mb-3 font-semibold">{t("Please confirm")}</h2>
         <p className="mb-3 text-sm">
-          Updating the default model will impact any currently running
-          evaluators that use it. Please confirm that you want to proceed with
-          this change.
+          {t(
+            "Updating the default model will impact any currently running evaluators that use it. Please confirm that you want to proceed with this change.",
+          )}
         </p>
         <div className="mb-4 grid w-full gap-1.5">
           <Label htmlFor="update-confirmation">
-            Type &quot;{CONFIRMATION}&quot; to confirm
+            {t('Type "{{value}}" to confirm', { value: CONFIRMATION })}
           </Label>
           <Input
             id="update-confirmation"
@@ -230,13 +235,13 @@ function UpdateButton({
             loading={isLoading}
             onClick={() => {
               if (confirmationInput !== CONFIRMATION) {
-                alert("Please type the correct confirmation");
+                alert(t("Please type the correct confirmation"));
                 return;
               }
               executeUpsertMutation();
             }}
           >
-            Confirm
+            {t("Confirm")}
           </Button>
         </div>
       </PopoverContent>

@@ -29,6 +29,7 @@ import { useViewPreferences } from "../contexts/ViewPreferencesContext";
 import { useTraceData } from "../contexts/TraceDataContext";
 import type Decimal from "decimal.js";
 
+import { useTranslation } from "react-i18next";
 interface SpanContentProps {
   node: TreeNode;
   parentTotalCost?: Decimal;
@@ -48,6 +49,7 @@ export function SpanContent({
   onHover,
   className,
 }: SpanContentProps) {
+  const { t } = useTranslation();
   const { mergedScores, roots } = useTraceData();
   const {
     showDuration,
@@ -148,7 +150,7 @@ export function SpanContent({
               <span
                 title={
                   node.children.length > 0 || node.type === "TRACE"
-                    ? "Aggregated duration of all child observations"
+                    ? t("Aggregated duration of all child observations")
                     : undefined
                 }
                 className={cn(
@@ -185,7 +187,7 @@ export function SpanContent({
               <span
                 title={
                   node.children.length > 0 || node.type === "TRACE"
-                    ? "Aggregated cost of all child observations"
+                    ? t("Aggregated cost of all child observations")
                     : undefined
                 }
                 className={cn(

@@ -23,9 +23,14 @@ import { ChevronDown } from "lucide-react";
 import { useEvalCapabilities } from "@/src/features/evals/hooks/useEvalCapabilities";
 import { DEFAULT_OBSERVATION_FILTER_WHEN_REMAPPING } from "@/src/features/evals/utils/evaluator-constants";
 
+import { Trans, useTranslation } from "react-i18next";
+
+/** Target-object enum value, not user-facing text. */
+const EVENT_TARGET = "event";
 type LegacyEvalAction = "keep-active" | "mark-inactive" | "delete";
 
 export default function RemapEvaluatorPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const projectId = router.query.projectId as string;
   const evalConfigId = router.query.evaluator as string;
@@ -142,10 +147,10 @@ export default function RemapEvaluatorPage() {
       withPadding
       scrollable
       headerProps={{
-        title: "Upgrade Evaluator",
+        title: t("Upgrade Evaluator"),
         breadcrumb: [
           {
-            name: "Running Evaluators",
+            name: t("Running Evaluators"),
             href: `/project/${projectId}/evals`,
           },
         ],
@@ -154,17 +159,19 @@ export default function RemapEvaluatorPage() {
       <div className="space-y-4">
         <div>
           <p className="text-muted-foreground text-sm">
-            Review your legacy evaluator on the left and configure the new eval
-            settings on the right.{" "}
-            <a
-              href="https://litefuse.ai/faq/all/llm-as-a-judge-migration"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-dark-blue font-medium hover:opacity-80"
-            >
-              Follow our step-by-step guide
-            </a>{" "}
-            to upgrade successfully.
+            <Trans>
+              Review your legacy evaluator on the left and configure the new
+              eval settings on the right.{" "}
+              <a
+                href="https://litefuse.ai/faq/all/llm-as-a-judge-migration"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-dark-blue font-medium hover:opacity-80"
+              >
+                Follow our step-by-step guide
+              </a>{" "}
+              to upgrade successfully.
+            </Trans>
           </p>
           {mappedConfig ? (
             <Alert
@@ -173,9 +180,13 @@ export default function RemapEvaluatorPage() {
             >
               <AlertDescription>
                 <div className="flex flex-col gap-2">
-                  {isEventTarget(mappedConfig.targetObject ?? "event")
-                    ? "Running observation-targeting evaluators requires JS SDK ≥ 4.0.0 or Python SDK ≥ 3.0.0."
-                    : "Running observation-targeting evaluators requires JS SDK ≥ 4.4.0 or Python SDK ≥ 3.9.0."}
+                  {isEventTarget(mappedConfig.targetObject ?? EVENT_TARGET)
+                    ? t(
+                        "Running observation-targeting evaluators requires JS SDK ≥ 4.0.0 or Python SDK ≥ 3.0.0.",
+                      )
+                    : t(
+                        "Running observation-targeting evaluators requires JS SDK ≥ 4.4.0 or Python SDK ≥ 3.9.0.",
+                      )}
                 </div>
               </AlertDescription>
             </Alert>
@@ -191,7 +202,7 @@ export default function RemapEvaluatorPage() {
           ) : !oldConfig || !evalTemplate ? (
             <Alert variant="destructive">
               <AlertDescription>
-                Failed to load eval configuration or template.
+                {t("Failed to load eval configuration or template.")}
               </AlertDescription>
             </Alert>
           ) : (
@@ -200,13 +211,13 @@ export default function RemapEvaluatorPage() {
               <div className="space-y-4 p-3">
                 <div className="flex items-center gap-2 pb-2">
                   <h3 className="text-lg font-semibold">
-                    Legacy Configuration{" "}
+                    {t("Legacy Configuration")}{" "}
                     {isTraceTarget(oldConfig.targetObject)
-                      ? "(runs on traces)"
+                      ? t("(runs on traces)")
                       : ""}
                   </h3>
                   <span className="text-muted-foreground text-xs">
-                    Read-only
+                    {t("Read-only")}
                   </span>
                 </div>
                 <InnerEvaluatorForm
@@ -230,9 +241,9 @@ export default function RemapEvaluatorPage() {
               {/* RIGHT: Editable new config form */}
               <div className="space-y-4 p-3">
                 <h3 className="pb-2 text-lg font-semibold">
-                  New Configuration{" "}
+                  {t("New Configuration")}{" "}
                   {isTraceTarget(oldConfig.targetObject)
-                    ? "(runs on observations)"
+                    ? t("(runs on observations)")
                     : ""}
                 </h3>
                 <InnerEvaluatorForm
@@ -257,10 +268,10 @@ export default function RemapEvaluatorPage() {
                           className="mt-3 rounded-l-md rounded-r-none"
                         >
                           {legacyAction === "keep-active"
-                            ? "Save & keep legacy active"
+                            ? t("Save & keep legacy active")
                             : legacyAction === "mark-inactive"
-                              ? "Save & mark legacy inactive"
-                              : "Save & delete legacy"}
+                              ? t("Save & mark legacy inactive")
+                              : t("Save & delete legacy")}
                         </Button>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -277,26 +288,27 @@ export default function RemapEvaluatorPage() {
                               onClick={() => setLegacyAction("keep-active")}
                             >
                               {legacyAction === "keep-active" && "✓ "}
-                              Save & keep legacy active
+                              {t("Save & keep legacy active")}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => setLegacyAction("mark-inactive")}
                             >
                               {legacyAction === "mark-inactive" && "✓ "}
-                              Save & mark legacy inactive
+                              {t("Save & mark legacy inactive")}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => setLegacyAction("delete")}
                             >
                               {legacyAction === "delete" && "✓ "}
-                              Save & delete legacy
+                              {t("Save & delete legacy")}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
                       {formError ? (
                         <p className="text-red w-full text-center">
-                          <span className="font-bold">Error:</span> {formError}
+                          <span className="font-bold">{t("Error:")}</span>{" "}
+                          {formError}
                         </p>
                       ) : null}
                     </div>

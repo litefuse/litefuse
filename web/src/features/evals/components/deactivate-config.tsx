@@ -11,6 +11,7 @@ import {
 import { Button } from "@/src/components/ui/button";
 import { Switch } from "@/src/components/ui/switch";
 
+import { useTranslation } from "react-i18next";
 export function DeactivateEvalConfig({
   projectId,
   evalConfig,
@@ -18,6 +19,7 @@ export function DeactivateEvalConfig({
   projectId: string;
   evalConfig: RouterOutputs["evals"]["configById"];
 }) {
+  const { t } = useTranslation();
   const utils = api.useUtils();
   const hasAccess = useHasProjectAccess({ projectId, scope: "evalJob:CUD" });
   const [isOpen, setIsOpen] = useState(false);
@@ -69,11 +71,15 @@ export function DeactivateEvalConfig({
         </div>
       </PopoverTrigger>
       <PopoverContent>
-        <h2 className="text-md mb-3 font-semibold">Please confirm</h2>
+        <h2 className="text-md mb-3 font-semibold">{t("Please confirm")}</h2>
         <p className="mb-3 text-sm">
           {evalConfig?.status === "ACTIVE"
-            ? "This action will deactivate the evaluator. No more traces will be evaluated based on this evaluator."
-            : "This action will activate the evaluator. New traces will be evaluated based on this evaluator."}
+            ? t(
+                "This action will deactivate the evaluator. No more traces will be evaluated based on this evaluator.",
+              )
+            : t(
+                "This action will activate the evaluator. New traces will be evaluated based on this evaluator.",
+              )}
         </p>
         <div className="flex justify-end space-x-4">
           <Button
@@ -84,7 +90,7 @@ export function DeactivateEvalConfig({
             loading={mutEvaluator.isPending}
             onClick={onClick}
           >
-            {evalConfig?.status === "ACTIVE" ? "Deactivate" : "Activate"}
+            {evalConfig?.status === "ACTIVE" ? t("Deactivate") : t("Activate")}
           </Button>
         </div>
       </PopoverContent>

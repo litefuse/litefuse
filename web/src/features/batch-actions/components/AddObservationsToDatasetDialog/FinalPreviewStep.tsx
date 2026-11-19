@@ -7,6 +7,10 @@ import type { FinalPreviewStepProps, DialogStep } from "./types";
 import { applyFullMapping } from "@langfuse/shared";
 import type { MappingError } from "@langfuse/shared";
 
+import { useTranslation } from "react-i18next";
+
+/** The JSON literal as rendered, not translatable text. */
+const NULL_LITERAL = "null";
 export function FinalPreviewStep({
   dataset,
   mapping,
@@ -14,6 +18,7 @@ export function FinalPreviewStep({
   totalCount,
   onEditStep,
 }: FinalPreviewStepProps) {
+  const { t } = useTranslation();
   // Compute the full preview
   const previewResult = useMemo(() => {
     if (!observationData) return null;
@@ -52,11 +57,12 @@ export function FinalPreviewStep({
   return (
     <div className="h-[62vh] space-y-6 p-6">
       <div>
-        <h3 className="text-lg font-semibold">Review Configuration</h3>
+        <h3 className="text-lg font-semibold">{t("Review Configuration")}</h3>
         <p className="text-muted-foreground text-sm">
-          Adding {totalCount} observation{totalCount !== 1 ? "s" : ""} to
-          dataset &quot;
-          {dataset.name}&quot;
+          {t('Adding {{count}} observation to dataset "{{dataset}}"', {
+            count: totalCount,
+            dataset: dataset.name,
+          })}
         </p>
       </div>
 
@@ -67,11 +73,12 @@ export function FinalPreviewStep({
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-500" />
             <div className="space-y-1">
               <p className="text-sm font-medium text-amber-600 dark:text-amber-500">
-                Some JSON paths did not match the preview observation
+                {t("Some JSON paths did not match the preview observation")}
               </p>
               <p className="text-xs text-amber-600/80 dark:text-amber-500/80">
-                Observations with failed mappings will be skipped during
-                processing.
+                {t(
+                  "Observations with failed mappings will be skipped during processing.",
+                )}
               </p>
               <div className="flex flex-wrap gap-2 pt-1">
                 {Object.entries(errorsByField).map(([field]) => (
@@ -85,9 +92,12 @@ export function FinalPreviewStep({
                       if (step) onEditStep(step);
                     }}
                   >
-                    Edit{" "}
-                    {field === "expectedOutput" ? "expected output" : field}{" "}
-                    mapping
+                    {t("Edit {{field}} mapping", {
+                      field:
+                        field === "expectedOutput"
+                          ? t("expected output")
+                          : field,
+                    })}
                   </Button>
                 ))}
               </div>
@@ -97,20 +107,20 @@ export function FinalPreviewStep({
       )}
 
       <div className="text-muted-foreground text-sm">
-        Sample dataset item preview (from first selected observation):
+        {t("Sample dataset item preview (from first selected observation):")}
       </div>
 
       {!observationData ? (
         <div className="bg-muted/30 flex h-64 items-center justify-center rounded-md border p-4">
           <p className="text-muted-foreground text-sm">
-            No observation data available for preview
+            {t("No observation data available for preview")}
           </p>
         </div>
       ) : (
         <div className="space-y-4">
           {/* Input Preview */}
           <PreviewCard
-            label="Input"
+            label={t("Input")}
             data={previewResult?.input}
             onEdit={() => onEditStep("input-mapping" as DialogStep)}
             errors={errorsByField["input"]}
@@ -118,7 +128,7 @@ export function FinalPreviewStep({
 
           {/* Expected Output Preview */}
           <PreviewCard
-            label="Expected Output"
+            label={t("Expected Output")}
             data={previewResult?.expectedOutput}
             onEdit={() => onEditStep("output-mapping" as DialogStep)}
             errors={errorsByField["expectedOutput"]}
@@ -126,7 +136,7 @@ export function FinalPreviewStep({
 
           {/* Metadata Preview */}
           <PreviewCard
-            label="Metadata"
+            label={t("Metadata")}
             data={previewResult?.metadata}
             onEdit={() => onEditStep("metadata-mapping" as DialogStep)}
             errors={errorsByField["metadata"]}
@@ -145,6 +155,7 @@ type PreviewCardProps = {
 };
 
 function PreviewCard({ label, data, onEdit, errors }: PreviewCardProps) {
+  const { t } = useTranslation();
   const hasErrors = errors && errors.length > 0;
 
   return (
@@ -165,12 +176,14 @@ function PreviewCard({ label, data, onEdit, errors }: PreviewCardProps) {
           className="h-7 gap-1 text-xs"
         >
           <Pencil className="h-3 w-3" />
-          Edit
+          {t("Edit")}
         </Button>
       </div>
       <div className="max-h-62 overflow-auto">
         {data === null ? (
-          <div className="text-muted-foreground p-4 text-sm italic">null</div>
+          <div className="text-muted-foreground p-4 text-sm italic">
+            {NULL_LITERAL}
+          </div>
         ) : (
           <JSONView json={data} className="text-xs" />
         )}
@@ -178,9 +191,10 @@ function PreviewCard({ label, data, onEdit, errors }: PreviewCardProps) {
       {hasErrors && (
         <div className="border-t border-amber-500/50 bg-amber-50 px-4 py-2 dark:bg-amber-950/30">
           <p className="text-xs text-amber-600 dark:text-amber-500">
-            {errors.length} path{errors.length !== 1 ? "s" : ""} did not match
-            in preview observation. These items will be skipped during
-            processing.
+            {t(
+              "{{count}} path did not match in preview observation. These items will be skipped during processing.",
+              { count: errors.length },
+            )}
           </p>
         </div>
       )}

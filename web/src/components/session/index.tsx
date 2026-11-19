@@ -67,6 +67,8 @@ import {
   SYSTEM_PRESET_ID_PREFIX,
 } from "@/src/components/table/table-view-presets/components/data-table-view-presets-drawer";
 import { Separator } from "@/src/components/ui/separator";
+import { useTranslation } from "react-i18next";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 import {
   type VisibilityState,
   type ColumnOrderState,
@@ -79,8 +81,8 @@ const USERS_PER_PAGE_IN_POPOVER = 50;
 const SESSION_DETAIL_SYSTEM_PRESETS: SystemFilterPreset[] = [
   {
     id: `${SYSTEM_PRESET_ID_PREFIX}last_generation__`,
-    name: "Last Generation in Trace",
-    description: "Shows only the last generation in each trace",
+    name: i18nKey("Last Generation in Trace"),
+    description: i18nKey("Shows only the last generation in each trace"),
     filters: [
       {
         column: "type",
@@ -98,8 +100,8 @@ const SESSION_DETAIL_SYSTEM_PRESETS: SystemFilterPreset[] = [
   },
   {
     id: `${SYSTEM_PRESET_ID_PREFIX}root_observation__`,
-    name: "Root Observation",
-    description: "Shows only the root observation of each trace",
+    name: i18nKey("Root Observation"),
+    description: i18nKey("Shows only the root observation of each trace"),
     filters: [
       {
         column: "positionInTrace",
@@ -132,6 +134,7 @@ export function SessionUsers({
   projectId: string;
   users?: string[];
 }) {
+  const { t } = useTranslation();
   const [page, setPage] = useState(0);
 
   if (!users) return null;
@@ -149,7 +152,9 @@ export function SessionUsers({
           rel="noopener noreferrer"
         >
           <Badge className="max-w-[300px]">
-            <span className="truncate">User ID: {userId}</span>
+            <span className="truncate">
+              {t("User ID: {{value}}", { value: userId })}
+            </span>
             <ExternalLinkIcon className="ml-1 h-3 w-3" />
           </Badge>
         </Link>
@@ -159,11 +164,11 @@ export function SessionUsers({
         <Popover modal>
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className="mt-0.5">
-              +{remainingUsers.length} more users
+              {t("+{{count}} more users", { count: remainingUsers.length })}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-[300px]">
-            <Label className="text-base capitalize">Session Users</Label>
+            <Label className="text-base capitalize">{t("Session Users")}</Label>
             <ScrollArea className="h-[300px]">
               <div className="flex flex-col gap-2 p-2">
                 {remainingUsers
@@ -180,7 +185,9 @@ export function SessionUsers({
                       rel="noopener noreferrer"
                     >
                       <Badge className="max-w-[260px]">
-                        <span className="truncate">User ID: {userId}</span>
+                        <span className="truncate">
+                          {t("User ID: {{value}}", { value: userId })}
+                        </span>
                         <ExternalLinkIcon className="ml-1 h-3 w-3" />
                       </Badge>
                     </Link>
@@ -195,11 +202,15 @@ export function SessionUsers({
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
                   disabled={page === 0}
                 >
-                  Previous
+                  {t("Previous")}
                 </Button>
                 <span className="text-muted-foreground text-sm">
-                  Page {page + 1} of{" "}
-                  {Math.ceil(remainingUsers.length / USERS_PER_PAGE_IN_POPOVER)}
+                  {t("Page {{page}} of {{total}}", {
+                    page: page + 1,
+                    total: Math.ceil(
+                      remainingUsers.length / USERS_PER_PAGE_IN_POPOVER,
+                    ),
+                  })}
                 </span>
                 <Button
                   variant="outline"
@@ -210,7 +221,7 @@ export function SessionUsers({
                     remainingUsers.length
                   }
                 >
-                  Next
+                  {t("Next")}
                 </Button>
               </div>
             )}
@@ -236,6 +247,7 @@ export const SessionPage: React.FC<{
   sessionId: string;
   projectId: string;
 }> = ({ sessionId, projectId }) => {
+  const { t } = useTranslation();
   const router = useRouter();
   const { setDetailPageList, detailPagelists } = useDetailPageLists();
   const userSession = useSession();
@@ -368,15 +380,17 @@ export const SessionPage: React.FC<{
   });
 
   if (session.error?.data?.code === "UNAUTHORIZED")
-    return <ErrorPage message="You do not have access to this session." />;
+    return <ErrorPage message={t("You do not have access to this session.")} />;
 
   if (session.error?.data?.code === "NOT_FOUND")
     return (
       <ErrorPage
-        title="Session not found"
-        message="The session is either still being processed or has been deleted."
+        title={t("Session not found")}
+        message={t(
+          "The session is either still being processed or has been deleted.",
+        )}
         additionalButton={{
-          label: "Retry",
+          label: t("Retry"),
           onClick: () => void window.location.reload(),
         }}
       />
@@ -389,7 +403,7 @@ export const SessionPage: React.FC<{
         itemType: "SESSION",
         breadcrumb: [
           {
-            name: "Sessions",
+            name: t("Sessions"),
             href: `/project/${projectId}/sessions`,
           },
         ],
@@ -427,7 +441,7 @@ export const SessionPage: React.FC<{
               variant="outline"
               size="icon"
               onClick={downloadSessionAsJson}
-              title="Download session as JSON"
+              title={t("Download session as JSON")}
             >
               <Download className="h-4 w-4" />
             </Button>
@@ -467,7 +481,7 @@ export const SessionPage: React.FC<{
                 className="scale-75"
               />
               <span className="text-muted-foreground text-xs">
-                Show corrections
+                {t("Show corrections")}
               </span>
             </div>
           </>
@@ -480,11 +494,15 @@ export const SessionPage: React.FC<{
             <SessionUsers projectId={projectId} users={session.data.users} />
           ) : null}
           <Badge variant="outline">
-            Total traces: {session.data?.traces.length}
+            {t("Total traces: {{count}}", {
+              count: session.data?.traces.length,
+            })}
           </Badge>
           {session.data && (
             <Badge variant="outline">
-              Total cost: {usdFormatter(session.data.totalCost, 2)}
+              {t("Total cost: {{value}}", {
+                value: usdFormatter(session.data.totalCost, 2),
+              })}
             </Badge>
           )}
           <SessionScores scores={session.data?.scores ?? []} />
@@ -555,6 +573,7 @@ export const SessionEventsPage: React.FC<{
   sessionId: string;
   projectId: string;
 }> = ({ sessionId, projectId }) => {
+  const { t } = useTranslation();
   const router = useRouter();
   const { setDetailPageList, detailPagelists } = useDetailPageLists();
   const userSession = useSession();
@@ -867,15 +886,17 @@ export const SessionEventsPage: React.FC<{
   });
 
   if (session.error?.data?.code === "UNAUTHORIZED")
-    return <ErrorPage message="You do not have access to this session." />;
+    return <ErrorPage message={t("You do not have access to this session.")} />;
 
   if (session.error?.data?.code === "NOT_FOUND")
     return (
       <ErrorPage
-        title="Session not found"
-        message="The session is either still being processed or has been deleted."
+        title={t("Session not found")}
+        message={t(
+          "The session is either still being processed or has been deleted.",
+        )}
         additionalButton={{
-          label: "Retry",
+          label: t("Retry"),
           onClick: () => void window.location.reload(),
         }}
       />
@@ -888,7 +909,7 @@ export const SessionEventsPage: React.FC<{
         itemType: "SESSION",
         breadcrumb: [
           {
-            name: "Sessions",
+            name: t("Sessions"),
             href: `/project/${projectId}/sessions`,
           },
         ],
@@ -958,7 +979,7 @@ export const SessionEventsPage: React.FC<{
                 className="scale-75"
               />
               <span className="text-muted-foreground text-xs">
-                Show corrections
+                {t("Show corrections")}
               </span>
             </div>
           </>
@@ -997,11 +1018,15 @@ export const SessionEventsPage: React.FC<{
 
           {/* Stats */}
           <Badge variant="outline">
-            Total traces: {session.data?.countTraces ?? 0}
+            {t("Total traces: {{count}}", {
+              count: session.data?.countTraces ?? 0,
+            })}
           </Badge>
           {session.data && (
             <Badge variant="outline">
-              Total cost: {usdFormatter(session.data.totalCost ?? 0, 2)}
+              {t("Total cost: {{value}}", {
+                value: usdFormatter(session.data.totalCost ?? 0, 2),
+              })}
             </Badge>
           )}
 
@@ -1087,6 +1112,7 @@ export const SessionIO = ({
   timestamp: Date;
   showCorrections: boolean;
 }) => {
+  const { t } = useTranslation();
   const trace = api.traces.byId.useQuery(
     { traceId, projectId, timestamp },
     {
@@ -1131,7 +1157,7 @@ export const SessionIO = ({
         />
       ) : (
         <div className="text-muted-foreground p-2 text-xs">
-          This trace has no input or output.
+          {t("This trace has no input or output.")}
         </div>
       )}
     </div>

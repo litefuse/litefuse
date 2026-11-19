@@ -699,6 +699,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
               featureFlags: true,
               admin: true,
               v4BetaEnabled: true,
+              locale: true,
               organizationMemberships: {
                 include: {
                   organization: {
@@ -731,12 +732,14 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
               enableExperimentalFeatures:
                 env.LITEFUSE_ENABLE_EXPERIMENTAL_FEATURES === "true",
               // Self-hosted instance plan: enterprise when a litefuse_ee_
-              // license is configured. Exposed so EE-gated UI (e.g. data
-              // retention) can check precisely for self-hosted:enterprise
-              // without conflating with Cloud org plans.
-              selfHostedInstancePlan: resolveSelfHostedPlan(
-                env.LITEFUSE_EE_LICENSE_KEY,
-              ),
+              // license is configured. Only applies OUTSIDE Cloud mode —
+              // in Cloud, usePlan() must fall back to each organization's
+              // cloud_config plan, otherwise a leftover LITEFUSE_EE_LICENSE_KEY
+              // would grant enterprise-gated UI (org API keys, admin-api, …)
+              // to every org regardless of its actual plan.
+              selfHostedInstancePlan: process.env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION
+                ? null
+                : resolveSelfHostedPlan(env.LITEFUSE_EE_LICENSE_KEY),
             },
             user:
               dbUser !== null
@@ -751,6 +754,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
                     image: dbUser.image,
                     admin: dbUser.admin,
                     v4BetaEnabled: dbUser.v4BetaEnabled,
+                    locale: dbUser.locale,
                     canCreateOrganizations: canCreateOrganizations(
                       dbUser.email,
                     ),

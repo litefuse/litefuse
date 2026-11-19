@@ -1,3 +1,4 @@
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 /**
  * Statistical calculation utilities for score comparison analytics
  * Provides functions for calculating Cohen's Kappa, F1 Score, Overall Agreement,
@@ -15,9 +16,12 @@ export interface ConfusionMatrixRow {
 }
 
 export interface InterpretationResult {
+  /** i18n key; "N/A" is also the sentinel the cards branch on. */
   strength: string;
   color: string;
+  /** i18n key, interpolated with `descriptionParams` at the render site. */
   description: string;
+  descriptionParams?: Record<string, string | number>;
 }
 
 // ============================================================================
@@ -189,6 +193,49 @@ export function calculateOverallAgreement(
   return Math.round(agreement * 1000) / 1000;
 }
 
+/**
+ * A correlation reads differently in each direction, and Chinese puts the sign
+ * before the noun, so each (strength, direction) pair is its own key rather
+ * than an interpolated word.
+ */
+const LINEAR_CORRELATION_DESCRIPTIONS = {
+  veryStrong: {
+    positive: i18nKey("Very strong positive linear correlation"),
+    negative: i18nKey("Very strong negative linear correlation"),
+  },
+  strong: {
+    positive: i18nKey("Strong positive linear correlation"),
+    negative: i18nKey("Strong negative linear correlation"),
+  },
+  moderate: {
+    positive: i18nKey("Moderate positive linear correlation"),
+    negative: i18nKey("Moderate negative linear correlation"),
+  },
+  weak: {
+    positive: i18nKey("Weak positive linear correlation"),
+    negative: i18nKey("Weak negative linear correlation"),
+  },
+} as const;
+
+const MONOTONIC_RELATIONSHIP_DESCRIPTIONS = {
+  veryStrong: {
+    positive: i18nKey("Very strong positive monotonic relationship"),
+    negative: i18nKey("Very strong negative monotonic relationship"),
+  },
+  strong: {
+    positive: i18nKey("Strong positive monotonic relationship"),
+    negative: i18nKey("Strong negative monotonic relationship"),
+  },
+  moderate: {
+    positive: i18nKey("Moderate positive monotonic relationship"),
+    negative: i18nKey("Moderate negative monotonic relationship"),
+  },
+  weak: {
+    positive: i18nKey("Weak positive monotonic relationship"),
+    negative: i18nKey("Weak negative monotonic relationship"),
+  },
+} as const;
+
 // ============================================================================
 // Interpretation Functions
 // ============================================================================
@@ -207,45 +254,45 @@ export function interpretPearsonCorrelation(
     return {
       strength: "N/A",
       color: "gray",
-      description: "No data available",
+      description: i18nKey("No data available"),
     };
   }
 
   const abs = Math.abs(r);
-  const direction = r > 0 ? "positive" : r < 0 ? "negative" : "no";
+  const direction = r < 0 ? "negative" : "positive";
 
   if (abs >= 0.9) {
     return {
-      strength: "Very Strong",
+      strength: i18nKey("Very Strong"),
       color: "green",
-      description: `Very strong ${direction} linear correlation`,
+      description: LINEAR_CORRELATION_DESCRIPTIONS.veryStrong[direction],
     };
   }
   if (abs >= 0.7) {
     return {
-      strength: "Strong",
+      strength: i18nKey("Strong"),
       color: "blue",
-      description: `Strong ${direction} linear correlation`,
+      description: LINEAR_CORRELATION_DESCRIPTIONS.strong[direction],
     };
   }
   if (abs >= 0.5) {
     return {
-      strength: "Moderate",
+      strength: i18nKey("Moderate"),
       color: "yellow",
-      description: `Moderate ${direction} linear correlation`,
+      description: LINEAR_CORRELATION_DESCRIPTIONS.moderate[direction],
     };
   }
   if (abs >= 0.3) {
     return {
-      strength: "Weak",
+      strength: i18nKey("Weak"),
       color: "orange",
-      description: `Weak ${direction} linear correlation`,
+      description: LINEAR_CORRELATION_DESCRIPTIONS.weak[direction],
     };
   }
   return {
-    strength: "Very Weak",
+    strength: i18nKey("Very Weak"),
     color: "red",
-    description: `Very weak or no linear correlation`,
+    description: i18nKey("Very weak or no linear correlation"),
   };
 }
 
@@ -263,45 +310,45 @@ export function interpretSpearmanCorrelation(
     return {
       strength: "N/A",
       color: "gray",
-      description: "No data available",
+      description: i18nKey("No data available"),
     };
   }
 
   const abs = Math.abs(rho);
-  const direction = rho > 0 ? "positive" : rho < 0 ? "negative" : "no";
+  const direction = rho < 0 ? "negative" : "positive";
 
   if (abs >= 0.9) {
     return {
-      strength: "Very Strong",
+      strength: i18nKey("Very Strong"),
       color: "green",
-      description: `Very strong ${direction} monotonic relationship`,
+      description: MONOTONIC_RELATIONSHIP_DESCRIPTIONS.veryStrong[direction],
     };
   }
   if (abs >= 0.7) {
     return {
-      strength: "Strong",
+      strength: i18nKey("Strong"),
       color: "blue",
-      description: `Strong ${direction} monotonic relationship`,
+      description: MONOTONIC_RELATIONSHIP_DESCRIPTIONS.strong[direction],
     };
   }
   if (abs >= 0.5) {
     return {
-      strength: "Moderate",
+      strength: i18nKey("Moderate"),
       color: "yellow",
-      description: `Moderate ${direction} monotonic relationship`,
+      description: MONOTONIC_RELATIONSHIP_DESCRIPTIONS.moderate[direction],
     };
   }
   if (abs >= 0.3) {
     return {
-      strength: "Weak",
+      strength: i18nKey("Weak"),
       color: "orange",
-      description: `Weak ${direction} monotonic relationship`,
+      description: MONOTONIC_RELATIONSHIP_DESCRIPTIONS.weak[direction],
     };
   }
   return {
-    strength: "Very Weak",
+    strength: i18nKey("Very Weak"),
     color: "red",
-    description: `Very weak or no monotonic relationship`,
+    description: i18nKey("Very weak or no monotonic relationship"),
   };
 }
 
@@ -320,56 +367,56 @@ export function interpretCohensKappa(
     return {
       strength: "N/A",
       color: "gray",
-      description: "No data available",
+      description: i18nKey("No data available"),
     };
   }
 
   if (kappa >= 1.0) {
     return {
-      strength: "Perfect",
+      strength: i18nKey("Perfect"),
       color: "green",
-      description: "perfect agreement between scores",
+      description: i18nKey("perfect agreement between scores"),
     };
   }
   if (kappa >= 0.81) {
     return {
-      strength: "Almost Perfect",
+      strength: i18nKey("Almost Perfect"),
       color: "green",
-      description: "Almost perfect agreement between scores",
+      description: i18nKey("Almost perfect agreement between scores"),
     };
   }
   if (kappa >= 0.61) {
     return {
-      strength: "Substantial",
+      strength: i18nKey("Substantial"),
       color: "blue",
-      description: "Substantial agreement between scores",
+      description: i18nKey("Substantial agreement between scores"),
     };
   }
   if (kappa >= 0.41) {
     return {
-      strength: "Moderate",
+      strength: i18nKey("Moderate"),
       color: "yellow",
-      description: "Moderate agreement between scores",
+      description: i18nKey("Moderate agreement between scores"),
     };
   }
   if (kappa >= 0.21) {
     return {
-      strength: "Fair",
+      strength: i18nKey("Fair"),
       color: "orange",
-      description: "Fair agreement between scores",
+      description: i18nKey("Fair agreement between scores"),
     };
   }
   if (kappa > 0) {
     return {
-      strength: "Slight",
+      strength: i18nKey("Slight"),
       color: "red",
-      description: "Slight agreement between scores",
+      description: i18nKey("Slight agreement between scores"),
     };
   }
   return {
-    strength: "Poor",
+    strength: i18nKey("Poor"),
     color: "red",
-    description: "Poor agreement (worse than chance)",
+    description: i18nKey("Poor agreement (worse than chance)"),
   };
 }
 
@@ -385,42 +432,42 @@ export function interpretF1Score(f1: number | null): InterpretationResult {
     return {
       strength: "N/A",
       color: "gray",
-      description: "No data available",
+      description: i18nKey("No data available"),
     };
   }
 
   if (f1 >= 0.9) {
     return {
-      strength: "Excellent",
+      strength: i18nKey("Excellent"),
       color: "green",
-      description: "Excellent classification performance",
+      description: i18nKey("Excellent classification performance"),
     };
   }
   if (f1 >= 0.8) {
     return {
-      strength: "Good",
+      strength: i18nKey("Good"),
       color: "blue",
-      description: "Good classification performance",
+      description: i18nKey("Good classification performance"),
     };
   }
   if (f1 >= 0.6) {
     return {
-      strength: "Fair",
+      strength: i18nKey("Fair"),
       color: "yellow",
-      description: "Fair classification performance",
+      description: i18nKey("Fair classification performance"),
     };
   }
   if (f1 >= 0.4) {
     return {
-      strength: "Poor",
+      strength: i18nKey("Poor"),
       color: "orange",
-      description: "Poor classification performance",
+      description: i18nKey("Poor classification performance"),
     };
   }
   return {
-    strength: "Very Poor",
+    strength: i18nKey("Very Poor"),
     color: "red",
-    description: "Very poor classification performance",
+    description: i18nKey("Very poor classification performance"),
   };
 }
 
@@ -437,7 +484,7 @@ export function interpretOverallAgreement(
     return {
       strength: "N/A",
       color: "gray",
-      description: "No data available",
+      description: i18nKey("No data available"),
     };
   }
 
@@ -445,36 +492,41 @@ export function interpretOverallAgreement(
 
   if (agreement >= 0.9) {
     return {
-      strength: "Excellent",
+      strength: i18nKey("Excellent"),
       color: "green",
-      description: `${percentage}% of predictions match`,
+      description: i18nKey("{{percentage}}% of predictions match"),
+      descriptionParams: { percentage },
     };
   }
   if (agreement >= 0.8) {
     return {
-      strength: "Good",
+      strength: i18nKey("Good"),
       color: "blue",
-      description: `${percentage}% of predictions match`,
+      description: i18nKey("{{percentage}}% of predictions match"),
+      descriptionParams: { percentage },
     };
   }
   if (agreement >= 0.6) {
     return {
-      strength: "Fair",
+      strength: i18nKey("Fair"),
       color: "yellow",
-      description: `${percentage}% of predictions match`,
+      description: i18nKey("{{percentage}}% of predictions match"),
+      descriptionParams: { percentage },
     };
   }
   if (agreement >= 0.4) {
     return {
-      strength: "Poor",
+      strength: i18nKey("Poor"),
       color: "orange",
-      description: `${percentage}% of predictions match`,
+      description: i18nKey("{{percentage}}% of predictions match"),
+      descriptionParams: { percentage },
     };
   }
   return {
-    strength: "Very Poor",
+    strength: i18nKey("Very Poor"),
     color: "red",
-    description: `${percentage}% of predictions match`,
+    description: i18nKey("{{percentage}}% of predictions match"),
+    descriptionParams: { percentage },
   };
 }
 
@@ -494,7 +546,7 @@ export function interpretMAE(
     return {
       strength: "N/A",
       color: "gray",
-      description: "No data available",
+      description: i18nKey("No data available"),
     };
   }
 
@@ -504,36 +556,41 @@ export function interpretMAE(
 
     if (relativeError <= 0.05) {
       return {
-        strength: "Excellent",
+        strength: i18nKey("Excellent"),
         color: "green",
-        description: `Very low error (${(relativeError * 100).toFixed(1)}% of range)`,
+        description: i18nKey("Very low error ({{percent}}% of range)"),
+        descriptionParams: { percent: (relativeError * 100).toFixed(1) },
       };
     }
     if (relativeError <= 0.1) {
       return {
-        strength: "Good",
+        strength: i18nKey("Good"),
         color: "blue",
-        description: `Low error (${(relativeError * 100).toFixed(1)}% of range)`,
+        description: i18nKey("Low error ({{percent}}% of range)"),
+        descriptionParams: { percent: (relativeError * 100).toFixed(1) },
       };
     }
     if (relativeError <= 0.2) {
       return {
-        strength: "Fair",
+        strength: i18nKey("Fair"),
         color: "yellow",
-        description: `Moderate error (${(relativeError * 100).toFixed(1)}% of range)`,
+        description: i18nKey("Moderate error ({{percent}}% of range)"),
+        descriptionParams: { percent: (relativeError * 100).toFixed(1) },
       };
     }
     if (relativeError <= 0.3) {
       return {
-        strength: "Poor",
+        strength: i18nKey("Poor"),
         color: "orange",
-        description: `High error (${(relativeError * 100).toFixed(1)}% of range)`,
+        description: i18nKey("High error ({{percent}}% of range)"),
+        descriptionParams: { percent: (relativeError * 100).toFixed(1) },
       };
     }
     return {
-      strength: "Very Poor",
+      strength: i18nKey("Very Poor"),
       color: "red",
-      description: `Very high error (${(relativeError * 100).toFixed(1)}% of range)`,
+      description: i18nKey("Very high error ({{percent}}% of range)"),
+      descriptionParams: { percent: (relativeError * 100).toFixed(1) },
     };
   }
 
@@ -541,7 +598,8 @@ export function interpretMAE(
   return {
     strength: "N/A",
     color: "gray",
-    description: `Average error: ${mae.toFixed(3)}`,
+    description: i18nKey("Average error: {{value}}"),
+    descriptionParams: { value: mae.toFixed(3) },
   };
 }
 
@@ -562,7 +620,7 @@ export function interpretRMSE(
     return {
       strength: "N/A",
       color: "gray",
-      description: "No data available",
+      description: i18nKey("No data available"),
     };
   }
 
@@ -572,36 +630,41 @@ export function interpretRMSE(
 
     if (relativeError <= 0.05) {
       return {
-        strength: "Excellent",
+        strength: i18nKey("Excellent"),
         color: "green",
-        description: `Very low error (${(relativeError * 100).toFixed(1)}% of range)`,
+        description: i18nKey("Very low error ({{percent}}% of range)"),
+        descriptionParams: { percent: (relativeError * 100).toFixed(1) },
       };
     }
     if (relativeError <= 0.1) {
       return {
-        strength: "Good",
+        strength: i18nKey("Good"),
         color: "blue",
-        description: `Low error (${(relativeError * 100).toFixed(1)}% of range)`,
+        description: i18nKey("Low error ({{percent}}% of range)"),
+        descriptionParams: { percent: (relativeError * 100).toFixed(1) },
       };
     }
     if (relativeError <= 0.2) {
       return {
-        strength: "Fair",
+        strength: i18nKey("Fair"),
         color: "yellow",
-        description: `Moderate error (${(relativeError * 100).toFixed(1)}% of range)`,
+        description: i18nKey("Moderate error ({{percent}}% of range)"),
+        descriptionParams: { percent: (relativeError * 100).toFixed(1) },
       };
     }
     if (relativeError <= 0.3) {
       return {
-        strength: "Poor",
+        strength: i18nKey("Poor"),
         color: "orange",
-        description: `High error (${(relativeError * 100).toFixed(1)}% of range)`,
+        description: i18nKey("High error ({{percent}}% of range)"),
+        descriptionParams: { percent: (relativeError * 100).toFixed(1) },
       };
     }
     return {
-      strength: "Very Poor",
+      strength: i18nKey("Very Poor"),
       color: "red",
-      description: `Very high error (${(relativeError * 100).toFixed(1)}% of range)`,
+      description: i18nKey("Very high error ({{percent}}% of range)"),
+      descriptionParams: { percent: (relativeError * 100).toFixed(1) },
     };
   }
 
@@ -609,6 +672,7 @@ export function interpretRMSE(
   return {
     strength: "N/A",
     color: "gray",
-    description: `Root mean squared error: ${rmse.toFixed(3)}`,
+    description: i18nKey("Root mean squared error: {{value}}"),
+    descriptionParams: { value: rmse.toFixed(3) },
   };
 }

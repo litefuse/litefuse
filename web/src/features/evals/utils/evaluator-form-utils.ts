@@ -1,4 +1,6 @@
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 import { z } from "zod/v4";
+import { type TFunction } from "i18next";
 import {
   singleFilter,
   type langfuseObjects,
@@ -59,17 +61,25 @@ export const fieldHasJsonSelectorOption = (
   selectedColumnId === "expectedOutput" ||
   selectedColumnId === "experimentItemExpectedOutput";
 
-export const getTargetDisplayName = (target: string): string => {
+/**
+ * The noun used for the evaluator's target inside sentences, so it has to be
+ * translated. An unknown target falls back to the raw value, as before.
+ */
+/** The i18n key for an evaluator target, or the raw value when unknown. */
+export const evaluatorTargetLabelKey = (target: string): string => {
   switch (target) {
     case "trace":
-      return "traces";
+      return i18nKey("traces");
     case "event":
-      return "observations";
+      return i18nKey("observations");
     case "dataset":
-      return "dataset run items";
+      return i18nKey("dataset run items");
     case "experiment":
-      return "experiments";
+      return i18nKey("experiments");
     default:
       return target;
   }
 };
+
+export const getTargetDisplayName = (target: string, t: TFunction): string =>
+  t(evaluatorTargetLabelKey(target));

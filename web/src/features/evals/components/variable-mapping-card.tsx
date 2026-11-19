@@ -47,6 +47,7 @@ import { DetailPageNav } from "@/src/features/navigate-detail-pages/DetailPageNa
 import { useEvalConfigMappingData } from "@/src/features/evals/hooks/useEvalConfigMappingData";
 import { useEffect, useState } from "react";
 
+import { useTranslation } from "react-i18next";
 export const VariableMappingCard = ({
   projectId,
   availableVariables,
@@ -68,6 +69,7 @@ export const VariableMappingCard = ({
   shouldWrapVariables?: boolean;
   hideAdvancedSettings?: boolean;
 }) => {
+  const { t } = useTranslation();
   const [showPreview, setShowPreview] = useState(false);
 
   const { fields } = useFieldArray({
@@ -95,7 +97,7 @@ export const VariableMappingCard = ({
     <div className="flex items-center gap-2">
       {isTraceOrEventTarget(form.watch("target")) && !disabled && (
         <>
-          <span className="text-muted-foreground text-xs">Preview</span>
+          <span className="text-muted-foreground text-xs">{t("Preview")}</span>
           <Switch
             checked={showPreview}
             onCheckedChange={setShowPreview}
@@ -142,12 +144,13 @@ export const VariableMappingCard = ({
   return (
     <Card className="max-w-full min-w-0 p-4">
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-lg font-medium">Variable mapping</span>
+        <span className="text-lg font-medium">{t("Variable mapping")}</span>
       </div>
       {isTraceTarget(form.watch("target")) && !disabled && (
         <FormDescription>
-          Preview of the evaluation prompt with the variables replaced with the
-          first matched trace data subject to the filters.
+          {t(
+            "Preview of the evaluation prompt with the variables replaced with the first matched trace data subject to the filters.",
+          )}
         </FormDescription>
       )}
       <div className="flex max-w-full flex-col gap-4">
@@ -180,7 +183,7 @@ export const VariableMappingCard = ({
                     <div className="bg-muted/50 flex max-h-full min-h-48 w-full flex-col gap-1 lg:w-2/3">
                       <div className="flex flex-row items-center justify-between py-0 text-sm font-medium capitalize">
                         <div className="flex flex-row items-center gap-2">
-                          Evaluation Prompt Preview
+                          {t("Evaluation Prompt Preview")}
                           <Skeleton className="h-[25px] w-[63px]" />
                         </div>
                         <div className="flex justify-end">
@@ -189,15 +192,16 @@ export const VariableMappingCard = ({
                       </div>
                       <div className="flex h-full w-full flex-1 items-center justify-center rounded border">
                         <p className="text-muted-foreground text-center text-sm">
-                          No trace data found, please adjust filters or switch
-                          to not show preview.
+                          {t(
+                            "No trace data found, please adjust filters or switch to not show preview.",
+                          )}
                         </p>
                       </div>
                     </div>
                   )
                 ) : (
                   <JSONView
-                    title={"Evaluation Prompt"}
+                    title={t("Evaluation Prompt")}
                     json={evalTemplate.prompt ?? null}
                     className={cn(
                       "bg-muted/50 min-h-48",
@@ -227,9 +231,9 @@ export const VariableMappingCard = ({
                             {mappingField.templateVariable}
                             {"}}"}
                             <DocPopup
-                              description={
-                                "Variable in the template to be replaced with the mapped data."
-                              }
+                              description={t(
+                                "Variable in the template to be replaced with the mapped data.",
+                              )}
                               href={
                                 "https://litefuse.ai/docs/evaluation/evaluation-methods/llm-as-a-judge"
                               }
@@ -242,10 +246,10 @@ export const VariableMappingCard = ({
                             render={({ field }) => (
                               <div className="flex items-center gap-2">
                                 <VariableMappingDescription
-                                  title="Object"
-                                  description={
-                                    "Litefuse object to retrieve the data from."
-                                  }
+                                  title={t("Object")}
+                                  description={t(
+                                    "Litefuse object to retrieve the data from.",
+                                  )}
                                   href={
                                     "https://litefuse.ai/docs/evaluation/evaluation-methods/llm-as-a-judge"
                                   }
@@ -273,7 +277,7 @@ export const VariableMappingCard = ({
                                               value={evalObject.id}
                                               key={evalObject.id}
                                             >
-                                              {evalObject.display}
+                                              {t(evalObject.display)}
                                             </SelectItem>
                                           ),
                                         )}
@@ -307,10 +311,10 @@ export const VariableMappingCard = ({
                                 return (
                                   <div className="flex items-center gap-2">
                                     <VariableMappingDescription
-                                      title={"Object Name"}
-                                      description={
-                                        "Name of the Litefuse object to retrieve the data from."
-                                      }
+                                      title={t("Object Name")}
+                                      description={t(
+                                        "Name of the Litefuse object to retrieve the data from.",
+                                      )}
                                       href={
                                         "https://litefuse.ai/docs/evaluation/evaluation-methods/llm-as-a-judge"
                                       }
@@ -330,7 +334,7 @@ export const VariableMappingCard = ({
                                             >
                                               <SelectTrigger>
                                                 <SelectValue>
-                                                  Enter name...
+                                                  {t("Enter name...")}
                                                 </SelectValue>
                                               </SelectTrigger>
                                               <SelectContent>
@@ -346,7 +350,7 @@ export const VariableMappingCard = ({
                                                   key="custom"
                                                   value="custom"
                                                 >
-                                                  Enter name...
+                                                  {t("Enter name...")}
                                                 </SelectItem>
                                               </SelectContent>
                                             </Select>
@@ -359,7 +363,9 @@ export const VariableMappingCard = ({
                                               onChange={(e) =>
                                                 field.onChange(e.target.value)
                                               }
-                                              placeholder="Enter Litefuse object name"
+                                              placeholder={t(
+                                                "Enter Litefuse object name",
+                                              )}
                                               disabled={disabled}
                                             />
                                           </div>
@@ -386,7 +392,7 @@ export const VariableMappingCard = ({
                                                 key="custom"
                                                 value="custom"
                                               >
-                                                Enter name...
+                                                {t("Enter name...")}
                                               </SelectItem>
                                             </SelectContent>
                                           </Select>
@@ -407,10 +413,10 @@ export const VariableMappingCard = ({
                             render={({ field }) => (
                               <div className="flex items-center gap-2">
                                 <VariableMappingDescription
-                                  title={"Object Field"}
-                                  description={
-                                    "Field on the Litefuse object to insert into the template."
-                                  }
+                                  title={t("Object Field")}
+                                  description={t(
+                                    "Field on the Litefuse object to insert into the template.",
+                                  )}
                                   href={
                                     "https://litefuse.ai/docs/evaluation/evaluation-methods/llm-as-a-judge"
                                   }
@@ -438,7 +444,9 @@ export const VariableMappingCard = ({
                                       }}
                                     >
                                       <SelectTrigger>
-                                        <SelectValue placeholder="Select field" />
+                                        <SelectValue
+                                          placeholder={t("Select field")}
+                                        />
                                       </SelectTrigger>
                                       <SelectContent>
                                         {availableVariables
@@ -454,7 +462,7 @@ export const VariableMappingCard = ({
                                               value={column.id}
                                               key={column.id}
                                             >
-                                              {column.name}
+                                              {t(column.name)}
                                             </SelectItem>
                                           ))}
                                       </SelectContent>
@@ -475,10 +483,10 @@ export const VariableMappingCard = ({
                               render={({ field }) => (
                                 <div className="flex items-center gap-2">
                                   <VariableMappingDescription
-                                    title={"JsonPath"}
-                                    description={
-                                      "Optional selection: Use JsonPath syntax to select from a JSON object stored on a trace. If not selected, we will pass the entire object into the prompt."
-                                    }
+                                    title={t("JsonPath")}
+                                    description={t(
+                                      "Optional selection: Use JsonPath syntax to select from a JSON object stored on a trace. If not selected, we will pass the entire object into the prompt.",
+                                    )}
                                     href={
                                       "https://litefuse.ai/docs/evaluation/evaluation-methods/llm-as-a-judge"
                                     }
@@ -489,7 +497,7 @@ export const VariableMappingCard = ({
                                         {...field}
                                         value={field.value ?? ""}
                                         disabled={disabled}
-                                        placeholder="Optional"
+                                        placeholder={t("Optional")}
                                       />
                                     </FormControl>
                                     <FormMessage />
@@ -513,9 +521,9 @@ export const VariableMappingCard = ({
                             {mappingField.templateVariable}
                             {"}}"}
                             <DocPopup
-                              description={
-                                "Variable in the template to be replaced with the mapped data."
-                              }
+                              description={t(
+                                "Variable in the template to be replaced with the mapped data.",
+                              )}
                               href={
                                 "https://litefuse.ai/docs/evaluation/evaluation-methods/llm-as-a-judge"
                               }
@@ -524,8 +532,10 @@ export const VariableMappingCard = ({
                           {hideAdvancedSettings && (
                             <div className="flex items-center gap-2">
                               <VariableMappingDescription
-                                title="Object"
-                                description="Type of object to retrieve the data from."
+                                title={t("Object")}
+                                description={t(
+                                  "Type of object to retrieve the data from.",
+                                )}
                                 href="https://litefuse.ai/docs/evaluation/evaluation-methods/llm-as-a-judge"
                               />
                               <div className="w-2/3">
@@ -559,10 +569,10 @@ export const VariableMappingCard = ({
                               return (
                                 <div className="flex items-center gap-2">
                                   <VariableMappingDescription
-                                    title={"Object Field"}
-                                    description={
-                                      "Observation field to insert into the template."
-                                    }
+                                    title={t("Object Field")}
+                                    description={t(
+                                      "Observation field to insert into the template.",
+                                    )}
                                     href={
                                       "https://litefuse.ai/docs/evaluation/evaluation-methods/llm-as-a-judge"
                                     }
@@ -575,7 +585,9 @@ export const VariableMappingCard = ({
                                         onValueChange={field.onChange}
                                       >
                                         <SelectTrigger>
-                                          <SelectValue placeholder="Select field" />
+                                          <SelectValue
+                                            placeholder={t("Select field")}
+                                          />
                                         </SelectTrigger>
                                         <SelectContent>
                                           {availableColumns.map((column) => (
@@ -583,7 +595,7 @@ export const VariableMappingCard = ({
                                               value={column.id}
                                               key={column.id}
                                             >
-                                              {column.name}
+                                              {t(column.name)}
                                             </SelectItem>
                                           ))}
                                         </SelectContent>
@@ -610,10 +622,10 @@ export const VariableMappingCard = ({
                               render={({ field }) => (
                                 <div className="flex items-center gap-2">
                                   <VariableMappingDescription
-                                    title={"JsonPath"}
-                                    description={
-                                      "Optional selection: Use JsonPath syntax to select from a JSON object. If not selected, we will pass the entire object into the prompt."
-                                    }
+                                    title={t("JsonPath")}
+                                    description={t(
+                                      "Optional selection: Use JsonPath syntax to select from a JSON object. If not selected, we will pass the entire object into the prompt.",
+                                    )}
                                     href={
                                       "https://litefuse.ai/docs/evaluation/evaluation-methods/llm-as-a-judge"
                                     }
@@ -624,7 +636,7 @@ export const VariableMappingCard = ({
                                         {...field}
                                         value={field.value ?? ""}
                                         disabled={disabled}
-                                        placeholder="Optional"
+                                        placeholder={t("Optional")}
                                       />
                                     </FormControl>
                                     <FormMessage />

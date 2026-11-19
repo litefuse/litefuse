@@ -10,6 +10,7 @@ import { useRouter } from "next/router";
 import { Info } from "lucide-react";
 import { isLegacyEvalTarget } from "@/src/features/evals/utils/typeHelpers";
 
+import { useTranslation } from "react-i18next";
 interface LegacyEvalCalloutProps {
   projectId: string;
   evalConfigId: string;
@@ -21,6 +22,7 @@ export function LegacyEvalCallout({
   evalConfigId,
   targetObject,
 }: LegacyEvalCalloutProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const isDeprecated = isLegacyEvalTarget(targetObject);
 
@@ -43,29 +45,32 @@ export function LegacyEvalCallout({
             }
             className="text-dark-blue h-7 text-xs hover:opacity-80"
           >
-            Upgrade this evaluator
+            {t("Upgrade this evaluator")}
           </Button>
         </>
       )}
     >
-      <span>This evaluator </span>
+      <span>{t("This evaluator")} </span>
       <span className="text-dark-blue hover:opacity-80">
         <Link
           href="https://litefuse.ai/faq/all/llm-as-a-judge-migration"
           target="_blank"
           rel="noopener noreferrer"
         >
-          requires changes{" "}
+          {t("requires changes")}{" "}
         </Link>
       </span>
-      <span>to benefit from new features and performance improvements.</span>
+      <span>
+        {t("to benefit from new features and performance improvements.")}
+      </span>
       <Tooltip>
         <TooltipTrigger asChild>
           <Info className="ml-1 inline h-4 w-4 cursor-help" />
         </TooltipTrigger>
         <TooltipContent>
-          Your evaluator will continue to work without upgrading, but you will
-          not benefit from improvements.
+          {t(
+            "Your evaluator will continue to work without upgrading, but you will not benefit from improvements.",
+          )}
         </TooltipContent>
       </Tooltip>
     </Callout>

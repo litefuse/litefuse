@@ -48,6 +48,8 @@ import {
 import { Checkbox } from "@/src/components/ui/checkbox";
 import { Separator } from "@/src/components/ui/separator";
 
+import { useTranslation } from "react-i18next";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 interface DataTableColumnVisibilityFilterProps<TData, TValue> {
   columns: LangfuseColumnDef<TData, TValue>[];
   columnVisibility: VisibilityState;
@@ -85,6 +87,15 @@ const calculateColumnCounts = <TData, TValue>(
   );
 };
 
+/**
+ * A column without a text header falls back to its accessor key, which is an
+ * identifier. These are the labels for the ones a person actually sees.
+ */
+const COLUMN_KEY_LABELS: Record<string, string> = {
+  select: i18nKey("Select"),
+  bookmarked: i18nKey("Bookmarked"),
+};
+
 function ColumnVisibilityListItem<TData, TValue>({
   column,
   toggleColumn,
@@ -96,6 +107,7 @@ function ColumnVisibilityListItem<TData, TValue>({
   columnVisibility: VisibilityState;
   isOrderable?: boolean;
 }) {
+  const { t } = useTranslation();
   const isFixedPosition = column.isFixedPosition ?? false;
   const { attributes, isDragging, listeners, setNodeRef, transform } =
     useSortable({
@@ -139,15 +151,17 @@ function ColumnVisibilityListItem<TData, TValue>({
           )}
           title={
             !column.enableHiding
-              ? "This column may not be hidden"
+              ? t("This column may not be hidden")
               : isFixedPosition
-                ? "This column is fixed in position and cannot be hidden"
+                ? t("This column is fixed in position and cannot be hidden")
                 : undefined
           }
         >
           {column.header && typeof column.header === "string"
             ? column.header
-            : column.accessorKey}
+            : COLUMN_KEY_LABELS[column.accessorKey]
+              ? t(COLUMN_KEY_LABELS[column.accessorKey])
+              : column.accessorKey}
         </span>
         {column.headerTooltip && (
           <DocPopup
@@ -163,7 +177,7 @@ function ColumnVisibilityListItem<TData, TValue>({
           {...listeners}
           variant="ghost"
           size="xs"
-          title="Drag and drop to reorder columns"
+          title={t("Drag and drop to reorder columns")}
           className="invisible group-hover:visible"
         >
           <Menu className="h-3 w-3" />
@@ -190,6 +204,7 @@ function GroupVisibilityHeader<TData, TValue>({
   children: React.ReactNode;
   toggleAll: () => void;
 }) {
+  const { t } = useTranslation();
   const { attributes, isDragging, listeners, setNodeRef, transform } =
     useSortable({
       id: column.accessorKey,
@@ -218,7 +233,9 @@ function GroupVisibilityHeader<TData, TValue>({
             <span className="text-sm font-medium">
               {column.header && typeof column.header === "string"
                 ? column.header
-                : column.accessorKey}
+                : COLUMN_KEY_LABELS[column.accessorKey]
+                  ? t(COLUMN_KEY_LABELS[column.accessorKey])
+                  : column.accessorKey}
             </span>
             <span className="text-muted-foreground text-xs">
               ({groupVisibleCount}/{groupTotalCount})
@@ -232,7 +249,7 @@ function GroupVisibilityHeader<TData, TValue>({
                 {...listeners}
                 variant="ghost"
                 size="xs"
-                title="Drag and drop to reorder columns"
+                title={t("Drag and drop to reorder columns")}
                 className="opacity-0 transition-opacity group-hover:opacity-100"
               >
                 <Menu className="h-3 w-3" />
@@ -248,8 +265,8 @@ function GroupVisibilityHeader<TData, TValue>({
               }}
             >
               {groupVisibleCount === groupTotalCount
-                ? "Deselect All"
-                : "Select All"}
+                ? t("Deselect All")
+                : t("Select All")}
             </Button>
             {isOpen ? (
               <ChevronDown className="h-4 w-4" />
@@ -297,6 +314,7 @@ export function DataTableColumnVisibilityFilter<TData, TValue>({
   columnOrder,
   setColumnOrder,
 }: DataTableColumnVisibilityFilterProps<TData, TValue>) {
+  const { t } = useTranslation();
   const capture = usePostHogClientCapture();
   const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>(
     {},
@@ -395,8 +413,8 @@ export function DataTableColumnVisibilityFilter<TData, TValue>({
     >
       <Drawer modal={false} dismissible>
         <DrawerTrigger asChild>
-          <Button variant="outline" title="Show/hide columns">
-            <span>Columns</span>
+          <Button variant="outline" title={t("Show/hide columns")}>
+            <span>{t("Columns")}</span>
             <div className="bg-input ml-1 rounded-sm px-1 text-xs">{`${count}/${total}`}</div>
           </Button>
         </DrawerTrigger>
@@ -404,7 +422,7 @@ export function DataTableColumnVisibilityFilter<TData, TValue>({
           <div className="mx-auto w-full overflow-y-auto md:max-h-full">
             <div className="sticky top-0 z-10">
               <DrawerHeader className="bg-background flex flex-row items-center justify-between rounded-sm px-3 py-2">
-                <DrawerTitle>Column Visibility</DrawerTitle>
+                <DrawerTitle>{t("Column Visibility")}</DrawerTitle>
                 <div className="flex flex-row gap-2">
                   <Button
                     variant="outline"
@@ -415,7 +433,7 @@ export function DataTableColumnVisibilityFilter<TData, TValue>({
                       setColumnVisibility(defaultColumnVisibility);
                     }}
                   >
-                    Restore Defaults
+                    {t("Restore Defaults")}
                   </Button>
                   <DrawerClose asChild>
                     <Button variant="outline" size="icon">
@@ -441,8 +459,8 @@ export function DataTableColumnVisibilityFilter<TData, TValue>({
                   >
                     <span className="text-sm font-medium">
                       {count === total
-                        ? "Deselect All Columns"
-                        : "Select All Columns"}
+                        ? t("Deselect All Columns")
+                        : t("Select All Columns")}
                     </span>
                     <div className="bg-input ml-1 rounded-sm px-1 text-xs">{`${count}/${total}`}</div>
                   </Button>
