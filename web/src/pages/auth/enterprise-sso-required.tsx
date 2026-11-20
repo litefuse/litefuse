@@ -2,7 +2,7 @@ import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod/v4";
 import { useForm } from "react-hook-form";
@@ -52,6 +52,7 @@ export default function EnterpriseSsoRequiredPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { status: sessionStatus } = useSession();
 
   const emailFromQuery =
     typeof router.query.email === "string" ? router.query.email : "";
@@ -59,10 +60,15 @@ export default function EnterpriseSsoRequiredPage() {
     typeof router.query.attemptedProvider === "string"
       ? router.query.attemptedProvider
       : undefined;
+  // callbackUrl must be an internal path; fall back to "/" (app home) so sign-in
+  // lands on the workspace instead of looping back to this page (NextAuth treats
+  // an empty callbackUrl as "current page").
+  const rawCallbackUrl =
+    typeof router.query.callbackUrl === "string" ? router.query.callbackUrl : "";
   const callbackUrl =
-    typeof router.query.callbackUrl === "string"
-      ? router.query.callbackUrl
-      : undefined;
+    rawCallbackUrl.startsWith("/") && !rawCallbackUrl.startsWith("//")
+      ? rawCallbackUrl
+      : "/";
 
   const friendlyProviderName = useMemo(() => {
     if (!attemptedProvider) return undefined;
@@ -83,6 +89,14 @@ export default function EnterpriseSsoRequiredPage() {
       form.setValue("email", emailFromQuery);
     }
   }, [emailFromQuery, form]);
+
+  // If already signed in (e.g. arriving here after an OAuth round-trip or from a
+  // stale bookmark), go to the destination instead of showing the form again.
+  useEffect(() => {
+    if (sessionStatus === "authenticated") {
+      router.replace(callbackUrl);
+    }
+  }, [sessionStatus, callbackUrl, router]);
 
   async function onSubmit(values: z.infer<typeof enterpriseSsoFormSchema>) {
     setError(null);
@@ -137,6 +151,12 @@ export default function EnterpriseSsoRequiredPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // Avoid flashing the form while an already-authenticated session is being
+  // redirected to its destination.
+  if (sessionStatus === "authenticated") {
+    return null;
   }
 
   const description = friendlyProviderName

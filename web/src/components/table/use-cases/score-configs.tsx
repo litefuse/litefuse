@@ -84,9 +84,13 @@ export function ScoreConfigsTable({ projectId }: { projectId: string }) {
     limit: "pageSize",
   });
 
-  const hasAccess = useHasProjectAccess({
+  // Viewing the list is a read operation: gate the query on scoreConfigs:read so
+  // read-only roles (e.g. VIEWER) actually get data instead of an endless loading
+  // state. Creating / editing / archiving stays gated on scoreConfigs:CUD in
+  // UpsertScoreConfigDialog and ArchiveScoreConfigButton.
+  const hasReadAccess = useHasProjectAccess({
     projectId,
-    scope: "scoreConfigs:CUD",
+    scope: "scoreConfigs:read",
   });
 
   const [rowHeight, setRowHeight] = useRowHeightLocalStorage(
@@ -100,12 +104,12 @@ export function ScoreConfigsTable({ projectId }: { projectId: string }) {
       page: paginationState.pageIndex,
       limit: paginationState.pageSize,
     },
-    { enabled: hasAccess },
+    { enabled: hasReadAccess },
   );
 
   const configQuery = api.scoreConfigs.byId.useQuery(
     { projectId, id: editConfigId as string },
-    { enabled: !!editConfigId && hasAccess },
+    { enabled: !!editConfigId && hasReadAccess },
   );
 
   const totalCount = configs.data?.totalCount ?? null;

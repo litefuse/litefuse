@@ -28,6 +28,7 @@ export const I18N_MIGRATED_FILES = [
   "src/features/query/dataModel*.ts",
   "src/features/score-analytics/lib/statistics-utils.ts",
   "src/features/dashboard/lib/score-analytics-utils.ts",
+  "src/features/dashboard/lib/managed-dashboard-text.ts",
   "src/features/navigation/utils/*.ts",
   "src/features/onboarding/lib/questions.ts",
   "src/features/auth/lib/signupSchema.ts",

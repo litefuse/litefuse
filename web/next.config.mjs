@@ -70,6 +70,10 @@ const reportToHeader = {
 const nextConfig = {
   // Allow building to alternate directory for parallel build checks while dev server runs
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  typescript: {
+    // Test-only dependencies may be absent from the pruned Docker workspace.
+    tsconfigPath: "tsconfig.build.json",
+  },
   staticPageGenerationTimeout: 500, // default is 60. Required for build process for amd
   transpilePackages: ["@langfuse/shared", "vis-network/standalone"],
   reactStrictMode: true,
@@ -256,10 +260,6 @@ const nextConfig = {
     config.resolve.alias["@grafana/data"] = path.resolve(
       shimBase,
       "grafana-data.ts",
-    );
-    config.resolve.alias["@grafana/runtime"] = path.resolve(
-      shimBase,
-      "grafana-runtime.ts",
     );
     config.resolve.alias["jotai-location"] = path.resolve(
       shimBase,

@@ -53,8 +53,11 @@ export default async function handler(
   return res.status(200).json({
     schemas: ["urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig"],
     documentationUri: "https://docs.litefuse.ai/scim",
+    // PATCH is implemented for User resources (active / roles).
+    // Clients (incl. Okta) read this to decide whether they may use PATCH for
+    // deprovisioning and attribute updates, so it must reflect reality.
     patch: {
-      supported: false,
+      supported: true,
     },
     bulk: {
       supported: false,

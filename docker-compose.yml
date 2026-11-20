@@ -5,7 +5,7 @@
 # External connections from other machines will not be able to reach these services directly.
 services:
   litefuse-web:
-    image: litefuse/litefuse-web:26.2.0
+    image: litefuse/litefuse-web:26.3.0
     restart: always
     depends_on: &litefuse-depends-on
       postgres:
@@ -105,7 +105,7 @@ services:
       LITEFUSE_INIT_USER_PASSWORD: ${LITEFUSE_INIT_USER_PASSWORD:-}
 
   litefuse-worker:
-    image: litefuse/litefuse-worker:26.2.0
+    image: litefuse/litefuse-worker:26.3.0
     restart: always
     depends_on: *litefuse-depends-on
     networks:

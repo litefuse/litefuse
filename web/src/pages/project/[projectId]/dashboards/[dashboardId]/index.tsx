@@ -29,6 +29,7 @@ import {
 import { useEntitlementLimit } from "@/src/features/entitlements/hooks";
 import { useEnvironmentFilterOptionsCache } from "@/src/hooks/use-environment-filter-options-cache";
 import { useTranslation } from "react-i18next";
+import { translateManagedDashboardText } from "@/src/features/dashboard/lib/managed-dashboard-text";
 import {
   DashboardQuerySchedulerProvider,
   getDashboardQuerySchedulerMaxConcurrent,
@@ -419,7 +420,13 @@ export default function DashboardDetail() {
         scrollable
         headerProps={{
           title:
-            (dashboard.data?.name || "Dashboard") +
+            (dashboard.data?.name
+              ? translateManagedDashboardText(
+                  dashboard.data.name,
+                  dashboard.data.owner,
+                  t,
+                )
+              : t("Dashboard")) +
             (dashboard.data?.owner === "LANGFUSE"
               ? t(" (Litefuse Maintained)")
               : ""),
@@ -430,8 +437,13 @@ export default function DashboardDetail() {
             },
           ],
           help: {
-            description:
-              dashboard.data?.description || "No description available",
+            description: dashboard.data?.description
+              ? translateManagedDashboardText(
+                  dashboard.data.description,
+                  dashboard.data.owner,
+                  t,
+                )
+              : t("No description available"),
           },
           actionButtonsRight: (
             <>

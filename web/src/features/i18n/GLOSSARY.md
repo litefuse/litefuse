@@ -45,6 +45,9 @@ commit.
 | Annotation queue  | 标注队列    |                                                             |
 | Dashboard         | 仪表盘      |                                                             |
 | Widget            | 组件        | On a dashboard                                              |
+| Agent             | 智能体      |                                                             |
+| Skill             | 技能        |                                                             |
+| Use case          | 用例        |                                                             |
 | Observability     | 可观测性    |                                                             |
 | Prompt management | 提示词管理  |                                                             |
 | Tracing           | 追踪        | The product area                                            |

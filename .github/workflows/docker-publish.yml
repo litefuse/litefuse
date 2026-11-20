@@ -86,7 +86,7 @@ jobs:
         id: meta-web
         uses: docker/metadata-action@v5
         with:
-          images: selectdb/litefuse-web
+          images: litefuse/litefuse-web
           flavor: latest=false
           tags: |
             type=sha
@@ -111,7 +111,7 @@ jobs:
         id: meta-worker
         uses: docker/metadata-action@v5
         with:
-          images: selectdb/litefuse-worker
+          images: litefuse/litefuse-worker
           flavor: latest=false
           tags: |
             type=sha
