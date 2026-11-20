@@ -459,6 +459,7 @@ export const env = createEnv({
     NEXT_PUBLIC_BUILD_ID: z.string().optional(),
     NEXT_PUBLIC_BASE_PATH: z.string().optional(),
     NEXT_PUBLIC_ENABLE_LOGGING: z.enum(["true", "false"]).default("true"),
+    NEXT_PUBLIC_PERSISTING_CHRONICLE_URL: z.string().url().optional(),
     NEXT_PUBLIC_LITEFUSE_PLAYGROUND_STREAMING_ENABLED_DEFAULT: z
       .enum(["true", "false"])
       .optional()
@@ -731,6 +732,8 @@ export const env = createEnv({
     NEXT_PUBLIC_LITEFUSE_PLAYGROUND_STREAMING_ENABLED_DEFAULT:
       process.env.NEXT_PUBLIC_LITEFUSE_PLAYGROUND_STREAMING_ENABLED_DEFAULT,
     NEXT_PUBLIC_ENABLE_LOGGING: process.env.NEXT_PUBLIC_ENABLE_LOGGING,
+    NEXT_PUBLIC_PERSISTING_CHRONICLE_URL:
+      process.env.NEXT_PUBLIC_PERSISTING_CHRONICLE_URL,
     ADMIN_API_KEY: process.env.ADMIN_API_KEY,
     LITEFUSE_EE_LICENSE_KEY: process.env.LITEFUSE_EE_LICENSE_KEY,
     ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,

@@ -63,9 +63,7 @@ const eventRecord = (spanId: string, opts: Record<string, unknown> = {}) =>
     ...opts,
   }) as never;
 
-const payloadFor = (
-  fileKeys: string[],
-): OtelGroupIngestionEventType => ({
+const payloadFor = (fileKeys: string[]): OtelGroupIngestionEventType => ({
   shape: "group-v1",
   groupId: computeGroupId(fileKeys),
   entries: fileKeys.map(entry),
@@ -101,17 +99,21 @@ const makeDeps = (
         eventRecord(`${e.fileKey}-child`),
       ],
       scalarRecords: [
-        { project_id: "p1", id: "t1", start_time: Date.now(), event_ts: Date.now() } as never,
+        {
+          project_id: "p1",
+          id: "t1",
+          start_time: Date.now(),
+          event_ts: Date.now(),
+        } as never,
       ],
       sessions: new Map([["s1", "default"]]),
     })),
     streamLoadBody: vi.fn(async (table, body, count, options) => {
       loads.push({ table, rows: decodeBody(body), count, options });
       return {
-        dedupedByLabel:
-          table.startsWith("spans")
-            ? (overrides.dedupedByLabel ?? false)
-            : false,
+        dedupedByLabel: table.startsWith("spans")
+          ? (overrides.dedupedByLabel ?? false)
+          : false,
       };
     }),
     ledgerExists: vi.fn(async () => overrides.ledger ?? false),
@@ -367,7 +369,9 @@ describe("processOtelGroupJob (Stage 1 #4: scalar missing-table three-way)", () 
     (deps.streamLoadBody as ReturnType<typeof vi.fn>).mockImplementation(
       async (table, body, count, options) => {
         if (table === "traces_scalar_p1") {
-          throw new Error("errCode = 2, Table [traces_scalar_p1] does not exist");
+          throw new Error(
+            "errCode = 2, Table [traces_scalar_p1] does not exist",
+          );
         }
         loads.push({ table, rows: decodeBody(body), count, options });
         return { dedupedByLabel: false };

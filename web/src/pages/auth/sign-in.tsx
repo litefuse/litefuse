@@ -27,7 +27,7 @@ import {
   SiWordpress,
 } from "react-icons/si";
 import { TbBrandAzure, TbBrandOauth } from "react-icons/tb";
-import { signIn } from "next-auth/react";
+import { getSession, signIn } from "next-auth/react";
 import Head from "next/head";
 import Link from "next/link";
 import { useState, useEffect } from "react";
@@ -43,6 +43,7 @@ import useLocalStorage from "@/src/components/useLocalStorage";
 import { AuthProviderButton } from "@/src/features/auth/components/AuthProviderButton";
 import { cn } from "@/src/utils/tailwind";
 import { useLangfuseCloudRegion } from "@/src/features/organizations/hooks";
+import { getDefaultPostLoginPath } from "@/src/features/auth/lib/getDefaultPostLoginPath";
 import { getSafeRedirectPath } from "@/src/utils/redirect";
 import { hasSsoConfig } from "@/src/features/enterprise/sso/ssoProviders";
 
@@ -651,7 +652,6 @@ export default function SignIn({
       const result = await signIn("credentials", {
         email: values.email,
         password: values.password,
-        callbackUrl: targetPath ?? "/",
         redirect: false,
       });
       if (result === undefined) {
@@ -667,6 +667,17 @@ export default function SignIn({
         }
         setCredentialsFormError(
           result?.error ?? "An unexpected error occurred.",
+        );
+      } else {
+        // Explicit deep-link target takes precedence; otherwise enter the first
+        // project (or stay on the organization overview when none exist).
+        if (targetPath) {
+          window.location.assign(targetPath);
+          return;
+        }
+        const session = await getSession();
+        window.location.assign(
+          getSafeRedirectPath(getDefaultPostLoginPath(session?.user)),
         );
       }
     } catch (error) {

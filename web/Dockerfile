@@ -110,7 +110,9 @@ ENV DOCKER_BUILD 0
 # Set NEXT_MANUAL_SIG_HANDLE for runtime
 ENV NEXT_MANUAL_SIG_HANDLE true
 
-RUN apk add --no-cache dumb-init tzdata mysql-client
+# curl: Alpine busybox wget returns 502 via some HTTP proxies for GitHub releases;
+# curl handles HTTPS-through-proxy reliably (same approach as .devcontainer/Dockerfile).
+RUN apk add --no-cache dumb-init tzdata mysql-client curl
 
 # Don't run production as root
 ARG UID=1001
@@ -127,7 +129,7 @@ RUN if [ -n "$NEXT_PUBLIC_LITEFUSE_CLOUD_REGION" ]; then \
     fi
 
 RUN MIGRATE_TARGET_ARCH=$(echo ${TARGETPLATFORM:-linux/amd64} | sed 's/\//-/g') && \
-    wget -q -O- https://github.com/golang-migrate/migrate/releases/download/v4.19.1/migrate.$MIGRATE_TARGET_ARCH.tar.gz | tar xvz && \
+    curl -fsSL "https://github.com/golang-migrate/migrate/releases/download/v4.19.1/migrate.$MIGRATE_TARGET_ARCH.tar.gz" | tar xz && \
     mv migrate /usr/bin/migrate
 
 COPY --from=builder --chown=nextjs:nodejs /app/web/next.config.mjs .

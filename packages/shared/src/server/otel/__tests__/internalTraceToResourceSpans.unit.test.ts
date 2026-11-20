@@ -81,9 +81,15 @@ describe("internalTraceEventsToResourceSpans", () => {
     const attr = (k: string) =>
       gen.attributes.find((a: any) => a.key === k)?.value;
     expect(attr(LangfuseOtelSpanAttributes.AS_ROOT)?.boolValue).toBe(true);
-    expect(attr(LangfuseOtelSpanAttributes.OBSERVATION_OUTPUT)?.stringValue).toContain("hello");
-    expect(attr(LangfuseOtelSpanAttributes.OBSERVATION_USAGE_DETAILS)?.stringValue).toContain("15");
-    expect(attr(LangfuseOtelSpanAttributes.OBSERVATION_MODEL)?.stringValue).toBe("gpt-4o");
+    expect(
+      attr(LangfuseOtelSpanAttributes.OBSERVATION_OUTPUT)?.stringValue,
+    ).toContain("hello");
+    expect(
+      attr(LangfuseOtelSpanAttributes.OBSERVATION_USAGE_DETAILS)?.stringValue,
+    ).toContain("15");
+    expect(
+      attr(LangfuseOtelSpanAttributes.OBSERVATION_MODEL)?.stringValue,
+    ).toBe("gpt-4o");
     expect(attr(LangfuseOtelSpanAttributes.TRACE_NAME)?.stringValue).toBe(
       "Execute evaluator: correctness",
     );
