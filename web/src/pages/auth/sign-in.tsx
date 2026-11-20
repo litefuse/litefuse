@@ -548,6 +548,12 @@ export function useHuggingFaceRedirect(runningOnHuggingFaceSpaces: boolean) {
 
 const signInErrors = [
   {
+    code: "SSOLogoutError",
+    description: i18nKey(
+      "You have signed out of Litefuse, but sign-out from your identity provider could not be started. You may still be signed in there.",
+    ),
+  },
+  {
     code: "OAuthAccountNotLinked",
     description: i18nKey(
       "Please sign in with the same provider (e.g. Google, GitHub, Azure AD, etc.) that you used to create this account.",

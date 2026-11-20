@@ -18,12 +18,17 @@ const MAX_RETRIES = 2;
  *
  * @returns Session object with retry logic applied
  */
-export function useAuthSession() {
+export function useAuthSession({ isSigningOut = false } = {}) {
   const [retryCount, setRetryCount] = useState(0);
   const session = useSession();
 
   useEffect(() => {
-    if (session.status === "unauthenticated" && retryCount < MAX_RETRIES) {
+    // An explicit logout intentionally clears the session and owns the next navigation.
+    if (
+      !isSigningOut &&
+      session.status === "unauthenticated" &&
+      retryCount < MAX_RETRIES
+    ) {
       const fetchSession = async () => {
         try {
           await getSession({ broadcast: true });
@@ -42,10 +47,12 @@ export function useAuthSession() {
     if (session.status === "authenticated" && retryCount > 0) {
       setRetryCount(0);
     }
-  }, [session.status, retryCount]);
+  }, [session.status, retryCount, isSigningOut]);
 
   // Return loading state if we're still retrying
-  return session.status !== "unauthenticated" || retryCount >= MAX_RETRIES
+  return isSigningOut ||
+    session.status !== "unauthenticated" ||
+    retryCount >= MAX_RETRIES
     ? session
     : { ...session, status: "loading" as const };
 }
