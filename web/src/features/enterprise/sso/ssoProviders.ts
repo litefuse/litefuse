@@ -21,8 +21,12 @@ import {
 import { isMultiTenantSsoAvailable } from "@/src/features/enterprise/sso/ssoAvailable";
 import {
   ssoProviderSchema,
+  ssoLogoutConfigSchema,
+  type SsoLogoutConfig,
   type SsoProviderConfig,
 } from "@/src/features/enterprise/sso/ssoConfigSchema";
+import { getSsoLogoutBinding } from "./ssoLogout";
+import { ssoErrorContext } from "./ssoErrorContext";
 
 type TokenEndpointAuthMethod =
   | "client_secret_basic"
@@ -72,7 +76,30 @@ async function loadSsoConfigs(): Promise<SsoProviderConfig[]> {
     const parsed = dbConfigs
       .map((v) => {
         try {
-          return ssoProviderSchema.parse(v);
+          // Keep malformed logout settings from disabling an otherwise valid login.
+          const authConfig = v.authConfig;
+          if (
+            !authConfig ||
+            typeof authConfig !== "object" ||
+            Array.isArray(authConfig)
+          )
+            return ssoProviderSchema.parse(v);
+          const { logout, ...loginConfig } = authConfig;
+          const config = ssoProviderSchema.parse({
+            ...v,
+            authConfig: loginConfig,
+          });
+          if (logout !== undefined) {
+            const parsedLogout = ssoLogoutConfigSchema.safeParse(logout);
+            if (parsedLogout.success && config.authConfig)
+              config.authConfig.logout = parsedLogout.data;
+            else if (!parsedLogout.success)
+              logger.error("Invalid Enterprise SSO logout configuration", {
+                domain: v.domain,
+                ...ssoErrorContext(parsedLogout.error),
+              });
+          }
+          return config;
         } catch (e) {
           logger.error(
             `Failed to parse SSO provider config for domain ${v.domain}`,
@@ -106,6 +133,30 @@ export async function buildSsoProviders(): Promise<Provider[]> {
     if (provider !== null) providers.push(provider);
   }
   return providers;
+}
+
+/** Resolve logout settings only for the exact provider used by this browser session. */
+export async function getSsoLogoutConfig(providerId: string): Promise<{
+  clientId: string;
+  logout: SsoLogoutConfig;
+  binding: string;
+} | null> {
+  if (!isMultiTenantSsoAvailable) return null;
+  const separator = providerId.lastIndexOf(".");
+  if (separator < 1) return null;
+  // Read on logout so admin changes apply across replicas without waiting for the login cache.
+  const stored = await prisma.ssoConfig.findUnique({
+    where: { domain: providerId.slice(0, separator) },
+  });
+  if (!stored) return null;
+  const config = ssoProviderSchema.parse(stored);
+  if (!config.authConfig?.logout || buildAuthProviderId(config) !== providerId)
+    return null;
+  return {
+    clientId: config.authConfig.clientId,
+    logout: config.authConfig.logout,
+    binding: getSsoLogoutBinding(providerId, config.authConfig),
+  };
 }
 
 /**

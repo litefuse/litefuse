@@ -9,14 +9,16 @@
  *
  */
 
-import { type PropsWithChildren, useEffect } from "react";
+import { type PropsWithChildren, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { signOut } from "next-auth/react";
+import { signOutWithSso } from "@/src/features/auth/lib/signOutWithSso";
 import posthog from "posthog-js";
 import { env } from "@/src/env.mjs";
 import { useQueryProjectOrOrganization } from "@/src/features/projects/hooks";
 import { ErrorPageWithSentry } from "@/src/components/error-page";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 
 // Layout variants
 import { LoadingLayout } from "./variants/LoadingLayout";
@@ -43,7 +45,9 @@ import { useLayoutMetadata } from "./hooks/useLayoutMetadata";
 export function AppLayout(props: PropsWithChildren) {
   const { t } = useTranslation();
   const router = useRouter();
-  const session = useAuthSession();
+  const signOutInProgress = useRef(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const session = useAuthSession({ isSigningOut });
   const { organization } = useQueryProjectOrOrganization();
 
   // Determine layout configuration
@@ -67,12 +71,28 @@ export function AppLayout(props: PropsWithChildren) {
 
   // Handle auth guard actions (redirect or sign-out)
   useEffect(() => {
+    // NextAuth publishes the unauthenticated session before signOut() resolves.
+    // Keep this page's guard from replacing the pending IdP/error navigation.
+    if (signOutInProgress.current) return;
     if (authGuard.action === "redirect") {
       void router.replace(authGuard.url);
     } else if (authGuard.action === "sign-out") {
       void signOut({ redirect: false });
     }
-  }, [authGuard, router]);
+  }, [authGuard, router, isSigningOut]);
+
+  useEffect(() => {
+    const restoreFromHistory = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        signOutInProgress.current = false;
+        setIsSigningOut(false);
+      }
+    };
+    window.addEventListener("pageshow", restoreFromHistory);
+    return () => window.removeEventListener("pageshow", restoreFromHistory);
+  }, []);
+
+  if (isSigningOut) return <LoadingLayout message={t("Signing out...")} />;
 
   // Loading or redirecting state
   if (
@@ -132,13 +152,20 @@ export function AppLayout(props: PropsWithChildren) {
   }
 
   const handleSignOut = async () => {
-    sessionStorage.clear();
-    if (env.NEXT_PUBLIC_POSTHOG_KEY && env.NEXT_PUBLIC_POSTHOG_HOST) {
-      posthog.reset();
+    if (signOutInProgress.current) return;
+    signOutInProgress.current = true;
+    setIsSigningOut(true);
+    try {
+      sessionStorage.clear();
+      if (env.NEXT_PUBLIC_POSTHOG_KEY && env.NEXT_PUBLIC_POSTHOG_HOST) {
+        posthog.reset();
+      }
+      window.location.assign(await signOutWithSso());
+    } catch {
+      signOutInProgress.current = false;
+      setIsSigningOut(false);
+      toast.error(t("Sign-out could not be completed. Please try again."));
     }
-    await signOut({
-      callbackUrl: `${env.NEXT_PUBLIC_BASE_PATH ?? ""}/auth/sign-in`,
-    });
   };
 
   return (

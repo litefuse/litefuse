@@ -96,3 +96,28 @@ Use root [AGENTS.md](../AGENTS.md) for monorepo-level rules.
 - Discover's tRPC query entry point compiles browser SQL through
   `src/features/discover/server/readQuery.ts` before calling Doris. Keep
   database and table authorization shared with the structured metadata routes.
+
+## Enterprise SSO logout
+
+- Per-enterprise logout settings live in `SsoConfig.authConfig.logout`; use URL
+  and parameter mappings, not vendor-specific branches.
+- The session JWT records the actual login provider. Store a bounded ID token
+  only when the logout mapping uses it, bound to the login's IdP/client. Do not
+  expose these fields in the client Session or infer the provider from an email.
+- `GET /api/auth/sso-logout` prepares the current browser's logout URL;
+  `signOutWithSso` must finish NextAuth's CSRF-protected local sign-out before
+  navigating to the IdP. Suspend guard navigation during explicit user logout;
+  automatic cleanup must remain local. IdP preparation failure must still allow
+  local logout with a visible error. Invalid logout settings must not remove a
+  provider from the provider list. Omit unavailable hints unless `requireIdToken`
+  is configured; never let a large hint inflate the session cookie without bounds.
+- Preserve pre-upgrade sessions, including password sessions. Record SSO identity
+  only on a completed login; session reads and client-triggered updates must not
+  infer a provider or accept caller-supplied SSO fields. Legacy sessions migrate
+  through logout, login, logout, login: the first logout is local, the intervening
+  login records the provider, and the second logout can end the IdP session.
+  Do not introduce forced reauthentication or session-version invalidation for
+  this rollout. See the README for the accepted first-cycle limitation.
+- `PATCH /api/auth/sso-logout-config` requires the instance admin API key and
+  updates only logout settings. See `src/features/enterprise/sso/README.md`.
+- Focused checks: `pnpm --filter web run test-client --runInBand --testPathPatterns='/(sso[^/]*|signOutWithSso|updateSsoLogoutConfig|signOut)[.]clienttest[.](ts|tsx)$'`.

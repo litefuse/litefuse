@@ -1,5 +1,59 @@
 import { z } from "zod/v4";
 
+export const ssoLogoutUrlSchema = z.url().refine((value) => {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+  const localHttp =
+    url.protocol === "http:" &&
+    ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+  return (
+    (url.protocol === "https:" || localHttp) &&
+    !url.username &&
+    !url.password &&
+    !url.hash
+  );
+}, "Logout URL must use HTTPS (or local HTTP), without credentials or a fragment");
+
+export const ssoLogoutConfigSchema = z
+  .object({
+    url: ssoLogoutUrlSchema,
+    // Some endpoints require a hint; standard OIDC allows it to be omitted.
+    requireIdToken: z.boolean().optional(),
+    // Omit params to use standard OIDC names; provide a map to replace them.
+    params: z
+      .record(
+        z.string().min(1),
+        z.union([
+          z.string(),
+          z
+            .object({
+              source: z.enum(["clientId", "postLogoutRedirectUri", "idToken"]),
+            })
+            .strict(),
+        ]),
+      )
+      .optional(),
+  })
+  .refine(
+    (config) =>
+      !config.requireIdToken ||
+      !config.params ||
+      Object.values(config.params).some(
+        (value) => typeof value !== "string" && value.source === "idToken",
+      ),
+    {
+      path: ["params"],
+      message:
+        "An ID token parameter is required when requireIdToken is enabled",
+    },
+  );
+
+export type SsoLogoutConfig = z.infer<typeof ssoLogoutConfigSchema>;
+
 // Zod validation schemas for each SSO provider.
 // authProvider and authConfig field names follow NextAuth's standard conventions; field values are validated.
 
@@ -26,6 +80,7 @@ const sharedOidcFields = {
   clientSecret: z.string(),
   allowDangerousEmailAccountLinking: z.boolean().optional().default(false),
   tokenEndpointAuthMethod,
+  logout: ssoLogoutConfigSchema.optional(),
 };
 
 export const googleSsoConfig = baseSsoConfig.extend({
