@@ -4,11 +4,9 @@
 // will take after the refactor.
 
 const path = require("path");
-const mysql = require(path.join(
-  __dirname,
-  "..",
-  "packages/shared/node_modules/mysql2/promise",
-));
+const mysql = require(
+  path.join(__dirname, "..", "packages/shared/node_modules/mysql2/promise"),
+);
 
 const config = {
   host: "127.0.0.1",
@@ -48,7 +46,9 @@ async function main() {
     conn.release();
   }
 
-  console.log(`pool-stream rows=${count} first=${firstRowMs}ms total=${Date.now() - t0}ms`);
+  console.log(
+    `pool-stream rows=${count} first=${firstRowMs}ms total=${Date.now() - t0}ms`,
+  );
 
   // Make sure the connection is released back to the pool: borrow another and reuse
   const conn2 = await pool.getConnection();

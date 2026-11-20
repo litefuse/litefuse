@@ -642,9 +642,7 @@ describe("DorisWriter", () => {
     expect(mockInsert).toHaveBeenCalledTimes(
       Math.ceil(concurrentWrites / writer.batchSize),
     );
-    expect(q(TableName.Traces).length).toBeLessThan(
-      writer.batchSize,
-    );
+    expect(q(TableName.Traces).length).toBeLessThan(writer.batchSize);
   });
 
   it("should report wait time and processing time metrics correctly", async () => {
@@ -1096,7 +1094,9 @@ describe("DorisWriter", () => {
       String(c[0]).includes("backpressure released"),
     );
     expect(releasedCalls).toHaveLength(1);
-    expect(releasedCalls[0][0]).toMatch(/released after \d+(\.\d+)?s \(1 enqueues were blocked\)/);
+    expect(releasedCalls[0][0]).toMatch(
+      /released after \d+(\.\d+)?s \(1 enqueues were blocked\)/,
+    );
   });
 
   it("stable-label tables: the SAME label rides every retry of a batch; fresh batches get distinct labels; other tables get none", async () => {

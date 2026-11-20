@@ -23,9 +23,9 @@ describe("classifyOtelFile (reconciliation four-way)", () => {
   });
 
   it("young files without ledger are in-flight, not losses", () => {
-    expect(
-      classifyOtelFile(facts({ createdAtMs: NOW - HOUR }), P),
-    ).toEqual({ verdict: "in-flight" });
+    expect(classifyOtelFile(facts({ createdAtMs: NOW - HOUR }), P)).toEqual({
+      verdict: "in-flight",
+    });
   });
 
   it("poison outranks reinject — deterministic failures go to the runbook", () => {

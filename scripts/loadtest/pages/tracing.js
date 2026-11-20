@@ -28,10 +28,23 @@ const envFilter = () => ({
   operator: "none of",
   value: EXCLUDED_ENVS,
 });
-const dt = (column, operator, value) => ({ column, type: "datetime", operator, value });
+const dt = (column, operator, value) => ({
+  column,
+  type: "datetime",
+  operator,
+  value,
+});
 
-const traceFilter = (w) => [envFilter(), dt("timestamp", ">=", w.from), dt("timestamp", "<=", w.to)];
-const genFilter = (w) => [envFilter(), dt("startTime", ">=", w.from), dt("startTime", "<=", w.to)];
+const traceFilter = (w) => [
+  envFilter(),
+  dt("timestamp", ">=", w.from),
+  dt("timestamp", "<=", w.to),
+];
+const genFilter = (w) => [
+  envFilter(),
+  dt("startTime", ">=", w.from),
+  dt("startTime", "<=", w.to),
+];
 
 export const name = "tracing";
 
@@ -71,7 +84,10 @@ export function discover(cookie) {
       },
       cookie,
     ) || {};
-  const traces = (tr.traces || []).map((t) => ({ id: t.id, timestamp: t.timestamp }));
+  const traces = (tr.traces || []).map((t) => ({
+    id: t.id,
+    timestamp: t.timestamp,
+  }));
 
   const ge =
     trpcGet(
@@ -118,23 +134,42 @@ export function queries({ ids }) {
   qs.push({ proc: "traces.all", input: traceListInput });
   qs.push({ proc: "traces.countAll", input: traceListInput });
   if (traceIds.length) {
-    qs.push({ proc: "traces.metrics", input: { projectId: PID, filter: traceFilter(w), traceIds } });
+    qs.push({
+      proc: "traces.metrics",
+      input: { projectId: PID, filter: traceFilter(w), traceIds },
+    });
   }
   qs.push({
     proc: "traces.filterOptions",
-    input: { projectId: PID, timestampFilter: [dt("timestamp", ">=", w.from), dt("timestamp", "<=", w.to)] },
+    input: {
+      projectId: PID,
+      timestampFilter: [
+        dt("timestamp", ">=", w.from),
+        dt("timestamp", "<=", w.to),
+      ],
+    },
   });
   qs.push({ proc: "traces.hasTracingConfigured", input: { projectId: PID } });
   qs.push({
     proc: "scores.getScoreColumns",
     input: {
       projectId: PID,
-      filter: [{ type: "null", column: "observationId", operator: "is not null", value: "" }],
+      filter: [
+        {
+          type: "null",
+          column: "observationId",
+          operator: "is not null",
+          value: "",
+        },
+      ],
       fromTimestamp: w.from,
       toTimestamp: undefined, // schema is optional date; superjson marks it undefined
     },
   });
-  qs.push({ proc: "projects.environmentFilterOptions", input: { projectId: PID, fromTimestamp: w.from } });
+  qs.push({
+    proc: "projects.environmentFilterOptions",
+    input: { projectId: PID, fromTimestamp: w.from },
+  });
 
   // ---- Observations tab ----
   const genListInput = {
@@ -150,24 +185,55 @@ export function queries({ ids }) {
   qs.push({ proc: "generations.countAll", input: genListInput });
   qs.push({
     proc: "generations.filterOptions",
-    input: { projectId: PID, startTimeFilter: [dt("startTime", ">=", w.from), dt("startTime", "<=", w.to)] },
+    input: {
+      projectId: PID,
+      startTimeFilter: [
+        dt("startTime", ">=", w.from),
+        dt("startTime", "<=", w.to),
+      ],
+    },
   });
 
   // ---- Trace detail (first discovered trace) ----
   if (traces.length) {
     const t = traces[0];
     const ts = new Date(t.timestamp);
-    qs.push({ proc: "traces.byId", input: { traceId: t.id, projectId: PID, timestamp: ts, verbosity: "compact" } });
-    qs.push({ proc: "traces.byIdWithObservationsAndScores", input: { traceId: t.id, projectId: PID, timestamp: ts } });
+    qs.push({
+      proc: "traces.byId",
+      input: {
+        traceId: t.id,
+        projectId: PID,
+        timestamp: ts,
+        verbosity: "compact",
+      },
+    });
+    qs.push({
+      proc: "traces.byIdWithObservationsAndScores",
+      input: { traceId: t.id, projectId: PID, timestamp: ts },
+    });
     // getAgentGraphData expects plain ISO strings here (not Date-typed superjson).
-    qs.push({ proc: "traces.getAgentGraphData", input: { projectId: PID, traceId: t.id, minStartTime: t.timestamp, maxStartTime: t.timestamp } });
+    qs.push({
+      proc: "traces.getAgentGraphData",
+      input: {
+        projectId: PID,
+        traceId: t.id,
+        minStartTime: t.timestamp,
+        maxStartTime: t.timestamp,
+      },
+    });
   }
 
   // ---- Observation detail (first few discovered observations) ----
   for (const o of observations.slice(0, 5)) {
     qs.push({
       proc: "observations.byId",
-      input: { observationId: o.id, traceId: o.traceId, projectId: PID, startTime: new Date(o.startTime), verbosity: "compact" },
+      input: {
+        observationId: o.id,
+        traceId: o.traceId,
+        projectId: PID,
+        startTime: new Date(o.startTime),
+        verbosity: "compact",
+      },
     });
   }
 

@@ -30,6 +30,7 @@ const groupProcessedNavigation = (items: NavigationItem[]) => {
         ...(grouped[RouteGroup.Observability] || []),
         ...(grouped[RouteGroup.PromptManagement] || []),
         ...(grouped[RouteGroup.Evaluation] || []),
+        ...(grouped[RouteGroup.Persisting] || []),
       ]
     : [];
 

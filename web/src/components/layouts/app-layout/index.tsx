@@ -11,10 +11,10 @@
 
 import { type PropsWithChildren, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
-import { signOut } from "next-auth/react";
 import { signOutWithSso } from "@/src/features/auth/lib/signOutWithSso";
 import posthog from "posthog-js";
 import { env } from "@/src/env.mjs";
+import { forceSignOut } from "@/src/features/auth/lib/forceSignOut";
 import { useQueryProjectOrOrganization } from "@/src/features/projects/hooks";
 import { ErrorPageWithSentry } from "@/src/components/error-page";
 import { useTranslation } from "react-i18next";
@@ -29,10 +29,15 @@ import { AuthenticatedLayout } from "./variants/AuthenticatedLayout";
 // Custom hooks
 import { useAuthSession } from "./hooks/useAuthSession";
 import { useLayoutConfiguration } from "./hooks/useLayoutConfiguration";
-import { useAuthGuard } from "./hooks/useAuthGuard";
+import { markRootAutoEnterCompleted, useAuthGuard } from "./hooks/useAuthGuard";
 import { useProjectAccess } from "./hooks/useProjectAccess";
 import { useFilteredNavigation } from "./hooks/useFilteredNavigation";
 import { useLayoutMetadata } from "./hooks/useLayoutMetadata";
+
+function defaultPostSignOutPath(): string {
+  const basePath = env.NEXT_PUBLIC_BASE_PATH ?? "";
+  return `${basePath}/auth/sign-in`;
+}
 
 /**
  * Main layout component
@@ -74,10 +79,16 @@ export function AppLayout(props: PropsWithChildren) {
     // NextAuth publishes the unauthenticated session before signOut() resolves.
     // Keep this page's guard from replacing the pending IdP/error navigation.
     if (signOutInProgress.current) return;
-    if (authGuard.action === "redirect") {
+    if (authGuard.action === "sign-out") {
+      signOutInProgress.current = true;
+      setIsSigningOut(true);
+      // Invalid JWT (e.g. user deleted) — fully clear cookies so SSO is required
+      void forceSignOut({ redirectTo: defaultPostSignOutPath() });
+    } else if (authGuard.action === "redirect") {
+      if (authGuard.url !== "/" && router.pathname === "/") {
+        markRootAutoEnterCompleted();
+      }
       void router.replace(authGuard.url);
-    } else if (authGuard.action === "sign-out") {
-      void signOut({ redirect: false });
     }
   }, [authGuard, router, isSigningOut]);
 
@@ -156,11 +167,16 @@ export function AppLayout(props: PropsWithChildren) {
     signOutInProgress.current = true;
     setIsSigningOut(true);
     try {
-      sessionStorage.clear();
       if (env.NEXT_PUBLIC_POSTHOG_KEY && env.NEXT_PUBLIC_POSTHOG_HOST) {
         posthog.reset();
       }
-      window.location.assign(await signOutWithSso());
+      // signOutWithSso completes the NextAuth sign-out and returns the IdP
+      // logout URL; forceSignOut then expires leftover session cookies on
+      // every path before navigating there.
+      await forceSignOut({
+        redirectTo: await signOutWithSso(),
+        nextAuthSignedOut: true,
+      });
     } catch {
       signOutInProgress.current = false;
       setIsSigningOut(false);

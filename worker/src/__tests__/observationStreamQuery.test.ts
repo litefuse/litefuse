@@ -62,9 +62,7 @@ describe("getObservationStream query generation", () => {
     expect(capturedQuery.query).toContain("o.environment NOT IN");
     expect(capturedQuery.query).toContain("o.start_time >=");
     expect(capturedQuery.query).toContain("o.start_time <");
-    expect(capturedQuery.query).toContain(
-      "o.span_id IN ('63bb6f8cb345bf14')",
-    );
+    expect(capturedQuery.query).toContain("o.span_id IN ('63bb6f8cb345bf14')");
     expect(capturedQuery.query).not.toContain("o.`id` IN");
   });
 });

@@ -20,7 +20,9 @@ const Page = ({
     <div
       className={cn(
         "flex flex-col",
-        scrollable ? "min-h-screen-with-banner relative flex flex-1" : "h-full",
+        scrollable
+          ? "min-h-screen-with-banner relative flex flex-1"
+          : "flex h-full min-h-0",
       )}
       id="page"
     >
@@ -32,7 +34,7 @@ const Page = ({
           "flex flex-1 flex-col",
           scrollable
             ? "min-h-screen-with-banner relative flex"
-            : "h-full overflow-hidden",
+            : "min-h-0 flex-1 overflow-hidden",
           withPadding && "p-3",
         )}
       >
