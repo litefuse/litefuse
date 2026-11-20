@@ -6287,6 +6287,7 @@ components:
         - JSON
         - CSV
         - JSONL
+        - PARQUET
     BlobStorageExportMode:
       title: BlobStorageExportMode
       type: string
@@ -6294,6 +6295,26 @@ components:
         - FULL_HISTORY
         - FROM_TODAY
         - FROM_CUSTOM_DATE
+    BlobStorageExportSource:
+      title: BlobStorageExportSource
+      type: string
+      enum:
+        - TRACES_OBSERVATIONS
+        - TRACES_OBSERVATIONS_EVENTS
+        - EVENTS
+    BlobStorageObservationFieldGroup:
+      title: BlobStorageObservationFieldGroup
+      type: string
+      enum:
+        - core
+        - basic
+        - time
+        - io
+        - metadata
+        - model
+        - usage
+        - prompt
+        - metrics
     BlobStorageExportFrequency:
       title: BlobStorageExportFrequency
       type: string
@@ -6353,6 +6374,27 @@ components:
           description: >-
             Custom start date for exports (required when exportMode is
             FROM_CUSTOM_DATE)
+        exportSource:
+          $ref: '#/components/schemas/BlobStorageExportSource'
+          nullable: true
+          description: >-
+            Which observation source should be exported. Scores are always
+            included.
+        exportFieldGroups:
+          type: array
+          items:
+            $ref: '#/components/schemas/BlobStorageObservationFieldGroup'
+          nullable: true
+          description: >-
+            Which observation field groups should be exported for
+            observation-based exports. Parquet exports use a fixed schema for
+            each export source.
+        compressed:
+          type: boolean
+          nullable: true
+          description: >-
+            Whether exported files should be gzip-compressed before upload.
+            Parquet uses internal Snappy compression.
       required:
         - projectId
         - type
@@ -6399,6 +6441,15 @@ components:
           type: string
           format: date-time
           nullable: true
+        exportSource:
+          $ref: '#/components/schemas/BlobStorageExportSource'
+        exportFieldGroups:
+          type: array
+          items:
+            $ref: '#/components/schemas/BlobStorageObservationFieldGroup'
+          nullable: true
+        compressed:
+          type: boolean
         nextSyncAt:
           type: string
           format: date-time
@@ -6432,6 +6483,8 @@ components:
         - forcePathStyle
         - fileType
         - exportMode
+        - exportSource
+        - compressed
         - createdAt
         - updatedAt
     BlobStorageIntegrationsResponse:

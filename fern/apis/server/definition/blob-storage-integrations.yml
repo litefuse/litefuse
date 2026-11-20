@@ -47,6 +47,7 @@ types:
       - JSON
       - CSV
       - JSONL
+      - PARQUET
 
   BlobStorageExportMode:
     enum:
@@ -119,10 +120,10 @@ types:
         docs: Which observation source should be exported. Scores are always included.
       exportFieldGroups:
         type: optional<list<BlobStorageObservationFieldGroup>>
-        docs: Which observation field groups should be exported for observation-based exports.
+        docs: Which observation field groups should be exported for observation-based exports. Parquet exports use a fixed schema for each export source.
       compressed:
         type: optional<boolean>
-        docs: Whether exported files should be gzip-compressed before upload.
+        docs: Whether exported files should be gzip-compressed before upload. Parquet uses internal Snappy compression.
 
   BlobStorageIntegrationResponse:
     properties:

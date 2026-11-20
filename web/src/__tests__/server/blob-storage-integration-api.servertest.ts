@@ -26,7 +26,7 @@ const BlobStorageIntegrationResponseSchema = z.object({
   exportFrequency: z.enum(["hourly", "daily", "weekly"]),
   enabled: z.boolean(),
   forcePathStyle: z.boolean(),
-  fileType: z.enum(["JSON", "CSV", "JSONL"]),
+  fileType: z.enum(["JSON", "CSV", "JSONL", "PARQUET"]),
   exportMode: z.enum(["FULL_HISTORY", "FROM_TODAY", "FROM_CUSTOM_DATE"]),
   exportStartDate: z.coerce.date().nullable(),
   nextSyncAt: z.coerce.date().nullable(),
@@ -318,6 +318,54 @@ describe("Blob Storage Integrations API", () => {
       expect(response.body.bucketName).toBe("updated-bucket");
       expect(response.body.enabled).toBe(true);
       expect(response.body.exportFrequency).toBe("weekly");
+    });
+
+    it("round-trips Parquet without resetting the export cursor", async () => {
+      const auth = createBasicAuthHeader(testApiKey, testApiSecretKey);
+      const path = "/api/public/integrations/blob-storage";
+      const config = { ...validBlobStorageConfig, projectId: testProject1Id };
+
+      await makeZodVerifiedAPICall(
+        BlobStorageIntegrationResponseSchema,
+        "PUT",
+        path,
+        config,
+        auth,
+        200,
+      );
+      const lastSyncAt = new Date("2026-11-15T01:02:03.123Z");
+      await prisma.blobStorageIntegration.update({
+        where: { projectId: testProject1Id },
+        data: { lastSyncAt },
+      });
+
+      const updated = await makeZodVerifiedAPICall(
+        BlobStorageIntegrationResponseSchema,
+        "PUT",
+        path,
+        { ...config, fileType: "PARQUET" },
+        auth,
+        200,
+      );
+      expect(updated.body.fileType).toBe("PARQUET");
+
+      const fetched = await makeZodVerifiedAPICall(
+        BlobStorageIntegrationsResponseSchema,
+        "GET",
+        path,
+        undefined,
+        auth,
+        200,
+      );
+      expect(fetched.body.data).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            projectId: testProject1Id,
+            fileType: "PARQUET",
+            lastSyncAt: lastSyncAt.toISOString(),
+          }),
+        ]),
+      );
     });
 
     it("should validate required fields", async () => {

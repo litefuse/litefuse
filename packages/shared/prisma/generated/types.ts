@@ -130,6 +130,7 @@ export const BlobStorageIntegrationFileType = {
   JSON: "JSON",
   CSV: "CSV",
   JSONL: "JSONL",
+  PARQUET: "PARQUET",
 } as const;
 export type BlobStorageIntegrationFileType =
   (typeof BlobStorageIntegrationFileType)[keyof typeof BlobStorageIntegrationFileType];

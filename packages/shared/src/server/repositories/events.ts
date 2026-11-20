@@ -1,3 +1,8 @@
+import {
+  type BlobStorageExportOptions,
+  blobStorageMetadata,
+  blobStorageJson,
+} from "./blobStorageExportProjection";
 import { prisma } from "../../db";
 import { Observation, EventsObservation, ObservationType } from "../../domain";
 import { env } from "../../env";
@@ -2947,6 +2952,7 @@ export const getEventsForBlobStorageExport = function (
   projectId: string,
   minTimestamp: Date,
   maxTimestamp: Date,
+  options?: BlobStorageExportOptions,
 ) {
   // Build the query for blob storage export using spans table
   const query = `
@@ -2960,14 +2966,14 @@ export const getEventsForBlobStorageExport = function (
       o.environment,
       o.user_id,
       o.session_id,
-      o.tags,
+      ${blobStorageJson("o.tags", "tags", options?.parquet)},
       o.${dq("release")},
       o.trace_name,
-      o.total_cost,
+      ${blobStorageJson("o.total_cost", "total_cost", options?.parquet)},
       if(o.end_time is null, null, milliseconds_diff(o.end_time, o.start_time)) as latency,
       o.input,
       o.output,
-      json_object_flatten(o.metadata) AS metadata,
+      ${blobStorageMetadata("o.metadata", options?.parquet)},
       o.start_time,
       o.end_time,
       o.provided_model_name as model,
@@ -2985,6 +2991,8 @@ export const getEventsForBlobStorageExport = function (
 
   return queryDorisStream<Record<string, unknown>>({
     query,
+    signal: options?.signal,
+    highWaterMark: options?.parquet ? 16 : undefined,
     params: {
       projectId,
       minTimestamp: convertDateToAnalyticsDateTime(minTimestamp),
