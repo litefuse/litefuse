@@ -1,4 +1,8 @@
-import { getSafeRedirectPath, stripBasePath } from "@/src/utils/redirect";
+import {
+  getSafeRedirectPath,
+  stripBasePath,
+  didDocumentLoadOnPath,
+} from "@/src/utils/redirect";
 import { env } from "@/src/env.mjs";
 
 describe("getSafeRedirectPath", () => {
@@ -293,5 +297,47 @@ describe("stripBasePath", () => {
     it("leaves paths without basePath untouched", () => {
       expect(stripBasePath("/no-base")).toBe("/no-base");
     });
+  });
+});
+
+describe("didDocumentLoadOnPath", () => {
+  const originalBasePath = env.NEXT_PUBLIC_BASE_PATH;
+  const originalGetEntries = performance.getEntriesByType;
+
+  afterEach(() => {
+    (env as { NEXT_PUBLIC_BASE_PATH?: string }).NEXT_PUBLIC_BASE_PATH =
+      originalBasePath;
+    performance.getEntriesByType = originalGetEntries;
+  });
+
+  it("returns true when the document was loaded on the given path", () => {
+    (env as { NEXT_PUBLIC_BASE_PATH?: string }).NEXT_PUBLIC_BASE_PATH =
+      undefined;
+    performance.getEntriesByType = (() => [
+      { name: "http://localhost:3000/" },
+    ]) as typeof performance.getEntriesByType;
+
+    expect(didDocumentLoadOnPath("/")).toBe(true);
+    expect(didDocumentLoadOnPath("/project/x")).toBe(false);
+  });
+
+  it("returns false when the document was loaded on another path", () => {
+    (env as { NEXT_PUBLIC_BASE_PATH?: string }).NEXT_PUBLIC_BASE_PATH =
+      undefined;
+    performance.getEntriesByType = (() => [
+      { name: "http://localhost:3000/project/abc" },
+    ]) as typeof performance.getEntriesByType;
+
+    expect(didDocumentLoadOnPath("/")).toBe(false);
+  });
+
+  it("strips basePath when comparing the landing URL", () => {
+    (env as { NEXT_PUBLIC_BASE_PATH?: string }).NEXT_PUBLIC_BASE_PATH =
+      "/litefuse";
+    performance.getEntriesByType = (() => [
+      { name: "http://localhost:3000/litefuse/" },
+    ]) as typeof performance.getEntriesByType;
+
+    expect(didDocumentLoadOnPath("/")).toBe(true);
   });
 });

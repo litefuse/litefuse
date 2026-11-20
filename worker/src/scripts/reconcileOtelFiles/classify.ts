@@ -47,6 +47,7 @@ export const classifyOtelFile = (
   // distinguishable mechanically → human decision (design boundary 3/4).
   return {
     verdict: "audit",
-    reason: "no ledger, over-age, no registration trace (A2 orphan vs expired loss)",
+    reason:
+      "no ledger, over-age, no registration trace (A2 orphan vs expired loss)",
   };
 };

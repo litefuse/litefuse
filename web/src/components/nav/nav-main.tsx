@@ -19,12 +19,14 @@ const NAV_GROUP_ORDER: RouteGroup[] = [
   RouteGroup.Observability,
   RouteGroup.PromptManagement,
   RouteGroup.Evaluation,
+  RouteGroup.Persisting,
 ];
 
 const NAV_GROUP_LABELS: Record<RouteGroup, string> = {
   [RouteGroup.Observability]: i18nKey("Observability"),
   [RouteGroup.PromptManagement]: i18nKey("Prompt Management"),
   [RouteGroup.Evaluation]: i18nKey("Evaluation"),
+  [RouteGroup.Persisting]: i18nKey("pChronicle"),
 };
 
 export type NavMainItem = {

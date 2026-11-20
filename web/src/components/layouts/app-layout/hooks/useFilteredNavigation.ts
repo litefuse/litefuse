@@ -52,6 +52,7 @@ function groupNavigationItems(items: NavigationItem[]): GroupedNavigation {
         ...(grouped[RouteGroup.Observability] || []),
         ...(grouped[RouteGroup.PromptManagement] || []),
         ...(grouped[RouteGroup.Evaluation] || []),
+        ...(grouped[RouteGroup.Persisting] || []),
       ]
     : [];
 
@@ -126,6 +127,10 @@ export function useFilteredNavigation(
   // Map filtered routes to NavigationItems with url and isActive
   // This is O(n) - we map directly over filteredRoutes instead of re-iterating ROUTES
   return useMemo(() => {
+    // Concrete URL path (needed for dynamic segments like /persisting/[section],
+    // where router.pathname stays "/…/persisting/[section]" for every item).
+    const currentAsPath = router.asPath.split(/[?#]/)[0] ?? "";
+
     const mapRouteToNavigationItem = (route: Route): NavigationItem => {
       const url = route.pathname
         .replace("[projectId]", routerProjectId ?? "")
@@ -139,7 +144,9 @@ export function useFilteredNavigation(
       return {
         ...route,
         url,
-        isActive: isPathActive(route.pathname, router.pathname),
+        isActive:
+          isPathActive(route.pathname, router.pathname) ||
+          isPathActive(url, currentAsPath),
         items: items && items.length > 0 ? items : undefined,
       };
     };
@@ -166,5 +173,11 @@ export function useFilteredNavigation(
         ...secondaryNavigation.flattened,
       ],
     };
-  }, [filteredRoutes, routerProjectId, routerOrganizationId, router.pathname]);
+  }, [
+    filteredRoutes,
+    routerProjectId,
+    routerOrganizationId,
+    router.pathname,
+    router.asPath,
+  ]);
 }

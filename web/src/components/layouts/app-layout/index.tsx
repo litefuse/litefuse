@@ -9,11 +9,11 @@
  *
  */
 
-import { type PropsWithChildren, useEffect } from "react";
+import { type PropsWithChildren, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
-import { signOut } from "next-auth/react";
 import posthog from "posthog-js";
 import { env } from "@/src/env.mjs";
+import { forceSignOut } from "@/src/features/auth/lib/forceSignOut";
 import { useQueryProjectOrOrganization } from "@/src/features/projects/hooks";
 import { ErrorPageWithSentry } from "@/src/components/error-page";
 import { useTranslation } from "react-i18next";
@@ -45,6 +45,7 @@ export function AppLayout(props: PropsWithChildren) {
   const router = useRouter();
   const session = useAuthSession();
   const { organization } = useQueryProjectOrOrganization();
+  const forceSigningOutRef = useRef(false);
 
   // Determine layout configuration
   const { variant, hideNavigation, isPublishable } = useLayoutConfiguration(
@@ -67,10 +68,17 @@ export function AppLayout(props: PropsWithChildren) {
 
   // Handle auth guard actions (redirect or sign-out)
   useEffect(() => {
-    if (authGuard.action === "redirect") {
+    if (authGuard.action === "sign-out") {
+      if (forceSigningOutRef.current) return;
+      forceSigningOutRef.current = true;
+      // Invalid JWT (e.g. user deleted) — fully clear cookies so SSO is required
+      void forceSignOut({ redirectTo: "/" });
+      return;
+    }
+    // Skip redirect while force logout is in flight (signOut flips session to
+    // unauthenticated and would otherwise race to /auth/sign-in).
+    if (authGuard.action === "redirect" && !forceSigningOutRef.current) {
       void router.replace(authGuard.url);
-    } else if (authGuard.action === "sign-out") {
-      void signOut({ redirect: false });
     }
   }, [authGuard, router]);
 
@@ -78,7 +86,8 @@ export function AppLayout(props: PropsWithChildren) {
   if (
     authGuard.action === "loading" ||
     authGuard.action === "redirect" ||
-    authGuard.action === "sign-out"
+    authGuard.action === "sign-out" ||
+    forceSigningOutRef.current
   ) {
     return <LoadingLayout message={authGuard.message} />;
   }
@@ -132,13 +141,11 @@ export function AppLayout(props: PropsWithChildren) {
   }
 
   const handleSignOut = async () => {
-    sessionStorage.clear();
     if (env.NEXT_PUBLIC_POSTHOG_KEY && env.NEXT_PUBLIC_POSTHOG_HOST) {
       posthog.reset();
     }
-    await signOut({
-      callbackUrl: `${env.NEXT_PUBLIC_BASE_PATH ?? ""}/auth/sign-in`,
-    });
+    // Clear JWT at Path=/ and Path=/litefuse, then land on Chronicle portal.
+    await forceSignOut({ redirectTo: "/" });
   };
 
   return (

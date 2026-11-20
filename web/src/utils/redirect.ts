@@ -84,3 +84,26 @@ export function stripBasePath(path: string): string {
   const stripped = path.slice(basePath.length) || "/";
   return stripped.startsWith("/") ? stripped : `/${stripped}`;
 }
+
+/**
+ * True when the current browser document was originally loaded on `path`
+ * (e.g. "/"). Distinguishes opening the app at that URL from later
+ * client-side navigations (logo / breadcrumb), which should not auto-redirect.
+ */
+export function didDocumentLoadOnPath(path: string): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const entries = performance.getEntriesByType("navigation");
+  const nav = entries[0] as PerformanceNavigationTiming | undefined;
+  const landingUrl = nav?.name || window.location.href;
+
+  try {
+    const landingPath = stripBasePath(new URL(landingUrl).pathname);
+    const normalized = landingPath === "" ? "/" : landingPath;
+    return normalized === path;
+  } catch {
+    return stripBasePath(window.location.pathname) === path;
+  }
+}

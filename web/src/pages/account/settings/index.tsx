@@ -25,7 +25,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/src/components/ui/dialog";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import { forceSignOut } from "@/src/features/auth/lib/forceSignOut";
 import { SettingsDangerZone } from "@/src/components/SettingsDangerZone";
 import ContainerPage from "@/src/components/layouts/container-page";
 import { useRouter } from "next/router";
@@ -164,7 +165,7 @@ function DeleteAccountButton() {
         description: t("Your account has been successfully deleted."),
       });
       await new Promise((resolve) => setTimeout(resolve, 2000));
-      await signOut();
+      await forceSignOut({ redirectTo: "/" });
     } catch (error) {
       console.error(error);
       showErrorToast(

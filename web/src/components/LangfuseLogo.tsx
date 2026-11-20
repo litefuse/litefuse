@@ -20,7 +20,7 @@ export const LangfuseIcon = ({
       src={`${env.NEXT_PUBLIC_BASE_PATH ?? ""}/litefuse-icon.svg`}
       width={size}
       height={size}
-      alt={t("Litefuse Icon")}
+      alt={t("DeepTrace Icon")}
       className={className}
     />
   );
@@ -37,7 +37,7 @@ const LangfuseLogotypeOrCustomized = ({ size }: { size: "sm" | "xl" }) => {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={uiCustomization.logoLightModeHref}
-          alt={t("Litefuse Logo")}
+          alt={t("DeepTrace Logo")}
           className={cn(
             "group-data-[collapsible=icon]:hidden dark:hidden",
             size === "sm" ? "max-h-4 max-w-14" : "max-h-5 max-w-16",
@@ -46,7 +46,7 @@ const LangfuseLogotypeOrCustomized = ({ size }: { size: "sm" | "xl" }) => {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={uiCustomization.logoDarkModeHref}
-          alt={t("Litefuse Logo")}
+          alt={t("DeepTrace Logo")}
           className={cn(
             "hidden group-data-[collapsible=icon]:hidden dark:block",
             size === "sm" ? "max-h-4 max-w-14" : "max-h-5 max-w-16",
@@ -63,14 +63,14 @@ const LangfuseLogotypeOrCustomized = ({ size }: { size: "sm" | "xl" }) => {
 
   return (
     <div className="flex items-center">
-      <LangfuseIcon size={size === "sm" ? 16 : 20} />
+      <LangfuseIcon size={size === "sm" ? 20 : 28} />
       <span
         className={cn(
           "ml-2 font-mono leading-none font-semibold group-data-[collapsible=icon]:hidden",
           size === "sm" ? "text-sm" : "text-xl",
         )}
       >
-        {t("Litefuse")}
+        {t("DeepTrace")}
       </span>
     </div>
   );

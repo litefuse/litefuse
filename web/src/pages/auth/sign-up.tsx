@@ -9,8 +9,9 @@ import {
 } from "@/src/components/ui/form";
 import { Input } from "@/src/components/ui/input";
 import { signupSchema } from "@/src/features/auth/lib/signupSchema";
+import { getDefaultPostLoginPath } from "@/src/features/auth/lib/getDefaultPostLoginPath";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { signIn } from "next-auth/react";
+import { getSession, signIn } from "next-auth/react";
 import Head from "next/head";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -92,15 +93,35 @@ export default function SignIn({
         return;
       }
 
-      await signIn<"credentials">("credentials", {
+      const result = await signIn<"credentials">("credentials", {
         email: values.email,
         password: values.password,
-        callbackUrl:
-          targetPath ??
-          (isLangfuseCloud && region !== "DEV"
-            ? `${env.NEXT_PUBLIC_BASE_PATH ?? ""}/onboarding`
-            : `${env.NEXT_PUBLIC_BASE_PATH ?? ""}/`),
+        redirect: false,
       });
+
+      if (!result?.ok) {
+        setFormError(result?.error ?? "An error occurred. Please try again.");
+        return;
+      }
+
+      // Explicit deep-link or cloud onboarding take precedence; otherwise enter
+      // the first project (or the organization overview when none exist).
+      if (targetPath) {
+        window.location.assign(targetPath);
+        return;
+      }
+
+      if (isLangfuseCloud && region !== "DEV") {
+        window.location.assign(
+          `${env.NEXT_PUBLIC_BASE_PATH ?? ""}/onboarding`,
+        );
+        return;
+      }
+
+      const session = await getSession();
+      window.location.assign(
+        getSafeRedirectPath(getDefaultPostLoginPath(session?.user)),
+      );
     } catch {
       setFormError("An error occurred. Please try again.");
     }
