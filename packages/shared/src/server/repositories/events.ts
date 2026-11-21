@@ -110,9 +110,7 @@ async function enrichObservationsWithModelData(
   // Determine if this is V1 (complete) or V2 (partial) API
   const isV2 = Array.isArray(requestedFields);
   const effectiveRequestedFields: ObservationFieldGroup[] = isV2
-    ? requestedFields.length === 0
-      ? [...OBSERVATION_FIELD_GROUPS]
-      : requestedFields
+    ? [...resolveObservationFieldGroups(requestedFields)]
     : [];
 
   // Determine if model enrichment is needed
@@ -896,12 +894,89 @@ const OBSERVATION_FIELDS_BY_GROUP: Record<
   trace_context: ["traceName", "tags", "release"],
 };
 
+/**
+ * Doris SELECT expressions needed to build each V2 field group, keyed by the
+ * row alias convertEventsObservation reads. Mirrors what the full-column
+ * SELECT in buildObservationsQueryDoris returns, so a projected row converts
+ * into exactly the same public fields — only columns no requested group needs
+ * are skipped (input/output, input_trim/output_trim, metadata, usage maps …).
+ *
+ * Cross-group dependency: `metrics` derives timeToFirstToken from
+ * completion_start_time (latency uses start/end_time, which are core).
+ */
+const OBSERVATION_V2_SELECT_BY_GROUP: Record<
+  ObservationFieldGroup,
+  readonly string[]
+> = {
+  core: [
+    "o.span_id AS id",
+    "o.trace_id",
+    "o.start_time",
+    "o.end_time",
+    "o.project_id",
+    "o.parent_span_id AS parent_observation_id",
+    "o.type",
+  ],
+  basic: [
+    "o.name",
+    "o.level",
+    "o.status_message",
+    "o.version",
+    "o.environment",
+    "o.bookmarked",
+    `o.${dq("public")} AS \`public\``,
+    "o.user_id",
+    "o.session_id",
+  ],
+  time: ["o.completion_start_time", "o.created_at"],
+  io: ["o.input", "o.output"],
+  metadata: ["json_object_flatten(o.metadata) AS metadata"],
+  model: ["o.model_id AS internal_model_id", "o.provided_model_name"],
+  usage: [
+    "o.usage_details",
+    "o.cost_details",
+    "o.total_cost",
+    "o.usage_pricing_tier_name",
+  ],
+  prompt: ["o.prompt_id", "o.prompt_name", "o.prompt_version"],
+  metrics: ["o.completion_start_time"],
+  trace_context: [
+    "o.trace_name",
+    "o.tags",
+    `o.${dq("release")} AS \`release\``,
+  ],
+};
+
+/**
+ * Field groups actually served for a V2 request. An empty list means "all
+ * groups" — the same rule enrichObservationsWithModelData applies, so the SQL
+ * projection and the post-query field filter can never disagree.
+ */
+function resolveObservationFieldGroups(
+  requestedFields: ObservationFieldGroup[],
+): readonly ObservationFieldGroup[] {
+  return requestedFields.length > 0
+    ? requestedFields
+    : OBSERVATION_FIELD_GROUPS;
+}
+
+function buildObservationV2SelectList(
+  requestedFields: ObservationFieldGroup[],
+): string[] {
+  const columns = new Set<string>(OBSERVATION_V2_SELECT_BY_GROUP.core);
+  for (const group of resolveObservationFieldGroups(requestedFields)) {
+    for (const column of OBSERVATION_V2_SELECT_BY_GROUP[group]) {
+      columns.add(column);
+    }
+  }
+  return Array.from(columns);
+}
+
 export function filterObservationFieldsForPublicApi(
   observation: EventsObservationPublic,
   requestedFields: ObservationFieldGroup[],
 ): EventsObservationPublic {
-  const effectiveFields =
-    requestedFields.length > 0 ? requestedFields : OBSERVATION_FIELD_GROUPS;
+  const effectiveFields = resolveObservationFieldGroups(requestedFields);
 
   const allowedFields = new Set<string>(OBSERVATION_CORE_FIELDS);
   for (const group of effectiveFields) {
@@ -952,8 +1027,15 @@ export type PublicApiObservationsQuery = {
  *
  * Exported so unit tests can inspect the generated SQL + params directly
  * without standing up a Doris cluster. Not part of the public API surface.
+ *
+ * `projection.fields` (V2 only) restricts the SELECT list to the columns the
+ * requested field groups need; omitted (V1, count-compatible callers) keeps
+ * the full column list.
  */
-export function buildObservationsQueryDoris(opts: PublicApiObservationsQuery): {
+export function buildObservationsQueryDoris(
+  opts: PublicApiObservationsQuery,
+  projection?: { fields: ObservationFieldGroup[] },
+): {
   baseQuery: string;
   params: Record<string, unknown>;
 } {
@@ -984,9 +1066,9 @@ export function buildObservationsQueryDoris(opts: PublicApiObservationsQuery): {
     type: "observations",
   });
 
-  const baseQuery = `
-    SELECT
-      o.span_id AS id,
+  const selectList = projection
+    ? buildObservationV2SelectList(projection.fields).join(",\n      ")
+    : `o.span_id AS id,
       o.type,
       o.project_id,
       o.name,
@@ -1020,7 +1102,11 @@ export function buildObservationsQueryDoris(opts: PublicApiObservationsQuery): {
       o.bookmarked,
       o.${dq("public")} AS \`public\`,
       o.user_id,
-      o.session_id
+      o.session_id`;
+
+  const baseQuery = `
+    SELECT
+      ${selectList}
     FROM ${tableFor(projectId, "spans")} o
     ${hasTraceFilter ? `JOIN ${tableFor(projectId, "spans")} t ON o.trace_id = t.trace_id AND t.project_id = o.project_id AND t.is_root = 1` : ""}
     WHERE o.project_id = {projectId: String}
@@ -1217,7 +1303,12 @@ export const getObservationsFromEventsTableForPublicApi = async (
 export const getObservationsV2FromEventsTableForPublicApi = async (
   opts: PublicApiObservationsQuery & { fields: ObservationFieldGroup[] },
 ): Promise<Array<EventsObservationPublic>> => {
-  const { baseQuery, params: baseParams } = buildObservationsQueryDoris(opts);
+  // Only read the columns the requested field groups need. The post-query
+  // filter in enrichObservationsWithModelData stays as the response contract
+  // guard; both use resolveObservationFieldGroups ([] = all groups).
+  const { baseQuery, params: baseParams } = buildObservationsQueryDoris(opts, {
+    fields: opts.fields,
+  });
   // applyCursorPagination adds lastStartTime / lastTraceId / lastId to the
   // returned params map — must use *those* params, not baseParams, otherwise
   // the {lastStartTime: String} placeholders go to Doris unsubstituted.
