@@ -51,6 +51,7 @@ litefuse/
 - Dev all packages: `pnpm run dev`
 - Dev web only: `pnpm run dev:web`
 - Dev worker only: `pnpm run dev:worker`
+- Self-hosted Compose variants: `docker-compose.external.yml` runs Web and Worker with external PostgreSQL, Redis, S3, and Doris. `docker-compose.nginx.yml` includes those dependencies and exposes Nginx on port 80. Copy the matching `.env.external.example` or `.env.nginx.example` and use the startup command at the top of the Compose file.
 - Codex environment bootstrap: `bash scripts/codex/setup.sh`
 - Codex environment maintenance: `bash scripts/codex/maintenance.sh`
 - Lint all: `pnpm run lint`

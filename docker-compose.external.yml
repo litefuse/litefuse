@@ -1,0 +1,75 @@
+# cp .env.external.example .env.external，填写后执行
+# docker compose --env-file .env.external -f docker-compose.external.yml up -d
+name: litefuse-external
+
+x-app-env: &app-env
+  HOSTNAME: "0.0.0.0"
+  NEXTAUTH_URL: ${NEXTAUTH_URL:?set the public Web URL}
+  NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?set NEXTAUTH_SECRET}
+  SALT: ${SALT:?set SALT}
+  ENCRYPTION_KEY: ${ENCRYPTION_KEY:?set a 64-character hex key}
+  TELEMETRY_ENABLED: "false"
+  DATABASE_URL: ${DATABASE_URL:?set the PostgreSQL URL}
+  DIRECT_URL: ${DIRECT_URL:-${DATABASE_URL}}
+  REDIS_HOST: ${REDIS_HOST:?set the Redis host}
+  REDIS_PORT: ${REDIS_PORT:-6379}
+  REDIS_USERNAME: ${REDIS_USERNAME:-default}
+  REDIS_AUTH: ${REDIS_AUTH:-}
+  REDIS_TLS_ENABLED: ${REDIS_TLS_ENABLED:-false}
+  LITEFUSE_ANALYTICS_BACKEND: doris
+  DORIS_URL: ${DORIS_FE_HTTP_URL:?set the Doris FE HTTP URL}
+  DORIS_FE_HTTP_URL: ${DORIS_FE_HTTP_URL}
+  DORIS_FE_QUERY_PORT: ${DORIS_FE_QUERY_PORT:-9030}
+  DORIS_DB: ${DORIS_DB:-litefuse}
+  DORIS_USER: ${DORIS_USER:?set the Doris user}
+  DORIS_PASSWORD: ${DORIS_PASSWORD:-}
+  DORIS_REPLICATION_NUM: ${DORIS_REPLICATION_NUM:-3}
+  LITEFUSE_S3_EVENT_UPLOAD_BUCKET: &bucket ${S3_BUCKET:?set an existing bucket}
+  LITEFUSE_S3_EVENT_UPLOAD_REGION: &region ${S3_REGION:?set the S3 region}
+  LITEFUSE_S3_EVENT_UPLOAD_ENDPOINT: &endpoint ${S3_ENDPOINT:?set the regional S3 or compatible endpoint}
+  LITEFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: &path-style ${S3_FORCE_PATH_STYLE:-false}
+  LITEFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: &access-key ${S3_ACCESS_KEY_ID:?set the S3 access key}
+  LITEFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: &secret-key ${S3_SECRET_ACCESS_KEY:?set the S3 secret}
+  LITEFUSE_S3_EVENT_UPLOAD_PREFIX: events/
+  LITEFUSE_S3_MEDIA_UPLOAD_BUCKET: *bucket
+  LITEFUSE_S3_MEDIA_UPLOAD_REGION: *region
+  LITEFUSE_S3_MEDIA_UPLOAD_ENDPOINT: &public-endpoint ${S3_PUBLIC_ENDPOINT:-${S3_ENDPOINT}}
+  LITEFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: *path-style
+  LITEFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: *access-key
+  LITEFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY: *secret-key
+  LITEFUSE_S3_MEDIA_UPLOAD_PREFIX: media/
+  LITEFUSE_S3_BATCH_EXPORT_ENABLED: ${LITEFUSE_S3_BATCH_EXPORT_ENABLED:-false}
+  LITEFUSE_S3_BATCH_EXPORT_BUCKET: *bucket
+  LITEFUSE_S3_BATCH_EXPORT_REGION: *region
+  LITEFUSE_S3_BATCH_EXPORT_ENDPOINT: *endpoint
+  LITEFUSE_S3_BATCH_EXPORT_EXTERNAL_ENDPOINT: *public-endpoint
+  LITEFUSE_S3_BATCH_EXPORT_FORCE_PATH_STYLE: *path-style
+  LITEFUSE_S3_BATCH_EXPORT_ACCESS_KEY_ID: *access-key
+  LITEFUSE_S3_BATCH_EXPORT_SECRET_ACCESS_KEY: *secret-key
+  LITEFUSE_S3_BATCH_EXPORT_PREFIX: exports/
+
+services:
+  litefuse-web:
+    image: litefuse/litefuse-web:${LITEFUSE_VERSION:-26.3.0}
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      PORT: "3000"
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/api/public/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 2m
+
+  litefuse-worker:
+    image: litefuse/litefuse-worker:${LITEFUSE_VERSION:-26.3.0}
+    restart: unless-stopped
+    depends_on:
+      litefuse-web:
+        condition: service_healthy
+    environment:
+      <<: *app-env
+      PORT: "3030"
