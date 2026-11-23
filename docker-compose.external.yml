@@ -1,5 +1,6 @@
-# cp .env.external.example .env.external，填写后执行
-# docker compose --env-file .env.external -f docker-compose.external.yml up -d
+# 将 .env.external.example 复制为同目录的 .env，填写后执行
+# docker compose -f docker-compose.external.yml up -d
+# 部署文档：docs/deploy-external-compose.zh-CN.md
 name: litefuse-external
 
 x-app-env: &app-env
