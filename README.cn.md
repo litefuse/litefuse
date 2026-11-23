@@ -88,6 +88,8 @@ Litefuse 是一个 **开源 LLM 工程** 平台。它帮助团队协作 **开发
 
 在你自己的基础设施上运行 Litefuse：
 
+- **已有 PostgreSQL、Redis、S3 和 Doris**：仅部署 Web 和 Worker，按[外部依赖版 Docker Compose 部署指南](docs/deploy-external-compose.zh-CN.md)填写 `.env`、启动并验收。
+
 - [本地（docker compose）](https://litefuse.ai/self-hosting/local)：使用 Docker Compose 在你的机器上于 5 分钟内运行 Litefuse。
 
   ```bash:README.md/docker-compose
