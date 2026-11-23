@@ -130,7 +130,7 @@ export default function SignIn({
   return (
     <>
       <Head>
-        <title>{t("Sign up | Litefuse")}</title>
+        <title>{t("Sign up | DeepTrace")}</title>
         <meta
           name="description"
           content="Create an account, no credit card required."

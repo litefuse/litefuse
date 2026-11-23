@@ -16,10 +16,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  * img-src https to allow loading images from SSO providers
  */
 const persistingChronicleFrameSrc = (() => {
-  const origins = new Set([
-    "http://127.0.0.1:8081",
-    "http://localhost:8081",
-  ]);
+  const origins = new Set();
+  if (process.env.NODE_ENV !== "production") {
+    origins.add("http://127.0.0.1:8081");
+    origins.add("http://localhost:8081");
+  }
   const configured = env.NEXT_PUBLIC_PERSISTING_CHRONICLE_URL;
   if (configured) {
     try {

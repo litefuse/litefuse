@@ -62,11 +62,17 @@ function buildHistoryPatch(keepEmbed: boolean): string {
  *
  * - embed=1 (default): hide Chronicle rail (Litefuse sidebar owns nav)
  * - embed=0: full Chronicle UI including rail (standalone preview via :3000)
+ *
+ * Disabled in production — proxying localhost is an SSRF / info-leak risk.
  */
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
 ) {
+  if (process.env.NODE_ENV === "production") {
+    return res.status(404).end("Not Found");
+  }
+
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
     return res.status(405).end("Method not allowed");
@@ -105,10 +111,8 @@ export default async function handler(
       res.setHeader("X-Frame-Options", "SAMEORIGIN");
     }
     return res.send(body);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "fetch failed";
-    return res
-      .status(502)
-      .send(`Cannot reach Chronicle at ${LOCAL_CHRONICLE_ORIGIN}: ${message}`);
+  } catch {
+    // Do not leak upstream host / internal error details.
+    return res.status(502).send("Cannot reach local Chronicle preview");
   }
 }

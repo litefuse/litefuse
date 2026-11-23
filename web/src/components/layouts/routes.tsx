@@ -53,7 +53,7 @@ export enum RouteGroup {
   Observability = "Observability",
   PromptManagement = "Prompt Management",
   Evaluation = "Evaluation",
-  Persisting = "pChronicle",
+  Persisting = "Offline Data Management",
 }
 
 export type Route = {

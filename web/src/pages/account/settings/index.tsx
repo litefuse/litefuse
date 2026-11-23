@@ -165,7 +165,7 @@ function DeleteAccountButton() {
         description: t("Your account has been successfully deleted."),
       });
       await new Promise((resolve) => setTimeout(resolve, 2000));
-      await forceSignOut({ redirectTo: "/" });
+      await forceSignOut();
     } catch (error) {
       console.error(error);
       showErrorToast(

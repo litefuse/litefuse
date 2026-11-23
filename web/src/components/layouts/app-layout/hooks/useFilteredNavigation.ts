@@ -19,6 +19,7 @@ import type { NavigationItem } from "@/src/components/layouts/utilities/routes";
 import { applyNavigationFilters } from "../utils/navigationFilters";
 import type { NavigationFilterContext } from "../utils/navigationFilters.types";
 import { isPathActive } from "../utils/pathClassification";
+import { stripBasePath } from "@/src/utils/redirect";
 
 /** Organization type from user session (can be null when not in project/org context) */
 type Organization = User["organizations"][number] | null | undefined;
@@ -129,7 +130,9 @@ export function useFilteredNavigation(
   return useMemo(() => {
     // Concrete URL path (needed for dynamic segments like /persisting/[section],
     // where router.pathname stays "/…/persisting/[section]" for every item).
-    const currentAsPath = router.asPath.split(/[?#]/)[0] ?? "";
+    const currentAsPath = stripBasePath(
+      router.asPath.split(/[?#]/)[0] ?? "",
+    );
 
     const mapRouteToNavigationItem = (route: Route): NavigationItem => {
       const url = route.pathname

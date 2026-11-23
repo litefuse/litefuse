@@ -26,7 +26,7 @@ const NAV_GROUP_LABELS: Record<RouteGroup, string> = {
   [RouteGroup.Observability]: i18nKey("Observability"),
   [RouteGroup.PromptManagement]: i18nKey("Prompt Management"),
   [RouteGroup.Evaluation]: i18nKey("Evaluation"),
-  [RouteGroup.Persisting]: i18nKey("pChronicle"),
+  [RouteGroup.Persisting]: i18nKey("Offline Data Management"),
 };
 
 export type NavMainItem = {

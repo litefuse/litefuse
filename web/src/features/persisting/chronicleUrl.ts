@@ -15,25 +15,29 @@ export function chroniclePageForSection(section: string): string {
 /**
  * Switch Chronicle's active page inside an already-loaded same-origin iframe.
  * Avoids a full document reload (and the dark shell flash).
+ * Uses replaceState so browser Back does not desync the iframe and outer route.
  */
 export function navigateChronicleEmbed(win: Window, section: string): void {
   const page = chroniclePageForSection(section);
   const params = new URLSearchParams({ page, embed: "1" });
   const next = `${win.location.pathname}?${params.toString()}`;
-  win.history.pushState(win.history.state, "", next);
+  win.history.replaceState(win.history.state, "", next);
   win.dispatchEvent(new PopStateEvent("popstate"));
 }
 
 /**
  * Embed URL for the current browser.
- * - localhost: stay on this dev server. The browser is often port-forwarded,
- *   so 127.0.0.1:8081 would be the user's machine, not Chronicle.
- * - otherwise: same-origin Chronicle root (Litefuse is mounted under /litefuse).
- * - NEXT_PUBLIC_PERSISTING_CHRONICLE_URL overrides the non-local case.
+ * - Explicit NEXT_PUBLIC_PERSISTING_CHRONICLE_URL always wins when set.
+ * - localhost without override: same-origin frame proxy (port-forward safe).
+ * - otherwise: same-origin Chronicle root (Litefuse under /litefuse) or "".
  */
 export function buildChronicleEmbedUrl(section: string): string {
   const page = chroniclePageForSection(section);
   const params = new URLSearchParams({ page, embed: "1" });
+  const override = env.NEXT_PUBLIC_PERSISTING_CHRONICLE_URL?.replace(/\/$/, "");
+  if (override) {
+    return `${override}/?${params.toString()}`;
+  }
   if (typeof window !== "undefined") {
     const host = window.location.hostname;
     if (host === "localhost" || host === "127.0.0.1") {
@@ -41,6 +45,13 @@ export function buildChronicleEmbedUrl(section: string): string {
       return `${basePath}/api/persisting/frame?${params.toString()}`;
     }
   }
-  const override = env.NEXT_PUBLIC_PERSISTING_CHRONICLE_URL?.replace(/\/$/, "");
-  return `${override ?? ""}/?${params.toString()}`;
+  // Same-origin root when Chronicle is served next to Litefuse (e.g. /).
+  // Avoid recursively embedding Litefuse in itself when basePath is empty —
+  // require an explicit override or a non-root basePath layout in production.
+  const basePath = env.NEXT_PUBLIC_BASE_PATH?.replace(/\/$/, "") ?? "";
+  if (basePath) {
+    return `/?${params.toString()}`;
+  }
+  // No safe embed target configured.
+  return "";
 }

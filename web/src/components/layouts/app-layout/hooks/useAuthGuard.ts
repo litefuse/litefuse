@@ -134,7 +134,7 @@ export function useAuthGuard(
         didDocumentLoadOnPath("/") &&
         !hasCompletedRootAutoEnter()
       ) {
-        markRootAutoEnterCompleted();
+        // Keep useMemo pure — AppLayout marks completion when it actually redirects.
         return {
           action: "redirect",
           url: defaultPath,
@@ -159,7 +159,8 @@ function hasCompletedRootAutoEnter(): boolean {
   }
 }
 
-function markRootAutoEnterCompleted(): void {
+/** Call from AppLayout when performing the root auto-enter redirect. */
+export function markRootAutoEnterCompleted(): void {
   if (typeof window === "undefined") return;
   try {
     sessionStorage.setItem(ROOT_AUTO_ENTER_KEY, "1");

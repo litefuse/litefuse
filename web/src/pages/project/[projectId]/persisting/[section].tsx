@@ -1,18 +1,30 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
+import { useTranslation } from "react-i18next";
 import Page from "@/src/components/layouts/page";
 import {
   buildChronicleEmbedUrl,
   chroniclePageForSection,
   navigateChronicleEmbed,
 } from "@/src/features/persisting/chronicleUrl";
+import { i18nKey } from "@/src/features/i18n/i18nKey";
 
-const SECTIONS: Record<string, string> = {
-  datasets: "Datasets",
-  runs: "Runs",
-  analysis: "Analysis",
-  storage: "Storage",
-  requests: "Requests",
+const SECTION_KEYS = [
+  "datasets",
+  "runs",
+  "analysis",
+  "storage",
+  "requests",
+] as const;
+
+type SectionKey = (typeof SECTION_KEYS)[number];
+
+const SECTION_I18N: Record<SectionKey, string> = {
+  datasets: i18nKey("Datasets"),
+  runs: i18nKey("Runs"),
+  analysis: i18nKey("Analysis"),
+  storage: i18nKey("Storage"),
+  requests: i18nKey("Requests"),
 };
 
 /** Match Chronicle content surface — covers the dark shell while the iframe boots. */
@@ -41,10 +53,15 @@ function applyEmbedBootStyles(doc: Document) {
   doc.head.appendChild(style);
 }
 
-function resolveSection(querySection: string, asPath: string): string {
-  if (SECTIONS[querySection]) return querySection;
+function resolveSection(querySection: string, asPath: string): SectionKey | "" {
+  if ((SECTION_KEYS as readonly string[]).includes(querySection)) {
+    return querySection as SectionKey;
+  }
   const fromPath = asPath.match(/\/persisting\/([^/?#]+)/)?.[1] ?? "";
-  return SECTIONS[fromPath] ? fromPath : "";
+  if ((SECTION_KEYS as readonly string[]).includes(fromPath)) {
+    return fromPath as SectionKey;
+  }
+  return "";
 }
 
 function embedPageMatches(win: Window, section: string): boolean {
@@ -52,29 +69,34 @@ function embedPageMatches(win: Window, section: string): boolean {
   return current === chroniclePageForSection(section);
 }
 
-function initialEmbedSrc(section: string): string {
-  if (!section || typeof window === "undefined") return "";
-  return buildChronicleEmbedUrl(section);
-}
-
 export default function PersistingSectionPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const querySection =
     typeof router.query.section === "string" ? router.query.section : "";
   const section = resolveSection(querySection, router.asPath);
-  const title = SECTIONS[section] ?? "Datasets";
+  const title = section ? t(SECTION_I18N[section]) : t(i18nKey("Datasets"));
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const readyRef = useRef(false);
   const sectionRef = useRef(section);
-  // Sync src on first client paint so we never flash an empty dark frame.
-  const [iframeSrc, setIframeSrc] = useState(() => initialEmbedSrc(section));
-  // Hide iframe until first paint completes (entry from other Litefuse routes).
+  // Always start empty on SSR + first client paint to avoid hydration mismatch.
+  const [iframeSrc, setIframeSrc] = useState("");
   const [frameReady, setFrameReady] = useState(false);
 
   useEffect(() => {
     sectionRef.current = section;
   }, [section]);
+
+  // Invalid section → fall back to datasets.
+  useEffect(() => {
+    if (!router.isReady) return;
+    if (section) return;
+    const projectId =
+      typeof router.query.projectId === "string" ? router.query.projectId : "";
+    if (!projectId) return;
+    void router.replace(`/project/${projectId}/persisting/datasets`);
+  }, [router, section]);
 
   useEffect(() => {
     if (!section || typeof window === "undefined") return;
@@ -94,7 +116,11 @@ export default function PersistingSectionPage() {
         }
         return;
       } catch {
-        // Cross-origin — fall through to a hard src update.
+        // Cross-origin — hard-reload the iframe src.
+        readyRef.current = false;
+        setFrameReady(false);
+        setIframeSrc(buildChronicleEmbedUrl(section));
+        return;
       }
     }
 
@@ -113,7 +139,7 @@ export default function PersistingSectionPage() {
       headerProps={{
         title,
         help: {
-          description: `Persisting Chronicle ${title} view.`,
+          description: t(i18nKey("Offline Data Management")),
         },
       }}
     >

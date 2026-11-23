@@ -3,6 +3,11 @@ import { env } from "@/src/env.mjs";
 
 const LAST_USED_AUTH_METHOD_KEY = "langfuse_last_used_auth_method";
 
+function defaultRedirectTo(): string {
+  const basePath = env.NEXT_PUBLIC_BASE_PATH ?? "";
+  return `${basePath}/auth/sign-in`;
+}
+
 /**
  * Fully tear down the browser session for shared-domain deploys.
  *
@@ -11,10 +16,10 @@ const LAST_USED_AUTH_METHOD_KEY = "langfuse_last_used_auth_method";
  * user, so `/auth/sso-initiate` skips Feishu and drops them back in.
  */
 export async function forceSignOut(options?: {
-  /** Where to land after logout. Defaults to site root (Chronicle portal). */
+  /** Where to land after logout. Defaults to sign-in (with basePath). */
   redirectTo?: string;
 }): Promise<void> {
-  const redirectTo = options?.redirectTo ?? "/";
+  const redirectTo = options?.redirectTo ?? defaultRedirectTo();
 
   try {
     sessionStorage.clear();

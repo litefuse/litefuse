@@ -171,7 +171,7 @@ export default function EnterpriseSsoRequiredPage() {
   return (
     <>
       <Head>
-        <title>{t("Enterprise SSO Required | Litefuse")}</title>
+        <title>{t("Enterprise SSO Required | DeepTrace")}</title>
       </Head>
       <div className="min-h-screen-with-banner bg-background flex flex-col justify-center px-6 py-12 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">

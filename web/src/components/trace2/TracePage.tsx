@@ -18,7 +18,7 @@ import { Badge } from "@/src/components/ui/badge";
 import { useTranslation } from "react-i18next";
 
 /** Product name, never translated. */
-const LITEFUSE_BRAND = "Litefuse";
+const DEEPTRACE_BRAND = "DeepTrace";
 export function TracePage({
   traceId,
   timestamp,
@@ -90,17 +90,17 @@ export function TracePage({
         asChild
         size="sm"
         variant="outline"
-        title={t("Back to Litefuse")}
+        title={t("Back to DeepTrace")}
         className="px-3"
       >
-        <Link href="/">{LITEFUSE_BRAND}</Link>
+        <Link href="/">{DEEPTRACE_BRAND}</Link>
       </Button>
     ) : (
       <Button
         asChild
         size="sm"
         variant="default"
-        title={t("Sign in to Litefuse")}
+        title={t("Sign in to DeepTrace")}
         className="px-3"
       >
         <Link href={`/auth/sign-in?targetPath=${encodedTargetPath}`}>

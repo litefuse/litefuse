@@ -10,7 +10,7 @@ export default function OnboardingPage() {
   return (
     <>
       <Head>
-        <title>{t("Onboarding | Litefuse")}</title>
+        <title>{t("Onboarding | DeepTrace")}</title>
       </Head>
       <OnboardingSurvey />
     </>

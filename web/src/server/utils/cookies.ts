@@ -45,41 +45,43 @@ function getAuthCookieClearPaths(): string[] {
   return Array.from(paths);
 }
 
+function isAuthCookieName(name: string): boolean {
+  return (
+    name.includes("next-auth.") ||
+    name.startsWith("__Secure-next-auth.") ||
+    name.startsWith("__Host-next-auth.")
+  );
+}
+
 /**
- * Cookie names that may exist from current config or prior deploys
- * (with/without __Secure-/__Host-, with/without cloud region suffix).
+ * Cookie names to expire: those present on the request that look like NextAuth
+ * cookies, plus the configured session token name as a fallback.
  */
-function getAuthCookieNamesToClear(): string[] {
-  const region = env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION
-    ? `.${env.NEXT_PUBLIC_LITEFUSE_CLOUD_REGION}`
-    : "";
+function getAuthCookieNamesToClear(presentCookieNames: string[]): string[] {
   const names = new Set<string>();
 
-  const addWithChunks = (name: string, chunked: boolean) => {
-    names.add(name);
-    if (chunked) {
-      for (let i = 0; i < 6; i++) {
-        names.add(`${name}.${i}`);
-      }
-    }
-  };
-
-  for (const base of AUTH_COOKIE_BASE_NAMES) {
-    const isSession = base === "next-auth.session-token";
-    // Current configured name
-    addWithChunks(getCookieName(base), isSession);
-    // Common leftovers from path/prefix/region mismatches across deploys
-    for (const prefix of ["", "__Secure-"]) {
-      addWithChunks(`${prefix}${base}`, isSession);
-      if (region) {
-        addWithChunks(`${prefix}${base}${region}`, isSession);
-      }
+  for (const name of presentCookieNames) {
+    if (isAuthCookieName(name)) {
+      names.add(name);
     }
   }
-  // NextAuth default CSRF uses __Host- when secure
-  names.add("__Host-next-auth.csrf-token");
-  if (region) {
-    names.add(`__Host-next-auth.csrf-token${region}`);
+
+  // Always clear the active configured session token (and common chunks).
+  const sessionName = getCookieName("next-auth.session-token");
+  names.add(sessionName);
+  for (let i = 0; i < 6; i++) {
+    names.add(`${sessionName}.${i}`);
+  }
+
+  // Also clear plain / __Secure- variants of the base session name if present
+  // on the request — already covered by isAuthCookieName above.
+
+  // Ensure CSRF host-prefixed name is cleared when present.
+  for (const base of AUTH_COOKIE_BASE_NAMES) {
+    const configured = getCookieName(base);
+    if (presentCookieNames.includes(configured)) {
+      names.add(configured);
+    }
   }
 
   return Array.from(names);
@@ -109,13 +111,15 @@ function serializeExpiredCookie(
 }
 
 /**
- * Build Set-Cookie values that expire auth cookies at every plausible
- * path/domain so logout cannot leave a stale session on a shared-domain host.
+ * Build Set-Cookie values that expire the auth cookies that are actually
+ * present (plus the configured session token), at Path=/ and Path=basePath.
+ * Avoids emitting dozens of unused Set-Cookie headers that can blow Nginx
+ * proxy buffers (502 on sign-out).
  */
-export function buildAuthCookieClearHeaders(): string[] {
+export function buildAuthCookieClearHeaders(
+  presentCookieNames: string[] = [],
+): string[] {
   const configuredDomain = env.NEXTAUTH_COOKIE_DOMAIN;
-  // Clear both with and without Domain — a cookie is only deleted when name,
-  // path, and domain match how it was originally set.
   const domainVariants: Array<string | undefined> = configuredDomain
     ? [configuredDomain, undefined]
     : [undefined];
@@ -124,7 +128,7 @@ export function buildAuthCookieClearHeaders(): string[] {
   const headers: string[] = [];
   const seen = new Set<string>();
 
-  for (const name of getAuthCookieNamesToClear()) {
+  for (const name of getAuthCookieNamesToClear(presentCookieNames)) {
     for (const path of getAuthCookieClearPaths()) {
       for (const domain of domainVariants) {
         // __Host- cookies: Secure + Path=/ + no Domain only
@@ -152,8 +156,11 @@ export function buildAuthCookieClearHeaders(): string[] {
 }
 
 /** Append expired auth cookies onto an existing API response. */
-export function appendAuthCookieClearHeaders(res: NextApiResponse): void {
-  for (const header of buildAuthCookieClearHeaders()) {
+export function appendAuthCookieClearHeaders(
+  res: NextApiResponse,
+  presentCookieNames: string[] = [],
+): void {
+  for (const header of buildAuthCookieClearHeaders(presentCookieNames)) {
     res.appendHeader("Set-Cookie", header);
   }
 }
