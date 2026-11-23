@@ -47,6 +47,9 @@ services:
       DORIS_MAX_OPEN_CONNECTIONS: ${DORIS_MAX_OPEN_CONNECTIONS:-100}
       DORIS_REQUEST_TIMEOUT_MS: ${DORIS_REQUEST_TIMEOUT_MS:-30000}
       LITEFUSE_STORAGE_PAGE_SIZE: ${LITEFUSE_STORAGE_PAGE_SIZE:-262144}
+      # Single-BE bundled Doris: tables must be created with 1 replica
+      # (migration runner default is the reliability-safe 3).
+      DORIS_REPLICATION_NUM: ${DORIS_REPLICATION_NUM:-1}
       LITEFUSE_S3_EVENT_UPLOAD_BUCKET: ${LITEFUSE_S3_EVENT_UPLOAD_BUCKET:-litefuse}
       LITEFUSE_S3_EVENT_UPLOAD_REGION: ${LITEFUSE_S3_EVENT_UPLOAD_REGION:-us-east-1}
       LITEFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: ${LITEFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID:-minio}
@@ -121,7 +124,11 @@ services:
       - doris_fe_meta:/opt/apache-doris/fe/doris-meta
       - doris_be_storage:/opt/apache-doris/be/storage
     healthcheck:
-      test: ["CMD-SHELL", "mysql -h 127.0.0.1 -P 9030 -uroot -e 'SELECT 1' 2>/dev/null || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "mysql -h 127.0.0.1 -P 9030 -uroot -e 'SHOW BACKENDS\\G' 2>/dev/null | grep -q 'Alive: true'",
+        ]
       interval: 10s
       timeout: 5s
       retries: 18

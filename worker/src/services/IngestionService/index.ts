@@ -14,7 +14,6 @@ import {
   convertObservationReadToInsert,
   convertScoreReadToInsert,
   convertTraceReadToInsert,
-  convertTraceToStagingObservation,
   DorisClientType,
   eventTypes,
   IngestionEntityTypes,
@@ -65,7 +64,6 @@ import {
   overwriteObject,
 } from "./utils";
 import { randomUUID } from "crypto";
-import { SpanKind } from "@opentelemetry/api";
 
 type InsertRecord =
   | TraceRecordInsertType
@@ -835,13 +833,7 @@ export class IngestionService {
     traceEventList: TraceEventType[];
     createEventTraceRecord: boolean;
   }) {
-    const {
-      projectId,
-      entityId,
-      createdAtTimestamp,
-      traceEventList,
-      createEventTraceRecord,
-    } = params;
+    const { projectId, entityId, createdAtTimestamp, traceEventList } = params;
     if (traceEventList.length === 0) return;
 
     const timeSortedEvents =
@@ -986,13 +978,8 @@ export class IngestionService {
     observationEventList: ObservationEvent[];
     writeToStagingTables: boolean;
   }) {
-    const {
-      projectId,
-      entityId,
-      createdAtTimestamp,
-      observationEventList,
-      writeToStagingTables,
-    } = params;
+    const { projectId, entityId, createdAtTimestamp, observationEventList } =
+      params;
     if (observationEventList.length === 0) return;
 
     const timeSortedEvents =
@@ -1814,7 +1801,7 @@ export class IngestionService {
   private fixMalformedNestedJson(str: string): string {
     const objectPattern = /"([^"]+)":"(\{(?:[^{}]*(?:\{[^{}]*\}[^{}]*)*)*\})"/g;
     const arrayPattern =
-      /"([^"]+)":"(\[(?:[^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*)*\])"/g;
+      /"([^"]+)":"(\[(?:[^[\]]*(?:\[[^[\]]*\][^[\]]*)*)*\])"/g;
 
     let fixed = str;
 

@@ -1,7 +1,6 @@
 import {
   FilterCondition,
   ScoreDataTypeEnum,
-  type ScoreDataTypeType,
   TracingSearchType,
 } from "@langfuse/shared";
 import {
