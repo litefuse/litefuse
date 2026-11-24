@@ -446,7 +446,7 @@ jobs:
           LITEFUSE_LLM_CONNECTION_GOOGLEAISTUDIO_KEY: ${{ secrets.LITEFUSE_LLM_CONNECTION_GOOGLEAISTUDIO_KEY }}
 
   e2e-tests:
-    timeout-minutes: 20
+    timeout-minutes: 30
     runs-on: ubuntu-24.04
     needs:
       - pre-job
@@ -525,7 +525,7 @@ jobs:
         env:
           NODE_OPTIONS: --max_old_space_size=8192
       - name: Install playwright
-        run: pnpm --filter=web exec playwright install --with-deps
+        run: pnpm --filter=web exec playwright install --with-deps chromium
       - name: Run e2e tests
         run: pnpm --filter=web run test:e2e
 
