@@ -26,8 +26,9 @@ function isSameOriginRequest(req: NextApiRequest): boolean {
   }
   const protoHeader = req.headers["x-forwarded-proto"];
   const proto =
-    (Array.isArray(protoHeader) ? protoHeader[0] : protoHeader)?.split(",")[0]?.trim() ||
-    (env.NEXTAUTH_URL.startsWith("https") ? "https" : "http");
+    (Array.isArray(protoHeader) ? protoHeader[0] : protoHeader)
+      ?.split(",")[0]
+      ?.trim() || (env.NEXTAUTH_URL.startsWith("https") ? "https" : "http");
   requestOrigins.add(`${proto}://${host}`);
 
   const origin = req.headers.origin;

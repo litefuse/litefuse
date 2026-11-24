@@ -7,9 +7,7 @@ import { type User } from "next-auth";
  * organization overview). Falls back to the organization overview (`/`) when
  * the user has no projects.
  */
-export function getDefaultPostLoginPath(
-  user: User | null | undefined,
-): string {
+export function getDefaultPostLoginPath(user: User | null | undefined): string {
   if (!user?.organizations?.length) {
     return "/";
   }

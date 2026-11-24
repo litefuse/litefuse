@@ -8,7 +8,11 @@ import { getDefaultPostLoginPath } from "@/src/features/auth/lib/getDefaultPostL
 import { useRouter } from "next/router";
 import { useMemo } from "react";
 import { PATH_CONSTANTS } from "../utils/pathClassification";
-import { getSafeRedirectPath, stripBasePath, didDocumentLoadOnPath } from "@/src/utils/redirect";
+import {
+  getSafeRedirectPath,
+  stripBasePath,
+  didDocumentLoadOnPath,
+} from "@/src/utils/redirect";
 import type { SessionContextValue } from "next-auth/react";
 
 /** Actions the auth guard can request */

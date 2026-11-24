@@ -112,9 +112,7 @@ export default function SignIn({
       }
 
       if (isLangfuseCloud && region !== "DEV") {
-        window.location.assign(
-          `${env.NEXT_PUBLIC_BASE_PATH ?? ""}/onboarding`,
-        );
+        window.location.assign(`${env.NEXT_PUBLIC_BASE_PATH ?? ""}/onboarding`);
         return;
       }
 

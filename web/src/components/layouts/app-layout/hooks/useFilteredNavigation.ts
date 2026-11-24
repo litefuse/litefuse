@@ -130,9 +130,7 @@ export function useFilteredNavigation(
   return useMemo(() => {
     // Concrete URL path (needed for dynamic segments like /persisting/[section],
     // where router.pathname stays "/…/persisting/[section]" for every item).
-    const currentAsPath = stripBasePath(
-      router.asPath.split(/[?#]/)[0] ?? "",
-    );
+    const currentAsPath = stripBasePath(router.asPath.split(/[?#]/)[0] ?? "");
 
     const mapRouteToNavigationItem = (route: Route): NavigationItem => {
       const url = route.pathname
