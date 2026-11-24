@@ -8,22 +8,22 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { OtelIngestionProcessor } from "@langfuse/shared/src/server";
 import { prisma } from "@langfuse/shared/src/db";
 import { IngestionService } from "../../services/IngestionService";
-import * as clickhouseWriterExports from "../../services/ClickhouseWriter";
+import * as dorisWriterExports from "../../services/DorisWriter";
 
-const mockAddToClickhouseWriter = vi.fn();
-vi.mock("../../services/ClickhouseWriter", async (importOriginal) => {
+const mockAddToDorisWriter = vi.fn();
+vi.mock("../../services/DorisWriter", async (importOriginal) => {
   const original = (await importOriginal()) as object;
   return {
     ...original,
-    ClickhouseWriter: {
+    DorisWriter: {
       getInstance: () => ({
-        addToQueue: mockAddToClickhouseWriter,
+        addToQueue: mockAddToDorisWriter,
       }),
     },
   };
 });
 
-const mockClickhouseClient = {
+const mockDorisClient = {
   query: async () => ({
     json: async () => [],
     query_id: "test-query-id",
@@ -34,8 +34,8 @@ const mockClickhouseClient = {
 const ingestionService = new IngestionService(
   null as any,
   prisma,
-  clickhouseWriterExports.ClickhouseWriter.getInstance() as any,
-  mockClickhouseClient as any,
+  dorisWriterExports.DorisWriter.getInstance() as any,
+  mockDorisClient as any,
 );
 
 function createNanoTimestamp(nanoTime: bigint): {

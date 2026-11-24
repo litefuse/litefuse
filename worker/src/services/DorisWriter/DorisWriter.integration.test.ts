@@ -1,65 +1,71 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from "vitest";
 import { DorisClient } from "@langfuse/shared/src/server";
+import { env as sharedEnv } from "@langfuse/shared/src/env";
 import { DorisWriter, TableName } from "./index";
+
+const TEST_DB = "litefuse_writer_test";
 
 describe("DorisWriter Integration Tests", () => {
   let dorisClient: DorisClient;
   let writer: DorisWriter;
 
-  beforeEach(async () => {
-    // 初始化 Doris 客户端，先连接到默认数据库进行初始化
-    dorisClient = new DorisClient({
-      feHttpUrl: "http://10.16.10.6:8630",
-      feQueryPort: 9630,
-      database: "information_schema", // 先连接系统数据库
-      username: "root",
-      password: "123456",
+  beforeAll(async () => {
+    const adminClient = new DorisClient({
+      feHttpUrl: sharedEnv.DORIS_FE_HTTP_URL,
+      feQueryPort: sharedEnv.DORIS_FE_QUERY_PORT,
+      database: "information_schema",
+      username: sharedEnv.DORIS_USER,
+      password: sharedEnv.DORIS_PASSWORD ?? "",
       timeout: 30000,
     });
 
-    // 1. 创建 langfuse 数据库（如果不存在）
     try {
-      await dorisClient.query("CREATE DATABASE IF NOT EXISTS langfuse");
-      console.log("✓ langfuse 数据库已创建或存在");
-    } catch (error) {
-      console.warn("创建数据库失败:", error);
-      throw error;
+      await adminClient.query(`CREATE DATABASE IF NOT EXISTS \`${TEST_DB}\``);
+    } finally {
+      await adminClient.close();
     }
 
-    // 2. 切换到 langfuse 数据库
-    await dorisClient.close();
     dorisClient = new DorisClient({
-      feHttpUrl: "http://10.16.10.6:8630",
-      feQueryPort: 9630,
-      database: "langfuse",
-      username: "root",
-      password: "123456",
+      feHttpUrl: sharedEnv.DORIS_FE_HTTP_URL,
+      feQueryPort: sharedEnv.DORIS_FE_QUERY_PORT,
+      database: TEST_DB,
+      username: sharedEnv.DORIS_USER,
+      password: sharedEnv.DORIS_PASSWORD ?? "",
       timeout: 30000,
     });
 
-    // 3. 创建测试需要的表
     await createTestTables();
+  }, 30000);
 
-    // 4. 获取 DorisWriter 实例
+  afterAll(async () => {
+    if (dorisClient) {
+      await dorisClient.close();
+    }
+  });
+
+  beforeEach(() => {
+    (DorisWriter as any).instance = null;
     writer = DorisWriter.getInstance(dorisClient);
   });
 
   afterEach(async () => {
     try {
-      // 清理测试数据
       await dorisClient.query("TRUNCATE TABLE traces");
       await dorisClient.query("TRUNCATE TABLE scores");
-      await dorisClient.query("TRUNCATE TABLE observations");
-      console.log("✓ 测试数据已清理");
+      await dorisClient.query(`TRUNCATE TABLE ${TableName.Observations}`);
     } catch (error) {
-      console.warn("清理测试数据失败:", error);
+      console.warn("Failed to truncate writer test tables:", error);
     }
 
-    // 关闭连接
     await writer.shutdown();
-    await dorisClient.close();
-
-    // 重置单例实例
     (DorisWriter as any).instance = null;
   });
 
@@ -71,17 +77,18 @@ describe("DorisWriter Integration Tests", () => {
           CREATE TABLE IF NOT EXISTS traces (
             id VARCHAR(255) NOT NULL,
             name VARCHAR(255),
-            metadata JSON,
+            metadata Map<String, String>,
             tags ARRAY<VARCHAR(255)>,
-            timestamp BIGINT,
+            timestamp DateTime(3),
+            timestamp_date Date,
             public BOOLEAN,
             bookmarked BOOLEAN,
             environment VARCHAR(255),
             project_id VARCHAR(255),
             is_deleted TINYINT,
-            created_at BIGINT,
-            updated_at BIGINT,
-            event_ts BIGINT
+            created_at DateTime(3),
+            updated_at DateTime(3),
+            event_ts DateTime(3)
           )
           DUPLICATE KEY(id)
           DISTRIBUTED BY HASH(id) BUCKETS 1
@@ -96,15 +103,16 @@ describe("DorisWriter Integration Tests", () => {
           CREATE TABLE IF NOT EXISTS scores (
             id VARCHAR(255) NOT NULL,
             name VARCHAR(255),
-            metadata JSON,
-            timestamp BIGINT,
+            metadata Map<String, String>,
+            timestamp DateTime(3),
+            timestamp_date Date,
             source VARCHAR(255),
             environment VARCHAR(255),
             project_id VARCHAR(255),
             is_deleted TINYINT,
-            created_at BIGINT,
-            updated_at BIGINT,
-            event_ts BIGINT,
+            created_at DateTime(3),
+            updated_at DateTime(3),
+            event_ts DateTime(3),
             value DOUBLE,
             data_type VARCHAR(50),
             trace_id VARCHAR(255)
@@ -117,25 +125,26 @@ describe("DorisWriter Integration Tests", () => {
         `,
       },
       {
-        name: "observations",
+        name: TableName.Observations,
         sql: `
-          CREATE TABLE IF NOT EXISTS observations (
+          CREATE TABLE IF NOT EXISTS ${TableName.Observations} (
             id VARCHAR(255) NOT NULL,
             name VARCHAR(255),
             type VARCHAR(50),
-            metadata JSON,
+            metadata Map<String, String>,
             environment VARCHAR(255),
             project_id VARCHAR(255),
             is_deleted TINYINT,
-            created_at BIGINT,
-            updated_at BIGINT,
-            start_time BIGINT,
-            event_ts BIGINT,
+            created_at DateTime(3),
+            updated_at DateTime(3),
+            start_time DateTime(3),
+            start_time_date Date,
+            event_ts DateTime(3),
             trace_id VARCHAR(255),
-            provided_usage_details JSON,
-            provided_cost_details JSON,
-            usage_details JSON,
-            cost_details JSON
+            provided_usage_details Map<String, BIGINT>,
+            provided_cost_details Map<String, Decimal(38, 12)>,
+            usage_details Map<String, BIGINT>,
+            cost_details Map<String, Decimal(38, 12)>
           )
           DUPLICATE KEY(id)
           DISTRIBUTED BY HASH(id) BUCKETS 1
@@ -147,37 +156,23 @@ describe("DorisWriter Integration Tests", () => {
     ];
 
     for (const table of tables) {
-      try {
-        await dorisClient.query(table.sql);
-        console.log(`✓ 表 ${table.name} 已创建或存在`);
-      } catch (error) {
-        console.error(`创建表 ${table.name} 失败:`, error);
-        throw error;
-      }
+      await dorisClient.query(table.sql);
     }
   }
 
   it("should connect to Doris and verify basic operations", async () => {
-    // 1. 测试健康检查
     const isHealthy = await dorisClient.healthCheck();
     expect(isHealthy).toBe(true);
-    console.log("✓ Doris 健康检查通过");
 
-    // 2. 测试基本查询
     const result = await dorisClient.query("SELECT 1 as test_value");
     expect(result).toHaveLength(1);
-    expect(result[0].test_value).toBe(1);
-    console.log("✓ 基本查询成功");
+    expect(Number(result[0].test_value)).toBe(1);
 
-    // 3. 验证表存在
     const tables = await dorisClient.query("SHOW TABLES");
-    const tableNames = tables.map(
-      (row: any) => row.Tables_in_langfuse || row.table_name,
-    );
+    const tableNames = tables.map((row: any) => Object.values(row)[0]);
     expect(tableNames).toContain("traces");
     expect(tableNames).toContain("scores");
-    expect(tableNames).toContain("observations");
-    console.log("✓ 所有必需的表都存在");
+    expect(tableNames).toContain(TableName.Observations);
   });
 
   it("should write and read trace data", async () => {
@@ -286,7 +281,7 @@ describe("DorisWriter Integration Tests", () => {
 
     // 验证数据是否写入成功
     const result = await dorisClient.query(
-      "SELECT * FROM observations WHERE id = ?",
+      `SELECT * FROM ${TableName.Observations} WHERE id = ?`,
       [observationData.id],
     );
 
@@ -329,7 +324,7 @@ describe("DorisWriter Integration Tests", () => {
       "SELECT COUNT(*) as count FROM traces WHERE id LIKE 'test-trace-batch-%'",
     );
 
-    expect(result[0].count).toBe(batchSize);
+    expect(Number(result[0].count)).toBe(batchSize);
     console.log("✓ 批量数据查询验证成功");
   });
 
@@ -367,7 +362,7 @@ describe("DorisWriter Integration Tests", () => {
       "SELECT COUNT(*) as count FROM traces WHERE id LIKE 'concurrent-trace-%'",
     );
 
-    expect(result[0].count).toBe(concurrentWrites);
+    expect(Number(result[0].count)).toBe(concurrentWrites);
     console.log("✓ 并发数据查询验证成功");
   });
 });

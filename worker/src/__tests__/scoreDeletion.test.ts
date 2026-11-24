@@ -1,6 +1,7 @@
 import { expect, describe, it, beforeAll } from "vitest";
 import {
-  clickhouseClient,
+  dorisClient,
+  formatDataForDoris,
   createOrgProjectAndApiKey,
   createTraceScore,
   createScoresCh,
@@ -62,23 +63,34 @@ describe("score deletion", () => {
       }),
     ]);
 
-    await clickhouseClient().insert({
-      table: "blob_storage_file_log",
-      format: "JSONEachRow",
-      values: [
-        {
-          id: randomUUID(),
-          project_id: projectId,
-          entity_type: "score",
-          entity_id: scoreId,
-          event_id: randomUUID(),
-          bucket_name: env.LITEFUSE_S3_EVENT_UPLOAD_BUCKET,
-          bucket_path: `${projectId}/score/${scoreId}-score.json`,
-          created_at: new Date().getTime(),
-          updated_at: new Date().getTime(),
-        },
-      ],
-    });
+    const now = Date.now();
+    await dorisClient().streamLoad(
+      "blob_storage_file_log",
+      formatDataForDoris(
+        [
+          {
+            id: randomUUID(),
+            project_id: projectId,
+            entity_type: "score",
+            entity_id: scoreId,
+            event_id: randomUUID(),
+            bucket_name: env.LITEFUSE_S3_EVENT_UPLOAD_BUCKET,
+            bucket_path: `${projectId}/score/${scoreId}-score.json`,
+            created_at: now,
+            updated_at: now,
+            event_ts: now,
+            is_deleted: 0,
+          },
+        ],
+        "blob_storage_file_log",
+      ),
+      {
+        format: "json",
+        strip_outer_array: true,
+        read_json_by_line: false,
+        max_filter_ratio: 0.1,
+      },
+    );
 
     // When
     await processDorisScoreDelete(projectId, [scoreId]);

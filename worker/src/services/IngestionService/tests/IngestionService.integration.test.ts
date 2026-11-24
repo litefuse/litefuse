@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { uuid, z } from "zod/v4";
 import { prisma } from "@langfuse/shared/src/db";
 import {
-  clickhouseClient,
+  dorisClient,
   ObservationEvent,
   observationRecordReadSchema,
   ObservationRecordReadType,
@@ -18,7 +18,7 @@ import {
   createIngestionEventSchema,
 } from "@langfuse/shared/src/server";
 import waitForExpect from "wait-for-expect";
-import { ClickhouseWriter, TableName } from "../../ClickhouseWriter";
+import { DorisWriter, TableName } from "../../DorisWriter";
 import { IngestionService } from "../../IngestionService";
 import { ModelUsageUnit, ScoreSourceEnum } from "@langfuse/shared";
 import { Cluster } from "ioredis";
@@ -27,9 +27,14 @@ import { env } from "../../../env";
 let projectId = "";
 const environment = "default";
 
-describe("Ingestion end-to-end tests", () => {
+// Legacy ClickHouse v3 traces/observations merge-and-write integration suite.
+// In the Doris all-split OTel-only fork, the legacy `traces` and `observations`
+// tables have been removed; OTel span ingestion is covered by
+// otelGroupJobProcessor.unit.test.ts, otelGrouper.unit.test.ts,
+// otelMetadataProcessing.test.ts, and otelToObservationForEval.test.ts.
+describe.skip("Ingestion end-to-end tests", () => {
   let ingestionService: IngestionService;
-  let clickhouseWriter: ClickhouseWriter;
+  let dorisWriter: DorisWriter;
   let IngestionEventBatchSchema: z.ZodType<any>;
 
   beforeEach(async () => {
@@ -42,13 +47,13 @@ describe("Ingestion end-to-end tests", () => {
       await redis.flushall();
     }
 
-    clickhouseWriter = ClickhouseWriter.getInstance();
+    dorisWriter = DorisWriter.getInstance();
 
     ingestionService = new IngestionService(
       redis,
       prisma,
-      clickhouseWriter,
-      clickhouseClient(),
+      dorisWriter,
+      dorisClient(),
     );
 
     IngestionEventBatchSchema = z.array(createIngestionEventSchema());
@@ -59,9 +64,9 @@ describe("Ingestion end-to-end tests", () => {
     vi.useRealTimers();
 
     // Reset singleton instance
-    await clickhouseWriter.shutdown();
+    await dorisWriter.shutdown();
 
-    ClickhouseWriter.instance = null;
+    (DorisWriter as any).instance = null;
   });
 
   it("should correctly ingest a trace", async () => {
@@ -90,7 +95,7 @@ describe("Ingestion end-to-end tests", () => {
       createdAtTimestamp: new Date(timestamp),
       traceEventList: eventList,
     });
-    await clickhouseWriter.flushAll(true);
+    await dorisWriter.flushAll(true);
 
     const trace = await getClickhouseRecord(TableName.Traces, traceId);
 
@@ -563,7 +568,7 @@ describe("Ingestion end-to-end tests", () => {
         }),
       ]);
 
-      await clickhouseWriter.flushAll(true);
+      await dorisWriter.flushAll(true);
 
       const trace = await getClickhouseRecord(TableName.Traces, traceId);
 
@@ -902,7 +907,7 @@ describe("Ingestion end-to-end tests", () => {
           observationEventList: generationEventList,
         }),
       ]);
-      await clickhouseWriter.flushAll(true);
+      await dorisWriter.flushAll(true);
 
       const generation = await getClickhouseRecord(
         TableName.Observations,
@@ -1085,7 +1090,7 @@ describe("Ingestion end-to-end tests", () => {
       }),
     ]);
 
-    await clickhouseWriter.flushAll(true);
+    await dorisWriter.flushAll(true);
 
     const trace = await getClickhouseRecord(TableName.Traces, traceId);
 
@@ -1270,7 +1275,7 @@ describe("Ingestion end-to-end tests", () => {
       }),
     ]);
 
-    await clickhouseWriter.flushAll(true);
+    await dorisWriter.flushAll(true);
 
     // Verify that valid scores were inserted
     const validScore1 = await getClickhouseRecord(
@@ -1322,7 +1327,7 @@ describe("Ingestion end-to-end tests", () => {
       traceEventList: traceEventList1,
     });
 
-    await clickhouseWriter.flushAll(true);
+    await dorisWriter.flushAll(true);
 
     // Second flush
     const traceEventList2: TraceEventType[] = [
@@ -1347,7 +1352,7 @@ describe("Ingestion end-to-end tests", () => {
       traceEventList: traceEventList2,
     });
 
-    await clickhouseWriter.flushAll(true);
+    await dorisWriter.flushAll(true);
 
     await waitForExpect(async () => {
       const trace = await getClickhouseRecord(TableName.Traces, traceId);
@@ -1406,7 +1411,7 @@ describe("Ingestion end-to-end tests", () => {
       traceEventList,
     });
 
-    await clickhouseWriter.flushAll(true);
+    await dorisWriter.flushAll(true);
 
     const trace = await getClickhouseRecord(TableName.Traces, traceId);
 
@@ -1530,7 +1535,7 @@ describe("Ingestion end-to-end tests", () => {
       observationEventList,
     });
 
-    await clickhouseWriter.flushAll(true);
+    await dorisWriter.flushAll(true);
 
     const observation = await getClickhouseRecord(
       TableName.Observations,
@@ -1668,7 +1673,7 @@ describe("Ingestion end-to-end tests", () => {
       observationEventList,
     });
 
-    await clickhouseWriter.flushAll(true);
+    await dorisWriter.flushAll(true);
 
     const observation = await getClickhouseRecord(
       TableName.Observations,
@@ -1722,7 +1727,7 @@ describe("Ingestion end-to-end tests", () => {
       createdAtTimestamp: new Date(),
       observationEventList: observationEventList1,
     });
-    await clickhouseWriter.flushAll(true);
+    await dorisWriter.flushAll(true);
 
     const observationEventList2: ObservationEvent[] = [
       {
@@ -1745,7 +1750,7 @@ describe("Ingestion end-to-end tests", () => {
       createdAtTimestamp: new Date(),
       observationEventList: observationEventList2,
     });
-    await clickhouseWriter.flushAll(true);
+    await dorisWriter.flushAll(true);
 
     const observation = await getClickhouseRecord(
       TableName.Observations,
@@ -1798,7 +1803,7 @@ describe("Ingestion end-to-end tests", () => {
       observationEventList: generationEventList,
     });
 
-    await clickhouseWriter.flushAll(true);
+    await dorisWriter.flushAll(true);
 
     const generation = await getClickhouseRecord(
       TableName.Observations,
@@ -1869,7 +1874,7 @@ describe("Ingestion end-to-end tests", () => {
       }),
     ]);
 
-    await clickhouseWriter.flushAll(true);
+    await dorisWriter.flushAll(true);
 
     const generationEventList2: ObservationEvent[] = [
       {
@@ -1910,7 +1915,7 @@ describe("Ingestion end-to-end tests", () => {
       observationEventList: generationEventList2,
     });
 
-    await clickhouseWriter.flushAll(true);
+    await dorisWriter.flushAll(true);
 
     const generation = await getClickhouseRecord(
       TableName.Observations,
@@ -2013,7 +2018,7 @@ describe("Ingestion end-to-end tests", () => {
       }),
     ]);
 
-    await clickhouseWriter.flushAll(true);
+    await dorisWriter.flushAll(true);
 
     const trace = await getClickhouseRecord(TableName.Traces, traceId);
 
@@ -2119,7 +2124,7 @@ describe("Ingestion end-to-end tests", () => {
       }),
     ]);
 
-    await clickhouseWriter.flushAll(true);
+    await dorisWriter.flushAll(true);
 
     const trace = await getClickhouseRecord(TableName.Traces, traceId);
     const observation = await getClickhouseRecord(
@@ -2184,7 +2189,7 @@ describe("Ingestion end-to-end tests", () => {
   //     traceEventList,
   //   });
   //
-  //   await clickhouseWriter.flushAll(true);
+  //   await dorisWriter.flushAll(true);
   //
   //   const trace = await getClickhouseRecord(TableName.Traces, traceId);
   //
@@ -2310,7 +2315,7 @@ describe("Ingestion end-to-end tests", () => {
         }),
       ]);
 
-      await clickhouseWriter.flushAll(true);
+      await dorisWriter.flushAll(true);
 
       const trace = await getClickhouseRecord(TableName.Traces, traceId);
 
@@ -2444,7 +2449,7 @@ describe("Ingestion end-to-end tests", () => {
         }),
       ]);
 
-      await clickhouseWriter.flushAll(true);
+      await dorisWriter.flushAll(true);
 
       const generation = await getClickhouseRecord(
         TableName.Observations,
@@ -2584,7 +2589,7 @@ describe("Ingestion end-to-end tests", () => {
         }),
       ]);
 
-      await clickhouseWriter.flushAll(true);
+      await dorisWriter.flushAll(true);
 
       const generation = await getClickhouseRecord(
         TableName.Observations,
@@ -2713,7 +2718,7 @@ describe("Ingestion end-to-end tests", () => {
         }),
       ]);
 
-      await clickhouseWriter.flushAll(true);
+      await dorisWriter.flushAll(true);
 
       const generation = await getClickhouseRecord(
         TableName.Observations,
@@ -2834,7 +2839,7 @@ describe("Ingestion end-to-end tests", () => {
         }),
       ]);
 
-      await clickhouseWriter.flushAll(true);
+      await dorisWriter.flushAll(true);
 
       const generation = await getClickhouseRecord(
         TableName.Observations,
@@ -2852,7 +2857,7 @@ async function getClickhouseRecord<T extends TableName>(
   tableName: T,
   entityId: string,
 ): Promise<RecordReadType<T>> {
-  let query = await clickhouseClient().query({
+  let query = await dorisClient().query({
     query: `SELECT * FROM ${tableName} FINAL WHERE project_id = '${projectId}' AND id = '${entityId}'`,
     format: "JSONEachRow",
   });
@@ -2862,7 +2867,7 @@ async function getClickhouseRecord<T extends TableName>(
     env.LITEFUSE_EXPERIMENT_RETURN_NEW_RESULT === "true"
   ) {
     await new Promise((resolve) => setTimeout(resolve, 100));
-    query = await clickhouseClient().query({
+    query = await dorisClient().query({
       query: `SELECT
                 id,
                 name as name,

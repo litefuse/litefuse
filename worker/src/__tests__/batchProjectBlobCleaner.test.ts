@@ -1,7 +1,8 @@
 import { expect, describe, it, vi, beforeEach, afterEach } from "vitest";
 import { randomUUID } from "crypto";
 import {
-  clickhouseClient,
+  dorisClient,
+  formatDataForDoris,
   createOrgProjectAndApiKey,
   getDeletedProjects,
 } from "@langfuse/shared/src/server";
@@ -36,11 +37,16 @@ async function insertBlobRefs(projectId: string, count: number): Promise<void> {
     is_deleted: 0,
   }));
 
-  await clickhouseClient().insert({
-    table: "blob_storage_file_log",
-    format: "JSONEachRow",
-    values,
-  });
+  await dorisClient().streamLoad(
+    "blob_storage_file_log",
+    formatDataForDoris(values, "blob_storage_file_log"),
+    {
+      format: "json",
+      strip_outer_array: true,
+      read_json_by_line: false,
+      max_filter_ratio: 0.1,
+    },
+  );
 }
 
 async function softDeleteBlobRefs(
@@ -61,11 +67,16 @@ async function softDeleteBlobRefs(
     is_deleted: 1,
   }));
 
-  await clickhouseClient().insert({
-    table: "blob_storage_file_log",
-    format: "JSONEachRow",
-    values,
-  });
+  await dorisClient().streamLoad(
+    "blob_storage_file_log",
+    formatDataForDoris(values, "blob_storage_file_log"),
+    {
+      format: "json",
+      strip_outer_array: true,
+      read_json_by_line: false,
+      max_filter_ratio: 0.1,
+    },
+  );
 }
 
 function getCalledProjectIds(): string[] {

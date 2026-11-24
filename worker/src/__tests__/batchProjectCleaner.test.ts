@@ -11,18 +11,21 @@ import {
   createTrace,
   createDatasetRunItemsCh,
   createDatasetRunItem,
-  queryClickhouse,
+  queryDoris,
+  tableFor,
   redis,
 } from "@langfuse/shared/src/server";
 import { prisma } from "@langfuse/shared/src/db";
 import { env } from "../env";
 
-async function getClickhouseCount(
-  table: string,
+async function getDorisCount(
+  table: "traces" | "dataset_run_items_rmt",
   projectId: string,
 ): Promise<number> {
-  const result = await queryClickhouse<{ count: number }>({
-    query: `SELECT count() as count FROM ${table} FINAL WHERE project_id = {projectId: String}`,
+  const physicalTable =
+    table === "traces" ? tableFor(projectId, "traces_scalar") : table;
+  const result = await queryDoris<{ count: number }>({
+    query: `SELECT count(*) as count FROM ${physicalTable} WHERE project_id = {projectId: String}`,
     params: { projectId },
   });
   return Number(result[0]?.count ?? 0);
@@ -30,10 +33,11 @@ async function getClickhouseCount(
 
 describe("BatchProjectCleaner", () => {
   const TEST_TABLE = "traces" as const;
-  const TEST_LOCK_KEY = `${BATCH_PROJECT_CLEANER_LOCK_PREFIX}:${TEST_TABLE}`;
+  const TEST_LOCK_KEY = BATCH_PROJECT_CLEANER_LOCK_PREFIX;
 
   // Clean up Redis locks after each test
   afterEach(async () => {
+    await redis?.del(BATCH_PROJECT_CLEANER_LOCK_PREFIX);
     for (const table of BATCH_DELETION_TABLES) {
       await redis?.del(`${BATCH_PROJECT_CLEANER_LOCK_PREFIX}:${table}`);
     }
@@ -62,7 +66,7 @@ describe("BatchProjectCleaner", () => {
       expect(lockValue).toBeNull();
     });
 
-    it("should return sleep interval when deleted project has no ClickHouse data", async () => {
+    it("should process deleted project with no Doris data", async () => {
       // Create and soft-delete a project
       const { projectId } = await createOrgProjectAndApiKey();
       await prisma.project.update({
@@ -74,10 +78,10 @@ describe("BatchProjectCleaner", () => {
       const nextDelayMs = await cleaner.processBatch();
 
       expect(nextDelayMs).toBe(
-        env.LITEFUSE_BATCH_PROJECT_CLEANER_SLEEP_ON_EMPTY_MS,
+        env.LITEFUSE_BATCH_PROJECT_CLEANER_CHECK_INTERVAL_MS,
       );
 
-      // Verify lock was not taken
+      // Verify lock was released after processing
       const lockValue = await redis?.get(TEST_LOCK_KEY);
       expect(lockValue).toBeNull();
     });
@@ -97,7 +101,7 @@ describe("BatchProjectCleaner", () => {
       ]);
 
       // Verify traces exist before deletion
-      const countBefore = await getClickhouseCount(TEST_TABLE, projectId);
+      const countBefore = await getDorisCount(TEST_TABLE, projectId);
       expect(countBefore).toBe(2);
 
       // Run processBatch
@@ -105,7 +109,7 @@ describe("BatchProjectCleaner", () => {
       const nextDelayMs = await cleaner.processBatch();
 
       // Verify traces were deleted
-      const countAfter = await getClickhouseCount(TEST_TABLE, projectId);
+      const countAfter = await getDorisCount(TEST_TABLE, projectId);
       expect(countAfter).toBe(0);
 
       // Verify returned check interval (work was done)
@@ -135,16 +139,16 @@ describe("BatchProjectCleaner", () => {
       ]);
 
       // Verify traces exist before deletion
-      expect(await getClickhouseCount(TEST_TABLE, deletedProjectId)).toBe(2);
-      expect(await getClickhouseCount(TEST_TABLE, activeProjectId)).toBe(3);
+      expect(await getDorisCount(TEST_TABLE, deletedProjectId)).toBe(2);
+      expect(await getDorisCount(TEST_TABLE, activeProjectId)).toBe(3);
 
       // Run processBatch
       const cleaner = new BatchProjectCleaner(TEST_TABLE);
       await cleaner.processBatch();
 
       // Verify only deleted project's traces were removed
-      expect(await getClickhouseCount(TEST_TABLE, deletedProjectId)).toBe(0);
-      expect(await getClickhouseCount(TEST_TABLE, activeProjectId)).toBe(3);
+      expect(await getDorisCount(TEST_TABLE, deletedProjectId)).toBe(0);
+      expect(await getDorisCount(TEST_TABLE, activeProjectId)).toBe(3);
     });
 
     it("should delete traces from multiple soft-deleted projects", async () => {
@@ -173,8 +177,8 @@ describe("BatchProjectCleaner", () => {
       const nextDelayMs = await cleaner.processBatch();
 
       // Verify both projects' traces were deleted
-      expect(await getClickhouseCount(TEST_TABLE, projectId1)).toBe(0);
-      expect(await getClickhouseCount(TEST_TABLE, projectId2)).toBe(0);
+      expect(await getDorisCount(TEST_TABLE, projectId1)).toBe(0);
+      expect(await getDorisCount(TEST_TABLE, projectId2)).toBe(0);
       expect(nextDelayMs).toBe(
         env.LITEFUSE_BATCH_PROJECT_CLEANER_CHECK_INTERVAL_MS,
       );
@@ -201,7 +205,7 @@ describe("BatchProjectCleaner", () => {
       const nextDelayMs = await cleaner.processBatch();
 
       // Verify traces were NOT deleted (lock blocked processing)
-      expect(await getClickhouseCount(TEST_TABLE, projectId)).toBe(1);
+      expect(await getDorisCount(TEST_TABLE, projectId)).toBe(1);
       expect(nextDelayMs).toBe(
         env.LITEFUSE_BATCH_PROJECT_CLEANER_SLEEP_ON_EMPTY_MS,
       );
@@ -225,7 +229,7 @@ describe("BatchProjectCleaner", () => {
       await cleaner.processBatch();
 
       // Verify that traces were deleted, therefore processing occurred
-      expect(await getClickhouseCount(TEST_TABLE, projectId)).toBe(0);
+      expect(await getDorisCount(TEST_TABLE, projectId)).toBe(0);
 
       // Verify lock was released
       const lockValue = await redis?.get(TEST_LOCK_KEY);
@@ -270,16 +274,16 @@ describe("BatchProjectCleaner", () => {
       ]);
 
       // Verify items exist before deletion
-      expect(await getClickhouseCount(TABLE, deletedProjectId)).toBe(2);
-      expect(await getClickhouseCount(TABLE, activeProjectId)).toBe(3);
+      expect(await getDorisCount(TABLE, deletedProjectId)).toBe(2);
+      expect(await getDorisCount(TABLE, activeProjectId)).toBe(3);
 
       // Run processBatch
       const cleaner = new BatchProjectCleaner(TABLE);
       await cleaner.processBatch();
 
       // Verify only deleted project's items were removed
-      expect(await getClickhouseCount(TABLE, deletedProjectId)).toBe(0);
-      expect(await getClickhouseCount(TABLE, activeProjectId)).toBe(3);
+      expect(await getDorisCount(TABLE, deletedProjectId)).toBe(0);
+      expect(await getDorisCount(TABLE, activeProjectId)).toBe(3);
     });
   });
 });

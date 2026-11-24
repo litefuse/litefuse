@@ -7,10 +7,10 @@ import { prisma } from "@langfuse/shared/src/db";
 import { createOrgProjectAndApiKey } from "@langfuse/shared/src/server";
 
 import { IngestionService } from "../../IngestionService";
-import * as clickhouseWriteExports from "../../ClickhouseWriter";
+import * as dorisWriteExports from "../../DorisWriter";
 
-const mockAddToClickhouseWriter = vi.fn();
-const mockClickhouseClient = {
+const mockAddToDorisWriter = vi.fn();
+const mockDorisClient = {
   query: async () => ({
     json: async () => [],
     query_id: "1",
@@ -18,13 +18,13 @@ const mockClickhouseClient = {
   }),
 };
 
-vi.mock("../../ClickhouseWriter", async (importOriginal) => {
+vi.mock("../../DorisWriter", async (importOriginal) => {
   const original = (await importOriginal()) as {};
   return {
     ...original,
-    ClickhouseWriter: {
+    DorisWriter: {
       getInstance: () => ({
-        addToQueue: mockAddToClickhouseWriter,
+        addToQueue: mockAddToDorisWriter,
       }),
     },
   };
@@ -33,8 +33,8 @@ vi.mock("../../ClickhouseWriter", async (importOriginal) => {
 const mockIngestionService = new IngestionService(
   null as any,
   prisma,
-  clickhouseWriteExports.ClickhouseWriter.getInstance() as any,
-  mockClickhouseClient as any,
+  dorisWriteExports.DorisWriter.getInstance() as any,
+  mockDorisClient as any,
 );
 
 describe("Token Cost Calculation", () => {
@@ -456,8 +456,8 @@ describe("Token Cost Calculation", () => {
       createdAtTimestamp: new Date(),
       observationEventList: events,
     });
-    expect(mockAddToClickhouseWriter).toHaveBeenCalled();
-    const args = mockAddToClickhouseWriter.mock.calls[0];
+    expect(mockAddToDorisWriter).toHaveBeenCalled();
+    const args = mockAddToDorisWriter.mock.calls[0];
     const tableName = args[0];
     const generation = args[1];
 
@@ -537,8 +537,8 @@ describe("Token Cost Calculation", () => {
       createdAtTimestamp: new Date(),
       observationEventList: events,
     });
-    expect(mockAddToClickhouseWriter).toHaveBeenCalled();
-    const args = mockAddToClickhouseWriter.mock.calls[0];
+    expect(mockAddToDorisWriter).toHaveBeenCalled();
+    const args = mockAddToDorisWriter.mock.calls[0];
     const tableName = args[0];
     const generation = args[1];
 
@@ -616,8 +616,8 @@ describe("Token Cost Calculation", () => {
       createdAtTimestamp: new Date(),
       observationEventList: events,
     });
-    expect(mockAddToClickhouseWriter).toHaveBeenCalled();
-    const args = mockAddToClickhouseWriter.mock.calls[0];
+    expect(mockAddToDorisWriter).toHaveBeenCalled();
+    const args = mockAddToDorisWriter.mock.calls[0];
     const tableName = args[0];
     const generation = args[1];
 
@@ -697,8 +697,8 @@ describe("Token Cost Calculation", () => {
       createdAtTimestamp: new Date(),
       observationEventList: events,
     });
-    expect(mockAddToClickhouseWriter).toHaveBeenCalled();
-    const args = mockAddToClickhouseWriter.mock.calls[0];
+    expect(mockAddToDorisWriter).toHaveBeenCalled();
+    const args = mockAddToDorisWriter.mock.calls[0];
     const tableName = args[0];
     const generation = args[1];
 
@@ -781,8 +781,8 @@ describe("Token Cost Calculation", () => {
       createdAtTimestamp: new Date(),
       observationEventList: events,
     });
-    expect(mockAddToClickhouseWriter).toHaveBeenCalled();
-    const args = mockAddToClickhouseWriter.mock.calls[0];
+    expect(mockAddToDorisWriter).toHaveBeenCalled();
+    const args = mockAddToDorisWriter.mock.calls[0];
     const tableName = args[0];
     const generation = args[1];
 
@@ -871,8 +871,8 @@ describe("Token Cost Calculation", () => {
       createdAtTimestamp: new Date(),
       observationEventList: events,
     });
-    expect(mockAddToClickhouseWriter).toHaveBeenCalled();
-    const args = mockAddToClickhouseWriter.mock.calls[0];
+    expect(mockAddToDorisWriter).toHaveBeenCalled();
+    const args = mockAddToDorisWriter.mock.calls[0];
     const tableName = args[0];
     const generation = args[1];
 
@@ -956,8 +956,8 @@ describe("Token Cost Calculation", () => {
       createdAtTimestamp: new Date(),
       observationEventList: events,
     });
-    expect(mockAddToClickhouseWriter).toHaveBeenCalled();
-    const args = mockAddToClickhouseWriter.mock.calls[0];
+    expect(mockAddToDorisWriter).toHaveBeenCalled();
+    const args = mockAddToDorisWriter.mock.calls[0];
     const tableName = args[0];
     const generation = args[1];
 
@@ -1038,8 +1038,8 @@ describe("Token Cost Calculation", () => {
       createdAtTimestamp: new Date(),
       observationEventList: events,
     });
-    expect(mockAddToClickhouseWriter).toHaveBeenCalled();
-    const args = mockAddToClickhouseWriter.mock.calls[0];
+    expect(mockAddToDorisWriter).toHaveBeenCalled();
+    const args = mockAddToDorisWriter.mock.calls[0];
     const tableName = args[0];
     const generation = args[1];
 
@@ -1125,8 +1125,8 @@ describe("Token Cost Calculation", () => {
       createdAtTimestamp: new Date(),
       observationEventList: events,
     });
-    expect(mockAddToClickhouseWriter).toHaveBeenCalled();
-    const args = mockAddToClickhouseWriter.mock.calls[0];
+    expect(mockAddToDorisWriter).toHaveBeenCalled();
+    const args = mockAddToDorisWriter.mock.calls[0];
     const tableName = args[0];
     const generation = args[1];
 
@@ -1197,8 +1197,8 @@ describe("Token Cost Calculation", () => {
       createdAtTimestamp: new Date(),
       observationEventList: events,
     });
-    expect(mockAddToClickhouseWriter).toHaveBeenCalled();
-    const args = mockAddToClickhouseWriter.mock.calls[0];
+    expect(mockAddToDorisWriter).toHaveBeenCalled();
+    const args = mockAddToDorisWriter.mock.calls[0];
     const tableName = args[0];
     const generation = args[1];
 
@@ -1258,8 +1258,8 @@ describe("Token Cost Calculation", () => {
       observationEventList: events,
     });
 
-    expect(mockAddToClickhouseWriter).toHaveBeenCalled();
-    const args = mockAddToClickhouseWriter.mock.calls[0];
+    expect(mockAddToDorisWriter).toHaveBeenCalled();
+    const args = mockAddToDorisWriter.mock.calls[0];
     const tableName = args[0];
     const generation = args[1];
 
@@ -1315,8 +1315,8 @@ describe("Token Cost Calculation", () => {
       );
       (mockIngestionService as any).writeEventRecord(eventRecord);
 
-      expect(mockAddToClickhouseWriter).toHaveBeenCalled();
-      const args = mockAddToClickhouseWriter.mock.calls[0];
+      expect(mockAddToDorisWriter).toHaveBeenCalled();
+      const args = mockAddToDorisWriter.mock.calls[0];
       const generation = args[1];
 
       // Values should be numbers, not strings
@@ -1353,8 +1353,8 @@ describe("Token Cost Calculation", () => {
       (mockIngestionService as any).writeEventRecord(eventRecord);
 
       // Invalid values should be ignored
-      expect(mockAddToClickhouseWriter).toHaveBeenCalled();
-      const args = mockAddToClickhouseWriter.mock.calls[0];
+      expect(mockAddToDorisWriter).toHaveBeenCalled();
+      const args = mockAddToDorisWriter.mock.calls[0];
       const generation = args[1];
 
       // Values should be numbers, not strings

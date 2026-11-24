@@ -9,7 +9,7 @@ import {
   prisma,
 } from "@langfuse/shared/src/db";
 import {
-  convertDateToClickhouseDateTime,
+  convertDateToAnalyticsDateTime,
   createOrgProjectAndApiKey,
   TraceRecordReadType,
   upsertObservation,
@@ -98,7 +98,7 @@ const test = baseTest.extend<{
   upsertTrace: async ({ projectId }, use) => {
     await use(async (trace) => {
       const now = new Date();
-      const clickhouseNow = convertDateToClickhouseDateTime(now);
+      const clickhouseNow = convertDateToAnalyticsDateTime(now);
       await upsertTrace({
         id: trace.id,
         project_id: projectId,
@@ -300,14 +300,14 @@ describe.concurrent("test eval filtering", () => {
     // Create two traces with different timestamps
     await upsertTwoTraces([
       {
-        timestamp: convertDateToClickhouseDateTime(now),
-        created_at: convertDateToClickhouseDateTime(now),
-        updated_at: convertDateToClickhouseDateTime(now),
+        timestamp: convertDateToAnalyticsDateTime(now),
+        created_at: convertDateToAnalyticsDateTime(now),
+        updated_at: convertDateToAnalyticsDateTime(now),
       },
       {
-        timestamp: convertDateToClickhouseDateTime(futureDate),
-        created_at: convertDateToClickhouseDateTime(futureDate),
-        updated_at: convertDateToClickhouseDateTime(futureDate),
+        timestamp: convertDateToAnalyticsDateTime(futureDate),
+        created_at: convertDateToAnalyticsDateTime(futureDate),
+        updated_at: convertDateToAnalyticsDateTime(futureDate),
       },
     ]);
 
@@ -552,11 +552,11 @@ describe.concurrent("test eval filtering", () => {
       project_id: projectId,
       trace_id: traceId1,
       level: ObservationLevel.DEFAULT.toString(),
-      start_time: convertDateToClickhouseDateTime(new Date()),
-      end_time: convertDateToClickhouseDateTime(new Date()),
+      start_time: convertDateToAnalyticsDateTime(new Date()),
+      end_time: convertDateToAnalyticsDateTime(new Date()),
       type: "SPAN",
-      created_at: convertDateToClickhouseDateTime(new Date()),
-      updated_at: convertDateToClickhouseDateTime(new Date()),
+      created_at: convertDateToAnalyticsDateTime(new Date()),
+      updated_at: convertDateToAnalyticsDateTime(new Date()),
     });
 
     await upsertObservation({
@@ -564,11 +564,11 @@ describe.concurrent("test eval filtering", () => {
       project_id: projectId,
       trace_id: traceId2,
       level: ObservationLevel.ERROR.toString(),
-      start_time: convertDateToClickhouseDateTime(new Date()),
-      end_time: convertDateToClickhouseDateTime(new Date()),
+      start_time: convertDateToAnalyticsDateTime(new Date()),
+      end_time: convertDateToAnalyticsDateTime(new Date()),
       type: "SPAN",
-      created_at: convertDateToClickhouseDateTime(new Date()),
-      updated_at: convertDateToClickhouseDateTime(new Date()),
+      created_at: convertDateToAnalyticsDateTime(new Date()),
+      updated_at: convertDateToAnalyticsDateTime(new Date()),
     });
 
     // Create job configuration with level filter

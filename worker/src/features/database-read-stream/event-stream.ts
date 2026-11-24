@@ -19,7 +19,7 @@ import {
   logger,
   FilterList,
   createFilterFromFilterState,
-  eventsTableUiColumnDefinitions,
+  eventsTableUiColumnDefinitionsForDoris,
   dorisSearchCondition,
 } from "@langfuse/shared/src/server";
 import { Readable } from "stream";
@@ -59,7 +59,7 @@ export const getEventsStream = async (props: {
 
   // Filter out score and comment filters since they require special handling
   const eventOnlyFilters = (filter ?? []).filter((f) => {
-    const columnDef = eventsTableUiColumnDefinitions.find(
+    const columnDef = eventsTableUiColumnDefinitionsForDoris.find(
       (col) => col.uiTableName === f.column || col.uiTableId === f.column,
     );
     // Keep the filter if it's not a scores or comments filter
@@ -96,7 +96,7 @@ export const getEventsStream = async (props: {
           type: "datetime" as const,
         },
       ],
-      eventsTableUiColumnDefinitions,
+      eventsTableUiColumnDefinitionsForDoris,
     ),
   );
 
@@ -400,7 +400,7 @@ export const getEventsStreamForEval = async (props: {
 
   // Filter out score and comment filters since they're not relevant for eval
   const eventOnlyFilters = (filter ?? []).filter((f) => {
-    const columnDef = eventsTableUiColumnDefinitions.find(
+    const columnDef = eventsTableUiColumnDefinitionsForDoris.find(
       (col) => col.uiTableName === f.column || col.uiTableId === f.column,
     );
 
@@ -420,7 +420,7 @@ export const getEventsStreamForEval = async (props: {
           type: "datetime" as const,
         },
       ],
-      eventsTableUiColumnDefinitions,
+      eventsTableUiColumnDefinitionsForDoris,
     ),
   );
 
@@ -563,7 +563,7 @@ export const getEventsStreamForDataset = async (props: {
   } = props;
 
   const eventOnlyFilters = (filter ?? []).filter((f) => {
-    const columnDef = eventsTableUiColumnDefinitions.find(
+    const columnDef = eventsTableUiColumnDefinitionsForDoris.find(
       (col) => col.uiTableName === f.column || col.uiTableId === f.column,
     );
 
@@ -583,7 +583,7 @@ export const getEventsStreamForDataset = async (props: {
           type: "datetime" as const,
         },
       ],
-      eventsTableUiColumnDefinitions,
+      eventsTableUiColumnDefinitionsForDoris,
     ),
   );
 

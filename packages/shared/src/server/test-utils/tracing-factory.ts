@@ -12,7 +12,7 @@ export const createTrace = (
 ): TraceRecordInsertType => {
   return {
     id: v4(),
-    project_id: v4(),
+    project_id: v4().replace(/-/g, ""),
     session_id: v4(),
     timestamp: Date.now(),
     environment: "default",
@@ -40,7 +40,7 @@ export const createDatasetRunItem = (
 ): DatasetRunItemRecordInsertType => {
   return {
     id: v4(),
-    project_id: v4(),
+    project_id: v4().replace(/-/g, ""),
     trace_id: v4(),
     observation_id: null,
     dataset_run_id: v4(),
@@ -67,7 +67,7 @@ export const createObservation = (
   return {
     id: v4(),
     trace_id: v4(),
-    project_id: v4(),
+    project_id: v4().replace(/-/g, ""),
     type: "GENERATION",
     environment: "default",
     metadata: {
@@ -110,7 +110,7 @@ export const createTraceScore = (
 ): ScoreRecordInsertType => {
   return {
     id: v4(),
-    project_id: v4(),
+    project_id: v4().replace(/-/g, ""),
     trace_id: v4(),
     observation_id: v4(),
     environment: "default",
@@ -138,7 +138,7 @@ export const createSessionScore = (
 ): ScoreRecordInsertType => {
   return {
     id: v4(),
-    project_id: v4(),
+    project_id: v4().replace(/-/g, ""),
     session_id: v4(),
     environment: "default",
     name: "test-session-score" + v4(),
@@ -165,7 +165,7 @@ export const createDatasetRunScore = (
 ): ScoreRecordInsertType => {
   return {
     id: v4(),
-    project_id: v4(),
+    project_id: v4().replace(/-/g, ""),
     dataset_run_id: v4(),
     environment: "default",
     name: "test-run-score" + v4(),
@@ -208,7 +208,7 @@ export const createEvent = (
 
   return {
     // Identifiers
-    project_id: v4(),
+    project_id: v4().replace(/-/g, ""),
     trace_id: v4(),
     span_id: spanId,
     id: spanId,

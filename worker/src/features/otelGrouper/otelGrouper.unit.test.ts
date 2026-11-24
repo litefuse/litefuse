@@ -70,19 +70,29 @@ afterEach(async () => {
   for (const fn of cleanups.splice(0)) await fn().catch(() => {});
 });
 
-const freshShard = () => {
-  const shard = `otel-grouper-test-${randomUUID().slice(0, 8)}`;
+const LANE_DOMAIN_LEASE = "otel-lane-domain";
+
+const freshShard = async () => {
+  const pid = `test${randomUUID().replace(/-/g, "").slice(0, 12)}`;
+  const lane = `lane-${pid}`;
+  __setSplitSnapshotForTest([[pid, true]]);
+  await removeLaneFromIndex(redis, lane);
+  await addLaneToIndex(redis, lane);
+  await redis.del(otelGrouperLockKey(LANE_DOMAIN_LEASE));
   cleanups.push(async () => {
+    __setSplitSnapshotForTest(null);
+    await removeLaneFromIndex(redis, lane);
     await redis.del(
-      otelPendingListKey(shard),
-      otelStagingHashKey(shard),
-      otelQuarantineKey(shard),
-      otelGrouperLockKey(shard),
+      otelPendingListKey(lane),
+      otelStagingHashKey(lane),
+      otelQuarantineKey(lane),
+      otelGrouperLockKey(lane),
+      otelGrouperLockKey(LANE_DOMAIN_LEASE),
     );
-    const regKeys = await redis.keys(`${shard}:otel-reg:*`);
+    const regKeys = await redis.keys(`${lane}:otel-reg:*`);
     if (regKeys.length > 0) await redis.del(...regKeys);
   });
-  return shard;
+  return { lane, pid };
 };
 
 const entry = (
@@ -101,7 +111,7 @@ const entry = (
 type Published = { shard: string; cut: OtelGroupCut };
 
 const makeGrouper = (
-  shard: string,
+  _lane: string,
   opts: {
     addGroupJob?: (shard: string, cut: OtelGroupCut) => Promise<void>;
     config?: Record<string, number>;
@@ -110,7 +120,13 @@ const makeGrouper = (
   const published: Published[] = [];
   const grouper = new OtelGrouper({
     redis,
-    shardNames: [shard],
+    shardNames: [],
+    getLaneReadiness: async () => ({
+      ready: true,
+      spansExists: true,
+      tracesScalarExists: true,
+      mvStatus: "finished" as const,
+    }),
     addGroupJob:
       opts.addGroupJob ??
       (async (s, cut) => {
@@ -123,6 +139,7 @@ const makeGrouper = (
       maxFiles: 100,
       flushMs: 0,
       lockTtlMs: 5_000,
+      laneDomainLeaseTtlMs: 5_000,
       tickMs: 25,
       ...opts.config,
     },
@@ -133,11 +150,16 @@ const makeGrouper = (
 
 describe("OtelGrouper orchestration (real Redis)", () => {
   itR("cuts, publishes and clears staging end-to-end", async () => {
-    const shard = freshShard();
-    const e1 = entry({ size: 1200 });
-    const e2 = entry({ size: 1200 });
+    const { lane: shard, pid } = await freshShard();
+    const e1 = entry({ projectId: pid, size: 1200 });
+    const e2 = entry({ projectId: pid, size: 1200 });
     for (const e of [e1, e2]) {
-      await registerOtelFile({ redis, groupingKey: shard, entry: e, ttlMs: 60_000 });
+      await registerOtelFile({
+        redis,
+        groupingKey: shard,
+        entry: e,
+        ttlMs: 60_000,
+      });
     }
 
     const { grouper, published } = makeGrouper(shard);
@@ -156,7 +178,9 @@ describe("OtelGrouper orchestration (real Redis)", () => {
 
     await vi.waitFor(
       async () => {
-        expect(await scanStagedOtelGroups({ redis, groupingKey: shard })).toEqual([]);
+        expect(
+          await scanStagedOtelGroups({ redis, groupingKey: shard }),
+        ).toEqual([]);
       },
       { timeout: 3_000 },
     );
@@ -166,11 +190,11 @@ describe("OtelGrouper orchestration (real Redis)", () => {
   itR(
     "publish failure keeps the manifest and republishes next tick",
     async () => {
-      const shard = freshShard();
+      const { lane: shard, pid } = await freshShard();
       await registerOtelFile({
         redis,
         groupingKey: shard,
-        entry: entry({ size: 3000 }),
+        entry: entry({ projectId: pid, size: 3000 }),
         ttlMs: 60_000,
       });
 
@@ -187,7 +211,9 @@ describe("OtelGrouper orchestration (real Redis)", () => {
       await vi.waitFor(
         async () => {
           expect(calls.length).toBeGreaterThanOrEqual(3);
-          expect(await scanStagedOtelGroups({ redis, groupingKey: shard })).toEqual([]);
+          expect(
+            await scanStagedOtelGroups({ redis, groupingKey: shard }),
+          ).toEqual([]);
         },
         { timeout: 4_000 },
       );
@@ -200,11 +226,11 @@ describe("OtelGrouper orchestration (real Redis)", () => {
   itR(
     "republishes a leftover manifest and reconciles its list residue",
     async () => {
-      const shard = freshShard();
+      const { lane: shard, pid } = await freshShard();
       // Simulate the mid-script/partial-cut residue: manifest + staged index
       // exist AND the members still sit in the pending list (LTRIM never ran).
-      const e1 = entry();
-      const e2 = entry();
+      const e1 = entry({ projectId: pid });
+      const e2 = entry({ projectId: pid });
       const raws = [JSON.stringify(e1), JSON.stringify(e2)];
       const groupId = computeGroupId([e1.fileKey, e2.fileKey]);
       await redis.hset(
@@ -220,7 +246,9 @@ describe("OtelGrouper orchestration (real Redis)", () => {
       await vi.waitFor(
         async () => {
           expect(published.length).toBeGreaterThanOrEqual(1);
-          expect(await scanStagedOtelGroups({ redis, groupingKey: shard })).toEqual([]);
+          expect(
+            await scanStagedOtelGroups({ redis, groupingKey: shard }),
+          ).toEqual([]);
         },
         { timeout: 3_000 },
       );
@@ -236,10 +264,10 @@ describe("OtelGrouper orchestration (real Redis)", () => {
   itR(
     "dirty recovery tick skips cutting (mid-script residue must not be re-grouped)",
     async () => {
-      const shard = freshShard();
+      const { lane: shard, pid } = await freshShard();
       // Mid-script residue: valid manifest G whose members ALSO still sit in
       // pending (LTRIM never ran).
-      const e1 = entry({ size: 3000 });
+      const e1 = entry({ projectId: pid, size: 3000 });
       const raw = JSON.stringify(e1);
       const groupId = computeGroupId([e1.fileKey]);
       await redis.hset(otelStagingHashKey(shard), groupId, `[${raw}]`);
@@ -283,7 +311,7 @@ describe("OtelGrouper orchestration (real Redis)", () => {
   itR(
     "unparsable manifest is surfaced but never wedges the recovery scan",
     async () => {
-      const shard = freshShard();
+      const { lane: shard, pid } = await freshShard();
       await redis.hset(
         otelStagingHashKey(shard),
         "broken-group",
@@ -292,7 +320,7 @@ describe("OtelGrouper orchestration (real Redis)", () => {
       await registerOtelFile({
         redis,
         groupingKey: shard,
-        entry: entry({ size: 3000 }),
+        entry: entry({ projectId: pid, size: 3000 }),
         ttlMs: 60_000,
       });
 
@@ -312,18 +340,18 @@ describe("OtelGrouper orchestration (real Redis)", () => {
   itR(
     "defers to a foreign lease holder, takes over after release",
     async () => {
-      const shard = freshShard();
+      const { lane: shard, pid } = await freshShard();
       await registerOtelFile({
         redis,
         groupingKey: shard,
-        entry: entry({ size: 3000 }),
+        entry: entry({ projectId: pid, size: 3000 }),
         ttlMs: 60_000,
       });
-      // Another worker holds the shard lease.
+      // Another worker holds the lane-domain lease.
       expect(
         await acquireOtelGrouperLease({
           redis,
-          groupingKey: shard,
+          groupingKey: LANE_DOMAIN_LEASE,
           token: "foreign-leader",
           ttlMs: 60_000,
         }),
@@ -338,7 +366,7 @@ describe("OtelGrouper orchestration (real Redis)", () => {
       expect(await otelPendingDepth({ redis, groupingKey: shard })).toBe(1);
 
       // Leader dies (lease released) → takeover on a later tick.
-      await redis.del(otelGrouperLockKey(shard));
+      await redis.del(otelGrouperLockKey(LANE_DOMAIN_LEASE));
       await vi.waitFor(
         () => {
           expect(published.length).toBeGreaterThanOrEqual(1);

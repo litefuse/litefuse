@@ -2,7 +2,7 @@ import { expect, it, describe, beforeAll, beforeEach, afterEach } from "vitest";
 import { env } from "../env";
 import { randomUUID } from "crypto";
 import {
-  convertDateToClickhouseDateTime,
+  convertDateToAnalyticsDateTime,
   createObservation,
   createObservationsCh,
   createTraceScore,
@@ -62,7 +62,7 @@ describe("ProjectDeletionProcessingJob", () => {
 
   it("should delete the project record after processing has completed", async () => {
     // Setup
-    const projectId = randomUUID();
+    const projectId = randomUUID().replace(/-/g, "");
     await prisma.project.create({
       data: {
         id: projectId,
@@ -87,7 +87,7 @@ describe("ProjectDeletionProcessingJob", () => {
 
   it("should delete related table data via Prisma dependencies", async () => {
     // Setup
-    const projectId = randomUUID();
+    const projectId = randomUUID().replace(/-/g, "");
     await prisma.project.create({
       data: {
         id: projectId,
@@ -120,7 +120,7 @@ describe("ProjectDeletionProcessingJob", () => {
 
   it("should delete clickhouse event data on project delete", async () => {
     // Setup
-    const projectId = randomUUID();
+    const projectId = randomUUID().replace(/-/g, "");
     await prisma.project.create({
       data: {
         id: projectId,
@@ -178,7 +178,7 @@ describe("ProjectDeletionProcessingJob", () => {
     "should delete event data from S3 for the project",
     async () => {
       // Setup
-      const projectId = randomUUID();
+      const projectId = randomUUID().replace(/-/g, "");
       await prisma.project.create({
         data: {
           id: projectId,
@@ -192,9 +192,9 @@ describe("ProjectDeletionProcessingJob", () => {
       await upsertTrace({
         id: `${baseId}-trace`,
         project_id: projectId,
-        timestamp: convertDateToClickhouseDateTime(new Date()),
-        created_at: convertDateToClickhouseDateTime(new Date()),
-        updated_at: convertDateToClickhouseDateTime(new Date()),
+        timestamp: convertDateToAnalyticsDateTime(new Date()),
+        created_at: convertDateToAnalyticsDateTime(new Date()),
+        updated_at: convertDateToAnalyticsDateTime(new Date()),
       });
 
       // When
@@ -219,7 +219,7 @@ describe("ProjectDeletionProcessingJob", () => {
 
   it("should delete all media assets for the project", async () => {
     // Setup
-    const projectId = randomUUID();
+    const projectId = randomUUID().replace(/-/g, "");
     s3Prefix = `${randomUUID()}/`;
     await prisma.project.create({
       data: {
@@ -286,19 +286,19 @@ describe("ProjectDeletionProcessingJob", () => {
 
   describe("delete functions with hasAny probe", () => {
     it("should return false when no traces exist for project", async () => {
-      const emptyProjectId = randomUUID();
+      const emptyProjectId = randomUUID().replace(/-/g, "");
       const result = await deleteTracesByProjectId(emptyProjectId);
       expect(result).toBe(false);
     });
 
     it("should return false when no observations exist for project", async () => {
-      const emptyProjectId = randomUUID();
+      const emptyProjectId = randomUUID().replace(/-/g, "");
       const result = await deleteObservationsByProjectId(emptyProjectId);
       expect(result).toBe(false);
     });
 
     it("should return false when no scores exist for project", async () => {
-      const emptyProjectId = randomUUID();
+      const emptyProjectId = randomUUID().replace(/-/g, "");
       const result = await deleteScoresByProjectId(emptyProjectId);
       expect(result).toBe(false);
     });
@@ -306,14 +306,14 @@ describe("ProjectDeletionProcessingJob", () => {
     maybeEventsIt(
       "should return false when no events exist for project",
       async () => {
-        const emptyProjectId = randomUUID();
+        const emptyProjectId = randomUUID().replace(/-/g, "");
         const result = await deleteEventsByProjectId(emptyProjectId);
         expect(result).toBe(false);
       },
     );
 
     it("should return true and delete when traces exist", async () => {
-      const projectId = randomUUID();
+      const projectId = randomUUID().replace(/-/g, "");
       const traceId = randomUUID();
 
       await createTracesCh([
@@ -331,7 +331,7 @@ describe("ProjectDeletionProcessingJob", () => {
     });
 
     it("should return true and delete when observations exist", async () => {
-      const projectId = randomUUID();
+      const projectId = randomUUID().replace(/-/g, "");
       const traceId = randomUUID();
       const observationId = randomUUID();
 
@@ -356,7 +356,7 @@ describe("ProjectDeletionProcessingJob", () => {
     });
 
     it("should return true and delete when scores exist", async () => {
-      const projectId = randomUUID();
+      const projectId = randomUUID().replace(/-/g, "");
       const traceId = randomUUID();
       const scoreId = randomUUID();
 
@@ -381,7 +381,7 @@ describe("ProjectDeletionProcessingJob", () => {
 
   describe("delete OlderThanDays functions with hasAny probe", () => {
     it("should return false when no traces older than cutoff exist and retain newer traces", async () => {
-      const projectId = randomUUID();
+      const projectId = randomUUID().replace(/-/g, "");
       const traceId = randomUUID();
       const now = new Date();
       const cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
@@ -391,7 +391,7 @@ describe("ProjectDeletionProcessingJob", () => {
         createTrace({
           id: traceId,
           project_id: projectId,
-          timestamp: convertDateToClickhouseDateTime(now),
+          timestamp: convertDateToAnalyticsDateTime(now),
         }),
       ]);
 
@@ -405,7 +405,7 @@ describe("ProjectDeletionProcessingJob", () => {
     });
 
     it("should return true, delete old traces, and retain newer traces", async () => {
-      const projectId = randomUUID();
+      const projectId = randomUUID().replace(/-/g, "");
       const oldTraceId = randomUUID();
       const newTraceId = randomUUID();
       const now = new Date();
@@ -417,7 +417,7 @@ describe("ProjectDeletionProcessingJob", () => {
         createTrace({
           id: oldTraceId,
           project_id: projectId,
-          timestamp: convertDateToClickhouseDateTime(oldDate),
+          timestamp: convertDateToAnalyticsDateTime(oldDate),
         }),
       ]);
 
@@ -426,7 +426,7 @@ describe("ProjectDeletionProcessingJob", () => {
         createTrace({
           id: newTraceId,
           project_id: projectId,
-          timestamp: convertDateToClickhouseDateTime(now),
+          timestamp: convertDateToAnalyticsDateTime(now),
         }),
       ]);
 
@@ -444,7 +444,7 @@ describe("ProjectDeletionProcessingJob", () => {
     });
 
     it("should return false when no observations older than cutoff exist and retain newer observations", async () => {
-      const projectId = randomUUID();
+      const projectId = randomUUID().replace(/-/g, "");
       const traceId = randomUUID();
       const observationId = randomUUID();
       const now = new Date();
@@ -456,7 +456,7 @@ describe("ProjectDeletionProcessingJob", () => {
           id: observationId,
           trace_id: traceId,
           project_id: projectId,
-          start_time: convertDateToClickhouseDateTime(now),
+          start_time: convertDateToAnalyticsDateTime(now),
         }),
       ]);
 
@@ -476,7 +476,7 @@ describe("ProjectDeletionProcessingJob", () => {
     });
 
     it("should return true, delete old observations, and retain newer observations", async () => {
-      const projectId = randomUUID();
+      const projectId = randomUUID().replace(/-/g, "");
       const traceId = randomUUID();
       const oldObservationId = randomUUID();
       const newObservationId = randomUUID();
@@ -490,7 +490,7 @@ describe("ProjectDeletionProcessingJob", () => {
           id: oldObservationId,
           trace_id: traceId,
           project_id: projectId,
-          start_time: convertDateToClickhouseDateTime(oldDate),
+          start_time: convertDateToAnalyticsDateTime(oldDate),
         }),
       ]);
 
@@ -500,7 +500,7 @@ describe("ProjectDeletionProcessingJob", () => {
           id: newObservationId,
           trace_id: traceId,
           project_id: projectId,
-          start_time: convertDateToClickhouseDateTime(now),
+          start_time: convertDateToAnalyticsDateTime(now),
         }),
       ]);
 
@@ -525,7 +525,7 @@ describe("ProjectDeletionProcessingJob", () => {
     });
 
     it("should return false when no scores older than cutoff exist and retain newer scores", async () => {
-      const projectId = randomUUID();
+      const projectId = randomUUID().replace(/-/g, "");
       const traceId = randomUUID();
       const scoreId = randomUUID();
       const now = new Date();
@@ -537,7 +537,7 @@ describe("ProjectDeletionProcessingJob", () => {
           id: scoreId,
           trace_id: traceId,
           project_id: projectId,
-          timestamp: convertDateToClickhouseDateTime(now),
+          timestamp: convertDateToAnalyticsDateTime(now),
         }),
       ]);
 
@@ -551,7 +551,7 @@ describe("ProjectDeletionProcessingJob", () => {
     });
 
     it("should return true, delete old scores, and retain newer scores", async () => {
-      const projectId = randomUUID();
+      const projectId = randomUUID().replace(/-/g, "");
       const traceId = randomUUID();
       const oldScoreId = randomUUID();
       const newScoreId = randomUUID();
@@ -565,7 +565,7 @@ describe("ProjectDeletionProcessingJob", () => {
           id: oldScoreId,
           trace_id: traceId,
           project_id: projectId,
-          timestamp: convertDateToClickhouseDateTime(oldDate),
+          timestamp: convertDateToAnalyticsDateTime(oldDate),
         }),
       ]);
 
@@ -575,7 +575,7 @@ describe("ProjectDeletionProcessingJob", () => {
           id: newScoreId,
           trace_id: traceId,
           project_id: projectId,
-          timestamp: convertDateToClickhouseDateTime(now),
+          timestamp: convertDateToAnalyticsDateTime(now),
         }),
       ]);
 
