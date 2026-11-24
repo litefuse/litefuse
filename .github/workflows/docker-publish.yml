@@ -7,6 +7,11 @@ on:
         description: "Docker tag to publish; defaults to manual-<run_number>"
         required: false
         type: string
+      base_path:
+        description: "Web base path, e.g. /litefuse; blank uses NEXT_PUBLIC_BASE_PATH variable, / forces root"
+        required: false
+        default: ""
+        type: string
       publish_latest:
         description: "Also publish the latest tag"
         required: false
@@ -46,6 +51,8 @@ jobs:
         env:
           MANUAL_DOCKER_TAG: ${{ inputs.docker_tag }}
           REQUESTED_PLATFORMS: ${{ inputs.platforms }}
+          REQUESTED_BASE_PATH: ${{ inputs.base_path }}
+          DEFAULT_BASE_PATH: ${{ vars.NEXT_PUBLIC_BASE_PATH }}
         run: |
           build_id="$(git rev-parse --short HEAD)"
           platforms="linux/amd64,linux/arm64"
@@ -64,9 +71,20 @@ jobs:
             fi
           fi
 
+          base_path="${REQUESTED_BASE_PATH:-$DEFAULT_BASE_PATH}"
+          if [ "$base_path" = "/" ]; then
+            base_path=""
+          fi
+          if [ -n "$base_path" ] && { [[ ! "$base_path" =~ ^(/[A-Za-z0-9._~-]+)+$ ]] || [[ "$base_path" =~ (^|/)\.{1,2}(/|$) ]]; }; then
+            echo "Invalid base path: $base_path. Use / for root or a path such as /litefuse (no trailing slash)." >&2
+            exit 1
+          fi
+
           echo "build_id=$build_id" >> "$GITHUB_OUTPUT"
           echo "manual_tag=$manual_tag" >> "$GITHUB_OUTPUT"
           echo "platforms=$platforms" >> "$GITHUB_OUTPUT"
+          echo "base_path=$base_path" >> "$GITHUB_OUTPUT"
+          printf 'Web base path: `%s`\n' "${base_path:-/}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -105,7 +123,9 @@ jobs:
           tags: ${{ steps.meta-web.outputs.tags }}
           labels: ${{ steps.meta-web.outputs.labels }}
           platforms: ${{ steps.publish-options.outputs.platforms }}
-          build-args: NEXT_PUBLIC_BUILD_ID=${{ steps.publish-options.outputs.build_id }}
+          build-args: |
+            NEXT_PUBLIC_BUILD_ID=${{ steps.publish-options.outputs.build_id }}
+            NEXT_PUBLIC_BASE_PATH=${{ steps.publish-options.outputs.base_path }}
 
       - name: Extract Docker metadata (worker)
         id: meta-worker
