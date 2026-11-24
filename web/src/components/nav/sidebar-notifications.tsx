@@ -14,8 +14,6 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { i18nKey } from "@/src/features/i18n/i18nKey";
 
-const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
-
 type SidebarNotification = {
   id: string; // Add unique ID for each notification
   title: string; // i18nKey, rendered with t()

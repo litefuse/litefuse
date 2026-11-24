@@ -26,7 +26,6 @@ import { get } from "lodash-es";
 import { formatTimestampToDateTime } from "utils/data";
 import { Button as ShadcnButton } from "@/src/components/ui/button";
 import SDCollapsibleTable from "components/selectdb-ui/sd-collapsible-table";
-import { useDiscoverTheme } from "components/ui/theme";
 import { ColumnStyleWrapper, HoverStyle } from "./discover-content.style";
 import { css } from "@emotion/css";
 import { ContentTableActions } from "./content-table-actions";
@@ -75,7 +74,6 @@ export default function DiscoverContent({
   fetchNextPage: (page: number) => void;
 }) {
   const router = useRouter();
-  const theme = useDiscoverTheme();
   const [fields, setFields] = useState<any[]>([]);
   const tableTotalCount = useAtomValue(tableTotalCountAtom);
   const [tableData, _setTableData] = useAtom(tableDataAtom);
