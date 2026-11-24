@@ -59,7 +59,16 @@ describe("trace deletion", () => {
     ]);
 
     // When
-    await processDorisTraceDelete(projectId, [traceId]);
+    const mutableEnv = env as {
+      LITEFUSE_ENABLE_BLOB_STORAGE_FILE_LOG: string;
+    };
+    const prevBlobStorageLog = mutableEnv.LITEFUSE_ENABLE_BLOB_STORAGE_FILE_LOG;
+    mutableEnv.LITEFUSE_ENABLE_BLOB_STORAGE_FILE_LOG = "true";
+    try {
+      await processDorisTraceDelete(projectId, [traceId]);
+    } finally {
+      mutableEnv.LITEFUSE_ENABLE_BLOB_STORAGE_FILE_LOG = prevBlobStorageLog;
+    }
 
     // Then
     const traces = await getTracesByIds([traceId], projectId);
@@ -159,7 +168,16 @@ describe("trace deletion", () => {
     });
 
     // When
-    await processDorisTraceDelete(projectId, [traceId]);
+    const mutableEnv = env as {
+      LITEFUSE_ENABLE_BLOB_STORAGE_FILE_LOG: string;
+    };
+    const prevBlobStorageLog = mutableEnv.LITEFUSE_ENABLE_BLOB_STORAGE_FILE_LOG;
+    mutableEnv.LITEFUSE_ENABLE_BLOB_STORAGE_FILE_LOG = "true";
+    try {
+      await processDorisTraceDelete(projectId, [traceId]);
+    } finally {
+      mutableEnv.LITEFUSE_ENABLE_BLOB_STORAGE_FILE_LOG = prevBlobStorageLog;
+    }
 
     // Then
     const files = await mediaStorageService.listFiles(projectId);
@@ -352,7 +370,16 @@ describe("trace deletion", () => {
     );
 
     // When
-    await processDorisTraceDelete(projectId, [traceId]);
+    const mutableEnv = env as {
+      LITEFUSE_ENABLE_BLOB_STORAGE_FILE_LOG: string;
+    };
+    const prevBlobStorageLog = mutableEnv.LITEFUSE_ENABLE_BLOB_STORAGE_FILE_LOG;
+    mutableEnv.LITEFUSE_ENABLE_BLOB_STORAGE_FILE_LOG = "true";
+    try {
+      await processDorisTraceDelete(projectId, [traceId]);
+    } finally {
+      mutableEnv.LITEFUSE_ENABLE_BLOB_STORAGE_FILE_LOG = prevBlobStorageLog;
+    }
 
     // Then
     const eventLog = getBlobStorageByProjectId(projectId);

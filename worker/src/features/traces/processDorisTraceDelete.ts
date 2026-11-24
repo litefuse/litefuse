@@ -128,13 +128,15 @@ export const processDorisTraceDelete = async (
   await deleteMediaItemsForTraces(projectId, traceIds);
 
   try {
+    // Clean up S3/blob_storage_file_log refs BEFORE deleting spans/traces/scores
+    // because getBlobStorageByProjectIdAndTraceIds joins against those tables.
+    if (env.LITEFUSE_ENABLE_BLOB_STORAGE_FILE_LOG === "true") {
+      await removeIngestionEventsFromS3AndDeleteDorisRefsForTraces({
+        projectId,
+        traceIds,
+      });
+    }
     await Promise.all([
-      env.LITEFUSE_ENABLE_BLOB_STORAGE_FILE_LOG === "true"
-        ? removeIngestionEventsFromS3AndDeleteDorisRefsForTraces({
-            projectId,
-            traceIds,
-          })
-        : Promise.resolve(),
       // Traces and observations share spans; deleting by trace_id removes
       // both kinds of spans, so no separate observations-table delete is needed.
       deleteTraces(projectId, traceIds),

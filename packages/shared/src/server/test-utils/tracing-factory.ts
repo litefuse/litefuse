@@ -64,6 +64,12 @@ export const createDatasetRunItem = (
 export const createObservation = (
   observation: Partial<ObservationRecordInsertType>,
 ): ObservationRecordInsertType => {
+  const derivedTotalCost =
+    observation.total_cost !== undefined
+      ? observation.total_cost
+      : observation.cost_details !== undefined
+        ? (observation.cost_details.total ?? 0)
+        : 300;
   return {
     id: v4(),
     trace_id: v4(),
@@ -92,7 +98,6 @@ export const createObservation = (
     provided_model_name: "gpt-3.5-turbo",
     internal_model_id: v4(),
     model_parameters: '{"something":"sample_param"}',
-    total_cost: 300,
     prompt_id: v4(),
     prompt_name: "generation-prompt",
     prompt_version: 1,
@@ -102,6 +107,7 @@ export const createObservation = (
     tool_calls: [],
     tool_call_names: [],
     ...observation,
+    total_cost: derivedTotalCost,
   };
 };
 

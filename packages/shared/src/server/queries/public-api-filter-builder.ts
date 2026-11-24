@@ -371,12 +371,17 @@ export function deriveFilters<T extends BaseQueryType>(
     filterParamsMapping,
   );
 
-  // Advanced filter takes precedence. Remove all simple filters that are also in advanced filter
+  // Advanced filter takes precedence. Remove all simple filters that are also in advanced filter.
+  // Normalize column names by stripping optional table prefixes/backticks (e.g. "s.name" vs "name").
+  const normalizeFieldName = (field: string) =>
+    field.replace(/`/g, "").split(".").pop() ?? field;
   const advancedFilterColumns = new Set<string>();
-  filterList.forEach((f) => advancedFilterColumns.add(f.field));
+  filterList.forEach((f) =>
+    advancedFilterColumns.add(normalizeFieldName(f.field)),
+  );
 
   simpleFilters
-    .filter((sf) => !advancedFilterColumns.has(sf.field))
+    .filter((sf) => !advancedFilterColumns.has(normalizeFieldName(sf.field)))
     .forEach((f) => filterList.push(f));
 
   // Return merged filters

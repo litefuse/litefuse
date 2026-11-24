@@ -96,7 +96,8 @@ export const _handleGenerateScoresForPublicApi = async ({
               needTraceJoin
                 ? `t.user_id as user_id,
             t.tags as tags,
-            t.environment as trace_environment,`
+            t.environment as trace_environment,
+            t.session_id as trace_session_id,`
                 : ""
             }
             s.id as id,
@@ -130,6 +131,7 @@ export const _handleGenerateScoresForPublicApi = async ({
                 id AS trace_id,
                 COALESCE(user_id, '') AS user_id,
                 COALESCE(name, '') AS name,
+                session_id,
                 tags,
                 environment,
                 start_time
@@ -151,6 +153,7 @@ export const _handleGenerateScoresForPublicApi = async ({
       tags?: string[] | string | null;
       user_id?: string | null;
       trace_environment?: string | null;
+      trace_session_id?: string | null;
     }
   >({
     query,
@@ -176,6 +179,7 @@ export const _handleGenerateScoresForPublicApi = async ({
               userId: record.user_id ?? null,
               tags: parseDorisStringArray(record.tags),
               environment: record.trace_environment ?? null,
+              sessionId: record.trace_session_id || null,
             }
           : null,
     };
@@ -217,6 +221,7 @@ export const _handleGetScoresCountForPublicApi = async ({
                 id AS trace_id,
                 COALESCE(user_id, '') AS user_id,
                 COALESCE(name, '') AS name,
+                session_id,
                 tags,
                 environment,
                 start_time

@@ -197,6 +197,7 @@ jobs:
     if: needs.pre-job.outputs.should_skip != 'true'
     name: tests-web (node${{ matrix.node-version }}, pg${{ matrix.postgres-version }}, mode${{ matrix.deploy-mode }}, shard${{ matrix.shard }}/3)
     strategy:
+      fail-fast: false
       matrix:
         node-version: [24]
         postgres-version: [12, 15]
@@ -315,6 +316,7 @@ jobs:
     if: needs.pre-job.outputs.should_skip != 'true'
     name: tests-worker (node${{ matrix.node-version }}, pg${{ matrix.postgres-version }}, mode${{ matrix.deploy-mode }})
     strategy:
+      fail-fast: false
       matrix:
         node-version: [24]
         postgres-version: [12, 15]

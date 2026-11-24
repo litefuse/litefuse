@@ -134,7 +134,7 @@ export const getEventsStream = async (props: {
           trace_id,
           observation_id,
           name,
-          avg(value) as avg_val,
+          ROUND(avg(value), 6) as avg_val,
           data_type,
           string_value
         FROM scores
@@ -186,6 +186,7 @@ export const getEventsStream = async (props: {
     FROM ${tableFor(projectId, "spans")} o
     LEFT JOIN scores_agg s ON s.trace_id = o.trace_id AND s.observation_id = o.span_id
     WHERE o.project_id = {projectId: String}
+      AND o.span_id NOT LIKE 't-%'
       ${appliedEventsFilter.query ? `AND ${appliedEventsFilter.query}` : ""}
       ${search.query}
     ORDER BY o.start_time DESC
@@ -493,6 +494,7 @@ export const getEventsStreamForEval = async (props: {
       json_object_flatten(o.metadata) AS metadata
     FROM ${tableFor(projectId, "spans")} o
     WHERE o.project_id = {projectId: String}
+      AND o.span_id NOT LIKE 't-%'
       ${appliedEventsFilter.query ? `AND ${appliedEventsFilter.query}` : ""}
       ${search.query}
     ORDER BY o.start_time DESC
@@ -630,6 +632,7 @@ export const getEventsStreamForDataset = async (props: {
       json_object_flatten(o.metadata) AS metadata
     FROM ${tableFor(projectId, "spans")} o
     WHERE o.project_id = {projectId: String}
+      AND o.span_id NOT LIKE 't-%'
       ${appliedEventsFilter.query ? `AND ${appliedEventsFilter.query}` : ""}
       ${search.query}
     ORDER BY o.start_time DESC

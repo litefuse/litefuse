@@ -660,7 +660,7 @@ describe("Score Comparison Analytics tRPC", () => {
       expect(result.samplingMetadata.samplingRate).toBeLessThan(1.0);
       expect(result.samplingMetadata.samplingRate).toBeGreaterThan(0);
       expect(result.samplingMetadata.samplingExpression).toContain(
-        "cityHash64",
+        "murmur_hash3_64",
       );
 
       // Verify preflight estimates triggered sampling

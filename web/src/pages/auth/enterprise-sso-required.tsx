@@ -67,10 +67,20 @@ export default function EnterpriseSsoRequiredPage() {
     typeof router.query.callbackUrl === "string"
       ? router.query.callbackUrl
       : "";
-  const callbackUrl =
-    rawCallbackUrl.startsWith("/") && !rawCallbackUrl.startsWith("//")
-      ? rawCallbackUrl
-      : "/";
+  const callbackUrl = useMemo(() => {
+    if (!rawCallbackUrl.startsWith("/") || rawCallbackUrl.startsWith("//")) {
+      return "/";
+    }
+    try {
+      const parsed = new URL(rawCallbackUrl, "http://localhost");
+      if (parsed.origin !== "http://localhost") {
+        return "/";
+      }
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    } catch {
+      return "/";
+    }
+  }, [rawCallbackUrl]);
 
   const friendlyProviderName = useMemo(() => {
     if (!attemptedProvider) return undefined;

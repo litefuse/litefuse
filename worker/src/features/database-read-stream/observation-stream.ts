@@ -193,7 +193,7 @@ export const getObservationStream = async (props: {
             trace_id,
             observation_id,
             name,
-            avg(value) as avg_val,
+            ROUND(avg(value), 6) as avg_val,
             data_type,
             string_value
           FROM scores

@@ -1,13 +1,16 @@
+import { randomUUID } from "crypto";
 import { Job, Processor } from "bullmq";
 import {
   createIngestionEventSchema,
   getDorisEntityType,
   getCurrentSpan,
   getS3EventStorageClient,
+  hasNoEvalConfigsCache,
   type IngestionEventType,
   logger,
   OtelIngestionProcessor,
   processEventBatch,
+  QueueJobs,
   QueueName,
   recordDistribution,
   recordHistogram,
@@ -16,6 +19,7 @@ import {
   TQueueJobTypes,
   type OtelGroupIngestionEventType,
   traceException,
+  TraceUpsertQueue,
   compareVersions,
   ResourceSpan,
   dorisClient,
@@ -263,26 +267,73 @@ const processGroupShapedJob = async (
 
   // Best-effort eval scheduling over the transformed records (side-effect
   // boundary: replays may re-schedule; never fails the data path).
+  const traceEvalSkipCache = new Map<string, boolean>();
+  const shouldSkipTraceEvals = async (projectId: string) => {
+    if (!traceEvalSkipCache.has(projectId)) {
+      traceEvalSkipCache.set(
+        projectId,
+        await hasNoEvalConfigsCache(projectId, "traceBased").catch(() => false),
+      );
+    }
+    return traceEvalSkipCache.get(projectId)!;
+  };
+
   deps.scheduleEvals = async (files) => {
     let schedulerDeps: ReturnType<
       typeof createObservationEvalSchedulerDeps
     > | null = null;
+    const enqueuedTraces = new Set<string>();
     for (const file of files) {
-      const configs = await getEvalConfigs(file.entry.projectId);
-      if (configs.length === 0) continue;
-      schedulerDeps = schedulerDeps ?? createObservationEvalSchedulerDeps();
+      const projectId = file.entry.projectId;
+      const configs = await getEvalConfigs(projectId);
+      if (configs.length > 0) {
+        schedulerDeps = schedulerDeps ?? createObservationEvalSchedulerDeps();
+        for (const record of file.eventRecords) {
+          try {
+            const observation = convertEventRecordToObservationForEval(record);
+            await scheduleObservationEvals({
+              observation,
+              configs,
+              schedulerDeps,
+            });
+          } catch (error) {
+            traceException(error);
+            logger.error(
+              `Failed to schedule observation evals for project ${projectId} and span ${record.span_id}`,
+              error,
+            );
+          }
+        }
+      }
+
+      if (await shouldSkipTraceEvals(projectId)) continue;
       for (const record of file.eventRecords) {
+        const traceId = record.trace_id;
+        if (!traceId) continue;
+        const traceKey = `${projectId}:${traceId}`;
+        if (enqueuedTraces.has(traceKey)) continue;
+        enqueuedTraces.add(traceKey);
         try {
-          const observation = convertEventRecordToObservationForEval(record);
-          await scheduleObservationEvals({
-            observation,
-            configs,
-            schedulerDeps,
+          const shardingKey = `${projectId}-${traceId}`;
+          const traceUpsertQueue = TraceUpsertQueue.getInstance({
+            shardingKey,
+          });
+          if (!traceUpsertQueue) continue;
+          await traceUpsertQueue.add(QueueJobs.TraceUpsert, {
+            payload: {
+              projectId,
+              traceId,
+              exactTimestamp: new Date(record.start_time),
+              traceEnvironment: record.environment ?? "default",
+            },
+            id: randomUUID(),
+            timestamp: new Date(),
+            name: QueueJobs.TraceUpsert as const,
           });
         } catch (error) {
           traceException(error);
           logger.error(
-            `Failed to schedule observation evals for project ${file.entry.projectId} and span ${record.span_id}`,
+            `Failed to enqueue trace upsert eval for project ${projectId} and trace ${traceId}`,
             error,
           );
         }

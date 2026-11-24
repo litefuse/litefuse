@@ -205,7 +205,7 @@ function fillTimeSeriesGaps(
     allTimeBuckets.push(formatTs(start));
   }
 
-  // No breakdown dimensions: simple fill (one series)
+  // No breakdown dimensions: simple fill (one series), preserving all existing data rows
   if (dimensionKeys.length === 0) {
     const existingMap = new Map<string, Record<string, unknown>>();
     for (const row of rows) {
@@ -215,7 +215,14 @@ function fillTimeSeriesGaps(
     for (const key of metricKeys) {
       zeroTemplate[key] = 0;
     }
-    return allTimeBuckets.map(
+    const bucketSet = new Set<string>([
+      ...allTimeBuckets,
+      ...existingMap.keys(),
+    ]);
+    const sortedBuckets = Array.from(bucketSet).sort((a, b) =>
+      a < b ? -1 : a > b ? 1 : 0,
+    );
+    return sortedBuckets.map(
       (ts) => existingMap.get(ts) ?? { ...zeroTemplate, [timeKey]: ts },
     );
   }

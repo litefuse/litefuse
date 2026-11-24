@@ -436,7 +436,10 @@ export class QueryBuilder {
         //   if (measure.relationTable) {
         //     tableName = measure.relationTable;
         //   }
-      } else if (filter.column === view.timeDimension) {
+      } else if (
+        filter.column === view.timeDimension ||
+        (view.name === "traces" && filter.column === "timestamp")
+      ) {
         select = view.timeDimension;
         queryPrefix = tableName;
         type = "datetime";
@@ -1653,7 +1656,10 @@ export class QueryBuilder {
         if (select.includes("(") || select.includes(".")) {
           queryPrefix = "";
         }
-      } else if (filter.column === view.timeDimension) {
+      } else if (
+        filter.column === view.timeDimension ||
+        (view.name === "traces" && filter.column === "timestamp")
+      ) {
         select = view.timeDimension;
         // queryPrefix must be the SQL alias (e.g. "traces"), not the
         // physical table name (e.g. "spans"). Otherwise the WHERE

@@ -767,7 +767,7 @@ describe("/api/public/observations API Endpoint", () => {
           expect(response.status).toBe(500); // TODO 400
           // Score filter should be ignored, so some observations should be returned
           expect(JSON.stringify(response.body)).toContain(
-            "does not match a UI / CH table mapping",
+            "does not match a UI / Doris table mapping",
           );
         });
 

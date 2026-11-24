@@ -186,8 +186,10 @@ export const generateTracesForPublicApi = async ({
   });
 
   const result = rawResult.map(
-    ({ metadata, observations, scores, ...trace }) => ({
+    ({ metadata, observations, scores, totalCost, latency, ...trace }) => ({
       ...trace,
+      totalCost: Number(totalCost ?? 0),
+      latency: Number(latency ?? 0),
       observations: parseDorisStringArray(observations),
       scores: parseDorisStringArray(scores),
       metadata:

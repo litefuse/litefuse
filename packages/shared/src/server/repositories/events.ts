@@ -955,6 +955,7 @@ export function buildObservationsQueryDoris(opts: PublicApiObservationsQuery): {
     FROM ${tableFor(projectId, "spans")} o
     ${hasTraceFilter ? `JOIN ${tableFor(projectId, "spans")} t ON o.trace_id = t.trace_id AND t.project_id = o.project_id AND t.is_root = 1` : ""}
     WHERE o.project_id = {projectId: String}
+      AND o.span_id NOT LIKE 't-%'
       ${appliedFilter.query ? `AND ${appliedFilter.query}` : ""}
     ${search.query}
   `;
@@ -1096,6 +1097,7 @@ async function getObservationsCountFromEventsTableForPublicApiInternal(
     FROM ${tableFor(projectId, "spans")} o
     ${hasTraceFilter ? `JOIN ${tableFor(projectId, "spans")} t ON o.trace_id = t.trace_id AND t.project_id = o.project_id AND t.is_root = 1` : ""}
     WHERE o.project_id = {projectId: String}
+      AND o.span_id NOT LIKE 't-%'
       ${appliedFilter.query ? `AND ${appliedFilter.query}` : ""}
     ${search.query}
   `;

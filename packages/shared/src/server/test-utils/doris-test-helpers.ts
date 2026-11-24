@@ -229,9 +229,8 @@ export const createObservationsCh = async (
       const usageDetails = obs.usage_details ?? {};
       const costDetails = obs.cost_details ?? {};
       const totalCost =
-        costDetails.total !== undefined
-          ? Number(costDetails.total)
-          : (obs.total_cost ?? null);
+        obs.total_cost ??
+        (costDetails.total !== undefined ? Number(costDetails.total) : null);
 
       spansRows.push({
         trace_id: obs.trace_id ?? "",

@@ -174,6 +174,7 @@ export const getObservationsForTrace = async <IncludeIO extends boolean>(
     FROM ${tableFor(projectId, "spans")}
     WHERE trace_id = {traceId: String}
     AND project_id = {projectId: String}
+    AND span_id NOT LIKE 't-%'
     ${timestamp ? `AND start_time >= DATE_SUB({traceTimestamp: DateTime}, ${TRACE_TO_OBSERVATIONS_INTERVAL})` : ""}
     ORDER BY start_time ASC
   `;

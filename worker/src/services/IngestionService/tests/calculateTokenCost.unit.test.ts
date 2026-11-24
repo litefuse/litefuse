@@ -466,7 +466,7 @@ describe("Token Cost Calculation", () => {
     const tableName = args[0];
     const generation = args[1];
 
-    expect(tableName).toBe("observations");
+    expect(tableName).toBe("observation_source");
     expect(generation).toBeDefined();
     expect(generation.type).toBe("GENERATION");
 
@@ -547,7 +547,7 @@ describe("Token Cost Calculation", () => {
     const tableName = args[0];
     const generation = args[1];
 
-    expect(tableName).toBe("observations");
+    expect(tableName).toBe("observation_source");
     expect(generation).toBeDefined();
     expect(generation.type).toBe("GENERATION");
 
@@ -626,7 +626,7 @@ describe("Token Cost Calculation", () => {
     const tableName = args[0];
     const generation = args[1];
 
-    expect(tableName).toBe("observations");
+    expect(tableName).toBe("observation_source");
     expect(generation).toBeDefined();
     expect(generation.type).toBe("GENERATION");
 
@@ -707,7 +707,7 @@ describe("Token Cost Calculation", () => {
     const tableName = args[0];
     const generation = args[1];
 
-    expect(tableName).toBe("observations");
+    expect(tableName).toBe("observation_source");
     expect(generation).toBeDefined();
     expect(generation.type).toBe("GENERATION");
 
@@ -791,7 +791,7 @@ describe("Token Cost Calculation", () => {
     const tableName = args[0];
     const generation = args[1];
 
-    expect(tableName).toBe("observations");
+    expect(tableName).toBe("observation_source");
     expect(generation).toBeDefined();
     expect(generation.type).toBe("GENERATION");
 
@@ -881,7 +881,7 @@ describe("Token Cost Calculation", () => {
     const tableName = args[0];
     const generation = args[1];
 
-    expect(tableName).toBe("observations");
+    expect(tableName).toBe("observation_source");
     expect(generation).toBeDefined();
     expect(generation.type).toBe("GENERATION");
 
@@ -966,7 +966,7 @@ describe("Token Cost Calculation", () => {
     const tableName = args[0];
     const generation = args[1];
 
-    expect(tableName).toBe("observations");
+    expect(tableName).toBe("observation_source");
     expect(generation).toBeDefined();
     expect(generation.type).toBe("GENERATION");
 
@@ -1048,7 +1048,7 @@ describe("Token Cost Calculation", () => {
     const tableName = args[0];
     const generation = args[1];
 
-    expect(tableName).toBe("observations");
+    expect(tableName).toBe("observation_source");
     expect(generation).toBeDefined();
     expect(generation.type).toBe("GENERATION");
 
@@ -1135,7 +1135,7 @@ describe("Token Cost Calculation", () => {
     const tableName = args[0];
     const generation = args[1];
 
-    expect(tableName).toBe("observations");
+    expect(tableName).toBe("observation_source");
     expect(generation).toBeDefined();
     expect(generation.type).toBe("GENERATION");
 
@@ -1207,7 +1207,7 @@ describe("Token Cost Calculation", () => {
     const tableName = args[0];
     const generation = args[1];
 
-    expect(tableName).toBe("observations");
+    expect(tableName).toBe("observation_source");
     expect(generation).toBeDefined();
     expect(generation.type).toBe("GENERATION");
 
@@ -1268,7 +1268,7 @@ describe("Token Cost Calculation", () => {
     const tableName = args[0];
     const generation = args[1];
 
-    expect(tableName).toBe("observations");
+    expect(tableName).toBe("observation_source");
     expect(generation).toBeDefined();
     expect(generation.type).toBe("GENERATION");
     expect(generation.level).toBe("ERROR");

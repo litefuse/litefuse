@@ -143,7 +143,7 @@ export const getTraceStream = async (props: {
           project_id,
           trace_id,
           name,
-          avg(value) as avg_val,
+          ROUND(avg(value), 6) as avg_val,
           data_type,
           string_value
         FROM scores

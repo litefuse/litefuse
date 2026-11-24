@@ -93,7 +93,16 @@ describe("score deletion", () => {
     );
 
     // When
-    await processDorisScoreDelete(projectId, [scoreId]);
+    const mutableEnv = env as {
+      LITEFUSE_ENABLE_BLOB_STORAGE_FILE_LOG: string;
+    };
+    const prevBlobStorageLog = mutableEnv.LITEFUSE_ENABLE_BLOB_STORAGE_FILE_LOG;
+    mutableEnv.LITEFUSE_ENABLE_BLOB_STORAGE_FILE_LOG = "true";
+    try {
+      await processDorisScoreDelete(projectId, [scoreId]);
+    } finally {
+      mutableEnv.LITEFUSE_ENABLE_BLOB_STORAGE_FILE_LOG = prevBlobStorageLog;
+    }
 
     // Then
     const eventLog = getBlobStorageByProjectId(projectId);

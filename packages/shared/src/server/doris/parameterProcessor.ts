@@ -17,7 +17,7 @@ export class DorisParameterProcessor {
     }
 
     // Handle typed parameters: {paramName: Type}
-    const typedParamPattern = /\{(\w+):\s*([^}]+)\}/g;
+    const typedParamPattern = /\{(\w+):[ \t]*([^\s}][^}]*)\}/g;
     let processedQuery = query.replace(
       typedParamPattern,
       (match, paramName, typeInfo) => {
