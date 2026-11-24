@@ -434,11 +434,18 @@ export class OtelGrouper {
       ),
     );
 
-    // Phase 2b: lanes WITH residue → serial recover, no cut this tick.
+    // Phase 2b: lanes WITH residue → serial recover. Lanes whose recovery
+    // finishes cleanly (e.g. only unparsable foreign manifests left in the
+    // staging hash, which readOtelStagingManifest skips without dirtying the
+    // tick) may still proceed to cutting; dirty/failed recoveries skip cutting.
+    const recoveredCleanLanes: string[] = [];
     for (const { lane, residue } of probes) {
       if (!residue || this.stopped) continue;
       try {
-        await this.recoverStaged(lane);
+        const clean = await this.recoverStaged(lane);
+        if (clean) {
+          recoveredCleanLanes.push(lane);
+        }
       } catch (e) {
         // #9: recover failure is per-lane — the lane keeps its residue and is
         // retried next tick (it is never cut while dirty).
@@ -447,13 +454,16 @@ export class OtelGrouper {
         );
       }
     }
-    // Phase 2a: residue-free lanes → ROUND-ROBIN loop-cut. Each round cuts one
+    // Phase 2a: residue-free (or cleanly recovered) lanes → ROUND-ROBIN loop-cut. Each round cuts one
     // group from every still-ripe lane, up to maxCutsPerLanePerTick rounds and
     // maxCutsPerTick total. Round-robin (not drain-one-lane-then-next) is what
     // preserves the old one-per-lane fairness: a hot single-project lane gets
     // K cuts/tick, but every co-tenant lane still gets a cut each round, so no
     // lane starves. A lane that stops being ripe drops out of the rotation.
-    let ripeLanes = probes.filter((p) => !p.residue).map((p) => p.lane);
+    let ripeLanes = [
+      ...probes.filter((p) => !p.residue).map((p) => p.lane),
+      ...recoveredCleanLanes,
+    ];
     let cutsThisTick = 0;
     for (
       let round = 0;

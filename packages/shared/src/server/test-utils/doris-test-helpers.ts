@@ -20,6 +20,27 @@ const STREAM_LOAD_OPTS = {
   timeout: 120,
 };
 
+const STREAM_LOAD_CHUNK_SIZE = 5_000;
+
+const streamLoadChunked = async (
+  table: string,
+  rows: Record<string, unknown>[],
+): Promise<void> => {
+  for (let i = 0; i < rows.length; i += STREAM_LOAD_CHUNK_SIZE) {
+    const chunk = rows.slice(i, i + STREAM_LOAD_CHUNK_SIZE);
+    await dorisClient().streamLoad(
+      table,
+      formatDataForDoris(chunk, table),
+      STREAM_LOAD_OPTS,
+    );
+  }
+};
+
+const toNullableString = (val: unknown): string | null => {
+  if (val === null || val === undefined) return null;
+  return typeof val === "string" ? val : JSON.stringify(val);
+};
+
 type TimestampInput = number | string | Date | null | undefined;
 
 const toMs = (val: TimestampInput): number | null => {
@@ -106,8 +127,8 @@ export const createTracesCh = async (
       const startTime = toMs(trace.timestamp) ?? Date.now();
       const createdAt = toMs(trace.created_at) ?? startTime;
       const updatedAt = toMs(trace.updated_at) ?? createdAt;
-      const inputStr = trace.input ?? null;
-      const outputStr = trace.output ?? null;
+      const inputStr = toNullableString(trace.input);
+      const outputStr = toNullableString(trace.output);
       const inputTrim = inputStr ? inputStr.slice(0, 500) : null;
       const outputTrim = outputStr ? outputStr.slice(0, 500) : null;
 
@@ -167,16 +188,8 @@ export const createTracesCh = async (
     const spansTable = tableFor(projectId, "spans");
     const scalarTable = tableFor(projectId, "traces_scalar");
 
-    await dorisClient().streamLoad(
-      spansTable,
-      formatDataForDoris(spansRows, spansTable),
-      STREAM_LOAD_OPTS,
-    );
-    await dorisClient().streamLoad(
-      scalarTable,
-      formatDataForDoris(scalarRows, scalarTable),
-      STREAM_LOAD_OPTS,
-    );
+    await streamLoadChunked(spansTable, spansRows);
+    await streamLoadChunked(scalarTable, scalarRows);
   }
 };
 
@@ -211,13 +224,14 @@ export const createObservationsCh = async (
       if (obs.is_deleted === 1) continue;
       const startTime = toMs(obs.start_time) ?? Date.now();
       const createdAt = toMs(obs.created_at) ?? startTime;
-      const inputStr = obs.input ?? null;
-      const outputStr = obs.output ?? null;
+      const inputStr = toNullableString(obs.input);
+      const outputStr = toNullableString(obs.output);
       const usageDetails = obs.usage_details ?? {};
       const costDetails = obs.cost_details ?? {};
       const totalCost =
-        obs.total_cost ??
-        (costDetails.total !== undefined ? Number(costDetails.total) : null);
+        costDetails.total !== undefined
+          ? Number(costDetails.total)
+          : (obs.total_cost ?? null);
 
       spansRows.push({
         trace_id: obs.trace_id ?? "",
@@ -275,11 +289,7 @@ export const createObservationsCh = async (
     if (spansRows.length === 0) continue;
 
     const spansTable = tableFor(projectId, "spans");
-    await dorisClient().streamLoad(
-      spansTable,
-      formatDataForDoris(spansRows, spansTable),
-      STREAM_LOAD_OPTS,
-    );
+    await streamLoadChunked(spansTable, spansRows);
   }
 };
 
@@ -302,8 +312,8 @@ export const createEventsCh = async (
       const isRoot =
         event.is_root ??
         (!event.parent_span_id || event.parent_span_id === "" ? 1 : 0);
-      const inputStr = event.input ?? null;
-      const outputStr = event.output ?? null;
+      const inputStr = toNullableString(event.input);
+      const outputStr = toNullableString(event.output);
       const inputTrim =
         event.input_trim ?? (inputStr ? inputStr.slice(0, 500) : null);
       const outputTrim =
@@ -321,6 +331,8 @@ export const createEventsCh = async (
         completion_start_time: toMs(event.completion_start_time),
         experiment_item_version: toMs(event.experiment_item_version),
         created_at: createdAt,
+        input: inputStr,
+        output: outputStr,
         input_trim: inputTrim,
         output_trim: outputTrim,
         metadata: event.metadata ?? {},
@@ -353,19 +365,11 @@ export const createEventsCh = async (
     }
 
     const spansTable = tableFor(projectId, "spans");
-    await dorisClient().streamLoad(
-      spansTable,
-      formatDataForDoris(spansRows, spansTable),
-      STREAM_LOAD_OPTS,
-    );
+    await streamLoadChunked(spansTable, spansRows);
 
     if (scalarRows.length > 0) {
       const scalarTable = tableFor(projectId, "traces_scalar");
-      await dorisClient().streamLoad(
-        scalarTable,
-        formatDataForDoris(scalarRows, scalarTable),
-        STREAM_LOAD_OPTS,
-      );
+      await streamLoadChunked(scalarTable, scalarRows);
     }
   }
 };
@@ -385,6 +389,11 @@ export const createScoresCh = async (
 ): Promise<void> => {
   if (scores.length === 0) return;
 
+  const projectIds = new Set(scores.map((s) => s.project_id));
+  for (const projectId of projectIds) {
+    await provisionDorisTestProject(projectId);
+  }
+
   const rows = scores.map((score) => {
     const ts = toMs(score.timestamp) ?? Date.now();
     return {
@@ -399,11 +408,7 @@ export const createScoresCh = async (
     };
   });
 
-  await dorisClient().streamLoad(
-    "scores",
-    formatDataForDoris(rows, "scores"),
-    STREAM_LOAD_OPTS,
-  );
+  await streamLoadChunked("scores", rows);
 };
 
 type FlexibleDatasetRunItemInput = Omit<
@@ -439,19 +444,28 @@ export const createDatasetRunItemsCh = async (
     };
   });
 
-  await dorisClient().streamLoad(
-    "dataset_run_items_rmt",
-    formatDataForDoris(rows, "dataset_run_items_rmt"),
-    STREAM_LOAD_OPTS,
-  );
+  await streamLoadChunked("dataset_run_items_rmt", rows);
 };
 
 export const upsertTrace = async (
   trace: Partial<FlexibleTraceInput> & { id: string; project_id: string },
 ): Promise<void> => {
+  await provisionDorisTestProject(trace.project_id);
+  await commandDoris({
+    query: `DELETE FROM ${tableFor(trace.project_id, "spans")} WHERE project_id = {projectId: String} AND trace_id = {traceId: String}`,
+    params: { projectId: trace.project_id, traceId: trace.id },
+    tags: { feature: "test-utils", kind: "upsert-trace-delete-spans" },
+  });
+  await commandDoris({
+    query: `DELETE FROM ${tableFor(trace.project_id, "traces_scalar")} WHERE project_id = {projectId: String} AND id = {traceId: String}`,
+    params: { projectId: trace.project_id, traceId: trace.id },
+    tags: { feature: "test-utils", kind: "upsert-trace-delete-scalar" },
+  });
   const base = createTrace({
     id: trace.id,
     project_id: trace.project_id,
+    input: null,
+    output: null,
   });
   await createTracesCh([
     {
@@ -470,6 +484,8 @@ export const upsertObservation = async (
   const base = createObservation({
     id: observation.id,
     project_id: observation.project_id,
+    input: null,
+    output: null,
   });
   await createObservationsCh([
     {

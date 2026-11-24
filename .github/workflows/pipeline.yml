@@ -72,7 +72,7 @@ jobs:
           pnpm i
       - name: Load default env
         run: |
-          cp .env.dev.example .env
+          grep -v -e '^NEXT_PUBLIC_LITEFUSE_RUN_NEXT_INIT=' .env.dev.example > .env
       - name: lint web
         run: pnpm run lint
       - name: i18n check (locale files in sync, zh-CN complete)
@@ -100,7 +100,7 @@ jobs:
           pnpm i
       - name: Load default env
         run: |
-          cp .env.dev.example .env
+          grep -v -e '^NEXT_PUBLIC_LITEFUSE_RUN_NEXT_INIT=' .env.dev.example > .env
       - name: Check formatting on changed files
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -230,7 +230,6 @@ jobs:
           pnpm install
       - name: Load default env
         run: |
-          cp .env.dev${{ matrix.deploy-mode }}.example .env
           grep -v -e '^LITEFUSE_S3_BATCH_EXPORT_ENABLED=' -e '^NEXT_PUBLIC_LITEFUSE_RUN_NEXT_INIT=' .env.dev${{ matrix.deploy-mode }}.example > .env
           echo "LITEFUSE_INGESTION_QUEUE_DELAY_MS=1" >> .env
           echo "LITEFUSE_CACHE_PROMPT_ENABLED=false" >> .env
@@ -290,13 +289,15 @@ jobs:
       - name: Wait for Langfuse server health
         run: |
           for i in $(seq 1 60); do
-            if curl -sf http://localhost:3000/api/public/health >/dev/null; then
-              echo "Langfuse web server is healthy"
+            if curl -sf http://localhost:3000/api/public/health >/dev/null && \
+              curl -sf -u pk-lf-1234567890:sk-lf-1234567890 http://localhost:3000/api/public/projects >/dev/null && \
+              curl -sf http://localhost:3030/api/health >/dev/null; then
+              echo "Langfuse web and worker servers are healthy and initialized"
               exit 0
             fi
             sleep 2
           done
-          echo "Timed out waiting for Langfuse web server"
+          echo "Timed out waiting for Langfuse web/worker servers"
           exit 1
       - name: run tests
         working-directory: web
@@ -413,7 +414,7 @@ jobs:
           which mysql
       - name: Load default env
         run: |
-          cp .env.dev.example .env
+          grep -v -e '^NEXT_PUBLIC_LITEFUSE_RUN_NEXT_INIT=' .env.dev.example > .env
           cp .env.dev.example web/.env
           cp .env.dev.example worker/.env
       - name: Run + migrate
@@ -501,7 +502,7 @@ jobs:
           pnpm install
       - name: Load default env
         run: |
-          cp .env.dev.example .env
+          grep -v -e '^NEXT_PUBLIC_LITEFUSE_RUN_NEXT_INIT=' .env.dev.example > .env
           cp .env.dev.example web/.env
       - name: Ensure mysql client for Doris migrations
         run: |
@@ -573,7 +574,7 @@ jobs:
           which mysql
       - name: Load default env
         run: |
-          cp .env.dev.example .env
+          grep -v -e '^NEXT_PUBLIC_LITEFUSE_RUN_NEXT_INIT=' .env.dev.example > .env
       - name: Run + migrate
         run: |
           sudo sysctl -w vm.max_map_count=2000000

@@ -13,6 +13,7 @@ export const _handleGetScoreById = async ({
   scoreId,
   source,
   scoreScope,
+  scoreDataTypes,
 }: {
   projectId: string;
   scoreId: string;
@@ -27,6 +28,7 @@ export const _handleGetScoreById = async ({
       AND s.id = {scoreId: String}
       ${source ? `AND s.source = {source: String}` : ""}
       ${scoreScope === "traces_only" ? "AND s.session_id IS NULL AND s.dataset_run_id IS NULL" : ""}
+      ${scoreDataTypes && scoreDataTypes.length > 0 ? "AND s.data_type IN ({scoreDataTypes: Array(String)})" : ""}
       LIMIT 1
     `;
 
@@ -36,6 +38,9 @@ export const _handleGetScoreById = async ({
       projectId,
       scoreId,
       ...(source !== undefined ? { source } : {}),
+      ...(scoreDataTypes && scoreDataTypes.length > 0
+        ? { scoreDataTypes }
+        : {}),
     },
     tags: {
       feature: "tracing",
@@ -57,7 +62,7 @@ export const _handleGetScoresByIds = async ({
   scoreId,
   source,
   scoreScope,
-  dataTypes: _dataTypes,
+  dataTypes,
 }: {
   projectId: string;
   scoreId: string[];
@@ -72,6 +77,7 @@ export const _handleGetScoresByIds = async ({
       AND s.id IN ({scoreId: Array(String)})
       ${source ? `AND s.source = {source: String}` : ""}
       ${scoreScope === "traces_only" ? "AND s.session_id IS NULL AND s.dataset_run_id IS NULL" : ""}
+      ${dataTypes && dataTypes.length > 0 ? "AND s.data_type IN ({dataTypes: Array(String)})" : ""}
       ORDER BY event_ts DESC
     `;
 
@@ -81,6 +87,7 @@ export const _handleGetScoresByIds = async ({
       projectId,
       scoreId,
       ...(source !== undefined ? { source } : {}),
+      ...(dataTypes && dataTypes.length > 0 ? { dataTypes } : {}),
     },
     tags: {
       feature: "tracing",

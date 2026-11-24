@@ -50,12 +50,16 @@ describe("trace deletion", () => {
     const { projectId } = await createOrgProjectAndApiKey();
 
     const traceId = randomUUID();
-    await createTracesCh([createTrace({ id: traceId })]);
-    await createObservationsCh([createObservation({ trace_id: traceId })]);
-    await createScoresCh([createTraceScore({ trace_id: traceId })]);
+    await createTracesCh([createTrace({ id: traceId, project_id: projectId })]);
+    await createObservationsCh([
+      createObservation({ trace_id: traceId, project_id: projectId }),
+    ]);
+    await createScoresCh([
+      createTraceScore({ trace_id: traceId, project_id: projectId }),
+    ]);
 
     // When
-    await processDorisTraceDelete("projectId", [traceId]);
+    await processDorisTraceDelete(projectId, [traceId]);
 
     // Then
     const traces = await getTracesByIds([traceId], projectId);

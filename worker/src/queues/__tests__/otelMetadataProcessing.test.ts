@@ -147,11 +147,13 @@ describe("OTel metadata processing", () => {
         }),
       );
 
-      expect(nameToValue["resourceAttributes.service.name"]).toBe("svc-a");
-      expect(nameToValue["scopeAttributes.public_key"]).toBe("pk-test");
+      expect(nameToValue["resourceAttributes"]).toEqual({
+        "service.name": "svc-a",
+      });
+      expect(nameToValue["scopeAttributes"]).toEqual({
+        public_key: "pk-test",
+      });
       expect(nameToValue["env"]).toBe("prod");
-      expect(nameToValue["resourceAttributes"]).toBeUndefined();
-      expect(nameToValue["scopeAttributes"]).toBeUndefined();
     });
 
     it("flattens resource/scope attrs to dot-notation (SDK v3.8)", async () => {
@@ -166,11 +168,13 @@ describe("OTel metadata processing", () => {
         }),
       );
 
-      expect(nameToValue["resourceAttributes.service.name"]).toBe("svc-b");
-      expect(nameToValue["scopeAttributes.public_key"]).toBe("pk-legacy");
+      expect(nameToValue["resourceAttributes"]).toEqual({
+        "service.name": "svc-b",
+      });
+      expect(nameToValue["scopeAttributes"]).toEqual({
+        public_key: "pk-legacy",
+      });
       expect(nameToValue["topic"]).toBe("test");
-      expect(nameToValue["resourceAttributes"]).toBeUndefined();
-      expect(nameToValue["scopeAttributes"]).toBeUndefined();
     });
   });
 
@@ -187,14 +191,10 @@ describe("OTel metadata processing", () => {
         }),
       );
 
-      // metadata JSON column stores stringified values (Record<string, string>)
+      // Doris VARIANT metadata column preserves nested objects natively
       const meta = eventRecord.metadata;
-      expect(meta.resourceAttributes).toBe(
-        JSON.stringify({ "service.name": "svc-a" }),
-      );
-      expect(meta.scopeAttributes).toBe(
-        JSON.stringify({ public_key: "pk-test" }),
-      );
+      expect(meta.resourceAttributes).toEqual({ "service.name": "svc-a" });
+      expect(meta.scopeAttributes).toEqual({ public_key: "pk-test" });
       expect(meta.env).toBe("prod");
     });
   });

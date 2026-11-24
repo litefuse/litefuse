@@ -1242,6 +1242,11 @@ export const hasAnyObservation = async (projectId: string) => {
 export const deleteObservationsByProjectId = async (
   projectId: string,
 ): Promise<boolean> => {
+  const hasData = await hasAnyObservation(projectId);
+  if (!hasData) {
+    return false;
+  }
+
   const query = `
       DELETE FROM ${tableFor(projectId, "spans")}
       WHERE project_id = {projectId: String}
@@ -1294,6 +1299,11 @@ export const deleteObservationsOlderThanDays = async (
   projectId: string,
   beforeDate: Date,
 ): Promise<boolean> => {
+  const hasData = await hasAnyObservationOlderThan(projectId, beforeDate);
+  if (!hasData) {
+    return false;
+  }
+
   const query = `
       DELETE FROM ${tableFor(projectId, "spans")}
       WHERE project_id = {projectId: String}

@@ -267,10 +267,21 @@ export const checkTraceExistsAndGetTimestamp = async ({
             COUNT(CASE WHEN level = 'WARNING' THEN 1 END) as warning_count,
             COUNT(CASE WHEN level = 'DEFAULT' THEN 1 END) as default_count,
             COUNT(CASE WHEN level = 'DEBUG' THEN 1 END) as debug_count,
+            milliseconds_diff(
+              GREATEST(MAX(start_time), COALESCE(MAX(end_time), MAX(start_time))),
+              MIN(start_time)
+            ) AS latency_milliseconds,
+            SUM(COALESCE(total_cost, 0)) AS total_cost,
+            SUM(COALESCE(input_cost_calculated, 0)) AS input_cost,
+            SUM(COALESCE(output_cost_calculated, 0)) AS output_cost,
+            SUM(COALESCE(input_tokens_calculated, 0)) AS input_tokens,
+            SUM(COALESCE(output_tokens_calculated, 0)) AS output_tokens,
+            SUM(COALESCE(total_tokens_calculated, 0)) AS total_tokens,
             trace_id,
             project_id
         FROM ${tableFor(projectId, "spans")} o
         WHERE o.project_id = '${projectId}'
+        AND o.is_root = 0
         ${timeStampFilter ? `AND o.start_time >= '${toDorisDateTime(timestamp, -172800)}'` : ""}
         AND o.start_time >= '${toDorisDateTime(timestamp, -172800)}'
         GROUP BY trace_id, project_id
@@ -279,7 +290,7 @@ export const checkTraceExistsAndGetTimestamp = async ({
       t.trace_id as id,
       t.project_id as project_id
     FROM ${tableFor(projectId, "spans")} t
-    ${observationFilterRes ? `INNER JOIN observations_agg o ON t.trace_id = o.trace_id AND t.project_id = o.project_id` : ""}
+    ${observationFilterRes ? `INNER JOIN observations_agg os ON t.trace_id = os.trace_id AND t.project_id = os.project_id` : ""}
     WHERE ${tracesFilterRes.query}
     AND t.project_id = '${projectId}'
     AND t.is_root = 1
@@ -292,7 +303,9 @@ export const checkTraceExistsAndGetTimestamp = async ({
 
   const rows = await queryDoris<{ id: string; project_id: string }>({
     query,
-    params: {},
+    params: {
+      ...tracesFilterRes.params,
+    },
     tags: {
       feature: "tracing",
       type: "trace",
@@ -531,6 +544,14 @@ const tracesScalarAsT = (projectId: string) => `(
     ) t`;
 
 export const hasAnyTrace = async (projectId: string) => {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { hasTraces: true },
+  });
+  if (project?.hasTraces) {
+    return true;
+  }
+
   const query = `
     SELECT 1
     FROM ${tableFor(projectId, "traces_scalar")}
@@ -551,7 +572,15 @@ export const hasAnyTrace = async (projectId: string) => {
     },
   });
 
-  return rows.length > 0;
+  if (rows.length > 0) {
+    await prisma.project.updateMany({
+      where: { id: projectId, hasTraces: false },
+      data: { hasTraces: true },
+    });
+    return true;
+  }
+
+  return false;
 };
 
 export const getTraceCountsByProjectInCreationInterval = async ({
@@ -1211,9 +1240,42 @@ export const deleteTracesOlderThanDays = async (
 export const deleteTracesByProjectId = async (
   projectId: string,
 ): Promise<boolean> => {
-  // Intentionally unconditional: project-level telemetry deletion must remove
-  // spans rows even if traces_scalar is already empty or partially
-  // written.
+  const [spansRows, scalarRows] = await Promise.all([
+    queryDoris<{ 1: number }>({
+      query: `
+        SELECT 1
+        FROM ${tableFor(projectId, "spans")}
+        WHERE project_id = {projectId: String}
+        LIMIT 1
+      `,
+      params: { projectId },
+      tags: {
+        feature: "tracing",
+        type: "trace",
+        kind: "hasAnyForDelete",
+        projectId,
+      },
+    }),
+    queryDoris<{ 1: number }>({
+      query: `
+        SELECT 1
+        FROM ${tableFor(projectId, "traces_scalar")}
+        WHERE project_id = {projectId: String}
+        LIMIT 1
+      `,
+      params: { projectId },
+      tags: {
+        feature: "tracing",
+        type: "trace",
+        kind: "hasAnyForDelete",
+        projectId,
+      },
+    }),
+  ]);
+  if (spansRows.length === 0 && scalarRows.length === 0) {
+    return false;
+  }
+
   const query = `
     DELETE FROM ${tableFor(projectId, "spans")}
     WHERE project_id = {projectId: String};
@@ -1422,7 +1484,7 @@ export const getUserMetrics = async (
           COALESCE(SUM(m.input_usage), 0) as input_usage,
           COALESCE(SUM(m.output_usage), 0) as output_usage,
           COALESCE(SUM(m.total_usage), 0) as total_usage,
-          COALESCE(SUM(m.observation_count), 0) + COUNT(*) as obs_count,
+          COALESCE(SUM(m.observation_count), 0) as obs_count,
           COUNT(DISTINCT t.trace_id) as trace_count,
           t.user_id as user_id,
           MAX(t.environment) as environment,

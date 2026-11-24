@@ -123,11 +123,21 @@ export const getTraceStream = async (props: {
       SELECT
         project_id,
         trace_id,
-        CONCAT('[', GROUP_CONCAT(DISTINCT JSON_OBJECT('name', name, 'value', avg_val, 'dataType', data_type, 'stringValue', COALESCE(string_value, ''))), ']') AS scores_avg,
-        GROUP_CONCAT(
-          DISTINCT CONCAT(name, ':', COALESCE(string_value, ''))
+        collect_list(
+          CASE WHEN data_type IN ('NUMERIC', 'BOOLEAN') THEN
+            struct(name, avg_val)
+          END
+        ) AS scores_avg,
+        array_except(
+          collect_list(
+            CASE WHEN data_type = 'CATEGORICAL' AND string_value IS NOT NULL AND string_value != '' THEN
+              CONCAT(name, ':', string_value)
+            ELSE NULL END
+          ),
+          [NULL]
         ) AS score_categories,
-        CONCAT('[', GROUP_CONCAT(DISTINCT JSON_OBJECT('name', name, 'stringValue', string_value)), ']') AS score_categories_tuples
+        CONCAT('[', COALESCE(GROUP_CONCAT(DISTINCT CASE WHEN data_type IN ('NUMERIC', 'BOOLEAN') THEN JSON_OBJECT('name', name, 'value', avg_val, 'dataType', data_type, 'stringValue', COALESCE(string_value, '')) ELSE NULL END), ''), ']') AS scores_json,
+        CONCAT('[', COALESCE(GROUP_CONCAT(DISTINCT CASE WHEN data_type = 'CATEGORICAL' THEN JSON_OBJECT('name', name, 'stringValue', string_value) ELSE NULL END), ''), ']') AS score_categories_tuples
       FROM (
         SELECT
           project_id,
@@ -208,8 +218,7 @@ export const getTraceStream = async (props: {
       r.input AS input,
       r.output AS output,
       json_object_flatten(r.metadata) AS metadata,
-      sa.scores_avg AS scores_avg,
-      sa.score_categories AS score_categories,
+      sa.scores_json AS scores_json,
       sa.score_categories_tuples AS score_categories_tuples
     FROM trace_scalars s
     LEFT JOIN trace_root r
@@ -229,16 +238,15 @@ export const getTraceStream = async (props: {
     release: string | null;
     version: string | null;
     environment: string | null;
-    tags: string[];
-    bookmarked: boolean;
-    public: boolean;
+    tags: string[] | string | null;
+    bookmarked: boolean | number;
+    public: boolean | number;
     input: unknown;
     output: unknown;
     // spans layout: metadata is split across two parallel arrays;
     // we zip them in the processor below for export.
     metadata: unknown;
-    scores_avg: string | undefined;
-    score_categories: string | undefined;
+    scores_json: string | undefined;
     score_categories_tuples: string | undefined;
   }>({
     query,
@@ -264,7 +272,7 @@ export const getTraceStream = async (props: {
   ) => {
     // Process numeric/boolean scores (JSON from Doris)
     const numericScores = (
-      bufferedRow.scores_avg ? JSON.parse(bufferedRow.scores_avg) : []
+      bufferedRow.scores_json ? JSON.parse(bufferedRow.scores_json) : []
     ).map((score: any) => ({
       name: score.name,
       value: score.value,
@@ -290,6 +298,11 @@ export const getTraceStream = async (props: {
     // Get comments for this trace
     const traceComments = commentsByTrace.get(bufferedRow.id) ?? [];
 
+    const parsedTags =
+      typeof bufferedRow.tags === "string"
+        ? JSON.parse(bufferedRow.tags)
+        : (bufferedRow.tags ?? []);
+
     return getChunkWithFlattenedScores(
       [
         {
@@ -304,9 +317,9 @@ export const getTraceStream = async (props: {
           release: bufferedRow.release,
           version: bufferedRow.version,
           environment: bufferedRow.environment ?? undefined,
-          tags: bufferedRow.tags,
-          bookmarked: bufferedRow.bookmarked,
-          public: bufferedRow.public,
+          tags: parsedTags,
+          bookmarked: Boolean(bufferedRow.bookmarked),
+          public: Boolean(bufferedRow.public),
           input: bufferedRow.input,
           output: bufferedRow.output,
           // Rebuild metadata Map from parallel arrays for downstream export

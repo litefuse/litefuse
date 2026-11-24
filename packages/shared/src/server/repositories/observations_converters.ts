@@ -20,6 +20,7 @@ import {
 import { logger } from "../logger";
 import type { Model, Price } from "@prisma/client";
 import { parseDorisUTCDateTimeFormat } from "./doris";
+import { parseDorisStringArray } from "../utils/dorisArrays";
 
 /**
  * Normalize single-object arrays on read. Some stored inputs arrive as
@@ -311,10 +312,10 @@ export function convertObservationPartial(
 
     // Prompt fields
     ...(record.prompt_id !== undefined && {
-      promptId: record.prompt_id ?? null,
+      promptId: record.prompt_id || null,
     }),
     ...(record.prompt_name !== undefined && {
-      promptName: record.prompt_name ?? null,
+      promptName: record.prompt_name || null,
     }),
     ...(record.prompt_version !== undefined && {
       promptVersion: record.prompt_version
@@ -449,7 +450,10 @@ export function convertEventsObservation(
       sessionId: record.session_id ?? null,
       traceName: record.trace_name ?? null,
       release: record.release ?? null,
-      tags: record.tags ?? null,
+      tags:
+        record.tags !== undefined && record.tags !== null
+          ? parseDorisStringArray(record.tags)
+          : null,
       bookmarked: normalizeBoolean(record.bookmarked),
       public: normalizeBoolean(record.public),
     };
@@ -467,7 +471,9 @@ export function convertEventsObservation(
     ...(record.session_id !== undefined && { sessionId: record.session_id }),
     ...(record.trace_name !== undefined && { traceName: record.trace_name }),
     ...(record.release !== undefined && { release: record.release }),
-    ...(record.tags !== undefined && { tags: record.tags }),
+    ...(record.tags !== undefined && {
+      tags: record.tags === null ? null : parseDorisStringArray(record.tags),
+    }),
     ...(record.bookmarked !== undefined && {
       bookmarked: normalizeBoolean(record.bookmarked),
     }),

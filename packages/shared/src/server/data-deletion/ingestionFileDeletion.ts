@@ -9,7 +9,7 @@ import { logger } from "../logger";
 import { env } from "../../env";
 import { getS3EventStorageClient } from "../s3";
 import { convertDateToAnalyticsDateTime } from "../repositories/analytics";
-import { dorisClient } from "../doris/client";
+import { dorisClient, formatDataForDoris } from "../doris/client";
 
 export const deleteIngestionEventsFromS3AndDorisForScores = async (p: {
   projectId: string;
@@ -96,14 +96,27 @@ async function removeIngestionEventsFromS3AndDeleteDorisRefs(p: {
 async function softDeleteInDoris(
   blobStorageRefs: BlobStorageFileRefRecordReadType[],
 ) {
+  if (blobStorageRefs.length === 0) {
+    return;
+  }
+
   // Doris implementation using Stream Load
   const records = blobStorageRefs.map((e) => ({
     ...e,
-    is_deleted: "1",
+    is_deleted: 1,
     event_ts: convertDateToAnalyticsDateTime(new Date()),
     updated_at: convertDateToAnalyticsDateTime(new Date()),
   }));
 
-  await dorisClient().streamLoad("blob_storage_file_log", records);
+  await dorisClient().streamLoad(
+    "blob_storage_file_log",
+    formatDataForDoris(records, "blob_storage_file_log"),
+    {
+      format: "json",
+      strip_outer_array: true,
+      read_json_by_line: false,
+      max_filter_ratio: 0.1,
+    },
+  );
   return;
 }

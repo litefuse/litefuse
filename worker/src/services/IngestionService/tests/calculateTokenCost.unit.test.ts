@@ -16,6 +16,11 @@ const mockDorisClient = {
     query_id: "1",
     response_headers: { "x-clickhouse-summary": [] },
   }),
+  queryWithParams: async () => ({
+    json: async () => [],
+    query_id: "1",
+    response_headers: {},
+  }),
 };
 
 vi.mock("../../DorisWriter", async (importOriginal) => {
