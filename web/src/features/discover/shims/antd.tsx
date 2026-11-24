@@ -92,7 +92,7 @@ export function Progress({
   percent = 0,
   strokeColor,
   showInfo = true,
-  size,
+  size: _size,
   className,
   style,
 }: ProgressProps) {

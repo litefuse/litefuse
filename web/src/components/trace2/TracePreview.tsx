@@ -13,11 +13,9 @@ import { IOPreview } from "@/src/components/trace2/components/IOPreview/IOPrevie
 import { formatIntervalSeconds } from "@/src/utils/dates";
 import { withDefault, StringParam, useQueryParam } from "use-query-params";
 import ScoresTable from "@/src/components/table/use-cases/scores";
-import { AnnotateDrawer } from "@/src/features/scores/components/AnnotateDrawer";
 import useLocalStorage from "@/src/components/useLocalStorage";
 import { CommentDrawerButton } from "@/src/features/comments/CommentDrawerButton";
 import { api } from "@/src/utils/api";
-import { NewDatasetItemFromExistingObject } from "@/src/features/datasets/components/NewDatasetItemFromExistingObject";
 import { CreateNewAnnotationQueueItem } from "@/src/features/annotation-queues/components/CreateNewAnnotationQueueItem";
 import { useMemo, useState, useEffect } from "react";
 import { usdFormatter } from "@/src/utils/numbers";

@@ -4,12 +4,12 @@ import { useAtom } from "jotai";
 import { FilterContent } from "./filter-content";
 import { surroundingDataFilterAtom } from "store/discover";
 import { getFilterSQL } from "utils/data";
-import { DiscoverFilterProps } from "../types";
+import type { DiscoverFilterProps } from "../types";
 import { Badge } from "@/src/components/ui/badge";
 import { Button } from "@/src/components/ui/button";
 import { X, Plus } from "lucide-react";
 
-export default function SurroundingDiscoverFilter(props: DiscoverFilterProps) {
+export default function SurroundingDiscoverFilter(_props: DiscoverFilterProps) {
   const [surroundingDataFilter, setSurroundingDataFilter] = useAtom(
     surroundingDataFilterAtom,
   );

@@ -33,7 +33,7 @@ import { i18nKey } from "@/src/features/i18n/i18nKey";
 export const ModelUsageChart = ({
   className,
   projectId,
-  globalFilterState,
+  globalFilterState: _globalFilterState,
   agg,
   fromTimestamp,
   toTimestamp,

@@ -39,7 +39,7 @@ function countValueDistribution(
 }
 
 export function TopData({ field }: any) {
-  const [topData, setTopData] = useAtom(topDataAtom);
+  const [topData] = useAtom(topDataAtom);
   const tableTotalCount = useAtomValue(tableTotalCountAtom);
   const [dataFilter, setDataFilter] = useAtom(dataFilterAtom);
   const canDisplayTopData = field?.Type?.toUpperCase() !== "VARIANT";

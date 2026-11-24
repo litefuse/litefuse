@@ -1,5 +1,6 @@
 // @ts-nocheck
-import dayjs, { Dayjs, ManipulateType } from "dayjs";
+import type dayjs from "dayjs";
+import type { Dayjs, ManipulateType } from "dayjs";
 
 export interface QueryTableDataParams {
   catalog: string;

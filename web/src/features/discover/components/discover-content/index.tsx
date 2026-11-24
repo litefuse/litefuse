@@ -576,7 +576,6 @@ export default function DiscoverContent({
     hasSelectedFields,
     openTracePeek,
     selectedFields,
-    theme.isDark,
   ]);
 
   return (

@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { DataFilterType } from "types/type";
+import type { DataFilterType } from "types/type";
 
 export interface DiscoverFilterProps {
   dataFilter: DataFilterType[];

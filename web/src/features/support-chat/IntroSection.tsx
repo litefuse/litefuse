@@ -1,30 +1,15 @@
 import { useMemo } from "react";
 import { Button } from "@/src/components/ui/button";
-import {
-  Github,
-  Bug,
-  Lightbulb,
-  Sparkles,
-  LibraryBig,
-  LifeBuoy,
-  Radio,
-  Calendar,
-} from "lucide-react";
-//eslint-disable-next-line no-restricted-imports
-import { SiDiscord } from "react-icons/si";
-import { RainbowButton } from "@/src/components/magicui/rainbow-button";
+import { LibraryBig, LifeBuoy } from "lucide-react";
 import { Separator } from "@/src/components/ui/separator";
-import { usePlan } from "@/src/features/entitlements/hooks";
-import { isCloudPlan } from "@langfuse/shared";
 import { useLangfuseCloudRegion } from "@/src/features/organizations/hooks";
 import { useUiCustomization } from "@/src/features/ui-customization/useUiCustomization";
-import { usePostHogClientCapture } from "@/src/features/posthog-analytics/usePostHogClientCapture";
 
 import { useTranslation } from "react-i18next";
 type SupportType = "in-app-support" | "custom" | "community";
 
 export function IntroSection({
-  onStartForm,
+  onStartForm: _onStartForm,
 }: {
   onStartForm: () => void;
   displayDensity?: "default" | "compact";
@@ -32,7 +17,6 @@ export function IntroSection({
   const { t } = useTranslation();
   const uiCustomization = useUiCustomization();
   const { isLangfuseCloud } = useLangfuseCloudRegion();
-  const capture = usePostHogClientCapture();
 
   // Note: We previously added an entitlement for in-app support, but removed it for now.
   //       The issue was that on global routes e.g., https://litefuse.ai/setup, the entitlement
@@ -41,7 +25,6 @@ export function IntroSection({
   //       Therefore we now check for whether wer are in a cloud deployment instead.
   // const hasInAppSupportEntitlement = useHasEntitlement("in-app-support");
   const hasInAppSupportEntitlement = !!isLangfuseCloud;
-  const plan = usePlan();
 
   const supportType: SupportType = useMemo(() => {
     if (uiCustomization?.supportHref) {
@@ -52,10 +35,6 @@ export function IntroSection({
     }
     return "community";
   }, [hasInAppSupportEntitlement, uiCustomization]);
-
-  const showStatusPageLink = useMemo(() => {
-    return isCloudPlan(plan);
-  }, [plan]);
 
   return (
     <div className="mt-1 flex flex-col gap-6">

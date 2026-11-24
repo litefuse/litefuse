@@ -1,5 +1,4 @@
 import { type ReactNode, useId, useLayoutEffect } from "react";
-import { useTranslation } from "react-i18next";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -45,7 +44,6 @@ export function ResizableDesktopLayout({
   sidebarPosition = "right",
   persistId,
 }: ResizableDesktopLayoutProps) {
-  const { t } = useTranslation();
   const instanceId = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const groupId = persistId
     ? `resizable-layout-${persistId}`

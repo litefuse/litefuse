@@ -50,7 +50,9 @@ export const blobStorageIntegrationFormSchema =
     if (data.exportMode === "FROM_CUSTOM_DATE" && !data.exportStartDate) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Export start date is required for custom date exports",
+        message: i18nKey(
+          "Export start date is required for custom date exports",
+        ),
         path: ["exportStartDate"],
       });
     }

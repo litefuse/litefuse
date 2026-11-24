@@ -1,8 +1,6 @@
 import { queryDoris } from "@langfuse/shared/src/server";
 import { QueryBuilder } from "@/src/features/query/server/queryBuilder";
 import { type QueryType, type ViewVersion } from "@/src/features/query/types";
-import { getViewDeclaration } from "@/src/features/query/dataModel";
-import { env } from "@/src/env.mjs";
 
 // Re-export validation logic (shared between server and client)
 export {

@@ -774,6 +774,7 @@ export function WidgetForm({
     if (resolved.aggregation && resolved.aggregation !== selectedAggregation) {
       setSelectedAggregation(resolved.aggregation);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     selectedMeasure,
     selectedChartType,

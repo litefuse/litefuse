@@ -25,7 +25,6 @@ import { Chart } from "@/src/features/widgets/chart-library/Chart";
 import { timeSeriesToDataPoints } from "@/src/features/dashboard/lib/chart-data-adapters";
 import { useScheduledDashboardExecuteQuery } from "@/src/hooks/useDashboardQueryScheduler";
 
-import { useTranslation } from "react-i18next";
 export function NumericScoreTimeSeriesChart(props: {
   projectId: string;
   source: ScoreSourceType;
@@ -38,7 +37,6 @@ export function NumericScoreTimeSeriesChart(props: {
   metricsVersion?: ViewVersion;
   schedulerId?: string;
 }) {
-  const { t } = useTranslation();
   const scoresQuery: QueryType = {
     view: "scores-numeric",
     dimensions: [{ field: "name" }],

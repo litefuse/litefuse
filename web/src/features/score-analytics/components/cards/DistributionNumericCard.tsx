@@ -150,7 +150,7 @@ export function DistributionNumericCard() {
           }),
         };
     }
-  }, [data, activeTab, params]);
+  }, [data, activeTab, params, t]);
 
   // Build color mapping for numeric charts (solid colors)
   const chartColors = useMemo(() => {

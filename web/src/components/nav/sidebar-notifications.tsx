@@ -57,13 +57,6 @@ export function SidebarNotifications() {
     string[]
   >(STORAGE_KEY, []);
 
-  const isExpired = (notif: SidebarNotification) => {
-    if (!notif.createdAt) return false;
-    const created = new Date(notif.createdAt).getTime();
-    const ttl = notif.ttlMs ?? TWO_WEEKS_MS;
-    return Date.now() > created + ttl;
-  };
-
   const dismissNotification = (id: string) => {
     setDismissedNotifications([...dismissedNotifications, id]);
   };

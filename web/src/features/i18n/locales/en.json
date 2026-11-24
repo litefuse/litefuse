@@ -3582,5 +3582,12 @@
   "Your widget has been updated.": "Your widget has been updated.",
   "Your working view": "Your working view",
   "Zoom in": "Zoom in",
-  "Zoom out": "Zoom out"
+  "Zoom out": "Zoom out",
+  "Custom (configure manually)": "Custom (configure manually)",
+  "Export start date is required for custom date exports": "Export start date is required for custom date exports",
+  "Get an API key": "Get an API key",
+  "Prefills the adapter, base URL and model names for a provider. Choose “Custom” to configure the connection entirely by hand.": "Prefills the adapter, base URL and model names for a provider. Choose “Custom” to configure the connection entirely by hand.",
+  "Provider preset": "Provider preset",
+  "Select a provider": "Select a provider",
+  "You do not have permission to use the Playground in this project.": "You do not have permission to use the Playground in this project."
 }

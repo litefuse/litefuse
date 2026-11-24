@@ -5,7 +5,6 @@ import {
 } from "@/src/components/ui/resizable";
 import useSessionStorage from "@/src/components/useSessionStorage";
 
-import { useTranslation } from "react-i18next";
 interface AnnotationProcessingLayoutProps {
   leftPanel: React.ReactNode;
   rightPanel: React.ReactNode;
@@ -15,7 +14,6 @@ interface AnnotationProcessingLayoutProps {
 export const AnnotationProcessingLayout: React.FC<
   AnnotationProcessingLayoutProps
 > = ({ leftPanel, rightPanel, projectId }) => {
-  const { t } = useTranslation();
   const [panelSize, setPanelSize] = useSessionStorage(
     `annotationQueuePanelSize-${projectId}`,
     65,

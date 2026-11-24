@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { theme, ThemeConfig } from "antd";
+import { theme, type ThemeConfig } from "antd";
 
 export const COLORS = {
   BRAND: {

@@ -1,6 +1,6 @@
 // @ts-nocheck
-import { AutoInterval } from "types/type";
-import { Dayjs } from "dayjs";
+import type { AutoInterval } from "types/type";
+import type { Dayjs } from "dayjs";
 import { groupBy } from "lodash-es";
 
 export enum ROUTES {

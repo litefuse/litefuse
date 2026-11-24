@@ -3510,5 +3510,12 @@
   "Your widget has been updated.": "你的组件已更新。",
   "Your working view": "你的当前视图",
   "Zoom in": "放大",
-  "Zoom out": "缩小"
+  "Zoom out": "缩小",
+  "Custom (configure manually)": "自定义（手动配置）",
+  "Export start date is required for custom date exports": "自定义日期导出必须填写导出开始日期",
+  "Get an API key": "获取 API 密钥",
+  "Prefills the adapter, base URL and model names for a provider. Choose “Custom” to configure the connection entirely by hand.": "自动预填服务商的适配器、基础 URL 和模型名称。选择“自定义”可完全手动配置连接。",
+  "Provider preset": "服务商预设",
+  "Select a provider": "选择服务商",
+  "You do not have permission to use the Playground in this project.": "你没有在此项目中使用 Playground 的权限。"
 }

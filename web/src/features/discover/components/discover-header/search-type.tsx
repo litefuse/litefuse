@@ -1,5 +1,4 @@
 // @ts-nocheck
-import { useTranslation } from "react-i18next";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import React from "react";
 import {
@@ -16,10 +15,9 @@ import { RadioButtonGroup } from "components/ui/radio-button-group";
 import { useDiscoverTheme } from "components/ui/theme";
 import { Toggletip } from "components/ui/toggletip";
 import { css } from "@emotion/css";
-import { SelectableValue } from "@grafana/data";
+import type { SelectableValue } from "@grafana/data";
 
 export default function SearchType() {
-  const { t } = useTranslation();
   const [searchType, setSearchType] = useAtom(searchTypeAtom);
   const setSearchValue = useSetAtom(searchValueAtom);
   const disabledOptions = useAtomValue(disabledOptionsAtom);
@@ -58,7 +56,7 @@ export default function SearchType() {
               value={currentIndex}
               onChange={(
                 item: Array<SelectableValue<any>>,
-                actionMeta: ActionMeta,
+                _actionMeta: ActionMeta,
               ) => {
                 const selectedIndexes: any[] = [];
                 item.forEach((selectedValue) => {
