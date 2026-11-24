@@ -1,9 +1,9 @@
 # The node alpine image is available here: https://github.com/nodejs/docker-node
 FROM --platform=${TARGETPLATFORM:-linux/amd64} node:24-alpine AS alpine
 
-# It's important to update the index before installing packages to ensure you're getting the latest versions.
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN apk update && apk upgrade --no-cache libcrypto3 libssl3 libc6-compat busybox ssl_client
+# Retry repository fetches when Alpine's package mirror is temporarily unavailable.
+COPY --chmod=755 scripts/apk-retry.sh /usr/local/bin/apk-retry
+RUN apk-retry upgrade --no-cache libcrypto3 libssl3 libc6-compat busybox ssl_client
 
 FROM --platform=${TARGETPLATFORM:-linux/amd64} alpine AS base
 # Pin turbo to avoid nondeterministic prune output from future patch releases.
@@ -31,8 +31,8 @@ COPY --from=pruner /app/out/json/ .
 
 RUN pnpm install --frozen-lockfile
 
-ENV DOCKER_BUILD 1
-ENV NEXT_MANUAL_SIG_HANDLE true
+ENV DOCKER_BUILD=1
+ENV NEXT_MANUAL_SIG_HANDLE=true
 
 # pass public variables in build step
 ARG NEXT_PUBLIC_PLAIN_APP_ID
@@ -82,10 +82,10 @@ RUN rm -f ./web/src/middleware.ts
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry
 # Uncomment the following line in case you want to disable telemetry during the build.
-ENV NEXT_TELEMETRY_DISABLED 1
-ENV NEXT_MANUAL_SIG_HANDLE true
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_MANUAL_SIG_HANDLE=true
 # set the CI flag to true to get CI specific logs
-ENV CI true
+ENV CI=true
 
 RUN NODE_OPTIONS='--max-old-space-size-percentage=75' turbo run build --filter=web...
 
@@ -102,15 +102,15 @@ ENV BUILD_ID=$NEXT_PUBLIC_BUILD_ID
 ARG NEXT_PUBLIC_LITEFUSE_CLOUD_REGION
 ENV NEXT_PUBLIC_LITEFUSE_CLOUD_REGION=$NEXT_PUBLIC_LITEFUSE_CLOUD_REGION
 
-ENV NODE_ENV production
+ENV NODE_ENV=production
 # Uncomment the following line in case you want to disable telemetry during runtime.
-ENV NEXT_TELEMETRY_DISABLED 1
+ENV NEXT_TELEMETRY_DISABLED=1
 # Needed to re-enable validation of environment variables during runtime
-ENV DOCKER_BUILD 0
+ENV DOCKER_BUILD=0
 # Set NEXT_MANUAL_SIG_HANDLE for runtime
-ENV NEXT_MANUAL_SIG_HANDLE true
+ENV NEXT_MANUAL_SIG_HANDLE=true
 
-RUN apk add --no-cache dumb-init tzdata mysql-client
+RUN apk-retry add --no-cache dumb-init tzdata mysql-client
 
 # Don't run production as root
 ARG UID=1001
@@ -149,15 +149,11 @@ RUN chmod +x ./web/entrypoint.sh
 USER nextjs
 
 # Default port to 3000
-ENV PORT 3000
+ENV PORT=3000
 
 # Docker ENTRYPOINT (dumb-init) is covered by semantic versioning, not the entrypoint.sh itself
 # Reasoning: ENTRYPOINT is overridden by some self-hosted deployments, thus changing this is breaking
 ENTRYPOINT ["dumb-init", "--", "./web/entrypoint.sh"]
 
 # startup command - use dd-trace if NEXT_PUBLIC_LITEFUSE_CLOUD_REGION is configured
-CMD if [ -n "$NEXT_PUBLIC_LITEFUSE_CLOUD_REGION" ]; then \
-    node --import dd-trace/initialize.mjs ./web/server.js --keepAliveTimeout 110000; \
-    else \
-    node ./web/server.js --keepAliveTimeout 110000; \
-    fi
+CMD ["sh", "-c", "exec node ${NEXT_PUBLIC_LITEFUSE_CLOUD_REGION:+--import=dd-trace/initialize.mjs} ./web/server.js --keepAliveTimeout 110000"]
