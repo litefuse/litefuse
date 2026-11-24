@@ -7,14 +7,14 @@ import { randomUUID } from "crypto";
 
 describe("Clickhouse Project Repository Test", () => {
   it("should return default if no environments are found", async () => {
-    const projectId = randomUUID();
+    const projectId = randomUUID().replace(/-/g, "");
     const environments = await getEnvironmentsForProject({ projectId });
     expect(environments).toHaveLength(1);
     expect(environments[0].environment).toEqual("default");
   });
 
   it("should return environment from project_environments table after new trace was inserted", async () => {
-    const projectId = randomUUID();
+    const projectId = randomUUID().replace(/-/g, "");
     const environmentId1 = randomUUID();
     const environmentId2 = randomUUID();
     await createTracesCh([

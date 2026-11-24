@@ -9,10 +9,30 @@ import {
 } from "@langfuse/shared/src/server";
 import { v4 } from "uuid";
 
-const projectId = "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a";
+const projectId = "7a88fb47b4e243b8a06ca5ce950dc53a";
 
 describe("/api/public/ingestion API Endpoint", () => {
-  it.each([
+  it("rejects legacy v3 trace-create events in OTel-only fork", async () => {
+    const response = await makeAPICall("POST", "/api/public/ingestion", {
+      batch: [
+        {
+          id: randomUUID(),
+          type: "trace-create",
+          timestamp: new Date().toISOString(),
+          body: {
+            id: randomUUID(),
+            timestamp: new Date().toISOString(),
+          },
+        },
+      ],
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  // Legacy v3 trace/observation ingestion via /api/public/ingestion is disabled
+  // in the OTel-only fork (see otel-api.servertest.ts for OTel trace ingestion).
+  it.skip.each([
     [
       "plain",
       {
@@ -139,7 +159,7 @@ describe("/api/public/ingestion API Endpoint", () => {
   //   });
   // });
 
-  it.each([
+  it.skip.each([
     [
       "generation",
       "GENERATION",
@@ -459,7 +479,7 @@ describe("/api/public/ingestion API Endpoint", () => {
     },
   );
 
-  it.each([
+  it.skip.each([
     "&",
     "$",
     "@",
@@ -519,7 +539,7 @@ describe("/api/public/ingestion API Endpoint", () => {
     10000,
   );
 
-  it("should fail for \\r in id", async () => {
+  it.skip("should fail for \\r in id", async () => {
     const traceId = v4();
 
     const response = await makeAPICall("POST", "/api/public/ingestion", {
@@ -549,7 +569,7 @@ describe("/api/public/ingestion API Endpoint", () => {
     );
   });
 
-  it("should fail for long trace name", async () => {
+  it.skip("should fail for long trace name", async () => {
     const traceId = v4();
 
     const baseString =
@@ -582,7 +602,9 @@ describe("/api/public/ingestion API Endpoint", () => {
     expect(response.body.errors[0].message).toBe("Invalid request data");
   });
 
-  it("should silently drop invalid float values in usageDetails", async () => {
+  it.skip(
+    "should silently drop invalid float values in usageDetails",
+    async () => {
     const response = await makeAPICall("POST", "/api/public/ingestion", {
       batch: [
         {
@@ -642,7 +664,7 @@ describe("/api/public/ingestion API Endpoint", () => {
   );
 
   // Disabled until eventLog becomes the default behaviour.
-  it("should create a log entry for the S3 file", async () => {
+  it.skip("should create a log entry for the S3 file", async () => {
     const traceId = v4();
     const eventId = v4();
 
@@ -678,7 +700,7 @@ describe("/api/public/ingestion API Endpoint", () => {
     });
   });
 
-  it.each([
+  it.skip.each([
     ["string", { testId: "this is a string metadata" }],
     ["big-number", { testId: "1983516295378495150" }],
     ["small-number", { testId: 5 }],
@@ -717,7 +739,7 @@ describe("/api/public/ingestion API Endpoint", () => {
     10000,
   );
 
-  it.each([
+  it.skip.each([
     ["string", { testId: "this is a string metadata" }],
     ["big-number", { testId: "1983516295378495150" }],
     ["small-number", { testId: 5 }],
@@ -802,7 +824,9 @@ describe("/api/public/ingestion API Endpoint", () => {
     },
   );
 
-  it("should merge metadata correctly across multiple trace updates", async () => {
+  it.skip(
+    "should merge metadata correctly across multiple trace updates",
+    async () => {
     const traceId = randomUUID();
 
     // First update with initial metadata: {"step": 1, "status": "started"}

@@ -7,7 +7,7 @@ import {
 } from "@langfuse/shared/src/server";
 import { randomBytes } from "crypto";
 
-const projectId = "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a";
+const projectId = "7a88fb47b4e243b8a06ca5ce950dc53a";
 
 describe("/api/public/otel/v1/traces API Endpoint", () => {
   it("should process a json payload correctly", async () => {
@@ -62,6 +62,8 @@ describe("/api/public/otel/v1/traces API Endpoint", () => {
       "POST",
       "/api/public/otel/v1/traces",
       payload,
+      undefined,
+      { "x-langfuse-ingestion-version": "4" },
     );
 
     expect(response.status).toBe(200);
@@ -177,6 +179,8 @@ describe("/api/public/otel/v1/traces API Endpoint", () => {
       "POST",
       "/api/public/otel/v1/traces",
       payload,
+      undefined,
+      { "x-langfuse-ingestion-version": "4" },
     );
 
     expect(response.status).toBe(200);
@@ -212,6 +216,8 @@ describe("/api/public/otel/v1/traces API Endpoint", () => {
       "POST",
       "/api/public/otel/v1/traces",
       payload,
+      undefined,
+      { "x-langfuse-ingestion-version": "4" },
     );
 
     expect(response.status).toBe(200);
@@ -300,6 +306,8 @@ describe("/api/public/otel/v1/traces API Endpoint", () => {
       "POST",
       "/api/public/otel/v1/traces",
       payload,
+      undefined,
+      { "x-langfuse-ingestion-version": "4" },
     );
 
     expect(response.status).toBe(200);
@@ -465,6 +473,8 @@ describe("/api/public/otel/v1/traces API Endpoint", () => {
       "POST",
       "/api/public/otel/v1/traces",
       payload,
+      undefined,
+      { "x-langfuse-ingestion-version": "4" },
     );
 
     expect(response.status).toBe(200);

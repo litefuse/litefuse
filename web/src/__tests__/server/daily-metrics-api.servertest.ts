@@ -13,7 +13,7 @@ describe("/api/public/metrics/daily API Endpoint", () => {
     const createdTrace = createTrace({
       name: traceName,
       user_id: "user-1",
-      project_id: "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a",
+      project_id: "7a88fb47b4e243b8a06ca5ce950dc53a",
       metadata: { key: "value" },
       release: "1.0.0",
       version: "2.0.0",
@@ -87,7 +87,7 @@ describe("/api/public/metrics/daily API Endpoint", () => {
     const traces = [
       createTrace({
         user_id: "user-1",
-        project_id: "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a",
+        project_id: "7a88fb47b4e243b8a06ca5ce950dc53a",
         metadata: { key: "value" },
         release: "1.0.0",
         version: "2.0.0",
@@ -95,7 +95,7 @@ describe("/api/public/metrics/daily API Endpoint", () => {
       }),
       createTrace({
         user_id: "user-1",
-        project_id: "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a",
+        project_id: "7a88fb47b4e243b8a06ca5ce950dc53a",
         metadata: { key: "value" },
         release: "1.0.0",
         version: "2.0.0",

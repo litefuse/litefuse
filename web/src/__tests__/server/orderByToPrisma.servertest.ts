@@ -1,13 +1,9 @@
 import {
-  orderByToClickhouseSql,
+  orderByToDorisSQL,
   orderByToPrismaSql,
   tracesTableUiColumnDefinitionsForDoris,
 } from "@langfuse/shared/src/server";
-import {
-  InvalidRequestError,
-  normalizeOrderByForTable,
-  tracesTableCols,
-} from "@langfuse/shared";
+import { normalizeOrderByForTable, tracesTableCols } from "@langfuse/shared";
 
 // The test for the orderByToPrisma function
 describe("orderByToPrisma (Convert orderBy to Prisma.sql)", () => {
@@ -51,12 +47,12 @@ describe("orderByToPrisma (Convert orderBy to Prisma.sql)", () => {
     ).toEqual({ column: "createdAt", order: "ASC" });
   });
 
-  test("orderByToClickhouseSql throws InvalidRequestError for invalid columns", () => {
+  test("orderByToDorisSQL throws error for invalid columns", () => {
     expect(() =>
-      orderByToClickhouseSql(
+      orderByToDorisSQL(
         { column: "not_a_column", order: "ASC" },
         tracesTableUiColumnDefinitionsForDoris,
       ),
-    ).toThrow(InvalidRequestError);
+    ).toThrow(/Invalid order by column: not_a_column/);
   });
 });

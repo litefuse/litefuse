@@ -9,7 +9,7 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { getUserMetrics } from "@langfuse/shared/src/server";
 
-const projectId = "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a";
+const projectId = "7a88fb47b4e243b8a06ca5ce950dc53a";
 
 describe("getUserMetrics function", () => {
   it("should return correct user metrics for a trace with two observations", async () => {

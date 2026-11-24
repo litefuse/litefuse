@@ -21,7 +21,7 @@ import {
 import { v4 } from "uuid";
 
 describe("Clickhouse Scores Repository Test", () => {
-  const projectId = "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a";
+  const projectId = "7a88fb47b4e243b8a06ca5ce950dc53a";
   it("should return null if no scores are found", async () => {
     const result = await getScoreById({
       projectId,

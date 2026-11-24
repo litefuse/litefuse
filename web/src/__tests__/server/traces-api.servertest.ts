@@ -28,7 +28,7 @@ import snakeCase from "lodash/snakeCase";
 import { env } from "@/src/env.mjs";
 import waitForExpect from "wait-for-expect";
 
-const projectId = "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a";
+const projectId = "7a88fb47b4e243b8a06ca5ce950dc53a";
 
 // Helper type for creating observation/event data
 // Times are always in milliseconds, conversion handled internally

@@ -1,8 +1,10 @@
 /** @jest-environment node */
 
+import { randomBytes } from "crypto";
 import { prisma } from "@langfuse/shared/src/db";
 import { makeAPICall } from "@/src/__tests__/test-utils";
-import { v4 as uuidv4, v4 } from "uuid";
+import { v4 as uuidv4 } from "uuid";
+import waitForExpect from "wait-for-expect";
 import { type Prompt, PromptType } from "@langfuse/shared";
 import {
   LegacyPromptSchema,
@@ -422,8 +424,10 @@ describe("/api/public/prompts API Endpoint", () => {
   });
 
   it("should relate generation to prompt", async () => {
-    const traceId = v4();
-    const generationId = v4();
+    const traceId = randomBytes(16).toString("hex");
+    const generationId = randomBytes(8).toString("hex");
+    const startNano = String(BigInt(Date.now()) * BigInt(1_000_000));
+    const endNano = String(BigInt(Date.now() + 10) * BigInt(1_000_000));
 
     const promptId = uuidv4();
 
@@ -441,110 +445,136 @@ describe("/api/public/prompts API Endpoint", () => {
       },
     });
 
-    const response = await apiCall("POST", "/api/public/ingestion", {
-      metadata: {
-        sdk_verion: "1.0.0",
-        sdk_name: "python",
+    const response = await makeAPICall(
+      "POST",
+      "/api/public/otel/v1/traces",
+      {
+        resourceSpans: [
+          {
+            resource: { attributes: [] },
+            scopeSpans: [
+              {
+                scope: { name: "langfuse-sdk", version: "5.0.0" },
+                spans: [
+                  {
+                    traceId,
+                    spanId: generationId,
+                    name: "generation-name",
+                    kind: 1,
+                    startTimeUnixNano: startNano,
+                    endTimeUnixNano: endNano,
+                    attributes: [
+                      {
+                        key: "langfuse.observation.type",
+                        value: { stringValue: "generation" },
+                      },
+                      {
+                        key: "langfuse.prompt.name",
+                        value: { stringValue: "prompt-name" },
+                      },
+                      {
+                        key: "langfuse.prompt.version",
+                        value: { intValue: 1 },
+                      },
+                    ],
+                    status: {},
+                  },
+                ],
+              },
+            ],
+          },
+        ],
       },
-      batch: [
-        {
-          id: v4(),
-          type: "trace-create",
-          timestamp: new Date().toISOString(),
-          body: {
-            id: traceId,
-            name: "trace-name",
-          },
-        },
-        {
-          id: v4(),
-          type: "generation-create",
-          timestamp: new Date().toISOString(),
-          body: {
-            id: generationId,
-            traceId: traceId,
-            type: "GENERATION",
-            name: "generation-name",
-            promptName: "prompt-name",
-            promptVersion: 1,
-          },
-        },
-      ],
-    });
+      auth,
+      { "x-langfuse-ingestion-version": "4" },
+    );
 
-    expect(response.status).toBe(207);
+    expect(response.status).toBe(200);
 
-    // Delay to allow for async processing
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    const dbGeneration = await getObservationById({
-      id: generationId,
-      projectId,
-    });
-
-    expect(dbGeneration?.id).toBe(generationId);
-    expect(dbGeneration?.promptId).toBe(promptId);
-  });
-
-  it("should fail if prompt version is missing", async () => {
-    const traceId = v4();
-    const generationId = v4();
-
-    const promptId = uuidv4();
-
-    await prisma.prompt.create({
-      data: {
-        id: promptId,
-        name: "prompt-name",
-        prompt: "prompt",
-        labels: ["production"],
-        version: 1,
-        project: {
-          connect: { id: projectId },
-        },
-        createdBy: "user-1",
-      },
-    });
-
-    const response = await apiCall("POST", "/api/public/ingestion", {
-      metadata: {
-        sdk_verion: "1.0.0",
-        sdk_name: "python",
-      },
-      batch: [
-        {
-          id: v4(),
-          type: "trace-create",
-          timestamp: new Date().toISOString(),
-          body: {
-            id: traceId,
-            name: "trace-name",
-          },
-        },
-        {
-          id: v4(),
-          type: "generation-create",
-          timestamp: new Date().toISOString(),
-          body: {
-            id: generationId,
-            traceId: traceId,
-            type: "GENERATION",
-            name: "generation-name",
-            promptName: "prompt-name",
-          },
-        },
-      ],
-    });
-
-    expect(response.status).toBe(207);
-
-    expect(
-      getObservationById({
+    await waitForExpect(async () => {
+      const dbGeneration = await getObservationById({
         id: generationId,
         projectId,
-      }),
-    ).rejects.toThrow("not found");
-  });
+      });
+
+      expect(dbGeneration?.id).toBe(generationId);
+      expect(dbGeneration?.promptId).toBe(promptId);
+    }, 45_000);
+  }, 60_000);
+
+  it("should not link prompt if prompt version is missing", async () => {
+    const traceId = randomBytes(16).toString("hex");
+    const generationId = randomBytes(8).toString("hex");
+    const startNano = String(BigInt(Date.now()) * BigInt(1_000_000));
+    const endNano = String(BigInt(Date.now() + 10) * BigInt(1_000_000));
+
+    const promptId = uuidv4();
+
+    await prisma.prompt.create({
+      data: {
+        id: promptId,
+        name: "prompt-name",
+        prompt: "prompt",
+        labels: ["production"],
+        version: 1,
+        project: {
+          connect: { id: projectId },
+        },
+        createdBy: "user-1",
+      },
+    });
+
+    const response = await makeAPICall(
+      "POST",
+      "/api/public/otel/v1/traces",
+      {
+        resourceSpans: [
+          {
+            resource: { attributes: [] },
+            scopeSpans: [
+              {
+                scope: { name: "langfuse-sdk", version: "5.0.0" },
+                spans: [
+                  {
+                    traceId,
+                    spanId: generationId,
+                    name: "generation-name",
+                    kind: 1,
+                    startTimeUnixNano: startNano,
+                    endTimeUnixNano: endNano,
+                    attributes: [
+                      {
+                        key: "langfuse.observation.type",
+                        value: { stringValue: "generation" },
+                      },
+                      {
+                        key: "langfuse.prompt.name",
+                        value: { stringValue: "prompt-name" },
+                      },
+                    ],
+                    status: {},
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      auth,
+      { "x-langfuse-ingestion-version": "4" },
+    );
+
+    expect(response.status).toBe(200);
+
+    await waitForExpect(async () => {
+      const dbGeneration = await getObservationById({
+        id: generationId,
+        projectId,
+      });
+      expect(dbGeneration?.id).toBe(generationId);
+      expect(dbGeneration?.promptId).toBeNull();
+    }, 45_000);
+  }, 60_000);
 
   it("should create empty object if no config is provided", async () => {
     await apiCall("POST", "/api/public/prompts", {

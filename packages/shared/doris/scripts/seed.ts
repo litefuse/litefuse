@@ -345,7 +345,7 @@ async function main() {
     console.log("Starting Doris seed process...");
 
     // Example project IDs - you can modify these
-    const projectIds = ["7a88fb47-b4e2-43b8-a06c-a5ce950dc53a"];
+    const projectIds = ["7a88fb47b4e243b8a06ca5ce950dc53a"];
 
     // Check if additional project exists in Postgres
     const additionalProject = await prisma.project.findFirst({

@@ -20,11 +20,11 @@ import {
   MAX_PROMPT_NESTING_DEPTH,
   ChatMessageType,
 } from "@langfuse/shared/src/server";
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import waitForExpect from "wait-for-expect";
 import { createPrompt } from "@/src/features/prompts/server/actions/createPrompt";
 
-const projectId = "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a";
+const projectId = "7a88fb47b4e243b8a06ca5ce950dc53a";
 const baseURI = "/api/public/v2/prompts";
 
 type CreatePromptInDBParams = {
@@ -415,8 +415,10 @@ describe("/api/public/v2/prompts API Endpoint", () => {
     it("should relate generation to prompt", async () => {
       const { projectId, auth } = await createOrgProjectAndApiKey();
       const promptName = "prompt-name" + nanoid();
-      const traceId = v4();
-      const generationId = v4();
+      const traceId = randomBytes(16).toString("hex");
+      const generationId = randomBytes(8).toString("hex");
+      const startNano = String(BigInt(Date.now()) * BigInt(1_000_000));
+      const endNano = String(BigInt(Date.now() + 10) * BigInt(1_000_000));
 
       const promptId = uuidv4();
 
@@ -436,43 +438,50 @@ describe("/api/public/v2/prompts API Endpoint", () => {
 
       const response = await makeAPICall(
         "POST",
-        "/api/public/ingestion",
+        "/api/public/otel/v1/traces",
         {
-          metadata: {
-            sdk_verion: "1.0.0",
-            sdk_name: "python",
-          },
-          batch: [
+          resourceSpans: [
             {
-              id: v4(),
-              type: "trace-create",
-              timestamp: new Date().toISOString(),
-              body: {
-                id: traceId,
-                name: "trace-name",
-              },
-            },
-            {
-              id: v4(),
-              type: "generation-create",
-              timestamp: new Date().toISOString(),
-              body: {
-                id: generationId,
-                traceId: traceId,
-                type: "GENERATION",
-                name: "generation-name",
-                promptName,
-                promptVersion: 1,
-              },
+              resource: { attributes: [] },
+              scopeSpans: [
+                {
+                  scope: { name: "langfuse-sdk", version: "5.0.0" },
+                  spans: [
+                    {
+                      traceId,
+                      spanId: generationId,
+                      name: "generation-name",
+                      kind: 1,
+                      startTimeUnixNano: startNano,
+                      endTimeUnixNano: endNano,
+                      attributes: [
+                        {
+                          key: "langfuse.observation.type",
+                          value: { stringValue: "generation" },
+                        },
+                        {
+                          key: "langfuse.prompt.name",
+                          value: { stringValue: promptName },
+                        },
+                        {
+                          key: "langfuse.prompt.version",
+                          value: { intValue: 1 },
+                        },
+                      ],
+                      status: {},
+                    },
+                  ],
+                },
+              ],
             },
           ],
         },
         auth,
+        { "x-langfuse-ingestion-version": "4" },
       );
 
-      expect(response.status).toBe(207);
+      expect(response.status).toBe(200);
 
-      // Delay to allow for async processing
       await waitForExpect(async () => {
         const dbGeneration = await getObservationById({
           id: generationId,
@@ -481,8 +490,8 @@ describe("/api/public/v2/prompts API Endpoint", () => {
 
         expect(dbGeneration?.id).toBe(generationId);
         expect(dbGeneration?.promptId).toBe(promptId);
-      }, 8000);
-    }, 10000);
+      }, 45_000);
+    }, 60_000);
   });
 
   describe("when creating a prompt", () => {

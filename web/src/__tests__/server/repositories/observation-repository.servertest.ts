@@ -8,7 +8,7 @@ import {
 } from "@langfuse/shared/src/server";
 import { v4 } from "uuid";
 
-const projectId = "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a";
+const projectId = "7a88fb47b4e243b8a06ca5ce950dc53a";
 
 describe("Clickhouse Observations Repository Test", () => {
   it("should throw if no observations are found", async () => {

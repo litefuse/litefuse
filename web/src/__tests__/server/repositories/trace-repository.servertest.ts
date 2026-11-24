@@ -10,12 +10,12 @@ import { v4 } from "uuid";
 import { createObservation, createTrace } from "@langfuse/shared/src/server";
 import { createObservationsCh } from "@langfuse/shared/src/server";
 
-const projectId = "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a";
+const projectId = "7a88fb47b4e243b8a06ca5ce950dc53a";
 
 describe("Clickhouse Traces Repository Test", () => {
   it("should throw if no traces are found", async () => {
     expect(
-      await getTraceById({ traceId: v4(), projectId: v4() }),
+      await getTraceById({ traceId: v4(), projectId: v4().replace(/-/g, "") }),
     ).toBeUndefined();
   });
 
@@ -192,7 +192,7 @@ describe("Clickhouse Traces Repository Test", () => {
     const trace = createTrace({
       id: traceId,
       user_id: "user-1",
-      project_id: "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a",
+      project_id: "7a88fb47b4e243b8a06ca5ce950dc53a",
       metadata: { key: "value" },
       release: "1.0.0",
       version: "2.0.0",
@@ -247,7 +247,7 @@ describe("Clickhouse Traces Repository Test", () => {
     const trace = createTrace({
       id: traceId,
       user_id: "user-1",
-      project_id: "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a",
+      project_id: "7a88fb47b4e243b8a06ca5ce950dc53a",
       metadata: { key: "value" },
       release: "1.0.0",
       version: "2.0.0",
@@ -301,7 +301,7 @@ describe("Clickhouse Traces Repository Test", () => {
     const trace = createTrace({
       id: traceId,
       user_id: "user-1",
-      project_id: "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a",
+      project_id: "7a88fb47b4e243b8a06ca5ce950dc53a",
       metadata: { key: "value" },
       release: "1.0.0",
       version: "2.0.0",
@@ -348,7 +348,7 @@ describe("Clickhouse Traces Repository Test", () => {
     const trace = createTrace({
       id: traceId,
       user_id: "user-1",
-      project_id: "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a",
+      project_id: "7a88fb47b4e243b8a06ca5ce950dc53a",
       metadata: { key: "value" },
       release: "1.0.0",
       version: "2.0.0",
@@ -472,7 +472,7 @@ describe("Clickhouse Traces Repository Test", () => {
     const trace = createTrace({
       id: traceId,
       user_id: "user-1",
-      project_id: "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a",
+      project_id: "7a88fb47b4e243b8a06ca5ce950dc53a",
       metadata: { key: "value" },
       release: "1.0.0",
       version: "2.0.0",

@@ -8,8 +8,8 @@ import { InvalidRequestError } from "@langfuse/shared";
  * Test suite for testing SQL injection vulnerabilities in the QueryBuilder
  */
 describe("QueryBuilder SQL Injection Tests", () => {
-  // Single project ID for all tests
-  const projectId = randomUUID();
+  // Single project ID for all tests (Doris-safe, no hyphens)
+  const projectId = randomUUID().replace(/-/g, "");
 
   // Time references
   const now = new Date();

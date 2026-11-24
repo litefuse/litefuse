@@ -280,13 +280,24 @@ jobs:
           LITEFUSE_INIT_ORG_ID: "seed-org-id"
           LITEFUSE_INIT_ORG_NAME: "Seed Org"
           LITEFUSE_INIT_ORG_CLOUD_PLAN: "Pro"
-          LITEFUSE_INIT_PROJECT_ID: "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a"
+          LITEFUSE_INIT_PROJECT_ID: "7a88fb47b4e243b8a06ca5ce950dc53a"
           LITEFUSE_INIT_PROJECT_NAME: "Seed Project"
           LITEFUSE_INIT_PROJECT_PUBLIC_KEY: "pk-lf-1234567890"
           LITEFUSE_INIT_PROJECT_SECRET_KEY: "sk-lf-1234567890"
           LITEFUSE_INIT_USER_EMAIL: "demo@litefuse.ai"
           LITEFUSE_INIT_USER_NAME: "Demo User"
           LITEFUSE_INIT_USER_PASSWORD: "password"
+      - name: Wait for Langfuse server health
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:3000/api/public/health >/dev/null; then
+              echo "Langfuse web server is healthy"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Timed out waiting for Langfuse web server"
+          exit 1
       - name: run tests
         working-directory: web
         run: npx cross-env NODE_OPTIONS='--no-experimental-require-module' npx dotenv -e ../.env.test -e ../.env -- npx jest --verbose --runInBand --detectOpenHandles --selectProjects server --shard=${{ matrix.shard }}/3

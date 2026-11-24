@@ -150,7 +150,7 @@ describe("Admin API Key Authentication", () => {
       expect(result.scope.projectId).toBe(projectId);
     });
 
-    it("should fail on Langfuse Cloud", async () => {
+    it("should fail on Litefuse Cloud", async () => {
       (env as any).NEXT_PUBLIC_LITEFUSE_CLOUD_REGION = "prod-us";
 
       const mockReq = {
@@ -163,7 +163,7 @@ describe("Admin API Key Authentication", () => {
 
       await expect(verifyAuth(mockReq, true)).rejects.toEqual({
         status: 403,
-        message: "Admin API key auth is not available on Langfuse Cloud",
+        message: "Admin API key auth is not available on Litefuse Cloud",
       });
 
       (env as any).NEXT_PUBLIC_LITEFUSE_CLOUD_REGION = undefined;
