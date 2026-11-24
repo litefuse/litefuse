@@ -74,6 +74,16 @@ services:
     hostname: doris_fe
     container_name: litefuse-doris-fe
     restart: unless-stopped
+    # Work around OpenJDK 17.0.2 Cgroup v2 NPE (JDK-8287073) on Ubuntu 24.04 /
+    # GitHub Actions runners and keep dev FE heap modest alongside builds.
+    entrypoint:
+      - bash
+      - -c
+      - |
+        sed -i 's/-Xmx8192m/-Xmx2048m/g; s/-Xms8192m/-Xms512m/g' /opt/apache-doris/fe/conf/fe.conf
+        grep -q -- '-XX:-UseContainerSupport' /opt/apache-doris/fe/conf/fe.conf \
+          || sed -i -E 's/^(JAVA_OPTS_FOR_JDK_17[[:space:]]*=[[:space:]]*")/\1-XX:-UseContainerSupport /' /opt/apache-doris/fe/conf/fe.conf
+        exec bash init_fe.sh
     environment:
       - FE_SERVERS=fe1:172.29.0.2:9010
       - FE_ID=1

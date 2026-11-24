@@ -1799,9 +1799,8 @@ export class IngestionService {
    * nested JSON patterns remain).
    */
   private fixMalformedNestedJson(str: string): string {
-    const objectPattern = /"([^"]+)":"(\{(?:[^{}]*(?:\{[^{}]*\}[^{}]*)*)*\})"/g;
-    const arrayPattern =
-      /"([^"]+)":"(\[(?:[^[\]]*(?:\[[^[\]]*\][^[\]]*)*)*\])"/g;
+    const objectPattern = /"([^"]+)":"(\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})"/g;
+    const arrayPattern = /"([^"]+)":"(\[[^[\]]*(?:\[[^[\]]*\][^[\]]*)*\])"/g;
 
     let fixed = str;
 

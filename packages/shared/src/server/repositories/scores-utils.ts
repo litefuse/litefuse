@@ -57,7 +57,7 @@ export const _handleGetScoresByIds = async ({
   scoreId,
   source,
   scoreScope,
-  dataTypes,
+  dataTypes: _dataTypes,
 }: {
   projectId: string;
   scoreId: string[];

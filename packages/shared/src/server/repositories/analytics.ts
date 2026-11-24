@@ -1,7 +1,6 @@
 import {
   queryDoris,
   queryDorisStream,
-  commandDoris,
   parseDorisUTCDateTimeFormat,
 } from "./doris";
 

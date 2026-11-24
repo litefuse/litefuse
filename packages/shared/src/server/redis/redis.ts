@@ -328,7 +328,6 @@ export const redis = globalThis.redis ?? createRedisClient();
 if (env.NODE_ENV !== "production") globalThis.redis = redis;
 
 declare global {
-  // eslint-disable-next-line no-var
   var litefuseUnprefixedRedis: undefined | Redis | Cluster | null;
 }
 

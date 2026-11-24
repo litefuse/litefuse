@@ -42,9 +42,13 @@ function parseDorisUrl(url: string) {
 
 // Create Doris connection
 async function createDorisConnection() {
+  // eslint-disable-next-line turbo/no-undeclared-env-vars
   const dorisUrl = process.env.DORIS_URL;
+  // eslint-disable-next-line turbo/no-undeclared-env-vars
   const dorisUser = process.env.DORIS_USER || "root";
+  // eslint-disable-next-line turbo/no-undeclared-env-vars
   const dorisPassword = process.env.DORIS_PASSWORD || "";
+  // eslint-disable-next-line turbo/no-undeclared-env-vars
   const dorisDb = process.env.DORIS_DB || "langfuse";
 
   if (!dorisUrl) {
@@ -423,41 +427,6 @@ async function main() {
         : await prisma.project.findFirst();
 
     if (project1 && project2) {
-      // Create some sample observations for dataset creation
-      const sampleObservations = generateObservations(
-        projectIds[0],
-        50,
-        10,
-        opts.numberOfDays,
-      ).map((o) => ({
-        id: o.id,
-        traceId: o.trace_id,
-        projectId: o.project_id,
-        type: o.type as any,
-        startTime: new Date(o.start_time),
-        endTime: o.end_time ? new Date(o.end_time) : null,
-        name: o.name,
-        metadata: {},
-        level: o.level as any,
-        statusMessage: o.status_message,
-        parentObservationId: o.parent_observation_id,
-        version: o.version,
-        createdAt: new Date(o.created_at),
-        updatedAt: new Date(o.updated_at),
-        input: {},
-        output: {},
-        modelParameters: {},
-        internalModel: null,
-        internalModelId: o.internal_model_id,
-        providedModelName: o.provided_model_name,
-        completionStartTime: o.completion_start_time
-          ? new Date(o.completion_start_time)
-          : null,
-        promptId: o.prompt_id,
-        promptName: o.prompt_name,
-        promptVersion: o.prompt_version,
-      }));
-
       await createDatasets(project1, project2);
       console.log("✓ Created datasets in PostgreSQL");
     }

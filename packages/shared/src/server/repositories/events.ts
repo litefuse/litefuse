@@ -13,17 +13,14 @@ import {
   convertDorisTracesListToDomain,
 } from "./traces_converters";
 import { FilterState } from "../../types";
-import {
-  eventsTableNativeUiColumnDefinitionsForDoris,
-  eventsTableUiColumnDefinitionsForDoris,
-} from "../tableMappings/mapEventsTable";
+import { eventsTableUiColumnDefinitionsForDoris } from "../tableMappings/mapEventsTable";
 import { tracesTableUiColumnDefinitionsForDoris } from "../tableMappings/mapTracesTable";
 import {
   DEFAULT_RENDERING_PROPS,
   RenderingProps,
   applyInputOutputRendering,
 } from "../utils/rendering";
-import { ObservationRecordReadType, TraceRecordReadType } from "./definitions";
+import { TraceRecordReadType } from "./definitions";
 import type { AnalyticsObservationEvent } from "../analytics-integrations/types";
 import {
   ObservationsTableQueryResult,
@@ -39,14 +36,10 @@ import {
   type ObservationPriceFields,
 } from "../queries/createGenerationsQuery";
 import { UiColumnMappings } from "../../tableDefinitions";
-import { eventsTableCols } from "../../eventsTable";
 import { tracesTableCols } from "../../tableDefinitions/tracesTable";
 import { parseMetadataCHRecordToDomain } from "../utils/metadata_conversion";
 import { convertDateToAnalyticsDateTime, dq } from "./analyticsDateTime";
-import {
-  dorisSearchCondition,
-  DorisSearchContext,
-} from "../queries/doris-sql/search";
+import { dorisSearchCondition } from "../queries/doris-sql/search";
 import {
   createDorisFilterFromFilterState,
   getDorisProjectIdDefaultFilter,
@@ -213,25 +206,6 @@ async function enrichObservationsWithTraceFields(
 }
 
 /**
- * Internal helper: extract and convert time filter from FilterState
- * Common pattern: find time filter and convert to Doris DateTime format
- */
-function extractTimeFilterFromFilterState(
-  filter: FilterState,
-  tableName: "observations" | "traces" = "observations",
-  fieldName: "startTime" | "timestamp" = "startTime",
-): string | null {
-  const timeFilter = filter.find(
-    (f) =>
-      f.column === fieldName && (f.operator === ">=" || f.operator === ">"),
-  );
-
-  return timeFilter && timeFilter.value
-    ? convertDateToAnalyticsDateTime(timeFilter.value as Date)
-    : null;
-}
-
-/**
  * Column mapping for public API filters on events table (observations)
  */
 const PUBLIC_API_EVENTS_COLUMN_MAPPING: ApiColumnMapping[] =
@@ -248,49 +222,6 @@ const PUBLIC_API_TRACES_COLUMN_MAPPING = createPublicApiTracesColumnMapping(
   "traces",
   "t",
 );
-
-// For events-based traces, observation fields are aggregated into the traces CTE (with 't' prefix),
-// not joined from a separate observations table (with 'o' prefix). We need to remap these.
-const TRACES_FROM_EVENTS_UI_COLUMN_DEFINITIONS =
-  tracesTableUiColumnDefinitionsForDoris.map((col) => {
-    // If this column references the observations table with 'o' prefix,
-    // remap it to use 't' prefix since observations are aggregated into traces CTE
-    if (col.tableName === "observations") {
-      // Replace o. prefix with t. in select (only when followed by identifier)
-      // Technically we do not need to deal with the prefix at all,
-      // since here these columns are always used inside a CTE.
-      const updatedSelect = col.select.replace(/\bo\.([a-z_])/g, "t.$1");
-
-      return {
-        ...col,
-        tableName: "traces", // Now it's in the traces CTE
-        queryPrefix: undefined,
-        select: updatedSelect,
-      };
-    }
-    return col;
-  });
-
-/**
- * Order by columns for traces CTE (post-aggregation)
- */
-const allowedOrderByIds = [
-  "timestamp",
-  "name",
-  "userId",
-  "sessionId",
-  "environment",
-  "version",
-  "release",
-];
-const TRACES_ORDER_BY_COLUMNS = TRACES_FROM_EVENTS_UI_COLUMN_DEFINITIONS.filter(
-  (col) => allowedOrderByIds.includes(col.uiTableId),
-).map((col) => ({
-  ...col,
-  // Adjust column names that change after aggregation (start_time -> timestamp)
-  select: col.uiTableId === "timestamp" ? "timestamp" : col.select,
-  queryPrefix: "t", // Use 't' prefix because we're selecting from traces CTE
-}));
 
 // TODO: introduce pagination
 export const MAX_OBSERVATIONS_PER_TRACE = 10_000;
@@ -394,7 +325,7 @@ async function getObservationsFromEventsTableInternal<T>(
     projectId,
     filter,
     selectIOAndMetadata,
-    renderingProps = DEFAULT_RENDERING_PROPS,
+    renderingProps: _renderingProps = DEFAULT_RENDERING_PROPS,
     limit,
     offset,
     orderBy,
@@ -1110,7 +1041,7 @@ async function getObservationsRowsFromDoris<T>(
   projectId: string,
   query: string,
   params: Record<string, unknown>,
-  operationName: string = "getObservationsFromEventsTableForPublicApi_rows",
+  _operationName: string = "getObservationsFromEventsTableForPublicApi_rows",
 ): Promise<Array<T>> {
   const res = await queryDoris<T>({
     query,
@@ -1663,7 +1594,7 @@ export const getEventsGroupedByName = async (
 export const getEventsGroupedByTraceName = async (
   projectId: string,
   filter: FilterState,
-  opts?: { extraWhereRaw?: string },
+  _opts?: { extraWhereRaw?: string },
 ) => {
   const { observationsFilter } = getDorisProjectIdDefaultFilter(projectId, {
     tracesPrefix: "t",
@@ -1712,7 +1643,7 @@ export const getEventsGroupedByTraceName = async (
 export const getEventsGroupedByTraceTags = async (
   projectId: string,
   filter: FilterState,
-  opts?: { extraWhereRaw?: string },
+  _opts?: { extraWhereRaw?: string },
 ) => {
   const { observationsFilter } = getDorisProjectIdDefaultFilter(projectId, {
     tracesPrefix: "t",
@@ -1859,7 +1790,7 @@ export const getEventsGroupedByType = async (
 export const getEventsGroupedByUserId = async (
   projectId: string,
   filter: FilterState,
-  opts?: { extraWhereRaw?: string },
+  _opts?: { extraWhereRaw?: string },
 ) => {
   const { observationsFilter } = getDorisProjectIdDefaultFilter(projectId, {
     tracesPrefix: "t",
@@ -2299,8 +2230,8 @@ export const getEventsGroupedByHasParentObservation = async (
  * Used for filter options
  */
 export const getEventsGroupedByToolName = async (
-  projectId: string,
-  filter: FilterState,
+  _projectId: string,
+  _filter: FilterState,
 ) => {
   // Doris does not have tool_definitions column in the same format; return empty
   return [] as { toolName: string; count: number }[];
@@ -2311,8 +2242,8 @@ export const getEventsGroupedByToolName = async (
  * Used for filter options
  */
 export const getEventsGroupedByCalledToolName = async (
-  projectId: string,
-  filter: FilterState,
+  _projectId: string,
+  _filter: FilterState,
 ) => {
   // Doris does not have tool_call_names column in the same format; return empty
   return [] as { calledToolName: string; count: number }[];

@@ -74,9 +74,7 @@ describe("provisionSplitTablesForProject (idempotent MV)", () => {
       retentionDays: null,
     });
     const issued = commandMock.mock.calls.map((c) => c[0].query);
-    expect(issued[0]).toContain(
-      `CREATE TABLE IF NOT EXISTS \`spans_${PID}\``,
-    );
+    expect(issued[0]).toContain(`CREATE TABLE IF NOT EXISTS \`spans_${PID}\``);
     expect(issued[0]).toContain('"storage_page_size" = "131072"');
     expect(issued[1]).toContain(
       `CREATE TABLE IF NOT EXISTS \`traces_scalar_${PID}\``,
