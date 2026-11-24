@@ -162,8 +162,19 @@ export const transformDbToApiObservation = (
     bookmarked,
 
     public: _public,
+    // Exclude internal Doris preview/event-only fields not in V1 public API schema
+    input_trim: _inputTrim,
+    output_trim: _outputTrim,
+    release: _release,
+    tags: _tags,
     ...rest
-  } = observation as EventsObservation & ObservationPriceFields;
+  } = observation as EventsObservation &
+    ObservationPriceFields & {
+      input_trim?: string | null;
+      output_trim?: string | null;
+      release?: string | null;
+      tags?: string[];
+    };
 
   return {
     ...rest,

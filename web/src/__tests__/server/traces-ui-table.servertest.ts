@@ -14,7 +14,7 @@ import { type FilterState } from "@langfuse/shared";
 
 describe("Traces table API test", () => {
   it("should get a correct trace without observation", async () => {
-    const project_id = v4();
+    const project_id = v4().replace(/-/g, "");
     const trace_id = v4();
 
     const trace = createTrace({ id: trace_id, project_id });
@@ -43,7 +43,7 @@ describe("Traces table API test", () => {
   });
 
   it("#5274: should get a traces in expected default order", async () => {
-    const project_id = v4();
+    const project_id = v4().replace(/-/g, "");
     const trace_id = v4();
 
     // Trace1 happened after Trace2, but Trace2 got updated.
@@ -76,7 +76,7 @@ describe("Traces table API test", () => {
   });
 
   it("should get a correct trace with observations", async () => {
-    const project_id = v4();
+    const project_id = v4().replace(/-/g, "");
     const trace_id = v4();
 
     const trace = createTrace({ id: trace_id, project_id });
@@ -176,7 +176,7 @@ describe("Traces table API test", () => {
     },
   ].forEach(async (testConfig: TestCase) => {
     it(`should get a correct trace with filters ${JSON.stringify(testConfig)}`, async () => {
-      const project_id = v4();
+      const project_id = v4().replace(/-/g, "");
       const trace_id = v4();
 
       const trace = createTrace({

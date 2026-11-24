@@ -59,7 +59,7 @@ describe("hasAnyTrace", () => {
 
   it("should return false when no traces exist", async () => {
     // Use a random projectId that has no traces in either PG or ClickHouse
-    const emptyProjectId = v4();
+    const emptyProjectId = v4().replace(/-/g, "");
     const result = await hasAnyTrace(emptyProjectId);
     expect(result).toBe(false);
   });

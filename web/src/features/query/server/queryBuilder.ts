@@ -1974,6 +1974,12 @@ export class QueryBuilder {
 
     fromClause += this.buildWhereClause(filterList, parameters);
 
+    // Exclude synthetic trace-only root rows (`t-<traceId>`) from the
+    // observations view while preserving real OTel root observations.
+    if (view.name === "observations") {
+      fromClause += ` AND ${this.tableAlias(view)}.span_id NOT LIKE 't-%'`;
+    }
+
     // pairExpand position matching
     if (pairDims.length > 0) {
       fromClause += ` AND _pe_key_pos = _pe_val_pos AND ${view.name}.${pairDims[0].pairExpand!.valuesSql} IS NOT NULL`;

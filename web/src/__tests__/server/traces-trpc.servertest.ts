@@ -292,7 +292,7 @@ describe("traces trpc", () => {
     });
 
     it("access public trace", async () => {
-      const differentProjectId = randomUUID();
+      const differentProjectId = randomUUID().replace(/-/g, "");
       const trace = createTrace({
         project_id: differentProjectId,
         public: true,

@@ -653,7 +653,7 @@ describe("Dashboard Router - Pivot Table Integration", () => {
     });
 
     it("should handle missing project data gracefully", async () => {
-      const nonExistentProjectId = randomUUID();
+      const nonExistentProjectId = randomUUID().replace(/-/g, "");
 
       const query: QueryType = {
         view: "traces",

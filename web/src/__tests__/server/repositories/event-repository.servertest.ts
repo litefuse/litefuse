@@ -375,7 +375,7 @@ describe("Clickhouse Events Repository Test", () => {
 
   maybe("getObservationsCountFromEventsTable", () => {
     it("should return 0 for non-existent project", async () => {
-      const nonExistentProjectId = randomUUID();
+      const nonExistentProjectId = randomUUID().replace(/-/g, "");
 
       const count = await getObservationsCountFromEventsTable({
         projectId: nonExistentProjectId,
@@ -386,7 +386,7 @@ describe("Clickhouse Events Repository Test", () => {
     });
 
     it("should match the length of observations returned by getObservationsWithModelDataFromEventsTable", async () => {
-      const uniqueProjectId = randomUUID();
+      const uniqueProjectId = randomUUID().replace(/-/g, "");
       const uniqueTraceId = randomUUID();
       const events = Array.from({ length: 5 }, (_, i) =>
         createEvent({
@@ -422,7 +422,7 @@ describe("Clickhouse Events Repository Test", () => {
   maybe("Filter Tests", () => {
     describe("Timestamp Filters", () => {
       it("should filter observations by start time with >= operator", async () => {
-        const uniqueProjectId = randomUUID();
+        const uniqueProjectId = randomUUID().replace(/-/g, "");
         const traceId = randomUUID();
         const now = Date.now();
         const filterTime = new Date(now - 5000);
@@ -479,7 +479,7 @@ describe("Clickhouse Events Repository Test", () => {
       });
 
       it("should filter observations by start time with <= operator", async () => {
-        const uniqueProjectId = randomUUID();
+        const uniqueProjectId = randomUUID().replace(/-/g, "");
         const traceId = randomUUID();
         const now = Date.now();
         const filterTime = new Date(now - 5000);
@@ -536,7 +536,7 @@ describe("Clickhouse Events Repository Test", () => {
       });
 
       it("should filter observations by end time", async () => {
-        const uniqueProjectId = randomUUID();
+        const uniqueProjectId = randomUUID().replace(/-/g, "");
         const traceId = randomUUID();
         const now = Date.now();
         const filterTime = new Date(now - 2000);
@@ -597,7 +597,7 @@ describe("Clickhouse Events Repository Test", () => {
 
     describe("Prompt Filters", () => {
       it("should filter observations by prompt name and prompt version", async () => {
-        const uniqueProjectId = randomUUID();
+        const uniqueProjectId = randomUUID().replace(/-/g, "");
         const traceId = randomUUID();
         const matchingEventId = randomUUID();
 
@@ -1339,7 +1339,7 @@ describe("Clickhouse Events Repository Test", () => {
 
   maybe("getObservationsFromEventsTableForPublicApi", () => {
     it("should return observations with pagination", async () => {
-      const uniqueProjectId = randomUUID();
+      const uniqueProjectId = randomUUID().replace(/-/g, "");
       const traceId = randomUUID();
 
       const events = Array.from({ length: 5 }, (_, i) =>
@@ -1386,7 +1386,7 @@ describe("Clickhouse Events Repository Test", () => {
     });
 
     it("should filter by traceId", async () => {
-      const uniqueProjectId = randomUUID();
+      const uniqueProjectId = randomUUID().replace(/-/g, "");
       const traceId1 = randomUUID();
       const traceId2 = randomUUID();
 
@@ -1424,7 +1424,7 @@ describe("Clickhouse Events Repository Test", () => {
     });
 
     it("should filter by type", async () => {
-      const uniqueProjectId = randomUUID();
+      const uniqueProjectId = randomUUID().replace(/-/g, "");
       const traceId = randomUUID();
 
       const events = [
@@ -1461,7 +1461,7 @@ describe("Clickhouse Events Repository Test", () => {
     });
 
     it("should filter by level", async () => {
-      const uniqueProjectId = randomUUID();
+      const uniqueProjectId = randomUUID().replace(/-/g, "");
       const traceId = randomUUID();
 
       const events = [
@@ -1500,7 +1500,7 @@ describe("Clickhouse Events Repository Test", () => {
     });
 
     it("should filter by time range", async () => {
-      const uniqueProjectId = randomUUID();
+      const uniqueProjectId = randomUUID().replace(/-/g, "");
       const traceId = randomUUID();
       const now = Date.now();
       const fromTime = new Date(now - 5000).toISOString();
@@ -1551,7 +1551,7 @@ describe("Clickhouse Events Repository Test", () => {
     });
 
     it("should combine multiple filters", async () => {
-      const uniqueProjectId = randomUUID();
+      const uniqueProjectId = randomUUID().replace(/-/g, "");
       const userId = "test-user";
 
       // Create events in different traces so userId filtering works at trace level
@@ -2030,7 +2030,7 @@ describe("Clickhouse Events Repository Test", () => {
     });
 
     it("should filter by projectId correctly", async () => {
-      const differentProjectId = randomUUID();
+      const differentProjectId = randomUUID().replace(/-/g, "");
       const traceId = randomUUID();
       const observationId = randomUUID();
       const nowMicro = Date.now() * 1000;

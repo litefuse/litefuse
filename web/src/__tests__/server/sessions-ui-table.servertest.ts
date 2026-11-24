@@ -542,7 +542,7 @@ describe("trpc.sessions", () => {
   });
 
   it("should GET correct session data with filters", async () => {
-    const project_id = v4();
+    const project_id = v4().replace(/-/g, "");
     const trace_id_with_score = v4();
     const session_id_with_score = v4();
     const trace_id_without_score = v4();

@@ -1,7 +1,7 @@
 /** @jest-environment node */
 
 import { prisma } from "@langfuse/shared/src/db";
-import { disconnectQueues, makeAPICall } from "@/src/__tests__/test-utils";
+import { makeAPICall } from "@/src/__tests__/test-utils";
 import { v4 as uuidv4, v4 } from "uuid";
 import {
   PromptSchema,
@@ -126,9 +126,6 @@ const testPromptEquality = (
 };
 
 describe("/api/public/v2/prompts API Endpoint", () => {
-  afterAll(async () => {
-    await disconnectQueues();
-  });
   describe("when fetching a prompt", () => {
     it("should return a 401 if key is invalid", async () => {
       const projectId = uuidv4();
@@ -1907,10 +1904,6 @@ describe("/api/public/v2/prompts API Endpoint", () => {
 describe("PATCH api/public/v2/prompts/[promptName]/versions/[version]", () => {
   let triggerId: string;
   let actionId: string;
-
-  afterAll(async () => {
-    await disconnectQueues();
-  });
 
   it("should update the labels of a prompt", async () => {
     const { projectId: newProjectId, auth: newAuth } =

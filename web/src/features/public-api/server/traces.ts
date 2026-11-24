@@ -8,6 +8,7 @@ import {
   dq,
   convertDorisTracesListToDomain,
   orderByToDorisSQL,
+  parseDorisStringArray,
   type DateTimeFilter,
 } from "@langfuse/shared/src/server";
 import {
@@ -107,6 +108,7 @@ export const generateTracesForPublicApi = async ({
           collect_list(span_id) as observation_ids
         FROM ${tableFor(props.projectId, "spans")}
         WHERE project_id = {projectId: String}
+        AND is_root = 0
         ${timeFilter ? `AND start_time >= DATE_SUB({cteTimeFilter: DateTime}, INTERVAL 2 DAY)` : ""}
         ${environmentFilter.length() > 0 ? `AND ${appliedEnvironmentFilter.query}` : ""}
         GROUP BY project_id, trace_id
@@ -183,11 +185,15 @@ export const generateTracesForPublicApi = async ({
     },
   });
 
-  const result = rawResult.map(({ metadata, ...trace }) => ({
-    ...trace,
-    metadata:
-      typeof metadata === "string" ? JSON.parse(metadata) : (metadata ?? {}),
-  }));
+  const result = rawResult.map(
+    ({ metadata, observations, scores, ...trace }) => ({
+      ...trace,
+      observations: parseDorisStringArray(observations),
+      scores: parseDorisStringArray(scores),
+      metadata:
+        typeof metadata === "string" ? JSON.parse(metadata) : (metadata ?? {}),
+    }),
+  );
 
   return convertDorisTracesListToDomain(
     result as Array<

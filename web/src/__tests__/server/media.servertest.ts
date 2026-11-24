@@ -17,7 +17,6 @@ import {
   prisma,
   type TraceMedia,
 } from "@langfuse/shared/src/db";
-import { redis } from "@langfuse/shared/src/server";
 
 describe("Media Upload API", () => {
   const projectId = "7a88fb47b4e243b8a06ca5ce950dc53a";
@@ -231,12 +230,6 @@ describe("Media Upload API", () => {
     }
 
     await prisma.media.deleteMany();
-  });
-
-  afterAll(async () => {
-    if (redis) {
-      redis.disconnect();
-    }
   });
 
   describeIfNotAzureBlobStorage("End-to-end tests", () => {

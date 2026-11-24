@@ -69,7 +69,7 @@ describe("Clickhouse Scores Repository Test", () => {
 
   describe("getScoresGroupedByNameSourceType", () => {
     it("should return empty array when no scores exist", async () => {
-      const emptyProjectId = v4();
+      const emptyProjectId = v4().replace(/-/g, "");
       const result = await getScoresGroupedByNameSourceType({
         projectId: emptyProjectId,
         filter: [],

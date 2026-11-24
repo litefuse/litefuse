@@ -56,6 +56,27 @@ export async function executeQuery(
   const converted = rows.map((row) => {
     const out: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(row)) {
+      if (key.startsWith("histogram_") && typeof value === "string") {
+        try {
+          const parsed = JSON.parse(value) as {
+            buckets?: Array<{
+              lower: number;
+              upper: number;
+              count: number;
+            }>;
+          };
+          if (Array.isArray(parsed?.buckets)) {
+            out[key] = parsed.buckets.map((b) => [
+              Number(b.lower),
+              Number(b.upper),
+              Number(b.count),
+            ]);
+            continue;
+          }
+        } catch {
+          // Fall through to default conversion
+        }
+      }
       if (value instanceof Date) {
         // Output ISO 8601 format with timezone indicator so frontend
         // correctly interprets as UTC (matching ClickHouse iso output)
@@ -172,12 +193,16 @@ function fillTimeSeriesGaps(
 
   const formatTs = (d: Date): string => d.toISOString();
 
-  // Generate all time buckets
+  // Generate all time buckets using ClickHouse WITH FILL half-open [start, end)
+  // semantics where both bounds are truncated to the bucket granularity.
   const start = truncate(new Date(fromTimestamp));
-  const end = new Date(toTimestamp);
+  const end = truncate(new Date(toTimestamp));
   const allTimeBuckets: string[] = [];
-  for (let t = start; t <= end; t = new Date(t.getTime() + step)) {
+  for (let t = start; t < end; t = new Date(t.getTime() + step)) {
     allTimeBuckets.push(formatTs(t));
+  }
+  if (allTimeBuckets.length === 0) {
+    allTimeBuckets.push(formatTs(start));
   }
 
   // No breakdown dimensions: simple fill (one series)
