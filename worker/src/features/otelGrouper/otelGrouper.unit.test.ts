@@ -387,59 +387,67 @@ const itLane = (name: string, fn: () => Promise<void>) =>
   });
 
 describe("OtelGrouper lane domain (real Redis, Stage 1.4)", () => {
-  itLane("cuts a split project's lane into a single-project group", async () => {
-    const pid = `test${randomUUID().slice(0, 8)}`;
-    const lane = `lane-${pid}`;
-    // Split project LIVE in the cache + registered in the lane index.
-    __setSplitSnapshotForTest([[pid, true]]);
-    await removeLaneFromIndex(redis, lane);
-    await addLaneToIndex(redis, lane);
-    const e = entry({
-      projectId: pid,
-      fileKey: `otel/${pid}/${randomUUID()}.json`,
-    });
-    await registerOtelFile({ redis, groupingKey: lane, entry: e, ttlMs: 60_000 });
+  itLane(
+    "cuts a split project's lane into a single-project group",
+    async () => {
+      const pid = `test${randomUUID().slice(0, 8)}`;
+      const lane = `lane-${pid}`;
+      // Split project LIVE in the cache + registered in the lane index.
+      __setSplitSnapshotForTest([[pid, true]]);
+      await removeLaneFromIndex(redis, lane);
+      await addLaneToIndex(redis, lane);
+      const e = entry({
+        projectId: pid,
+        fileKey: `otel/${pid}/${randomUUID()}.json`,
+      });
+      await registerOtelFile({
+        redis,
+        groupingKey: lane,
+        entry: e,
+        ttlMs: 60_000,
+      });
 
-    const published: { groupingKey: string; cut: OtelGroupCut }[] = [];
-    const grouper = new OtelGrouper({
-      redis,
-      shardNames: [], // lanes only
-      // MV readiness stubbed (no Doris) — fully ready.
-      getLaneReadiness: async () => ({
-        ready: true,
-        spansExists: true,
-        tracesScalarExists: true,
-        mvStatus: "finished" as const,
-      }),
-      addGroupJob: async (groupingKey, cut) => {
-        published.push({ groupingKey, cut });
-      },
-      config: {
-        targetBytes: 2000,
-        targetRows: 1_000_000,
-        maxFiles: 100,
-        flushMs: 0,
-        lockTtlMs: 5_000,
-        laneDomainLeaseTtlMs: 5_000,
-        tickMs: 25,
-      },
-    });
-    cleanups.push(() => grouper.stop());
-    await grouper.start();
-    await vi.waitFor(
-      () => {
-        expect(published.length).toBeGreaterThanOrEqual(1);
-      },
-      { timeout: 5_000, interval: 50 },
-    );
+      const published: { groupingKey: string; cut: OtelGroupCut }[] = [];
+      const grouper = new OtelGrouper({
+        redis,
+        shardNames: [], // lanes only
+        // MV readiness stubbed (no Doris) — fully ready.
+        getLaneReadiness: async () => ({
+          ready: true,
+          spansExists: true,
+          tracesScalarExists: true,
+          mvStatus: "finished" as const,
+        }),
+        addGroupJob: async (groupingKey, cut) => {
+          published.push({ groupingKey, cut });
+        },
+        config: {
+          targetBytes: 2000,
+          targetRows: 1_000_000,
+          maxFiles: 100,
+          flushMs: 0,
+          lockTtlMs: 5_000,
+          laneDomainLeaseTtlMs: 5_000,
+          tickMs: 25,
+        },
+      });
+      cleanups.push(() => grouper.stop());
+      await grouper.start();
+      await vi.waitFor(
+        () => {
+          expect(published.length).toBeGreaterThanOrEqual(1);
+        },
+        { timeout: 5_000, interval: 50 },
+      );
 
-    // The group is cut from the lane and contains only that project's file.
-    expect(published[0].groupingKey).toBe(lane);
-    expect(published[0].cut.groupId).toBe(computeGroupId([e.fileKey]));
-    expect(published[0].cut.entries).toHaveLength(1);
-    expect(published[0].cut.entries[0].projectId).toBe(pid);
+      // The group is cut from the lane and contains only that project's file.
+      expect(published[0].groupingKey).toBe(lane);
+      expect(published[0].cut.groupId).toBe(computeGroupId([e.fileKey]));
+      expect(published[0].cut.entries).toHaveLength(1);
+      expect(published[0].cut.entries[0].projectId).toBe(pid);
 
-    __setSplitSnapshotForTest(null); // reset the global snapshot
-    await removeLaneFromIndex(redis, lane);
-  });
+      __setSplitSnapshotForTest(null); // reset the global snapshot
+      await removeLaneFromIndex(redis, lane);
+    },
+  );
 });

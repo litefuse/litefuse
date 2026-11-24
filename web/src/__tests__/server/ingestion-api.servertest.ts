@@ -602,9 +602,7 @@ describe("/api/public/ingestion API Endpoint", () => {
     expect(response.body.errors[0].message).toBe("Invalid request data");
   });
 
-  it.skip(
-    "should silently drop invalid float values in usageDetails",
-    async () => {
+  it.skip("should silently drop invalid float values in usageDetails", async () => {
     const response = await makeAPICall("POST", "/api/public/ingestion", {
       batch: [
         {
@@ -824,9 +822,7 @@ describe("/api/public/ingestion API Endpoint", () => {
     },
   );
 
-  it.skip(
-    "should merge metadata correctly across multiple trace updates",
-    async () => {
+  it.skip("should merge metadata correctly across multiple trace updates", async () => {
     const traceId = randomUUID();
 
     // First update with initial metadata: {"step": 1, "status": "started"}
