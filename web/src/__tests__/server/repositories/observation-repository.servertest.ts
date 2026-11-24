@@ -15,7 +15,7 @@ describe("Clickhouse Observations Repository Test", () => {
     await expect(
       getObservationById({
         id: v4(),
-        projectId: v4(),
+        projectId: v4().replace(/-/g, ""),
       }),
     ).rejects.toThrow();
   });

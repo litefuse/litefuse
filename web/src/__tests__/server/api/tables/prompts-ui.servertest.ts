@@ -10,7 +10,7 @@ import { v4 } from "uuid";
 
 describe("UI Prompts Table", () => {
   it("should count the observations which belong to a prompt", async () => {
-    const projectId = v4();
+    const projectId = v4().replace(/-/g, "");
     const observation = createObservation({
       id: v4(),
       project_id: projectId,
@@ -86,7 +86,7 @@ describe("UI Prompts Table", () => {
   });
 
   it("should count observations for foldered prompts with full path", async () => {
-    const projectId = v4();
+    const projectId = v4().replace(/-/g, "");
     const folderedObservation = createObservation({
       id: v4(),
       project_id: projectId,
@@ -158,7 +158,7 @@ describe("UI Prompts Table", () => {
   });
 
   it("should correctly calculate prompt metrics", async () => {
-    const projectId = v4();
+    const projectId = v4().replace(/-/g, "");
     const observation = createObservation({
       id: v4(),
       project_id: projectId,

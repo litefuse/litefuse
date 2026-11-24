@@ -300,11 +300,11 @@ jobs:
           exit 1
       - name: run tests
         working-directory: web
-        run: npx cross-env NODE_OPTIONS='--no-experimental-require-module' npx dotenv -e ../.env.test -e ../.env -- npx jest --verbose --runInBand --detectOpenHandles --selectProjects server --shard=${{ matrix.shard }}/3
+        run: npx cross-env NODE_OPTIONS='--no-experimental-require-module' npx dotenv -e ../.env.test -e ../.env -- npx jest --verbose --runInBand --detectOpenHandles --forceExit --selectProjects server --shard=${{ matrix.shard }}/3
       - name: run test-client
         if: matrix.deploy-mode == '' && matrix.shard == 1
         working-directory: web
-        run: npx cross-env NODE_OPTIONS='--no-experimental-require-module' npx dotenv -e ../.env.test -e ../.env -- npx jest --verbose --runInBand --detectOpenHandles --selectProjects client
+        run: npx cross-env NODE_OPTIONS='--no-experimental-require-module' npx dotenv -e ../.env.test -e ../.env -- npx jest --verbose --runInBand --detectOpenHandles --forceExit --selectProjects client
 
   tests-worker:
     timeout-minutes: 20

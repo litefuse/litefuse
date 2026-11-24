@@ -10,7 +10,7 @@ import { executeQuery } from "@/src/features/query/server/queryExecutor";
 
 describe("selfServeDashboards", () => {
   // Single project ID for all tests
-  const projectId = randomUUID();
+  const projectId = randomUUID().replace(/-/g, "");
 
   // Time references
   const now = new Date();

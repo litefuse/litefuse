@@ -33,7 +33,7 @@ import { executeQuery } from "@/src/features/query/server/queryExecutor";
 
 describe("Dashboard Router - Pivot Table Integration", () => {
   // Single project ID for all tests
-  const projectId = randomUUID();
+  const projectId = randomUUID().replace(/-/g, "");
 
   // Time references for test data
   const now = new Date();

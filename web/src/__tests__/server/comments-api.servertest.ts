@@ -78,7 +78,7 @@ describe("Create and get comments", () => {
       );
     } catch (error) {
       expect((error as Error).message).toBe(
-        `API call did not return 200, returned status 404, body {\"message\":\"Reference object, TRACE: invalid-trace-id not found in Clickhouse. Skipping creating comment.\",\"error\":\"LangfuseNotFoundError\"}`,
+        `API call did not return 200, returned status 404, body {\"message\":\"Reference object, TRACE: invalid-trace-id not found in Doris. Skipping creating comment.\",\"error\":\"LangfuseNotFoundError\"}`,
       );
     }
   });
