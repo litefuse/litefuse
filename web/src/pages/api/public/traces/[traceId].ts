@@ -122,16 +122,8 @@ export default withMiddlewares({
                 obsStartTimes[0]!.getTime()
               : undefined
           : undefined;
-      const {
-        input_trim: _inputTrim,
-        output_trim: _outputTrim,
-        ...publicTrace
-      } = trace as typeof trace & {
-        input_trim?: string | null;
-        output_trim?: string | null;
-      };
       return {
-        ...publicTrace,
+        ...trace,
         externalId: null,
         scores: validatedScores,
         latency: latencyMs !== undefined ? latencyMs / 1000 : 0,

@@ -312,12 +312,12 @@ export class BatchDataRetentionCleaner extends PeriodicExclusiveRunner {
     const query = `
       SELECT
         project_id,
-        count(*) as count,
-        TIMESTAMPDIFF(SECOND, min(${timestampColumn}), now()) as oldest_age_seconds
+        count() as count,
+        dateDiff('second', min(${timestampColumn}), now()) as oldest_age_seconds
       FROM ${this.tableName}
       WHERE ${conditions}
       GROUP BY project_id
-      HAVING count(*) > 0
+      HAVING count > 0
     `;
 
     const result = await queryDoris<{

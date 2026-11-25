@@ -124,7 +124,6 @@ export const createDorisFilterFromFilterState = (
             field: column.select,
             operator: frontEndFilter.operator,
             tablePrefix: column.queryPrefix,
-            emptyEqualsNull: column.emptyEqualsNull,
           });
         default:
           // eslint-disable-next-line no-case-declarations

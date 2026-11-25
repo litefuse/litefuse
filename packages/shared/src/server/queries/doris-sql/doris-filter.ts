@@ -7,7 +7,6 @@ export class StringFilter implements Filter {
   public value: string;
   public operator: (typeof filterOperators)["string"][number];
   public tablePrefix?: string;
-  public emptyEqualsNull?: boolean;
 
   constructor(opts: {
     table?: string;
@@ -16,31 +15,16 @@ export class StringFilter implements Filter {
     operator: (typeof filterOperators)["string"][number];
     value: string;
     tablePrefix?: string;
-    emptyEqualsNull?: boolean;
   }) {
     this.table = opts.table ?? opts.dorisTable ?? "";
     this.field = opts.field;
     this.value = opts.value;
     this.operator = opts.operator;
     this.tablePrefix = opts.tablePrefix;
-    this.emptyEqualsNull = opts.emptyEqualsNull;
   }
 
   apply(): DbFilter {
     const fieldWithPrefix = `${this.tablePrefix ? this.tablePrefix + "." : ""}${this.field}`;
-
-    if (this.emptyEqualsNull && this.value === "") {
-      if (this.operator === "does not contain") {
-        return {
-          query: `(${fieldWithPrefix} != '' AND ${fieldWithPrefix} IS NOT NULL)`,
-          params: {},
-        };
-      }
-      return {
-        query: `(${fieldWithPrefix} = '' OR ${fieldWithPrefix} IS NULL)`,
-        params: {},
-      };
-    }
 
     // 转义单引号以防止SQL注入
     const escapedValue = this.value.replace(/'/g, "''");
@@ -57,9 +41,7 @@ export class StringFilter implements Filter {
         break;
       case "does not contain":
         // 不包含操作
-        query = this.emptyEqualsNull
-          ? `(${fieldWithPrefix} != '' AND INSTR(${fieldWithPrefix}, '${escapedValue}') = 0)`
-          : `INSTR(${fieldWithPrefix}, '${escapedValue}') = 0`;
+        query = `INSTR(${fieldWithPrefix}, '${escapedValue}') = 0`;
         break;
       case "starts with":
         // 开始于操作，使用STARTS_WITH函数
@@ -162,7 +144,6 @@ export class StringOptionsFilter implements Filter {
   public values: string[];
   public operator: (typeof filterOperators.stringOptions)[number];
   public tablePrefix?: string;
-  public emptyEqualsNull?: boolean;
 
   constructor(opts: {
     table?: string;
@@ -171,14 +152,12 @@ export class StringOptionsFilter implements Filter {
     operator: (typeof filterOperators.stringOptions)[number];
     values: string[];
     tablePrefix?: string;
-    emptyEqualsNull?: boolean;
   }) {
     this.table = opts.table ?? opts.dorisTable ?? "";
     this.field = opts.field;
     this.values = opts.values;
     this.operator = opts.operator;
     this.tablePrefix = opts.tablePrefix;
-    this.emptyEqualsNull = opts.emptyEqualsNull;
   }
 
   apply(): DbFilter {
@@ -197,21 +176,10 @@ export class StringOptionsFilter implements Filter {
     );
     const valuesList = escapedValues.join(", ");
 
-    let query =
+    const query =
       this.operator === "any of"
         ? `${fieldWithPrefix} IN (${valuesList})`
         : `${fieldWithPrefix} NOT IN (${valuesList})`;
-
-    if (this.emptyEqualsNull) {
-      const hasEmpty = this.values.includes("");
-      if (this.operator === "any of" && hasEmpty) {
-        query = `(${query} OR ${fieldWithPrefix} IS NULL)`;
-      } else if (this.operator === "none of") {
-        query = hasEmpty
-          ? `(${query} AND ${fieldWithPrefix} IS NOT NULL)`
-          : `(${query} AND ${fieldWithPrefix} != '')`;
-      }
-    }
 
     return {
       query,
@@ -257,7 +225,6 @@ export class NullFilter implements Filter {
   public field: string;
   public operator: (typeof filterOperators)["null"][number];
   public tablePrefix?: string;
-  public emptyEqualsNull?: boolean;
 
   constructor(opts: {
     table?: string;
@@ -265,27 +232,15 @@ export class NullFilter implements Filter {
     field: string;
     operator: (typeof filterOperators)["null"][number];
     tablePrefix?: string;
-    emptyEqualsNull?: boolean;
   }) {
     this.table = opts.table ?? opts.dorisTable ?? "";
     this.field = opts.field;
     this.operator = opts.operator;
     this.tablePrefix = opts.tablePrefix;
-    this.emptyEqualsNull = opts.emptyEqualsNull;
   }
 
   apply(): DbFilter {
     const fieldWithPrefix = `${this.tablePrefix ? this.tablePrefix + "." : ""}${this.field}`;
-
-    if (this.emptyEqualsNull) {
-      return {
-        query:
-          this.operator === "is null"
-            ? `(${fieldWithPrefix} = '' OR ${fieldWithPrefix} IS NULL)`
-            : `(${fieldWithPrefix} != '' AND ${fieldWithPrefix} IS NOT NULL)`,
-        params: {},
-      };
-    }
 
     return {
       query: `${fieldWithPrefix} ${this.operator}`,

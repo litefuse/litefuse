@@ -60,7 +60,7 @@ export const generateDailyMetrics = async (props: QueryType) => {
   // in trace_name), and it stores NULL where root rows store ''.
   const obsQuery = `
     SELECT
-      DATE_FORMAT(o.start_time, '%Y-%m-%d') AS date,
+      DATE(o.start_time) AS date,
       o.provided_model_name AS model,
       count(o.span_id) AS countObservations,
       count(distinct o.trace_id) AS countTraces,
@@ -71,7 +71,6 @@ export const generateDailyMetrics = async (props: QueryType) => {
     FROM ${tableFor(props.projectId, "spans")} o
     ${hasNonTimestampsFilter ? `LEFT JOIN ${tableFor(props.projectId, "traces_scalar")} t ON o.trace_id = t.id AND o.project_id = t.project_id` : ""}
     WHERE o.project_id = {projectId: String}
-    AND o.is_root = 0
     ${hasNonTimestampsFilter ? `AND ${appliedFilter.query}` : ""}
     ${timeFilter ? `AND o.start_time >= DATE_SUB({cteTimeFilter: DateTime}, INTERVAL 2 DAY)` : ""}
     GROUP BY date, model
@@ -82,7 +81,7 @@ export const generateDailyMetrics = async (props: QueryType) => {
   // spans scan.
   const traceQuery = `
     SELECT
-      DATE_FORMAT(t.start_time, '%Y-%m-%d') AS date,
+      DATE(t.start_time) AS date,
       count(t.id) AS countTraces
     FROM ${tableFor(props.projectId, "traces_scalar")} t
     WHERE t.project_id = {projectId: String}

@@ -173,27 +173,17 @@ export const getObservationStream = async (props: {
         SELECT
           trace_id,
           observation_id,
-          collect_list(
-            CASE WHEN data_type IN ('NUMERIC', 'BOOLEAN') THEN
-              struct(name, avg_val)
-            END
-          ) AS scores_avg,
-          array_except(
-            collect_list(
-              CASE WHEN data_type = 'CATEGORICAL' AND string_value IS NOT NULL AND string_value != '' THEN
-                CONCAT(name, ':', string_value)
-              ELSE NULL END
-            ),
-            [NULL]
+          CONCAT('[', GROUP_CONCAT(DISTINCT JSON_OBJECT('name', name, 'value', avg_val, 'dataType', data_type, 'stringValue', COALESCE(string_value, ''))), ']') AS scores_avg,
+          GROUP_CONCAT(
+            DISTINCT CONCAT(name, ':', COALESCE(string_value, ''))
           ) AS score_categories,
-          CONCAT('[', COALESCE(GROUP_CONCAT(DISTINCT CASE WHEN data_type IN ('NUMERIC', 'BOOLEAN') THEN JSON_OBJECT('name', name, 'value', avg_val, 'dataType', data_type, 'stringValue', COALESCE(string_value, '')) ELSE NULL END), ''), ']') AS scores_json,
-          CONCAT('[', COALESCE(GROUP_CONCAT(DISTINCT CASE WHEN data_type = 'CATEGORICAL' THEN JSON_OBJECT('name', name, 'stringValue', string_value) ELSE NULL END), ''), ']') AS score_categories_tuples
+          CONCAT('[', GROUP_CONCAT(DISTINCT JSON_OBJECT('name', name, 'stringValue', string_value)), ']') AS score_categories_tuples
         FROM (
           SELECT
             trace_id,
             observation_id,
             name,
-            ROUND(avg(value), 6) as avg_val,
+            avg(value) as avg_val,
             data_type,
             string_value
           FROM scores
@@ -267,8 +257,8 @@ export const getObservationStream = async (props: {
         t.tags AS traceTags,
         t.trace_timestamp AS traceTimestamp,
         t.user_id AS userId,
-        s.scores_json AS scores_json,
-        s.score_categories_tuples AS score_categories_tuples
+        s.scores_avg AS scores_avg,
+        s.score_categories AS score_categories
       FROM ${tableFor(projectId, "spans")} o
         LEFT JOIN trace_root t
           ON t.trace_id = o.trace_id AND t.project_id = o.project_id
@@ -286,11 +276,12 @@ export const getObservationStream = async (props: {
 
   const asyncGenerator = queryDorisStream<
     ObservationRecordReadType & {
-      scores_json: string | undefined;
+      scores_avg: string | undefined;
+      score_categories: string | undefined;
       score_categories_tuples: string | undefined;
     } & {
       traceName: string;
-      traceTags: string[] | string | null;
+      traceTags: string[];
       traceTimestamp: Date;
       userId: string | null;
     }
@@ -319,11 +310,12 @@ export const getObservationStream = async (props: {
   );
 
   type ObservationRow = ObservationRecordReadType & {
-    scores_json: string | undefined;
+    scores_avg: string | undefined;
+    score_categories: string | undefined;
     score_categories_tuples: string | undefined;
   } & {
     traceName: string;
-    traceTags: string[] | string | null;
+    traceTags: string[];
     traceTimestamp: Date;
     userId: string | null;
   };
@@ -338,7 +330,7 @@ export const getObservationStream = async (props: {
 
     // Process numeric/boolean scores (JSON from Doris)
     const numericScores = (
-      bufferedRow.scores_json ? JSON.parse(bufferedRow.scores_json) : []
+      bufferedRow.scores_avg ? JSON.parse(bufferedRow.scores_avg) : []
     ).map((score: any) => ({
       name: score.name,
       value: score.value,
@@ -364,11 +356,6 @@ export const getObservationStream = async (props: {
     // Get comments for this observation
     const observationComments = commentsByObservation.get(bufferedRow.id) ?? [];
 
-    const parsedTraceTags =
-      typeof bufferedRow.traceTags === "string"
-        ? JSON.parse(bufferedRow.traceTags)
-        : (bufferedRow.traceTags ?? []);
-
     return getChunkWithFlattenedScores(
       [
         {
@@ -377,7 +364,7 @@ export const getObservationStream = async (props: {
             shouldJsonParse: props.fileFormat !== BatchExportFileFormat.CSV,
           }),
           traceName: bufferedRow.traceName,
-          traceTags: parsedTraceTags,
+          traceTags: bufferedRow.traceTags,
           traceTimestamp: bufferedRow.traceTimestamp,
           userId: bufferedRow.userId,
           toolDefinitionsCount: null,

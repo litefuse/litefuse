@@ -56,27 +56,6 @@ export async function executeQuery(
   const converted = rows.map((row) => {
     const out: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(row)) {
-      if (key.startsWith("histogram_") && typeof value === "string") {
-        try {
-          const parsed = JSON.parse(value) as {
-            buckets?: Array<{
-              lower: number;
-              upper: number;
-              count: number;
-            }>;
-          };
-          if (Array.isArray(parsed?.buckets)) {
-            out[key] = parsed.buckets.map((b) => [
-              Number(b.lower),
-              Number(b.upper),
-              Number(b.count),
-            ]);
-            continue;
-          }
-        } catch {
-          // Fall through to default conversion
-        }
-      }
       if (value instanceof Date) {
         // Output ISO 8601 format with timezone indicator so frontend
         // correctly interprets as UTC (matching ClickHouse iso output)
@@ -193,19 +172,15 @@ function fillTimeSeriesGaps(
 
   const formatTs = (d: Date): string => d.toISOString();
 
-  // Generate all time buckets using ClickHouse WITH FILL half-open [start, end)
-  // semantics where both bounds are truncated to the bucket granularity.
+  // Generate all time buckets
   const start = truncate(new Date(fromTimestamp));
-  const end = truncate(new Date(toTimestamp));
+  const end = new Date(toTimestamp);
   const allTimeBuckets: string[] = [];
-  for (let t = start; t < end; t = new Date(t.getTime() + step)) {
+  for (let t = start; t <= end; t = new Date(t.getTime() + step)) {
     allTimeBuckets.push(formatTs(t));
   }
-  if (allTimeBuckets.length === 0) {
-    allTimeBuckets.push(formatTs(start));
-  }
 
-  // No breakdown dimensions: simple fill (one series), preserving all existing data rows
+  // No breakdown dimensions: simple fill (one series)
   if (dimensionKeys.length === 0) {
     const existingMap = new Map<string, Record<string, unknown>>();
     for (const row of rows) {
@@ -215,14 +190,7 @@ function fillTimeSeriesGaps(
     for (const key of metricKeys) {
       zeroTemplate[key] = 0;
     }
-    const bucketSet = new Set<string>([
-      ...allTimeBuckets,
-      ...existingMap.keys(),
-    ]);
-    const sortedBuckets = Array.from(bucketSet).sort((a, b) =>
-      a < b ? -1 : a > b ? 1 : 0,
-    );
-    return sortedBuckets.map(
+    return allTimeBuckets.map(
       (ts) => existingMap.get(ts) ?? { ...zeroTemplate, [timeKey]: ts },
     );
   }

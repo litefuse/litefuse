@@ -436,10 +436,7 @@ export class QueryBuilder {
         //   if (measure.relationTable) {
         //     tableName = measure.relationTable;
         //   }
-      } else if (
-        filter.column === view.timeDimension ||
-        (view.name === "traces" && filter.column === "timestamp")
-      ) {
+      } else if (filter.column === view.timeDimension) {
         select = view.timeDimension;
         queryPrefix = tableName;
         type = "datetime";
@@ -1656,10 +1653,7 @@ export class QueryBuilder {
         if (select.includes("(") || select.includes(".")) {
           queryPrefix = "";
         }
-      } else if (
-        filter.column === view.timeDimension ||
-        (view.name === "traces" && filter.column === "timestamp")
-      ) {
+      } else if (filter.column === view.timeDimension) {
         select = view.timeDimension;
         // queryPrefix must be the SQL alias (e.g. "traces"), not the
         // physical table name (e.g. "spans"). Otherwise the WHERE
@@ -1979,12 +1973,6 @@ export class QueryBuilder {
     }
 
     fromClause += this.buildWhereClause(filterList, parameters);
-
-    // Exclude synthetic trace-only root rows (`t-<traceId>`) from the
-    // observations view while preserving real OTel root observations.
-    if (view.name === "observations") {
-      fromClause += ` AND ${this.tableAlias(view)}.span_id NOT LIKE 't-%'`;
-    }
 
     // pairExpand position matching
     if (pairDims.length > 0) {

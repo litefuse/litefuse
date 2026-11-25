@@ -127,7 +127,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "out=$$(mysql -h 127.0.0.1 -P 9030 -uroot -e 'SHOW BACKENDS\\G' 2>/dev/null); echo \"$$out\" | grep -q 'Alive: true' && echo \"$$out\" | grep -qE 'TotalCapacity:[[:space:]]*[0-9]' && ! echo \"$$out\" | grep -qE 'TotalCapacity:[[:space:]]*0\\.000([[:space:]]|$$)'",
+          "mysql -h 127.0.0.1 -P 9030 -uroot -e 'SHOW BACKENDS\\G' 2>/dev/null | grep -q 'Alive: true'",
         ]
       interval: 10s
       timeout: 5s

@@ -342,13 +342,6 @@ export const observationsTableUiColumnDefinitionsForDoris: UiColumnMappings = [
     tableName: "observations",
     select: "o.trace_id",
   },
-  {
-    uiTableName: "Parent Observation ID",
-    uiTableId: "parentObservationId",
-    tableName: "observations",
-    select: "o.parent_span_id",
-    emptyEqualsNull: true,
-  },
 
   {
     uiTableName: "Start Time",

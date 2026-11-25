@@ -431,18 +431,14 @@ export const scoreAnalyticsRouter = createTRPCRouter({
           avg2: row.col3 ?? null,
           count: row.col4 ?? 0,
         })),
-        distribution1: dist1Rows
-          .map((row) => ({
-            binIndex: row.col1 ?? 0,
-            count: row.col2 ?? 0,
-          }))
-          .sort((a, b) => a.binIndex - b.binIndex),
-        distribution2: dist2Rows
-          .map((row) => ({
-            binIndex: row.col1 ?? 0,
-            count: row.col2 ?? 0,
-          }))
-          .sort((a, b) => a.binIndex - b.binIndex),
+        distribution1: dist1Rows.map((row) => ({
+          binIndex: row.col1 ?? 0,
+          count: row.col2 ?? 0,
+        })),
+        distribution2: dist2Rows.map((row) => ({
+          binIndex: row.col1 ?? 0,
+          count: row.col2 ?? 0,
+        })),
         stackedDistribution: stackedRows.map((row) => ({
           score1Category: row.col9 ?? "",
           score2Stack: row.col10 ?? "",
@@ -463,31 +459,23 @@ export const scoreAnalyticsRouter = createTRPCRouter({
           avg2: row.col3 ?? null,
           count: row.col4 ?? 0,
         })),
-        distribution1Matched: dist1MatchedRows
-          .map((row) => ({
-            binIndex: row.col1 ?? 0,
-            count: row.col2 ?? 0,
-          }))
-          .sort((a, b) => a.binIndex - b.binIndex),
-        distribution2Matched: dist2MatchedRows
-          .map((row) => ({
-            binIndex: row.col1 ?? 0,
-            count: row.col2 ?? 0,
-          }))
-          .sort((a, b) => a.binIndex - b.binIndex),
+        distribution1Matched: dist1MatchedRows.map((row) => ({
+          binIndex: row.col1 ?? 0,
+          count: row.col2 ?? 0,
+        })),
+        distribution2Matched: dist2MatchedRows.map((row) => ({
+          binIndex: row.col1 ?? 0,
+          count: row.col2 ?? 0,
+        })),
         // Individual-bound distributions for single-score display
-        distribution1Individual: dist1IndividualRows
-          .map((row) => ({
-            binIndex: row.col1 ?? 0,
-            count: row.col2 ?? 0,
-          }))
-          .sort((a, b) => a.binIndex - b.binIndex),
-        distribution2Individual: dist2IndividualRows
-          .map((row) => ({
-            binIndex: row.col1 ?? 0,
-            count: row.col2 ?? 0,
-          }))
-          .sort((a, b) => a.binIndex - b.binIndex),
+        distribution1Individual: dist1IndividualRows.map((row) => ({
+          binIndex: row.col1 ?? 0,
+          count: row.col2 ?? 0,
+        })),
+        distribution2Individual: dist2IndividualRows.map((row) => ({
+          binIndex: row.col1 ?? 0,
+          count: row.col2 ?? 0,
+        })),
         // Categorical/boolean time series (counts per category over time)
         timeSeriesCategorical1: timeseriesCategorical1Rows.map((row) => ({
           timestamp: new Date((row.col1 ?? 0) * 1000),

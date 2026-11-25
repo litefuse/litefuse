@@ -15,7 +15,6 @@ export const getBlobStorageByProjectAndEntityId = async (
       where project_id = {projectId: String}
       and entity_type = {entityType: String}
       and entity_id = {entityId: String}
-      and is_deleted = 0
     `;
 
   return queryDoris<BlobStorageFileRefRecordReadType>({
@@ -40,7 +39,6 @@ export const getBlobStorageByProjectId = (
       select *
       from blob_storage_file_log
       where project_id = {projectId: String}
-      and is_deleted = 0
     `;
 
   return queryDorisStream<BlobStorageFileRefRecordReadType>({
@@ -65,7 +63,6 @@ export const getBlobStorageByProjectIdBeforeDate = (
       from blob_storage_file_log
       where project_id = {projectId: String}
       and created_at <= {beforeDate: DateTime}
-      and is_deleted = 0
     `;
 
   return queryDorisStream<BlobStorageFileRefRecordReadType>({
@@ -93,7 +90,6 @@ export const getBlobStorageByProjectIdAndEntityIds = (
       where project_id = {projectId: String}
         and entity_type = {entityType: String}
         and entity_id in ({entityIds: Array(String)})
-        and is_deleted = 0
     `;
 
   return queryDorisStream<BlobStorageFileRefRecordReadType>({
@@ -163,7 +159,6 @@ export const getBlobStorageByProjectIdAndTraceIds = (
       select el.*
       from blob_storage_file_log el
       where el.project_id = {projectId: String}
-      and el.is_deleted = 0
       and exists (
         select 1
         from filtered_events fe

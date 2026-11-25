@@ -150,7 +150,7 @@ export class BatchProjectBlobCleaner extends PeriodicExclusiveRunner {
       query: `
         SELECT
           project_id,
-          SUM(CASE WHEN is_deleted = 0 THEN 1 ELSE 0 END) - SUM(CASE WHEN is_deleted = 1 THEN 1 ELSE 0 END) as count
+          countIf(is_deleted = 0) - countIf(is_deleted = 1) as count
         FROM blob_storage_file_log
         WHERE project_id IN ({projectIds: Array(String)})
         GROUP BY project_id

@@ -19,9 +19,8 @@ import {
   logger,
   FilterList,
   createFilterFromFilterState,
-  eventsTableUiColumnDefinitionsForDoris,
+  eventsTableUiColumnDefinitions,
   dorisSearchCondition,
-  tableFor,
 } from "@langfuse/shared/src/server";
 import { Readable } from "stream";
 import { env } from "../../env";
@@ -60,7 +59,7 @@ export const getEventsStream = async (props: {
 
   // Filter out score and comment filters since they require special handling
   const eventOnlyFilters = (filter ?? []).filter((f) => {
-    const columnDef = eventsTableUiColumnDefinitionsForDoris.find(
+    const columnDef = eventsTableUiColumnDefinitions.find(
       (col) => col.uiTableName === f.column || col.uiTableId === f.column,
     );
     // Keep the filter if it's not a scores or comments filter
@@ -97,7 +96,7 @@ export const getEventsStream = async (props: {
           type: "datetime" as const,
         },
       ],
-      eventsTableUiColumnDefinitionsForDoris,
+      eventsTableUiColumnDefinitions,
     ),
   );
 
@@ -108,33 +107,23 @@ export const getEventsStream = async (props: {
     hasTracesJoin: false,
   });
 
-  // Build the query using raw SQL for Doris per-project split spans table
+  // Build the query using raw SQL for Doris
+  // Doris doesn't have FINAL modifier or LIMIT 1 BY, so we use ROW_NUMBER() for deduplication
   const query = `
     WITH scores_agg AS (
       SELECT
         trace_id,
         observation_id,
-        collect_list(
-          CASE WHEN data_type IN ('NUMERIC', 'BOOLEAN') THEN
-            struct(name, avg_val)
-          END
-        ) AS scores_avg,
-        array_except(
-          collect_list(
-            CASE WHEN data_type = 'CATEGORICAL' AND string_value IS NOT NULL AND string_value != '' THEN
-              CONCAT(name, ':', string_value)
-            ELSE NULL END
-          ),
-          [NULL]
-        ) AS score_categories,
-        CONCAT('[', COALESCE(GROUP_CONCAT(DISTINCT CASE WHEN data_type IN ('NUMERIC', 'BOOLEAN') THEN JSON_OBJECT('name', name, 'value', avg_val, 'dataType', data_type, 'stringValue', COALESCE(string_value, '')) ELSE NULL END), ''), ']') AS scores_json,
-        CONCAT('[', COALESCE(GROUP_CONCAT(DISTINCT CASE WHEN data_type = 'CATEGORICAL' THEN JSON_OBJECT('name', name, 'stringValue', string_value) ELSE NULL END), ''), ']') AS score_categories_tuples
+        CONCAT('[', GROUP_CONCAT(DISTINCT JSON_OBJECT('name', name, 'value', avg_val, 'dataType', data_type, 'stringValue', COALESCE(string_value, ''))), ']') AS scores_avg,
+        GROUP_CONCAT(
+          DISTINCT CONCAT(name, ':', COALESCE(string_value, ''))
+        ) AS score_categories
       FROM (
         SELECT
           trace_id,
           observation_id,
           name,
-          ROUND(avg(value), 6) as avg_val,
+          avg(value) as avg_val,
           data_type,
           string_value
         FROM scores
@@ -149,47 +138,48 @@ export const getEventsStream = async (props: {
       GROUP BY trace_id, observation_id
     )
     SELECT
-      o.span_id AS id,
-      o.trace_id,
-      o.project_id,
-      o.start_time,
-      o.end_time,
-      o.name,
-      o.type,
-      o.environment,
-      o.version,
-      o.user_id,
-      o.session_id,
-      o.level,
-      o.status_message,
-      o.prompt_name,
-      o.prompt_id,
-      o.prompt_version,
-      o.model_id,
-      o.provided_model_name,
-      o.model_parameters,
-      o.usage_details,
-      o.cost_details,
-      o.total_cost,
-      o.input,
-      o.output,
-      json_object_flatten(o.metadata) AS metadata,
-      o.completion_start_time,
-      IF(o.end_time IS NULL, NULL, milliseconds_diff(o.end_time, o.start_time)) AS latency,
-      IF(o.completion_start_time IS NULL, NULL, milliseconds_diff(o.completion_start_time, o.start_time)) AS time_to_first_token,
-      o.tags,
-      o.\`release\` AS \`release\`,
-      o.trace_name,
-      o.parent_span_id AS parent_observation_id,
-      s.scores_json,
-      s.score_categories_tuples
-    FROM ${tableFor(projectId, "spans")} o
-    LEFT JOIN scores_agg s ON s.trace_id = o.trace_id AND s.observation_id = o.span_id
-    WHERE o.project_id = {projectId: String}
-      AND o.span_id NOT LIKE 't-%'
+      e.id,
+      e.trace_id,
+      e.project_id,
+      e.start_time,
+      e.end_time,
+      e.name,
+      e.type,
+      e.environment,
+      e.version,
+      e.user_id,
+      e.session_id,
+      e.level,
+      e.status_message,
+      e.prompt_name,
+      e.prompt_id,
+      e.prompt_version,
+      e.model_id,
+      e.provided_model_name,
+      e.model_parameters,
+      e.usage_details,
+      e.cost_details,
+      e.total_cost,
+      e.input,
+      e.output,
+      e.metadata,
+      e.completion_start_time,
+      e.latency,
+      e.time_to_first_token,
+      e.tags,
+      e.release,
+      e.trace_name,
+      e.parent_observation_id,
+      e.is_deleted,
+      s.scores_avg,
+      s.score_categories
+    FROM events e
+    LEFT JOIN scores_agg s ON s.trace_id = e.trace_id AND s.observation_id = e.id
+    WHERE e.project_id = {projectId: String}
       ${appliedEventsFilter.query ? `AND ${appliedEventsFilter.query}` : ""}
       ${search.query}
-    ORDER BY o.start_time DESC
+      AND e.is_deleted = 0
+    ORDER BY e.start_time DESC
     LIMIT {rowLimit: Int64}
   `;
 
@@ -198,15 +188,6 @@ export const getEventsStream = async (props: {
     rowLimit,
     ...appliedEventsFilter.params,
     ...search.params,
-  };
-
-  const parseJsonIfString = <T>(value: T | string): T => {
-    if (typeof value !== "string") return value;
-    try {
-      return JSON.parse(value) as T;
-    } catch {
-      return value as unknown as T;
-    }
   };
 
   type EventRow = {
@@ -229,20 +210,21 @@ export const getEventsStream = async (props: {
     model_id: string | null;
     provided_model_name: string | null;
     model_parameters: unknown;
-    usage_details: Record<string, number> | string;
-    cost_details: Record<string, number> | string;
+    usage_details: Record<string, number>;
+    cost_details: Record<string, number>;
     total_cost: number | null;
     input: unknown;
     output: unknown;
-    metadata: Record<string, unknown> | string;
+    metadata: Record<string, unknown>;
     completion_start_time: Date | null;
     latency: number | null;
     time_to_first_token: number | null;
-    tags: string[] | string | null;
+    tags: string[];
     release: string | null;
     trace_name: string | null;
     parent_observation_id: string | null;
-    scores_json: string | undefined;
+    scores_avg: string | undefined;
+    score_categories: string | undefined;
     score_categories_tuples: string | undefined;
   };
 
@@ -264,7 +246,7 @@ export const getEventsStream = async (props: {
   ) => {
     // Process numeric/boolean scores (JSON from Doris)
     const numericScores = (
-      bufferedRow.scores_json ? JSON.parse(bufferedRow.scores_json) : []
+      bufferedRow.scores_avg ? JSON.parse(bufferedRow.scores_avg) : []
     ).map((score: any) => ({
       name: score.name,
       value: score.value,
@@ -310,28 +292,18 @@ export const getEventsStream = async (props: {
       promptVersion: bufferedRow.prompt_version,
       modelId: bufferedRow.model_id,
       providedModelName: bufferedRow.provided_model_name,
-      modelParameters: parseJsonIfString(bufferedRow.model_parameters),
-      usageDetails: parseJsonIfString(bufferedRow.usage_details ?? {}),
-      costDetails: parseJsonIfString(bufferedRow.cost_details ?? {}),
-      totalCost:
-        bufferedRow.total_cost !== null && bufferedRow.total_cost !== undefined
-          ? Number(bufferedRow.total_cost)
-          : null,
+      modelParameters: bufferedRow.model_parameters,
+      usageDetails: bufferedRow.usage_details,
+      costDetails: bufferedRow.cost_details,
+      totalCost: bufferedRow.total_cost,
       input: bufferedRow.input,
       output: bufferedRow.output,
-      metadata: parseJsonIfString(bufferedRow.metadata ?? {}),
-      latencyMs:
-        bufferedRow.latency !== null && bufferedRow.latency !== undefined
-          ? Number(bufferedRow.latency)
-          : null,
-      timeToFirstTokenMs:
-        bufferedRow.time_to_first_token !== null &&
-        bufferedRow.time_to_first_token !== undefined
-          ? Number(bufferedRow.time_to_first_token)
-          : null,
-      tags: parseJsonIfString(bufferedRow.tags ?? []),
+      metadata: bufferedRow.metadata,
+      latencyMs: bufferedRow.latency,
+      timeToFirstTokenMs: bufferedRow.time_to_first_token,
+      tags: bufferedRow.tags,
       release: bufferedRow.release,
-      parentObservationId: bufferedRow.parent_observation_id || null,
+      parentObservationId: bufferedRow.parent_observation_id,
       scores: outputScores,
       comments: eventComments,
     };
@@ -428,7 +400,7 @@ export const getEventsStreamForEval = async (props: {
 
   // Filter out score and comment filters since they're not relevant for eval
   const eventOnlyFilters = (filter ?? []).filter((f) => {
-    const columnDef = eventsTableUiColumnDefinitionsForDoris.find(
+    const columnDef = eventsTableUiColumnDefinitions.find(
       (col) => col.uiTableName === f.column || col.uiTableId === f.column,
     );
 
@@ -448,7 +420,7 @@ export const getEventsStreamForEval = async (props: {
           type: "datetime" as const,
         },
       ],
-      eventsTableUiColumnDefinitionsForDoris,
+      eventsTableUiColumnDefinitions,
     ),
   );
 
@@ -462,42 +434,42 @@ export const getEventsStreamForEval = async (props: {
   // Build the query for Doris - lightweight eval version
   const query = `
     SELECT
-      o.span_id AS id,
-      o.trace_id,
-      o.project_id,
-      o.parent_span_id AS parent_observation_id,
-      o.type,
-      o.name,
-      o.environment,
-      o.version,
-      o.level,
-      o.status_message,
-      o.trace_name,
-      o.user_id,
-      o.session_id,
-      o.tags,
-      o.\`release\` AS \`release\`,
-      o.provided_model_name,
-      o.model_parameters,
-      o.prompt_id,
-      o.prompt_name,
-      o.prompt_version,
-      o.provided_usage_details,
-      o.usage_details,
-      o.provided_cost_details,
-      o.cost_details,
-      o.tool_definitions,
-      o.tool_calls,
-      o.tool_call_names,
-      o.input,
-      o.output,
-      json_object_flatten(o.metadata) AS metadata
-    FROM ${tableFor(projectId, "spans")} o
-    WHERE o.project_id = {projectId: String}
-      AND o.span_id NOT LIKE 't-%'
+      e.id,
+      e.trace_id,
+      e.project_id,
+      e.parent_observation_id,
+      e.type,
+      e.name,
+      e.environment,
+      e.version,
+      e.level,
+      e.status_message,
+      e.trace_name,
+      e.user_id,
+      e.session_id,
+      e.tags,
+      e.release,
+      e.provided_model_name,
+      e.model_parameters,
+      e.prompt_id,
+      e.prompt_name,
+      e.prompt_version,
+      e.provided_usage_details,
+      e.usage_details,
+      e.provided_cost_details,
+      e.cost_details,
+      e.tool_definitions,
+      e.tool_calls,
+      e.tool_call_names,
+      e.input,
+      e.output,
+      e.metadata
+    FROM events e
+    WHERE e.project_id = {projectId: String}
       ${appliedEventsFilter.query ? `AND ${appliedEventsFilter.query}` : ""}
       ${search.query}
-    ORDER BY o.start_time DESC
+      AND e.is_deleted = 0
+    ORDER BY e.start_time DESC
     LIMIT {rowLimit: Int64}
   `;
 
@@ -591,7 +563,7 @@ export const getEventsStreamForDataset = async (props: {
   } = props;
 
   const eventOnlyFilters = (filter ?? []).filter((f) => {
-    const columnDef = eventsTableUiColumnDefinitionsForDoris.find(
+    const columnDef = eventsTableUiColumnDefinitions.find(
       (col) => col.uiTableName === f.column || col.uiTableId === f.column,
     );
 
@@ -611,7 +583,7 @@ export const getEventsStreamForDataset = async (props: {
           type: "datetime" as const,
         },
       ],
-      eventsTableUiColumnDefinitionsForDoris,
+      eventsTableUiColumnDefinitions,
     ),
   );
 
@@ -625,17 +597,17 @@ export const getEventsStreamForDataset = async (props: {
   // Build the query for Doris - lightweight dataset version
   const query = `
     SELECT
-      o.span_id AS id,
-      o.trace_id,
-      o.input,
-      o.output,
-      json_object_flatten(o.metadata) AS metadata
-    FROM ${tableFor(projectId, "spans")} o
-    WHERE o.project_id = {projectId: String}
-      AND o.span_id NOT LIKE 't-%'
+      e.id,
+      e.trace_id,
+      e.input,
+      e.output,
+      e.metadata
+    FROM events e
+    WHERE e.project_id = {projectId: String}
       ${appliedEventsFilter.query ? `AND ${appliedEventsFilter.query}` : ""}
       ${search.query}
-    ORDER BY o.start_time DESC
+      AND e.is_deleted = 0
+    ORDER BY e.start_time DESC
     LIMIT {rowLimit: Int64}
   `;
 
@@ -651,7 +623,7 @@ export const getEventsStreamForDataset = async (props: {
     trace_id: string;
     input: unknown;
     output: unknown;
-    metadata: Record<string, unknown> | string | null;
+    metadata: Record<string, unknown> | null;
   };
 
   const asyncGenerator = queryDorisStream<DatasetEventRow>({
@@ -668,20 +640,12 @@ export const getEventsStreamForDataset = async (props: {
   return Readable.from(
     (async function* () {
       for await (const row of asyncGenerator) {
-        let parsedMetadata = row.metadata;
-        if (typeof parsedMetadata === "string") {
-          try {
-            parsedMetadata = JSON.parse(parsedMetadata);
-          } catch {
-            // keep raw string if not valid JSON
-          }
-        }
         yield {
           id: row.id,
           traceId: row.trace_id,
           input: row.input,
           output: row.output,
-          metadata: parsedMetadata,
+          metadata: row.metadata,
         };
       }
     })(),

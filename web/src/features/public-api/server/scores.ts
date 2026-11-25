@@ -7,7 +7,6 @@ import {
   type ScoreRecordReadType,
   scoresTableUiColumnDefinitions,
   queryDoris,
-  parseDorisStringArray,
   dq,
 } from "@langfuse/shared/src/server";
 import {
@@ -86,20 +85,12 @@ export const _handleGenerateScoresForPublicApi = async ({
   const appliedScoresFilter = scoresFilter.apply();
   const appliedTracesFilter = tracesFilter.apply();
 
-  const includeTrace = !props.fields || props.fields.includes("trace");
-  const needTraceJoin = includeTrace || tracesFilter.length() > 0;
-
   // Doris uses UNIQUE KEY model, so no deduplication needed (no LIMIT 1 BY / ROW_NUMBER)
   const query = `
         SELECT
-            ${
-              needTraceJoin
-                ? `t.user_id as user_id,
+            t.user_id as user_id,
             t.tags as tags,
             t.environment as trace_environment,
-            t.session_id as trace_session_id,`
-                : ""
-            }
             s.id as id,
             s.project_id as project_id,
             s.timestamp as timestamp,
@@ -107,7 +98,6 @@ export const _handleGenerateScoresForPublicApi = async ({
             s.name as name,
             s.${dq("value")} as ${dq("value")},
             s.string_value as string_value,
-            s.long_string_value as long_string_value,
             s.author_user_id as author_user_id,
             s.created_at as created_at,
             s.updated_at as updated_at,
@@ -120,25 +110,19 @@ export const _handleGenerateScoresForPublicApi = async ({
             s.trace_id as trace_id,
             s.observation_id as observation_id,
             s.session_id as session_id,
-            s.dataset_run_id as dataset_run_id,
-            s.execution_trace_id as execution_trace_id
+            s.dataset_run_id as dataset_run_id
         FROM scores s
-        ${
-          needTraceJoin
-            ? `LEFT JOIN (
+        LEFT JOIN (
               SELECT
                 project_id,
                 id AS trace_id,
                 COALESCE(user_id, '') AS user_id,
                 COALESCE(name, '') AS name,
-                session_id,
                 tags,
                 environment,
                 start_time
               FROM ${tableFor(props.projectId, "traces_scalar")}
-            ) t ON s.trace_id = t.trace_id AND s.project_id = t.project_id`
-            : ""
-        }
+            ) t ON s.trace_id = t.trace_id AND s.project_id = t.project_id
         WHERE
             s.project_id = {projectId: String}
             ${scoreScope === "traces_only" ? "AND s.session_id IS NULL AND s.dataset_run_id IS NULL" : ""}
@@ -150,10 +134,9 @@ export const _handleGenerateScoresForPublicApi = async ({
 
   const records = await queryDoris<
     ScoreRecordReadType & {
-      tags?: string[] | string | null;
-      user_id?: string | null;
-      trace_environment?: string | null;
-      trace_session_id?: string | null;
+      tags: string[];
+      user_id: string;
+      trace_environment: string;
     }
   >({
     query,
@@ -174,12 +157,11 @@ export const _handleGenerateScoresForPublicApi = async ({
     return {
       ...apiScore,
       trace:
-        includeTrace && record.trace_id !== null
+        record.trace_id !== null
           ? {
-              userId: record.user_id ?? null,
-              tags: parseDorisStringArray(record.tags),
-              environment: record.trace_environment ?? null,
-              sessionId: record.trace_session_id || null,
+              userId: record.user_id,
+              tags: record.tags,
+              environment: record.trace_environment,
             }
           : null,
     };
@@ -221,7 +203,6 @@ export const _handleGetScoresCountForPublicApi = async ({
                 id AS trace_id,
                 COALESCE(user_id, '') AS user_id,
                 COALESCE(name, '') AS name,
-                session_id,
                 tags,
                 environment,
                 start_time

@@ -955,7 +955,6 @@ export function buildObservationsQueryDoris(opts: PublicApiObservationsQuery): {
     FROM ${tableFor(projectId, "spans")} o
     ${hasTraceFilter ? `JOIN ${tableFor(projectId, "spans")} t ON o.trace_id = t.trace_id AND t.project_id = o.project_id AND t.is_root = 1` : ""}
     WHERE o.project_id = {projectId: String}
-      AND o.span_id NOT LIKE 't-%'
       ${appliedFilter.query ? `AND ${appliedFilter.query}` : ""}
     ${search.query}
   `;
@@ -1097,7 +1096,6 @@ async function getObservationsCountFromEventsTableForPublicApiInternal(
     FROM ${tableFor(projectId, "spans")} o
     ${hasTraceFilter ? `JOIN ${tableFor(projectId, "spans")} t ON o.trace_id = t.trace_id AND t.project_id = o.project_id AND t.is_root = 1` : ""}
     WHERE o.project_id = {projectId: String}
-      AND o.span_id NOT LIKE 't-%'
       ${appliedFilter.query ? `AND ${appliedFilter.query}` : ""}
     ${search.query}
   `;
@@ -1426,43 +1424,23 @@ export const updateEvents = async (
     return;
   }
 
-  let targetTraceIds = selector.traceIds?.filter(Boolean) ?? [];
-
-  if (targetTraceIds.length === 0 && selector.spanIds?.length) {
-    const rows = await queryDoris<{ trace_id: string }>({
-      query: `
-        SELECT DISTINCT trace_id
-        FROM ${tableFor(projectId, "spans")}
-        WHERE project_id = {projectId: String}
-          AND span_id IN ({spanIds: Array(String)})
-          ${selector.rootOnly === true ? "AND parent_span_id = ''" : ""}
-      `,
-      params: {
-        projectId,
-        spanIds: selector.spanIds,
-      },
-      tags: {
-        feature: "tracing",
-        type: "events",
-        kind: "resolveTraceIdsForUpdate",
-        projectId,
-      },
-    });
-    targetTraceIds = rows.map((r) => r.trace_id).filter(Boolean);
+  // Build where conditions
+  const where: Record<string, unknown> = { project_id: projectId };
+  if (selector.spanIds && selector.spanIds.length > 0) {
+    where.span_id = selector.spanIds;
+  }
+  if (selector.traceIds && selector.traceIds.length > 0) {
+    where.trace_id = selector.traceIds;
+  }
+  if (selector.rootOnly === true) {
+    where.parent_span_id = "";
   }
 
-  // spans_<pid> is DUPLICATE-model (Doris forbids UPDATE on DUPLICATE tables);
-  // mutable trace flags (bookmarked, public, tags) live on traces_scalar_<pid>.
-  for (const traceId of targetTraceIds) {
-    await partialUpdateDoris({
-      table: "traces_scalar",
-      where: {
-        project_id: projectId,
-        id: traceId,
-      },
-      set: updates,
-    });
-  }
+  await partialUpdateDoris({
+    table: "spans",
+    where,
+    set: updates,
+  });
 };
 
 /**
@@ -3290,8 +3268,5 @@ export const getSessionMetricsFromEvents = async (props: {
     ...row,
     trace_count: Number(row.trace_count),
     total_observations: Number(row.total_observations),
-    trace_ids: parseDorisStringArray(row.trace_ids),
-    user_ids: parseDorisStringArray(row.user_ids),
-    trace_tags: parseDorisStringArray(row.trace_tags),
   }));
 };

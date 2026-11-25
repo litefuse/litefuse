@@ -14,20 +14,7 @@ const SPLIT_TABLE_READ_RE =
   /\b(?:FROM|JOIN)\s+`?(?:spans|traces_scalar|trace_metrics_agg)_[A-Za-z0-9_]+`?/i;
 
 const isMissingSplitTableRead = (query: string, error: unknown): boolean => {
-  if (
-    !/^\s*(?:SELECT|WITH)\b/i.test(query) ||
-    !SPLIT_TABLE_READ_RE.test(query)
-  ) {
-    return false;
-  }
-  const message = error instanceof Error ? error.message : String(error);
-  return /does not exist|unknown table|table.*not found|TableNotFound/i.test(
-    message,
-  );
-};
-
-const isMissingSplitTableDelete = (query: string, error: unknown): boolean => {
-  if (!/^\s*DELETE\s+FROM\b/i.test(query) || !SPLIT_TABLE_READ_RE.test(query)) {
+  if (!/^\s*SELECT\b/i.test(query) || !SPLIT_TABLE_READ_RE.test(query)) {
     return false;
   }
   const message = error instanceof Error ? error.message : String(error);
@@ -240,12 +227,6 @@ export async function commandDoris(opts: {
         logger.info(`doris:command ${processedQuery.substring(0, 100)}...`);
       }
     } catch (error) {
-      if (isMissingSplitTableDelete(processedQuery, error)) {
-        logger.warn(
-          `Doris split-table delete target missing; treating as no-op. SQL: ${processedQuery}`,
-        );
-        return;
-      }
       logger.error("Doris command failed", {
         query:
           processedQuery.substring(0, 200) +
@@ -289,22 +270,9 @@ export async function* queryDorisStream<T>(opts: {
     }
 
     let count = 0;
-    try {
-      for await (const row of client.queryStream<T>(processedQuery)) {
-        count++;
-        yield row;
-      }
-    } catch (error) {
-      if (isMissingSplitTableRead(processedQuery, error)) {
-        recordIncrement("langfuse.doris.split_table.read_missing", 1, {
-          source: "queryDorisStream",
-        });
-        logger.warn(
-          `Doris split-table stream read target missing; returning empty stream. SQL: ${processedQuery}`,
-        );
-        return;
-      }
-      throw error;
+    for await (const row of client.queryStream<T>(processedQuery)) {
+      count++;
+      yield row;
     }
     span.setAttribute("doris.records.count", count);
   } finally {

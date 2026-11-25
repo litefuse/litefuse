@@ -884,10 +884,7 @@ export async function getScoresUiTable<
       ...score,
       traceUserId: row.user_id,
       traceName: row.trace_name,
-      traceTags:
-        typeof row.trace_tags === "string"
-          ? JSON.parse(row.trace_tags)
-          : row.trace_tags,
+      traceTags: row.trace_tags,
       hasMetadata: (includeHasMetadataFlag
         ? !!row.has_metadata
         : undefined) as IncludeHasMetadata extends true ? boolean : never,
@@ -1305,11 +1302,6 @@ export const deleteScoresByTraceIds = async (
 export const deleteScoresByProjectId = async (
   projectId: string,
 ): Promise<boolean> => {
-  const hasData = await hasAnyScore(projectId);
-  if (!hasData) {
-    return false;
-  }
-
   const query = `
       DELETE FROM scores
       WHERE project_id = {projectId: String};
@@ -1362,11 +1354,6 @@ export const deleteScoresOlderThanDays = async (
   projectId: string,
   beforeDate: Date,
 ): Promise<boolean> => {
-  const hasData = await hasAnyScoreOlderThan(projectId, beforeDate);
-  if (!hasData) {
-    return false;
-  }
-
   const query = `
       DELETE FROM scores
       WHERE project_id = {projectId: String}
