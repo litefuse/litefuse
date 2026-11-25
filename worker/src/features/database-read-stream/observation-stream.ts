@@ -264,11 +264,8 @@ export const getObservationStream = async (props: {
           ON t.trace_id = o.trace_id AND t.project_id = o.project_id
         LEFT JOIN scores_agg s
           ON s.trace_id = o.trace_id AND s.observation_id = o.span_id
+      -- Every span is an observation, the trace's root span included.
       WHERE ${appliedObservationsFilter.query}
-        -- observation rows only; the synthetic-trace-row filter from the
-        -- legacy schema is replaced by is_root = 0 (root span
-        -- carries no observation semantics).
-        AND o.is_root = 0
         ${search.query}
       ORDER BY o.start_time DESC
       LIMIT {rowLimit: Int64}

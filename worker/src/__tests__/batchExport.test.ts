@@ -31,8 +31,7 @@ const maybeDescribe =
     : describe.skip;
 
 describe("batch export test suite", () => {
-  // Skipped: the observation export keeps only is_root = 0 rows, so parentless observations (root spans) are left out.
-  it.skip("should export observations", async () => {
+  it("should export observations", async () => {
     const { projectId } = await createOrgProjectAndApiKey();
 
     const traceId = randomUUID();
@@ -118,8 +117,7 @@ describe("batch export test suite", () => {
     );
   });
 
-  // Skipped: the observation export keeps only is_root = 0 rows, so parentless observations (root spans) are left out.
-  it.skip("should export filtered observations", async () => {
+  it("should export filtered observations", async () => {
     const { projectId } = await createOrgProjectAndApiKey();
 
     const observations = [
@@ -186,8 +184,7 @@ describe("batch export test suite", () => {
     });
   });
 
-  // Skipped: the observation export keeps only is_root = 0 rows, so parentless observations (root spans) are left out.
-  it.skip("should export observations with filter", async () => {
+  it("should export observations with filter", async () => {
     const { projectId } = await createOrgProjectAndApiKey();
 
     const observations = [
@@ -668,8 +665,7 @@ describe("batch export test suite", () => {
     expect(rows[0]["QA: #1 Primary Failure"]).toEqual(["yes"]);
   });
 
-  // Skipped: the observation export keeps only is_root = 0 rows, so parentless observations (root spans) are left out.
-  it.skip("should export observations with categorical score names containing colons", async () => {
+  it("should export observations with categorical score names containing colons", async () => {
     const { projectId } = await createOrgProjectAndApiKey();
 
     const traceId = randomUUID();
@@ -1789,8 +1785,7 @@ describe("batch export test suite", () => {
     });
   });
 
-  // Skipped: the observation export keeps only is_root = 0 rows, so parentless observations (root spans) are left out.
-  it.skip("should ignore trace-level filters when exporting observations", async () => {
+  it("should ignore trace-level filters when exporting observations", async () => {
     const { projectId } = await createOrgProjectAndApiKey();
 
     // Create traces with tags
@@ -1905,8 +1900,7 @@ describe("batch export test suite", () => {
     expect(traceIds).toEqual([traces[0].id, traces[1].id].sort());
   });
 
-  // Skipped: the observation export keeps only is_root = 0 rows, so parentless observations (root spans) are left out.
-  it.skip("should successfully export observations with mixed observation-level and trace-level filters", async () => {
+  it("should successfully export observations with mixed observation-level and trace-level filters", async () => {
     const { projectId } = await createOrgProjectAndApiKey();
 
     // Create traces with various tags and user IDs
