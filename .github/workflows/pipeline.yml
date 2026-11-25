@@ -577,7 +577,9 @@ jobs:
           which mysql
       - name: Load default env
         run: |
-          cp .env.dev.example .env
+          # The web init (NEXT_PUBLIC_LITEFUSE_RUN_NEXT_INIT) loads the table-split
+          # cache; without it OTel ingestion answers 500 "split-cache not ready".
+          grep -v -e '^NEXT_PUBLIC_LITEFUSE_RUN_NEXT_INIT=' .env.dev.example > .env
       - name: Run + migrate
         run: |
           sudo sysctl -w vm.max_map_count=2000000
