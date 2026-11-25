@@ -631,6 +631,8 @@ describe("/api/public/traces API Endpoint", () => {
   it("should return 5XX if observations are too large when fetching single trace", async () => {
     // See LFE-4882 for context
     // An own project keeps the ~80 MB trace out of the other tests' trace lists.
+    // Creating its Doris tables and loading the data exceeds the 5 s default
+    // timeout on CI runners.
     const { projectId: largeProjectId, auth: largeProjectAuth } =
       await createOrgProjectAndApiKey();
     const traceId = randomUUID();
@@ -683,7 +685,7 @@ describe("/api/public/traces API Endpoint", () => {
     ).rejects.toThrow(
       `Observations in trace are too large: ${(reportedBytes / 1e6).toFixed(2)}MB exceeds limit of 80.00MB`,
     );
-  });
+  }, 60_000);
 
   it("should delete a single trace via DELETE /traces/:traceId", async () => {
     // Setup
