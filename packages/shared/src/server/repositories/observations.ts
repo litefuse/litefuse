@@ -1242,6 +1242,8 @@ export const hasAnyObservation = async (projectId: string) => {
 export const deleteObservationsByProjectId = async (
   projectId: string,
 ): Promise<boolean> => {
+  // Report false and skip the DELETE when there is nothing to delete.
+  if (!(await hasAnyObservation(projectId))) return false;
   const query = `
       DELETE FROM ${tableFor(projectId, "spans")}
       WHERE project_id = {projectId: String}
@@ -1294,6 +1296,10 @@ export const deleteObservationsOlderThanDays = async (
   projectId: string,
   beforeDate: Date,
 ): Promise<boolean> => {
+  // Report false and skip the DELETE when there is nothing to delete.
+  if (!(await hasAnyObservationOlderThan(projectId, beforeDate))) {
+    return false;
+  }
   const query = `
       DELETE FROM ${tableFor(projectId, "spans")}
       WHERE project_id = {projectId: String}

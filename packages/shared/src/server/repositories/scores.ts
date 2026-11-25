@@ -1302,6 +1302,8 @@ export const deleteScoresByTraceIds = async (
 export const deleteScoresByProjectId = async (
   projectId: string,
 ): Promise<boolean> => {
+  // Report false and skip the DELETE when there is nothing to delete.
+  if (!(await hasAnyScore(projectId))) return false;
   const query = `
       DELETE FROM scores
       WHERE project_id = {projectId: String};
@@ -1354,6 +1356,8 @@ export const deleteScoresOlderThanDays = async (
   projectId: string,
   beforeDate: Date,
 ): Promise<boolean> => {
+  // Report false and skip the DELETE when there is nothing to delete.
+  if (!(await hasAnyScoreOlderThan(projectId, beforeDate))) return false;
   const query = `
       DELETE FROM scores
       WHERE project_id = {projectId: String}
