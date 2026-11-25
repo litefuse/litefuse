@@ -34,12 +34,12 @@ const notifications: SidebarNotification[] = [
     description: i18nKey(
       "See the latest releases and help grow the community on GitHub",
     ),
-    link: "https://github.com/selectdb/langfuse-doris",
+    link: "https://github.com/litefuse/litefuse",
     linkContent: (t) => (
       // eslint-disable-next-line @next/next/no-img-element
       <img
         alt={t("Litefuse GitHub stars")}
-        src="https://img.shields.io/github/stars/selectdb/langfuse-doris?label=litefuse&style=social"
+        src="https://img.shields.io/github/stars/litefuse/litefuse?label=litefuse&style=social"
       />
     ),
   },

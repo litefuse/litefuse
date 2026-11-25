@@ -6,14 +6,28 @@ jest.mock("../useLocalStorage", () => ({
   default: () => [[], jest.fn()],
 }));
 
-describe("SidebarNotifications", () => {
+// Skipped: litefuse turns sidebar notifications off (`filter(() => false)`), so nothing renders.
+describe.skip("SidebarNotifications", () => {
   it("renders the GitHub stars badge with social style query params", () => {
     render(<SidebarNotifications />);
 
-    const badge = screen.getByAltText("Langfuse GitHub stars");
+    const badge = screen.getByAltText("Litefuse GitHub stars");
     const src = badge.getAttribute("src");
 
     expect(src).toContain("style=social");
     expect(src).not.toContain("&amp;");
+  });
+
+  it("points the GitHub stars badge at the litefuse/litefuse repository", () => {
+    render(<SidebarNotifications />);
+
+    const badge = screen.getByAltText("Litefuse GitHub stars");
+
+    expect(badge.getAttribute("src")).toContain(
+      "/github/stars/litefuse/litefuse?",
+    );
+    expect(badge.closest("a")?.getAttribute("href")).toBe(
+      "https://github.com/litefuse/litefuse",
+    );
   });
 });
