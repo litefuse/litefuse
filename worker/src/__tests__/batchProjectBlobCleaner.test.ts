@@ -92,8 +92,7 @@ describe("BatchProjectBlobCleaner", () => {
     vi.resetAllMocks();
   });
 
-  // Skipped: the blob cleaner query uses ClickHouse countIf, which Doris does not support.
-  it.skip("should process soft-deleted project with blob refs", async () => {
+  it("should process soft-deleted project with blob refs", async () => {
     const { projectId } = await createOrgProjectAndApiKey();
 
     vi.mocked(getDeletedProjects).mockResolvedValue([{ id: projectId }]);
@@ -145,8 +144,7 @@ describe("BatchProjectBlobCleaner", () => {
     expect(getCalledProjectIds()).not.toContain(projectId);
   });
 
-  // Skipped: the blob cleaner query uses ClickHouse countIf, which Doris does not support.
-  it.skip("should pick project with most remaining blobs", async () => {
+  it("should pick project with most remaining blobs", async () => {
     const { projectId: smallProject } = await createOrgProjectAndApiKey();
     const { projectId: largeProject } = await createOrgProjectAndApiKey();
 

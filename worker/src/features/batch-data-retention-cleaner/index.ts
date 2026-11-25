@@ -313,7 +313,7 @@ export class BatchDataRetentionCleaner extends PeriodicExclusiveRunner {
       SELECT
         project_id,
         count() as count,
-        dateDiff('second', min(${timestampColumn}), now()) as oldest_age_seconds
+        TIMESTAMPDIFF(SECOND, min(${timestampColumn}), now()) as oldest_age_seconds
       FROM ${this.tableName}
       WHERE ${conditions}
       GROUP BY project_id
