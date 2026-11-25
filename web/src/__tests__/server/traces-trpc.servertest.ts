@@ -156,8 +156,7 @@ describe("traces trpc", () => {
       expect(traces.traces.length).toBeGreaterThan(0);
     });
 
-    // Skipped: this traces.all query uses about 5 GB of Doris memory and is cancelled or times out on CI runners.
-    it.skip("list traces with complex scores and observations filter", async () => {
+    it("list traces with complex scores and observations filter", async () => {
       const trace = createTrace({
         project_id: projectId,
       });

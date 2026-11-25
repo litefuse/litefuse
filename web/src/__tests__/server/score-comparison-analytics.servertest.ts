@@ -13,11 +13,25 @@ import {
   createObservationsCh,
   createSessionScore,
   createDatasetRunScore,
+  provisionDorisTestProject,
 } from "@langfuse/shared/src/server";
 import { v4 } from "uuid";
 
 describe("Score Comparison Analytics tRPC", () => {
-  const projectId = "7a88fb47b4e243b8a06ca5ce950dc53a";
+  // Use a dedicated project: the sampling tests insert ~590k scores, which would
+  // otherwise land in the shared seed project and slow down later suites.
+  const projectId = v4().replace(/-/g, "");
+
+  beforeAll(async () => {
+    await prisma.project.create({
+      data: {
+        id: projectId,
+        orgId: "seed-org-id",
+        name: "Score Comparison Analytics",
+      },
+    });
+    await provisionDorisTestProject(projectId);
+  });
 
   const session: Session = {
     user: {
