@@ -82,17 +82,19 @@ describe("BillingSettings", () => {
   afterEach(() => mockedUseQuery.mockReset());
 
   it("refreshes usage while the billing page is open", () => {
-    mockedUseQuery.mockReturnValue(billingStatus());
+    const refetch = jest.fn();
+    mockedUseQuery.mockReturnValue({ ...billingStatus(), refetch });
 
     render(<BillingSettings orgId="org_test" />);
 
     expect(mockedUseQuery).toHaveBeenCalledWith(
       { orgId: "org_test" },
-      expect.objectContaining({
-        refetchInterval: 60_000,
-        refetchOnWindowFocus: true,
-      }),
+      expect.objectContaining({ refetchInterval: 60_000 }),
     );
+
+    // Focus refresh is handled by the component's own window listener.
+    fireEvent.focus(window);
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 
   it("shows the Developer allowance and blocked state", () => {
