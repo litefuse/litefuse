@@ -61,7 +61,7 @@ function MinioCompletionHandler() {
     ) {
       return new HttpResponse("Success");
     }
-    return passthrough();
+    throw new Error("Unexpected path");
   });
 }
 

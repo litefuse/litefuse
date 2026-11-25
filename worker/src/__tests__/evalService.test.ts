@@ -18,6 +18,7 @@ import {
   createDatasetRunItemsCh,
   createDatasetRunItem,
   createOrgProjectAndApiKey,
+  provisionDorisTestProject,
   LLMCompletionError,
   LangfuseInternalTraceEnvironment,
 } from "@langfuse/shared/src/server";
@@ -803,6 +804,8 @@ Respond with JSON: {"score": <number>, "reasoning": "<explanation>"}`;
 
     test("creates new eval job for a dataset on upsert of the trace", async () => {
       const { projectId } = await createOrgProjectAndApiKey();
+      // Production provisions split tables at project creation; this Postgres-only helper does not.
+      await provisionDorisTestProject(projectId);
       const traceId = randomUUID();
       const datasetId = randomUUID();
       const datasetItemId = randomUUID();
