@@ -590,7 +590,7 @@ describe("select all test suite", () => {
 });
 
 maybeDescribe("events table batch actions", () => {
-  // Skipped: the events export stream uses the ClickHouse table name events_proto, which Doris rejects.
+  // Skipped: the events export stream builds its filter for the ClickHouse table name events_proto, which the Doris query builder rejects.
   it.skip("should add observations to dataset from events table with full mapping", async () => {
     const { projectId } = await createOrgProjectAndApiKey();
 
@@ -702,7 +702,7 @@ maybeDescribe("events table batch actions", () => {
     expect(updatedBatchAction?.processedCount).toBe(2);
   });
 
-  // Skipped: the events export stream uses the ClickHouse table name events_proto, which Doris rejects.
+  // Skipped: the events export stream builds its filter for the ClickHouse table name events_proto, which the Doris query builder rejects.
   it.skip("should apply jsonSelector mapping when adding events to dataset", async () => {
     const { projectId } = await createOrgProjectAndApiKey();
 

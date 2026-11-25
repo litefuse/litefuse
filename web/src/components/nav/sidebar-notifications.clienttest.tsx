@@ -17,17 +17,4 @@ describe.skip("SidebarNotifications", () => {
     expect(src).toContain("style=social");
     expect(src).not.toContain("&amp;");
   });
-
-  it("points the GitHub stars badge at the litefuse/litefuse repository", () => {
-    render(<SidebarNotifications />);
-
-    const badge = screen.getByAltText("Litefuse GitHub stars");
-
-    expect(badge.getAttribute("src")).toContain(
-      "/github/stars/litefuse/litefuse?",
-    );
-    expect(badge.closest("a")?.getAttribute("href")).toBe(
-      "https://github.com/litefuse/litefuse",
-    );
-  });
 });

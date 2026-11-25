@@ -533,7 +533,7 @@ describe.concurrent("test eval filtering", () => {
     expect(jobs[0].status.toString()).toBe("PENDING");
   }, 10_000);
 
-  // Skipped: the trace lookup for eval filters references aggregated_level, which the Doris table lacks.
+  // Skipped: the eval trace lookup filters os.aggregated_level, but the level CTE is joined as o.
   test.skip("creates eval job only for matching level", async ({
     expect,
     upsertTwoTraces,

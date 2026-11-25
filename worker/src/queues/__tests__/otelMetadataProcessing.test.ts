@@ -135,7 +135,7 @@ describe("OTel metadata processing", () => {
   });
 
   describe("flattening", () => {
-    // Skipped: Doris VARIANT stores resource/scope attributes as nested objects instead of flattened keys.
+    // Skipped: ingestion stores raw nested metadata by design and flattens it at read time, so write-time flattening is not expected.
     it.skip("flattens resource/scope attrs to dot-notation (SDK v4.0)", async () => {
       const { nameToValue } = await processAndCreateEvent(
         buildOtelSpan({
@@ -155,7 +155,7 @@ describe("OTel metadata processing", () => {
       expect(nameToValue["scopeAttributes"]).toBeUndefined();
     });
 
-    // Skipped: Doris VARIANT stores resource/scope attributes as nested objects instead of flattened keys.
+    // Skipped: ingestion stores raw nested metadata by design and flattens it at read time, so write-time flattening is not expected.
     it.skip("flattens resource/scope attrs to dot-notation (SDK v3.8)", async () => {
       const { nameToValue } = await processAndCreateEvent(
         buildOtelSpan({
@@ -177,7 +177,7 @@ describe("OTel metadata processing", () => {
   });
 
   describe("json column", () => {
-    // Skipped: Doris VARIANT returns nested metadata objects instead of JSON strings.
+    // Skipped: ingestion stores raw nested metadata by design and flattens it at read time, so write-time flattening is not expected.
     it.skip("stringifies nested objects in metadata JSON column", async () => {
       const { eventRecord } = await processAndCreateEvent(
         buildOtelSpan({

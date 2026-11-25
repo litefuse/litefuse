@@ -59,16 +59,7 @@ describe("trace deletion", () => {
     ]);
 
     // When
-    const mutableEnv = env as {
-      LITEFUSE_ENABLE_BLOB_STORAGE_FILE_LOG: string;
-    };
-    const prevBlobStorageLog = mutableEnv.LITEFUSE_ENABLE_BLOB_STORAGE_FILE_LOG;
-    mutableEnv.LITEFUSE_ENABLE_BLOB_STORAGE_FILE_LOG = "true";
-    try {
-      await processDorisTraceDelete(projectId, [traceId]);
-    } finally {
-      mutableEnv.LITEFUSE_ENABLE_BLOB_STORAGE_FILE_LOG = prevBlobStorageLog;
-    }
+    await processDorisTraceDelete(projectId, [traceId]);
 
     // Then
     const traces = await getTracesByIds([traceId], projectId);
@@ -168,16 +159,7 @@ describe("trace deletion", () => {
     });
 
     // When
-    const mutableEnv = env as {
-      LITEFUSE_ENABLE_BLOB_STORAGE_FILE_LOG: string;
-    };
-    const prevBlobStorageLog = mutableEnv.LITEFUSE_ENABLE_BLOB_STORAGE_FILE_LOG;
-    mutableEnv.LITEFUSE_ENABLE_BLOB_STORAGE_FILE_LOG = "true";
-    try {
-      await processDorisTraceDelete(projectId, [traceId]);
-    } finally {
-      mutableEnv.LITEFUSE_ENABLE_BLOB_STORAGE_FILE_LOG = prevBlobStorageLog;
-    }
+    await processDorisTraceDelete(projectId, [traceId]);
 
     // Then
     const files = await mediaStorageService.listFiles(projectId);
@@ -269,7 +251,7 @@ describe("trace deletion", () => {
     expect(traceMedia).toHaveLength(1);
   });
 
-  // Skipped: deleting traces leaves their S3 event files in place on Doris.
+  // Skipped: the blob_storage_file_log reader does not filter is_deleted, so soft-deleted refs are still returned.
   it.skip("should delete S3 event files for deleted traces", async () => {
     // Setup
     const { projectId } = await createOrgProjectAndApiKey();

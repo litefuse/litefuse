@@ -552,7 +552,7 @@ describe("batch export test suite", () => {
     );
   });
 
-  // Skipped: the trace export returns tags as a JSON string and booleans as 0/1 on Doris.
+  // Skipped: the trace export returns duplicated categorical score values on Doris.
   it.skip("should export traces", async () => {
     const { projectId } = await createOrgProjectAndApiKey();
 
@@ -2100,7 +2100,7 @@ describe("batch export test suite", () => {
     expect(rowsByIdVariant[0].name).toBe("other-trace");
   });
 
-  // Skipped: the trace export returns tags as a JSON string and booleans as 0/1 on Doris.
+  // Skipped: the trace export returns tags as a JSON string on Doris.
   it.skip("should properly export traces with Thai and other non-ASCII characters", async () => {
     const { projectId } = await createOrgProjectAndApiKey();
 
@@ -2361,7 +2361,7 @@ describe("batch export test suite", () => {
 
   // ==================== EVENTS TABLE EXPORT TESTS ====================
 
-  // Skipped: the events export stream uses the ClickHouse table name events_proto, which Doris rejects.
+  // Skipped: the events export stream builds its filter for the ClickHouse table name events_proto, which the Doris query builder rejects.
   describe.skip("events table export tests", () => {
     it("should export events from events table", async () => {
       const { projectId } = await createOrgProjectAndApiKey();

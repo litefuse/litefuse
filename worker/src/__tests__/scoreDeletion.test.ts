@@ -43,7 +43,7 @@ describe("score deletion", () => {
     expect(scores).toHaveLength(0);
   });
 
-  // Skipped: deleting scores leaves their S3 event files in place on Doris.
+  // Skipped: the blob_storage_file_log reader does not filter is_deleted, so soft-deleted refs are still returned.
   it.skip("should delete S3 event files for deleted scores", async () => {
     // Setup
     const { projectId } = await createOrgProjectAndApiKey();
