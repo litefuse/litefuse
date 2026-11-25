@@ -157,7 +157,7 @@ describe("UI Prompts Table", () => {
     );
   });
 
-  // Skipped: Doris interpolates the median of two values (71) where the test expects an observed value (100).
+  // Skipped: Doris interpolates the median of two values (71 for 42 and 100) where the test expects the upper one, and takes total cost from total_cost (100) instead of cost_details (0).
   it.skip("should correctly calculate prompt metrics", async () => {
     const projectId = v4().replace(/-/g, "");
     const observation = createObservation({

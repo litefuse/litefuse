@@ -276,8 +276,7 @@ describe("Dashboard Router - Pivot Table Integration", () => {
       );
     });
 
-    // Skipped: pivot dimensions come back as objects instead of strings on Doris.
-    it.skip("should execute two-dimension pivot table query with environment and model grouping", async () => {
+    it("should execute two-dimension pivot table query with environment and model grouping", async () => {
       const query: QueryType = {
         view: "observations",
         dimensions: [{ field: "environment" }, { field: "providedModelName" }],

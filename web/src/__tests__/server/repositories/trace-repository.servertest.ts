@@ -187,7 +187,7 @@ describe("Clickhouse Traces Repository Test", () => {
     expect(resultIds).toContain(trace2.id);
   });
 
-  // Skipped: the Doris query references column aggregated_level, which does not exist.
+  // Skipped: checkTraceExistsAndGetTimestamp filters os.<column> from the traces UI mapping, but joins its observation aggregate as o.
   it.skip("should check if trace exists with level filter", async () => {
     const traceId = v4();
     const trace = createTrace({
@@ -243,7 +243,7 @@ describe("Clickhouse Traces Repository Test", () => {
     expect(exists).toBe(true);
   });
 
-  // Skipped: the Doris query references column aggregated_level, which does not exist.
+  // Skipped: checkTraceExistsAndGetTimestamp filters os.<column> from the traces UI mapping, but joins its observation aggregate as o.
   it.skip("should check if trace exists with level filter none of", async () => {
     const traceId = v4();
     const trace = createTrace({
@@ -345,7 +345,7 @@ describe("Clickhouse Traces Repository Test", () => {
     });
     expect(exists).toBe(true);
   });
-  // Skipped: the Doris query references column error_count, which does not exist.
+  // Skipped: checkTraceExistsAndGetTimestamp filters os.<column> from the traces UI mapping, but joins its observation aggregate as o.
   it.skip("should check if trace exists with error level count > 0", async () => {
     const traceId = v4();
     const trace = createTrace({
@@ -401,7 +401,7 @@ describe("Clickhouse Traces Repository Test", () => {
     expect(exists).toBe(true);
   });
 
-  // Skipped: the Doris query references column total_cost, which does not exist.
+  // Skipped: checkTraceExistsAndGetTimestamp filters os.<column> from the traces UI mapping, but joins its observation aggregate as o.
   it.skip.each([
     {
       name: "latency",

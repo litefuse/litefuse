@@ -564,7 +564,7 @@ describe("/api/public/v2/scores API Endpoint", () => {
         }
       });
 
-      // Skipped: the v2 scores API on Doris does not include the trace object (userId, tags, environment).
+      // Skipped: the v2 scores API on Doris omits the trace field (an object, or null with fields=score).
       it.skip("get all scores for trace tag 'prod'", async () => {
         const getAllScore = await makeZodVerifiedAPICall(
           GetScoresResponseV2,
@@ -588,7 +588,7 @@ describe("/api/public/v2/scores API Endpoint", () => {
         }
       });
 
-      // Skipped: the v2 scores API on Doris does not include the trace object (userId, tags, environment).
+      // Skipped: the v2 scores API on Doris omits the trace field (an object, or null with fields=score).
       it.skip("get all scores for environment 'production'", async () => {
         const getAllScore = await makeZodVerifiedAPICall(
           GetScoresResponseV2,
@@ -773,7 +773,7 @@ describe("/api/public/v2/scores API Endpoint", () => {
         });
       });
 
-      // Skipped: the v2 scores API on Doris does not include the trace object (userId, tags, environment).
+      // Skipped: the v2 scores API on Doris omits the trace field (an object, or null with fields=score).
       it.skip("get all scores for trace tags 'staging' and 'dev'", async () => {
         const getAllScore = await makeZodVerifiedAPICall(
           GetScoresResponseV2,
@@ -1367,7 +1367,7 @@ describe("/api/public/v2/scores API Endpoint", () => {
     });
 
     describe("GET /api/public/v2/scores - fields parameter", () => {
-      // Skipped: the v2 scores API on Doris does not include the trace object (userId, tags, environment).
+      // Skipped: the v2 scores API on Doris omits the trace field (an object, or null with fields=score).
       it.skip("should include both score and trace by default (backward compatibility)", async () => {
         const { projectId, auth } = await createOrgProjectAndApiKey();
         const traceId = v4();
@@ -1414,7 +1414,7 @@ describe("/api/public/v2/scores API Endpoint", () => {
         });
       });
 
-      // Skipped: the v2 scores API on Doris does not include the trace object (userId, tags, environment).
+      // Skipped: the v2 scores API on Doris omits the trace field (an object, or null with fields=score).
       it.skip("should include both when fields=score,trace", async () => {
         const { projectId, auth } = await createOrgProjectAndApiKey();
         const traceId = v4();
@@ -1462,7 +1462,7 @@ describe("/api/public/v2/scores API Endpoint", () => {
         });
       });
 
-      // Skipped: the v2 scores API on Doris does not include the trace object (userId, tags, environment).
+      // Skipped: the v2 scores API on Doris omits the trace field (an object, or null with fields=score).
       it.skip("should exclude trace when fields=score only", async () => {
         const { projectId, auth } = await createOrgProjectAndApiKey();
         const traceId = v4();
@@ -1504,7 +1504,7 @@ describe("/api/public/v2/scores API Endpoint", () => {
         });
       });
 
-      // Skipped: the v2 scores API on Doris does not include the trace object (userId, tags, environment).
+      // Skipped: the v2 scores API on Doris omits the trace field (an object, or null with fields=score).
       it.skip("should handle empty fields as default (include trace)", async () => {
         const { projectId, auth } = await createOrgProjectAndApiKey();
         const traceId = v4();
@@ -1579,7 +1579,7 @@ describe("/api/public/v2/scores API Endpoint", () => {
         });
       });
 
-      // Skipped: the v2 scores API on Doris does not include the trace object (userId, tags, environment).
+      // Skipped: the v2 scores API on Doris omits the trace field (an object, or null with fields=score).
       it.skip("should ignore invalid field groups", async () => {
         const { projectId, auth } = await createOrgProjectAndApiKey();
         const traceId = v4();
@@ -1661,7 +1661,7 @@ describe("/api/public/v2/scores API Endpoint", () => {
         );
       });
 
-      // Skipped: the v2 scores API on Doris does not include the trace object (userId, tags, environment).
+      // Skipped: the v2 scores API on Doris omits the trace field (an object, or null with fields=score).
       it.skip("should handle multiple scores with fields=score", async () => {
         const { projectId, auth } = await createOrgProjectAndApiKey();
         const traceId = v4();
@@ -1799,7 +1799,7 @@ describe("/api/public/v2/scores API Endpoint", () => {
         );
       });
 
-      // Skipped: the v2 scores API on Doris does not include the trace object (userId, tags, environment).
+      // Skipped: the v2 scores API on Doris omits the trace field (an object, or null with fields=score).
       it.skip("should allow userId filter when trace field is included", async () => {
         const { projectId, auth } = await createOrgProjectAndApiKey();
         const traceId = v4();
@@ -1840,7 +1840,7 @@ describe("/api/public/v2/scores API Endpoint", () => {
         });
       });
 
-      // Skipped: the v2 scores API on Doris does not include the trace object (userId, tags, environment).
+      // Skipped: the v2 scores API on Doris omits the trace field (an object, or null with fields=score).
       it.skip("should allow fields=score without trace filters", async () => {
         const { projectId, auth } = await createOrgProjectAndApiKey();
         const traceId = v4();

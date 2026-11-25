@@ -182,7 +182,7 @@ describe("Ingestion end-to-end tests", () => {
       }),
     ]);
 
-    await dorisWriter.flushAll(true);
+    await dorisWriter.forceFlushAll();
 
     // Verify that valid scores were inserted
     const validScore1 = await getScoreRecord(validScoreId1);

@@ -304,7 +304,7 @@ describe("Clickhouse Events Repository Test", () => {
   });
 
   maybe("getObservationsV2FromEventsTableForPublicApi", () => {
-    // Skipped: the Doris query does not finish within the test timeout.
+    // Skipped: the Doris events query returns trace tags as a JSON string and takes longer than the 5 s test timeout.
     it.skip("returns usage pricing tier and trace context field groups", async () => {
       const traceId = randomUUID();
       const rootSpanId = randomUUID();
@@ -1552,7 +1552,7 @@ describe("Clickhouse Events Repository Test", () => {
       expect(result[0]?.name).toBe("recent-obs");
     });
 
-    // Skipped: the Doris query does not finish within the test timeout.
+    // Skipped: the Doris query does not finish within 60 s.
     it.skip("should combine multiple filters", async () => {
       const uniqueProjectId = randomUUID().replace(/-/g, "");
       const userId = "test-user";

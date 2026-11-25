@@ -105,8 +105,13 @@ describe("/api/public/metrics API Endpoint", () => {
     await createObservationsCh([...trace1Observations, ...trace2Observations]);
   });
 
-  // Skipped: two cases return extra rows on Doris (time dimension, observations multi-metric).
-  it.skip.each([
+  type MetricsQueryExpectation = {
+    dataLength: number;
+    expectedMetrics: string[];
+    expectedDimensions: string[];
+  };
+
+  const metricsQueryCases: [string, QueryType, MetricsQueryExpectation][] = [
     [
       "simple trace query",
       {
@@ -193,48 +198,61 @@ describe("/api/public/metrics API Endpoint", () => {
         expectedDimensions: ["name"],
       },
     ],
-  ])(
+  ];
+
+  const expectMetricsQueryResult = async (
+    _name: string,
+    queryObject: QueryType,
+    expectedResult: MetricsQueryExpectation,
+  ) => {
+    // Add pagination parameters needed for the API
+    const fullQuery = {
+      ...queryObject,
+      // page: 1,
+      // limit: 10,
+    };
+
+    // Make the API call
+    const response = await makeZodVerifiedAPICall(
+      GetMetricsV1Response,
+      "GET",
+      `/api/public/metrics?query=${encodeURIComponent(JSON.stringify(fullQuery))}`,
+    );
+
+    // Validate response format
+    expect(response.status).toBe(200);
+    expect(Array.isArray(response.body.data)).toBe(true);
+
+    // Validate response matches expected structure
+    expect(response.body.data).toHaveLength(expectedResult.dataLength);
+    response.body.data.forEach((item) => {
+      expect(
+        expectedResult.expectedMetrics.every((metric) => metric in item),
+      ).toBe(true);
+      expect(
+        expectedResult.expectedDimensions.every(
+          (dimension) => dimension in item,
+        ),
+      ).toBe(true);
+    });
+  };
+
+  const casesWithExtraRows = new Set([
+    "query with time dimension",
+    "observations query with multiple metrics",
+  ]);
+
+  it.each(metricsQueryCases.filter(([name]) => !casesWithExtraRows.has(name)))(
     "should accept queries and return expected results: %s",
-    async (
-      _name: string,
-      queryObject: QueryType,
-      expectedResult: {
-        dataLength: number;
-        expectedMetrics: string[];
-        expectedDimensions: string[];
-      },
-    ) => {
-      // Add pagination parameters needed for the API
-      const fullQuery = {
-        ...queryObject,
-        // page: 1,
-        // limit: 10,
-      };
+    expectMetricsQueryResult,
+  );
 
-      // Make the API call
-      const response = await makeZodVerifiedAPICall(
-        GetMetricsV1Response,
-        "GET",
-        `/api/public/metrics?query=${encodeURIComponent(JSON.stringify(fullQuery))}`,
-      );
-
-      // Validate response format
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body.data)).toBe(true);
-
-      // Validate response matches expected structure
-      expect(response.body.data).toHaveLength(expectedResult.dataLength);
-      response.body.data.forEach((item) => {
-        expect(
-          expectedResult.expectedMetrics.every((metric) => metric in item),
-        ).toBe(true);
-        expect(
-          expectedResult.expectedDimensions.every(
-            (dimension) => dimension in item,
-          ),
-        ).toBe(true);
-      });
-    },
+  // Skipped: Doris returns extra rows here: the time-dimension query fills empty days at both ends of the range, and the observations query counts trace-test-3, which has no observations, through its root span.
+  it.skip.each(
+    metricsQueryCases.filter(([name]) => casesWithExtraRows.has(name)),
+  )(
+    "should accept queries and return expected results: %s",
+    expectMetricsQueryResult,
   );
 
   it("should return 401 with invalid authentication", async () => {

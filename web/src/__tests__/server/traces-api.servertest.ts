@@ -10,6 +10,7 @@ import {
 } from "@langfuse/shared/src/server";
 import {
   createObservationsCh,
+  createOrgProjectAndApiKey,
   createTracesCh,
   createEventsCh,
 } from "@langfuse/shared/src/server";
@@ -155,7 +156,7 @@ const createTraceWithObservations = async (
 };
 
 describe("/api/public/traces API Endpoint", () => {
-  // Skipped: the Doris traces response returns observations/totalCost as strings, which fails the public API schema.
+  // Skipped: the Doris single-trace response includes input_trim/output_trim, which the public API schema rejects.
   it.skip("should create and get a trace via /traces", async () => {
     const createdTrace = createTrace({
       name: "trace-name",
@@ -591,7 +592,7 @@ describe("/api/public/traces API Endpoint", () => {
     });
   });
 
-  // Skipped: the Doris traces response returns observations/totalCost as strings, which fails the public API schema.
+  // Skipped: the Doris single-trace response includes input_trim/output_trim, which the public API schema rejects.
   it.skip("LFE-3699: should fetch a single trace with unescaped metadata via single trace endpoint", async () => {
     const traceId = randomUUID();
     const trace = createTrace({
@@ -627,14 +628,16 @@ describe("/api/public/traces API Endpoint", () => {
     });
   });
 
-  // Skipped: the oversized observation fixture cannot be stream-loaded into Doris.
-  it.skip("should return 5XX if observations are too large when fetching single trace", async () => {
+  it("should return 5XX if observations are too large when fetching single trace", async () => {
     // See LFE-4882 for context
+    // An own project keeps the ~80 MB trace out of the other tests' trace lists.
+    const { projectId: largeProjectId, auth: largeProjectAuth } =
+      await createOrgProjectAndApiKey();
     const traceId = randomUUID();
     const trace = createTrace({
       id: traceId,
       name: "trace-name1",
-      project_id: projectId,
+      project_id: largeProjectId,
       metadata: { key: JSON.stringify({ foo: "bar" }) },
       input: JSON.stringify({
         args: [
@@ -646,37 +649,39 @@ describe("/api/public/traces API Endpoint", () => {
     });
 
     await createTracesCh([trace]);
-    await createObservationsCh([
-      createObservation({
-        trace_id: traceId,
-        project_id: projectId,
-        input: "a".repeat(30e6),
-        output: "b".repeat(30e6),
-        metadata: {
-          foo: "c".repeat(30e6),
-        },
-      }),
-    ]);
-    await createObservationsCh([
-      createObservation({
-        trace_id: traceId,
-        project_id: projectId,
-        input: "a".repeat(30e6),
-        output: "b".repeat(30e6),
-        metadata: {
-          foo: "c".repeat(30e6),
-        },
-      }),
-    ]);
+    // Doris rejects single strings above ~1 MB, so the 80 MB limit is reached
+    // with many observations instead of a few huge ones.
+    const fieldSize = 900_000;
+    const observationSize = 3 * fieldSize;
+    const observationCount = 30;
+    await createObservationsCh(
+      Array.from({ length: observationCount }, () =>
+        createObservation({
+          trace_id: traceId,
+          project_id: largeProjectId,
+          input: "a".repeat(fieldSize),
+          output: "b".repeat(fieldSize),
+          metadata: {
+            foo: "c".repeat(fieldSize),
+          },
+        }),
+      ),
+    );
 
+    // The check stops at the first observation that reaches the limit.
+    const limitBytes = 80e6;
+    const reportedBytes =
+      Math.ceil(limitBytes / observationSize) * observationSize;
     await expect(
       makeZodVerifiedAPICall(
         GetTraceV1Response,
         "GET",
         `/api/public/traces/${traceId}`,
+        undefined,
+        largeProjectAuth,
       ),
     ).rejects.toThrow(
-      "Observations in trace are too large: 90.00MB exceeds limit of 80.00MB",
+      `Observations in trace are too large: ${(reportedBytes / 1e6).toFixed(2)}MB exceeds limit of 80.00MB`,
     );
   });
 
@@ -1104,6 +1109,10 @@ describe("/api/public/traces API Endpoint", () => {
 
   describe("Advanced Filtering - Dual Path Tests", () => {
     const runTestSuite = (useEventsTable: boolean) => {
+      // Skips a case on the events table only.
+      const itSkipOnEvents = useEventsTable ? it.skip : it;
+      // Skips a case on the traces table only.
+      const itSkipOnTracesTable = useEventsTable ? it : it.skip;
       const suiteName = useEventsTable
         ? "with events table"
         : "with traces table";
@@ -1163,75 +1172,81 @@ describe("/api/public/traces API Endpoint", () => {
           await new Promise((resolve) => setTimeout(resolve, 100));
         }, 10000);
 
-        // Skipped: the Doris traces response returns observations/totalCost as strings, which fails the public API schema.
-        it.skip("should support basic metadata filtering", async () => {
-          const filterParam = JSON.stringify([
-            {
-              type: "stringObject",
-              column: "metadata",
-              key: "environment",
-              operator: "=",
-              value: "production",
-            },
-          ]);
+        // Skipped: the Doris traces-table response returns observations/totalCost as strings, which fails the public API schema.
+        itSkipOnTracesTable(
+          "should support basic metadata filtering",
+          async () => {
+            const filterParam = JSON.stringify([
+              {
+                type: "stringObject",
+                column: "metadata",
+                key: "environment",
+                operator: "=",
+                value: "production",
+              },
+            ]);
 
-          const traces = await makeZodVerifiedAPICall(
-            GetTracesV1Response,
-            "GET",
-            buildUrl(`filter=${encodeURIComponent(filterParam)}`),
-          );
+            const traces = await makeZodVerifiedAPICall(
+              GetTracesV1Response,
+              "GET",
+              buildUrl(`filter=${encodeURIComponent(filterParam)}`),
+            );
 
-          expect(traces.status).toBe(200);
-          const matchingTrace = traces.body.data.find(
-            (t) => t.id === testTraceId,
-          );
-          const nonMatchingTrace = traces.body.data.find(
-            (t) => t.id === testTraceId2,
-          );
+            expect(traces.status).toBe(200);
+            const matchingTrace = traces.body.data.find(
+              (t) => t.id === testTraceId,
+            );
+            const nonMatchingTrace = traces.body.data.find(
+              (t) => t.id === testTraceId2,
+            );
 
-          expect(matchingTrace).toBeTruthy();
-          expect(nonMatchingTrace).toBeFalsy();
-        });
+            expect(matchingTrace).toBeTruthy();
+            expect(nonMatchingTrace).toBeFalsy();
+          },
+        );
 
-        // Skipped: the Doris traces response returns observations/totalCost as strings, which fails the public API schema.
-        it.skip("should support multiple metadata filters with AND logic", async () => {
-          const filterParam = JSON.stringify([
-            {
-              type: "stringObject",
-              column: "metadata",
-              key: "environment",
-              operator: "=",
-              value: "production",
-            },
-            {
-              type: "stringObject",
-              column: "metadata",
-              key: "model",
-              operator: "contains",
-              value: "gpt-4",
-            },
-          ]);
+        // Skipped: the Doris traces-table response returns observations/totalCost as strings, which fails the public API schema.
+        itSkipOnTracesTable(
+          "should support multiple metadata filters with AND logic",
+          async () => {
+            const filterParam = JSON.stringify([
+              {
+                type: "stringObject",
+                column: "metadata",
+                key: "environment",
+                operator: "=",
+                value: "production",
+              },
+              {
+                type: "stringObject",
+                column: "metadata",
+                key: "model",
+                operator: "contains",
+                value: "gpt-4",
+              },
+            ]);
 
-          const traces = await makeZodVerifiedAPICall(
-            GetTracesV1Response,
-            "GET",
-            buildUrl(`filter=${encodeURIComponent(filterParam)}`),
-          );
+            const traces = await makeZodVerifiedAPICall(
+              GetTracesV1Response,
+              "GET",
+              buildUrl(`filter=${encodeURIComponent(filterParam)}`),
+            );
 
-          expect(traces.status).toBe(200);
-          const matchingTrace = traces.body.data.find(
-            (t) => t.id === testTraceId,
-          );
-          const nonMatchingTrace = traces.body.data.find(
-            (t) => t.id === testTraceId2,
-          );
+            expect(traces.status).toBe(200);
+            const matchingTrace = traces.body.data.find(
+              (t) => t.id === testTraceId,
+            );
+            const nonMatchingTrace = traces.body.data.find(
+              (t) => t.id === testTraceId2,
+            );
 
-          expect(matchingTrace).toBeTruthy();
-          expect(nonMatchingTrace).toBeFalsy();
-        });
+            expect(matchingTrace).toBeTruthy();
+            expect(nonMatchingTrace).toBeFalsy();
+          },
+        );
 
-        // Skipped: the Doris traces response returns observations/totalCost as strings, which fails the public API schema.
-        it.skip("should support array tag filtering", async () => {
+        // Skipped: the Doris traces-table response returns observations/totalCost as strings, which fails the public API schema.
+        itSkipOnTracesTable("should support array tag filtering", async () => {
           // Skip for events table - tags are always empty in the events table
           if (useEventsTable) {
             return;
@@ -1263,92 +1278,101 @@ describe("/api/public/traces API Endpoint", () => {
           }
         });
 
-        // Skipped: the Doris traces response returns observations/totalCost as strings, which fails the public API schema.
-        it.skip("should support backward compatibility with simple parameters", async () => {
-          // Test multiple simple parameters
-          const traces = await makeZodVerifiedAPICall(
-            GetTracesV1Response,
-            "GET",
-            buildUrl(`userId=filter-user-1&environment=production`),
-          );
+        // Skipped: the Doris traces-table response returns observations/totalCost as strings, which fails the public API schema.
+        itSkipOnTracesTable(
+          "should support backward compatibility with simple parameters",
+          async () => {
+            // Test multiple simple parameters
+            const traces = await makeZodVerifiedAPICall(
+              GetTracesV1Response,
+              "GET",
+              buildUrl(`userId=filter-user-1&environment=production`),
+            );
 
-          expect(traces.status).toBe(200);
-          const matchingTrace = traces.body.data.find(
-            (t) => t.id === testTraceId,
-          );
-          const nonMatchingTrace = traces.body.data.find(
-            (t) => t.id === testTraceId2,
-          );
+            expect(traces.status).toBe(200);
+            const matchingTrace = traces.body.data.find(
+              (t) => t.id === testTraceId,
+            );
+            const nonMatchingTrace = traces.body.data.find(
+              (t) => t.id === testTraceId2,
+            );
 
-          expect(matchingTrace).toBeTruthy();
-          expect(nonMatchingTrace).toBeFalsy();
-        });
+            expect(matchingTrace).toBeTruthy();
+            expect(nonMatchingTrace).toBeFalsy();
+          },
+        );
 
-        // Skipped: the Doris traces response returns observations/totalCost as strings, which fails the public API schema.
-        it.skip("should give precedence to advanced filter over simple parameters", async () => {
-          // simple param would match trace2, but filter should match trace1
-          const filterParam = JSON.stringify([
-            {
-              type: "string",
-              column: "userId",
-              operator: "=",
-              value: "filter-user-1",
-            },
-          ]);
+        // Skipped: the Doris traces-table response returns observations/totalCost as strings, which fails the public API schema.
+        itSkipOnTracesTable(
+          "should give precedence to advanced filter over simple parameters",
+          async () => {
+            // simple param would match trace2, but filter should match trace1
+            const filterParam = JSON.stringify([
+              {
+                type: "string",
+                column: "userId",
+                operator: "=",
+                value: "filter-user-1",
+              },
+            ]);
 
-          const traces = await makeZodVerifiedAPICall(
-            GetTracesV1Response,
-            "GET",
-            buildUrl(
-              `userId=filter-user-2&filter=${encodeURIComponent(filterParam)}`,
-            ),
-          );
+            const traces = await makeZodVerifiedAPICall(
+              GetTracesV1Response,
+              "GET",
+              buildUrl(
+                `userId=filter-user-2&filter=${encodeURIComponent(filterParam)}`,
+              ),
+            );
 
-          expect(traces.status).toBe(200);
-          const matchingTrace = traces.body.data.find(
-            (t) => t.id === testTraceId,
-          );
-          const nonMatchingTrace = traces.body.data.find(
-            (t) => t.id === testTraceId2,
-          );
+            expect(traces.status).toBe(200);
+            const matchingTrace = traces.body.data.find(
+              (t) => t.id === testTraceId,
+            );
+            const nonMatchingTrace = traces.body.data.find(
+              (t) => t.id === testTraceId2,
+            );
 
-          // Should match trace1 (filter takes precedence) not trace2 (simple param)
-          expect(matchingTrace).toBeTruthy();
-          expect(nonMatchingTrace).toBeFalsy();
-        });
+            // Should match trace1 (filter takes precedence) not trace2 (simple param)
+            expect(matchingTrace).toBeTruthy();
+            expect(nonMatchingTrace).toBeFalsy();
+          },
+        );
 
-        // Skipped: the Doris traces response returns observations/totalCost as strings, which fails the public API schema.
-        it.skip("should merge non-conflicting simple and advanced filters", async () => {
-          // simple environment + advanced metadata filter
-          const filterParam = JSON.stringify([
-            {
-              type: "stringObject",
-              column: "metadata",
-              key: "model",
-              operator: "contains",
-              value: "gpt-4",
-            },
-          ]);
+        // Skipped: the Doris traces-table response returns observations/totalCost as strings, which fails the public API schema.
+        itSkipOnTracesTable(
+          "should merge non-conflicting simple and advanced filters",
+          async () => {
+            // simple environment + advanced metadata filter
+            const filterParam = JSON.stringify([
+              {
+                type: "stringObject",
+                column: "metadata",
+                key: "model",
+                operator: "contains",
+                value: "gpt-4",
+              },
+            ]);
 
-          const traces = await makeZodVerifiedAPICall(
-            GetTracesV1Response,
-            "GET",
-            buildUrl(
-              `userId=filter-user-1&filter=${encodeURIComponent(filterParam)}`,
-            ),
-          );
+            const traces = await makeZodVerifiedAPICall(
+              GetTracesV1Response,
+              "GET",
+              buildUrl(
+                `userId=filter-user-1&filter=${encodeURIComponent(filterParam)}`,
+              ),
+            );
 
-          expect(traces.status).toBe(200);
-          const matchingTrace = traces.body.data.find(
-            (t) => t.id === testTraceId,
-          );
-          const nonMatchingTrace = traces.body.data.find(
-            (t) => t.id === testTraceId2,
-          );
+            expect(traces.status).toBe(200);
+            const matchingTrace = traces.body.data.find(
+              (t) => t.id === testTraceId,
+            );
+            const nonMatchingTrace = traces.body.data.find(
+              (t) => t.id === testTraceId2,
+            );
 
-          expect(matchingTrace).toBeTruthy();
-          expect(nonMatchingTrace).toBeFalsy();
-        });
+            expect(matchingTrace).toBeTruthy();
+            expect(nonMatchingTrace).toBeFalsy();
+          },
+        );
 
         it("should return validation error for malformed filter JSON", async () => {
           const malformedFilter = "invalid-json";
@@ -1381,16 +1405,19 @@ describe("/api/public/traces API Endpoint", () => {
           expect(traces.status).toBe(400);
         });
 
-        // Skipped: the Doris traces response returns observations/totalCost as strings, which fails the public API schema.
-        it.skip("should return validation error for empty string as filter", async () => {
-          const traces = await makeZodVerifiedAPICallSilent(
-            GetTracesV1Response,
-            "GET",
-            buildUrl(`filter=`),
-          );
+        // Skipped: the Doris traces-table response returns observations/totalCost as strings, which fails the public API schema.
+        itSkipOnTracesTable(
+          "should return validation error for empty string as filter",
+          async () => {
+            const traces = await makeZodVerifiedAPICallSilent(
+              GetTracesV1Response,
+              "GET",
+              buildUrl(`filter=`),
+            );
 
-          expect(traces.status).toBe(200); // Empty string should be treated as undefined
-        });
+            expect(traces.status).toBe(200); // Empty string should be treated as undefined
+          },
+        );
 
         it("should return validation error for invalid FilterState structure", async () => {
           const invalidStructure = JSON.stringify([
@@ -1430,187 +1457,196 @@ describe("/api/public/traces API Endpoint", () => {
           expect(traces.status).toBe(400);
         });
 
-        // Skipped: the Doris traces response returns observations/totalCost as strings, which fails the public API schema.
-        it.skip("should support advanced timestamp filtering with multiple operators", async () => {
-          // Test range filter (>= AND <) - should match only trace1
-          const filterRange = JSON.stringify([
-            {
-              type: "datetime",
-              column: "timestamp",
-              operator: ">=",
-              value: "2024-01-01T00:00:00Z",
-            },
-            {
-              type: "datetime",
-              column: "timestamp",
-              operator: "<",
-              value: "2024-01-01T24:00:00Z",
-            },
-          ]);
+        // Skipped: the Doris traces-table response returns observations/totalCost as strings, which fails the public API schema.
+        itSkipOnTracesTable(
+          "should support advanced timestamp filtering with multiple operators",
+          async () => {
+            // Test range filter (>= AND <) - should match only trace1
+            const filterRange = JSON.stringify([
+              {
+                type: "datetime",
+                column: "timestamp",
+                operator: ">=",
+                value: "2024-01-01T00:00:00Z",
+              },
+              {
+                type: "datetime",
+                column: "timestamp",
+                operator: "<",
+                value: "2024-01-01T24:00:00Z",
+              },
+            ]);
 
-          const tracesRange = await makeZodVerifiedAPICall(
-            GetTracesV1Response,
-            "GET",
-            buildUrl(`filter=${encodeURIComponent(filterRange)}`),
-          );
+            const tracesRange = await makeZodVerifiedAPICall(
+              GetTracesV1Response,
+              "GET",
+              buildUrl(`filter=${encodeURIComponent(filterRange)}`),
+            );
 
-          expect(tracesRange.status).toBe(200);
-          const matchingRange = tracesRange.body.data.find(
-            (t) => t.id === testTraceId,
-          );
-          const nonMatchingRange = tracesRange.body.data.find(
-            (t) => t.id === testTraceId2,
-          );
-          expect(matchingRange).toBeTruthy();
-          expect(nonMatchingRange).toBeFalsy();
-        });
+            expect(tracesRange.status).toBe(200);
+            const matchingRange = tracesRange.body.data.find(
+              (t) => t.id === testTraceId,
+            );
+            const nonMatchingRange = tracesRange.body.data.find(
+              (t) => t.id === testTraceId2,
+            );
+            expect(matchingRange).toBeTruthy();
+            expect(nonMatchingRange).toBeFalsy();
+          },
+        );
 
-        // Skipped: the Doris query references column timestamp, which does not exist.
-        it.skip("should give precedence to advanced timestamp filter over simple fromTimestamp/toTimestamp parameters", async () => {
-          // simple params would match none of the traces (2023 dates)
-          // But advanced filter should match trace2 (timestamp >= 2024-01-01T12:00:00Z)
-          const filterParam = JSON.stringify([
-            {
-              type: "datetime",
-              column: "timestamp",
-              operator: ">=",
-              value: "2024-01-01T12:00:00Z",
-            },
-          ]);
+        // Skipped: the Doris traces-table query sorts by t.timestamp, which does not exist.
+        itSkipOnTracesTable(
+          "should give precedence to advanced timestamp filter over simple fromTimestamp/toTimestamp parameters",
+          async () => {
+            // simple params would match none of the traces (2023 dates)
+            // But advanced filter should match trace2 (timestamp >= 2024-01-01T12:00:00Z)
+            const filterParam = JSON.stringify([
+              {
+                type: "datetime",
+                column: "timestamp",
+                operator: ">=",
+                value: "2024-01-01T12:00:00Z",
+              },
+            ]);
 
-          const traces = await makeZodVerifiedAPICall(
-            GetTracesV1Response,
-            "GET",
-            buildUrl(
-              `orderBy=timestamp.asc&fromTimestamp=2023-01-01T00:00:00Z&toTimestamp=2023-01-02T00:00:00Z&filter=${encodeURIComponent(filterParam)}`,
-            ),
-          );
+            const traces = await makeZodVerifiedAPICall(
+              GetTracesV1Response,
+              "GET",
+              buildUrl(
+                `orderBy=timestamp.asc&fromTimestamp=2023-01-01T00:00:00Z&toTimestamp=2023-01-02T00:00:00Z&filter=${encodeURIComponent(filterParam)}`,
+              ),
+            );
 
-          expect(traces.status).toBe(200);
-          const matchingTrace = traces.body.data.find(
-            (t) => t.id === testTraceId2,
-          );
-          // Should match trace2 (advanced filter wins)
-          expect(matchingTrace).toBeTruthy();
-        });
+            expect(traces.status).toBe(200);
+            const matchingTrace = traces.body.data.find(
+              (t) => t.id === testTraceId2,
+            );
+            // Should match trace2 (advanced filter wins)
+            expect(matchingTrace).toBeTruthy();
+          },
+        );
 
-        // Skipped: aggregated-field filters do not exclude traces on Doris.
-        it.skip("should filter aggregated fields correctly", async () => {
-          // Skip for traces table - this test is specific to events table aggregation
-          if (!useEventsTable) {
-            return;
-          }
+        // Skipped: aggregated-field filters do not exclude traces on the Doris events path.
+        itSkipOnEvents(
+          "should filter aggregated fields correctly",
+          async () => {
+            // Skip for traces table - this test is specific to events table aggregation
+            if (!useEventsTable) {
+              return;
+            }
 
-          // This test verifies that filtering on trace-levevel fields works correctly.
-          // E.g. version field is defined as: argMaxIf(version, event_ts, version <> '')
+            // This test verifies that filtering on trace-levevel fields works correctly.
+            // E.g. version field is defined as: argMaxIf(version, event_ts, version <> '')
 
-          const traceWithVersionChange = randomUUID();
-          const baseTimestamp = Date.now();
-          const trace = createTrace({
-            id: traceWithVersionChange,
-            name: "version-aggregation-test",
-            project_id: projectId,
-            timestamp: baseTimestamp,
-            version: "1.0",
-            environment: "test",
-          });
-
-          // Create multiple events for the same trace with different versions
-          // at increasing timestamps. The latest event has version="2.0"
-          const events = [
-            {
-              trace_id: traceWithVersionChange,
-              parent_span_id: traceWithVersionChange,
+            const traceWithVersionChange = randomUUID();
+            const baseTimestamp = Date.now();
+            const trace = createTrace({
+              id: traceWithVersionChange,
+              name: "version-aggregation-test",
               project_id: projectId,
-              name: "event-1",
-              type: "GENERATION" as const,
-              start_time: baseTimestamp,
-              end_time: baseTimestamp + 100,
+              timestamp: baseTimestamp,
               version: "1.0",
               environment: "test",
-              event_ts: baseTimestamp * 1000 + 1000000,
-            },
-            {
-              trace_id: traceWithVersionChange,
-              parent_span_id: traceWithVersionChange,
-              project_id: projectId,
-              name: "event-3",
-              type: "GENERATION" as const,
-              start_time: baseTimestamp + 400,
-              end_time: baseTimestamp + 500,
-              version: "2.0",
-              environment: "test",
-              event_ts: baseTimestamp * 1000 + 5000000,
-            },
-          ];
+            });
 
-          await createTraceWithObservations(useEventsTable, trace, events);
+            // Create multiple events for the same trace with different versions
+            // at increasing timestamps. The latest event has version="2.0"
+            const events = [
+              {
+                trace_id: traceWithVersionChange,
+                parent_span_id: traceWithVersionChange,
+                project_id: projectId,
+                name: "event-1",
+                type: "GENERATION" as const,
+                start_time: baseTimestamp,
+                end_time: baseTimestamp + 100,
+                version: "1.0",
+                environment: "test",
+                event_ts: baseTimestamp * 1000 + 1000000,
+              },
+              {
+                trace_id: traceWithVersionChange,
+                parent_span_id: traceWithVersionChange,
+                project_id: projectId,
+                name: "event-3",
+                type: "GENERATION" as const,
+                start_time: baseTimestamp + 400,
+                end_time: baseTimestamp + 500,
+                version: "2.0",
+                environment: "test",
+                event_ts: baseTimestamp * 1000 + 5000000,
+              },
+            ];
 
-          // Simple wait to ensure data is available
-          await new Promise((resolve) => setTimeout(resolve, 100));
+            await createTraceWithObservations(useEventsTable, trace, events);
 
-          // The trace should NOT be returned because after aggregation,
-          // it has version=2.0 (from the latest event)
-          const filterParam = JSON.stringify([
-            {
-              type: "string",
-              column: "version",
-              operator: "=",
-              value: "1.0",
-            },
-            {
-              type: "datetime",
-              column: "timestamp",
-              operator: ">=",
-              value: new Date(baseTimestamp).toISOString(),
-            },
-          ]);
+            // Simple wait to ensure data is available
+            await new Promise((resolve) => setTimeout(resolve, 100));
 
-          const traces = await makeZodVerifiedAPICall(
-            GetTracesV1Response,
-            "GET",
-            buildUrl(`filter=${encodeURIComponent(filterParam)}`),
-          );
+            // The trace should NOT be returned because after aggregation,
+            // it has version=2.0 (from the latest event)
+            const filterParam = JSON.stringify([
+              {
+                type: "string",
+                column: "version",
+                operator: "=",
+                value: "1.0",
+              },
+              {
+                type: "datetime",
+                column: "timestamp",
+                operator: ">=",
+                value: new Date(baseTimestamp).toISOString(),
+              },
+            ]);
 
-          expect(traces.status).toBe(200);
-          const matchingTrace = traces.body.data.find(
-            (t) => t.id === traceWithVersionChange,
-          );
+            const traces = await makeZodVerifiedAPICall(
+              GetTracesV1Response,
+              "GET",
+              buildUrl(`filter=${encodeURIComponent(filterParam)}`),
+            );
 
-          // The trace should NOT be found because its aggregated version is 2.0, not 1.0
-          expect(matchingTrace).toBeUndefined();
+            expect(traces.status).toBe(200);
+            const matchingTrace = traces.body.data.find(
+              (t) => t.id === traceWithVersionChange,
+            );
 
-          // Verify that filtering by version=2.0 DOES return the trace
-          const filterParam2 = JSON.stringify([
-            {
-              type: "string",
-              column: "version",
-              operator: "=",
-              value: "2.0",
-            },
-            {
-              type: "datetime",
-              column: "timestamp",
-              operator: ">=",
-              value: new Date(baseTimestamp).toISOString(),
-            },
-          ]);
+            // The trace should NOT be found because its aggregated version is 2.0, not 1.0
+            expect(matchingTrace).toBeUndefined();
 
-          const traces2 = await makeZodVerifiedAPICall(
-            GetTracesV1Response,
-            "GET",
-            buildUrl(`filter=${encodeURIComponent(filterParam2)}`),
-          );
+            // Verify that filtering by version=2.0 DOES return the trace
+            const filterParam2 = JSON.stringify([
+              {
+                type: "string",
+                column: "version",
+                operator: "=",
+                value: "2.0",
+              },
+              {
+                type: "datetime",
+                column: "timestamp",
+                operator: ">=",
+                value: new Date(baseTimestamp).toISOString(),
+              },
+            ]);
 
-          expect(traces2.status).toBe(200);
-          const matchingTrace2 = traces2.body.data.find(
-            (t) => t.id === traceWithVersionChange,
-          );
+            const traces2 = await makeZodVerifiedAPICall(
+              GetTracesV1Response,
+              "GET",
+              buildUrl(`filter=${encodeURIComponent(filterParam2)}`),
+            );
 
-          // The trace SHOULD be found because its aggregated version is 2.0
-          expect(matchingTrace2).toBeTruthy();
-          expect(matchingTrace2?.version).toBe("2.0");
-        });
+            expect(traces2.status).toBe(200);
+            const matchingTrace2 = traces2.body.data.find(
+              (t) => t.id === traceWithVersionChange,
+            );
+
+            // The trace SHOULD be found because its aggregated version is 2.0
+            expect(matchingTrace2).toBeTruthy();
+            expect(matchingTrace2?.version).toBe("2.0");
+          },
+        );
 
         // Skipped: the public traces API rejects observation/score filters on Doris by design (400).
         it.skip("should filter by latency without requesting metrics field group", async () => {
@@ -1835,6 +1871,8 @@ describe("/api/public/traces API Endpoint", () => {
   // Dual-path tests for events table migration
   describe("GET /api/public/traces - Events Table Migration Tests", () => {
     const runTestSuite = (useEventsTable: boolean) => {
+      // Skips a case on the traces table only.
+      const itSkipOnTracesTable = useEventsTable ? it : it.skip;
       const suiteName = useEventsTable
         ? "with events table"
         : "with traces table";
@@ -1924,8 +1962,8 @@ describe("/api/public/traces API Endpoint", () => {
           expect(trace.latency).toBeGreaterThan(0);
         });
 
-        // Skipped: the Doris traces response returns observations/totalCost as strings, which fails the public API schema.
-        it.skip("should filter traces by userId", async () => {
+        // Skipped: the Doris traces-table response returns observations/totalCost as strings, which fails the public API schema.
+        itSkipOnTracesTable("should filter traces by userId", async () => {
           const userId = randomUUID();
           const traceId = randomUUID();
           const createdTrace = createTrace({
@@ -1964,8 +2002,8 @@ describe("/api/public/traces API Endpoint", () => {
           expect(matchingTrace?.userId).toBe(userId);
         });
 
-        // Skipped: the Doris traces response returns observations/totalCost as strings, which fails the public API schema.
-        it.skip("should filter traces by name", async () => {
+        // Skipped: the Doris traces-table response returns observations/totalCost as strings, which fails the public API schema.
+        itSkipOnTracesTable("should filter traces by name", async () => {
           const traceName = `test-trace-${randomUUID()}`;
           const traceId = randomUUID();
           const createdTrace = createTrace({
@@ -1987,8 +2025,8 @@ describe("/api/public/traces API Endpoint", () => {
           expect(matchingTrace?.name).toBe(traceName);
         });
 
-        // Skipped: the Doris traces response returns observations/totalCost as strings, which fails the public API schema.
-        it.skip("should filter traces by environment", async () => {
+        // Skipped: the Doris traces-table response returns observations/totalCost as strings, which fails the public API schema.
+        itSkipOnTracesTable("should filter traces by environment", async () => {
           const environment = `env-${randomUUID()}`;
           const traceId = randomUUID();
           const createdTrace = createTrace({
@@ -2011,91 +2049,98 @@ describe("/api/public/traces API Endpoint", () => {
           expect(matchingTrace?.environment).toBe(environment);
         });
 
-        // Skipped: the Doris traces response returns observations/totalCost as strings, which fails the public API schema.
-        it.skip("should support pagination", async () => {
-          const traceIds = Array.from({ length: 5 }, () => randomUUID());
-          const traces = traceIds.map((id, index) =>
-            createTrace({
-              id,
-              name: `pagination-test-${index}`,
+        // Skipped: the Doris traces-table response returns observations/totalCost as strings, which fails the public API schema.
+        itSkipOnTracesTable(
+          "should support pagination",
+          async () => {
+            const traceIds = Array.from({ length: 5 }, () => randomUUID());
+            const traces = traceIds.map((id, index) =>
+              createTrace({
+                id,
+                name: `pagination-test-${index}`,
+                project_id: projectId,
+                timestamp: new Date().getTime() + index,
+              }),
+            );
+
+            for (const trace of traces) {
+              await createTraceWithObservations(useEventsTable, trace, []);
+            }
+
+            // Get page 1
+            const page1 = await makeZodVerifiedAPICall(
+              GetTracesV1Response,
+              "GET",
+              buildUrl(`page=1&limit=2`),
+            );
+
+            // Get page 2
+            const page2 = await makeZodVerifiedAPICall(
+              GetTracesV1Response,
+              "GET",
+              buildUrl(`page=2&limit=2`),
+            );
+
+            expect(page1.body.data.length).toBeLessThanOrEqual(2);
+            expect(page2.body.data.length).toBeLessThanOrEqual(2);
+
+            // Ensure pages are different
+            const page1Ids = page1.body.data.map((t) => t.id);
+            const page2Ids = page2.body.data.map((t) => t.id);
+            const intersection = page1Ids.filter((id) => page2Ids.includes(id));
+            expect(intersection.length).toBe(0);
+          },
+          10_000,
+        );
+
+        // Skipped: the Doris traces-table response returns observations/totalCost as strings, which fails the public API schema.
+        itSkipOnTracesTable(
+          "should filter traces by timestamp range",
+          async () => {
+            const now = new Date();
+            const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+            const traceInRange = createTrace({
+              id: randomUUID(),
+              name: "in-range-trace",
               project_id: projectId,
-              timestamp: new Date().getTime() + index,
-            }),
-          );
+              timestamp: now.getTime(),
+            });
 
-          for (const trace of traces) {
-            await createTraceWithObservations(useEventsTable, trace, []);
-          }
+            const traceOutOfRange = createTrace({
+              id: randomUUID(),
+              name: "out-of-range-trace",
+              project_id: projectId,
+              timestamp: yesterday.getTime() - 24 * 60 * 60 * 1000,
+            });
 
-          // Get page 1
-          const page1 = await makeZodVerifiedAPICall(
-            GetTracesV1Response,
-            "GET",
-            buildUrl(`page=1&limit=2`),
-          );
+            await createTraceWithObservations(useEventsTable, traceInRange, []);
+            await createTraceWithObservations(
+              useEventsTable,
+              traceOutOfRange,
+              [],
+            );
 
-          // Get page 2
-          const page2 = await makeZodVerifiedAPICall(
-            GetTracesV1Response,
-            "GET",
-            buildUrl(`page=2&limit=2`),
-          );
+            const traces = await makeZodVerifiedAPICall(
+              GetTracesV1Response,
+              "GET",
+              buildUrl(
+                `fromTimestamp=${yesterday.toISOString()}&toTimestamp=${tomorrow.toISOString()}`,
+              ),
+            );
 
-          expect(page1.body.data.length).toBeLessThanOrEqual(2);
-          expect(page2.body.data.length).toBeLessThanOrEqual(2);
+            const inRangeFound = traces.body.data.find(
+              (t) => t.id === traceInRange.id,
+            );
+            const outOfRangeFound = traces.body.data.find(
+              (t) => t.id === traceOutOfRange.id,
+            );
 
-          // Ensure pages are different
-          const page1Ids = page1.body.data.map((t) => t.id);
-          const page2Ids = page2.body.data.map((t) => t.id);
-          const intersection = page1Ids.filter((id) => page2Ids.includes(id));
-          expect(intersection.length).toBe(0);
-        }, 10_000);
-
-        // Skipped: the Doris traces response returns observations/totalCost as strings, which fails the public API schema.
-        it.skip("should filter traces by timestamp range", async () => {
-          const now = new Date();
-          const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-          const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-
-          const traceInRange = createTrace({
-            id: randomUUID(),
-            name: "in-range-trace",
-            project_id: projectId,
-            timestamp: now.getTime(),
-          });
-
-          const traceOutOfRange = createTrace({
-            id: randomUUID(),
-            name: "out-of-range-trace",
-            project_id: projectId,
-            timestamp: yesterday.getTime() - 24 * 60 * 60 * 1000,
-          });
-
-          await createTraceWithObservations(useEventsTable, traceInRange, []);
-          await createTraceWithObservations(
-            useEventsTable,
-            traceOutOfRange,
-            [],
-          );
-
-          const traces = await makeZodVerifiedAPICall(
-            GetTracesV1Response,
-            "GET",
-            buildUrl(
-              `fromTimestamp=${yesterday.toISOString()}&toTimestamp=${tomorrow.toISOString()}`,
-            ),
-          );
-
-          const inRangeFound = traces.body.data.find(
-            (t) => t.id === traceInRange.id,
-          );
-          const outOfRangeFound = traces.body.data.find(
-            (t) => t.id === traceOutOfRange.id,
-          );
-
-          expect(inRangeFound).toBeTruthy();
-          expect(outOfRangeFound).toBeUndefined();
-        });
+            expect(inRangeFound).toBeTruthy();
+            expect(outOfRangeFound).toBeUndefined();
+          },
+        );
 
         // Skipped: the Doris traces response omits scores and returns string-typed fields.
         it.skip("should handle field group: scores", async () => {
@@ -2129,8 +2174,8 @@ describe("/api/public/traces API Endpoint", () => {
           expect(trace?.scores).toBeDefined();
         });
 
-        // Skipped: the Doris traces response returns observations/totalCost as strings, which fails the public API schema.
-        it.skip("should count traces correctly", async () => {
+        // Skipped: the Doris traces-table response returns observations/totalCost as strings, which fails the public API schema.
+        itSkipOnTracesTable("should count traces correctly", async () => {
           const prefix = randomUUID();
           const traceIds = Array.from({ length: 3 }, () => randomUUID());
           const traces = traceIds.map((id) =>
