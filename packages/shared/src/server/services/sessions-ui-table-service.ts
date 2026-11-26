@@ -512,7 +512,8 @@ const getSessionsTableGeneric = async <T>(props: FetchSessionsTableProps) => {
                   selectMetrics
                     ? `
                 ,
-                sum(o.obs_count) as total_observations,
+                -- obs_count counts non-root spans; each trace row adds its root span.
+                COALESCE(sum(o.obs_count), 0) + count(*) as total_observations,
                 -- Use Doris seconds_diff for duration calculation
                 seconds_diff(
                   max(o.max_end_time),

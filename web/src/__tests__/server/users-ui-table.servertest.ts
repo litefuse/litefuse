@@ -12,8 +12,7 @@ import { getUserMetrics } from "@langfuse/shared/src/server";
 const projectId = "7a88fb47b4e243b8a06ca5ce950dc53a";
 
 describe("getUserMetrics function", () => {
-  // Skipped: Doris counts only non-root spans as observations, so the trace's parentless observation is left out of observationCount.
-  it.skip("should return correct user metrics for a trace with two observations", async () => {
+  it("should return correct user metrics for a trace with two observations", async () => {
     const userId = uuidv4();
     const traceId = uuidv4();
 
@@ -38,10 +37,12 @@ describe("getUserMetrics function", () => {
       type: "GENERATION",
     });
 
+    // A trace has one root span; the second observation is its child.
     const observation2 = createObservationObject({
       id: uuidv4(),
       trace_id: traceId,
       project_id: projectId,
+      parent_observation_id: observation1.id,
       usage_details: {
         input: 150,
         output: 250,
@@ -67,8 +68,7 @@ describe("getUserMetrics function", () => {
     });
   });
 
-  // Skipped: Doris counts only non-root spans as observations, so the trace's parentless observation is left out of observationCount.
-  it.skip("should return correct user metrics for a trace with two observations and timestamp filter", async () => {
+  it("should return correct user metrics for a trace with two observations and timestamp filter", async () => {
     const userId = uuidv4();
     const traceId = uuidv4();
 
@@ -93,10 +93,12 @@ describe("getUserMetrics function", () => {
       type: "GENERATION",
     });
 
+    // A trace has one root span; the second observation is its child.
     const observation2 = createObservationObject({
       id: uuidv4(),
       trace_id: traceId,
       project_id: projectId,
+      parent_observation_id: observation1.id,
       usage_details: {
         input: 150,
         output: 250,
