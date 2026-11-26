@@ -113,6 +113,12 @@ Minimum verification matrix:
 - Release workflow is managed at root (`pnpm run release`).
 - Docker Hub publishing is managed by `.github/workflows/docker-publish.yml`
   and targets `litefuse/litefuse-web` and `litefuse/litefuse-worker`.
+- The Docker workflow's `base_path` input sets the Web image's build-time
+  `NEXT_PUBLIC_BASE_PATH`. Blank uses the repository/environment variable of
+  the same name (root by default); `/` explicitly selects root. Use `/litefuse`
+  to preserve that sub-path, without a trailing slash. Publish path-specific
+  builds under distinct Docker tags; changing runtime env cannot change the
+  compiled path.
 - Litefuse Cloud deployments are triggered by pushes to `production` (`.github/workflows/deploy.yml`).
 - Promote `main` to `production` via `.github/workflows/promote-main-to-production.yml` (manual `workflow_dispatch`).
 - Use `pnpm run release:cloud` for CLI-triggered Cloud promotions with preflight branch/migration checks.
