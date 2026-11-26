@@ -18,6 +18,8 @@ function defaultRedirectTo(): string {
 export async function forceSignOut(options?: {
   /** Where to land after logout. Defaults to sign-in (with basePath). */
   redirectTo?: string;
+  /** Skip the NextAuth sign-out when the caller has already completed it. */
+  nextAuthSignedOut?: boolean;
 }): Promise<void> {
   const redirectTo = options?.redirectTo ?? defaultRedirectTo();
 
@@ -34,10 +36,12 @@ export async function forceSignOut(options?: {
   }
 
   // Best-effort NextAuth sign-out (may only clear Path=basePath cookies).
-  try {
-    await signOut({ redirect: false });
-  } catch {
-    // continue — clear-session below is the authoritative wipe
+  if (!options?.nextAuthSignedOut) {
+    try {
+      await signOut({ redirect: false });
+    } catch {
+      // continue — clear-session below is the authoritative wipe
+    }
   }
 
   // Expire session cookies at Path=/ and Path=basePath (httpOnly, server-set).
