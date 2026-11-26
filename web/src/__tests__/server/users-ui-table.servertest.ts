@@ -12,7 +12,7 @@ import { getUserMetrics } from "@langfuse/shared/src/server";
 const projectId = "7a88fb47b4e243b8a06ca5ce950dc53a";
 
 describe("getUserMetrics function", () => {
-  // Skipped: on Doris every trace is also a root span, so ClickHouse-era observation counts are off by one.
+  // Skipped: Doris counts only non-root spans as observations, so the trace's parentless observation is left out of observationCount.
   it.skip("should return correct user metrics for a trace with two observations", async () => {
     const userId = uuidv4();
     const traceId = uuidv4();
@@ -67,7 +67,7 @@ describe("getUserMetrics function", () => {
     });
   });
 
-  // Skipped: on Doris every trace is also a root span, so ClickHouse-era observation counts are off by one.
+  // Skipped: Doris counts only non-root spans as observations, so the trace's parentless observation is left out of observationCount.
   it.skip("should return correct user metrics for a trace with two observations and timestamp filter", async () => {
     const userId = uuidv4();
     const traceId = uuidv4();

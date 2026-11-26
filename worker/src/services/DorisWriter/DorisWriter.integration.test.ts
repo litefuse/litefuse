@@ -166,7 +166,7 @@ describe("DorisWriter Integration Tests", () => {
 
     const result = await dorisClient.query("SELECT 1 as test_value");
     expect(result).toHaveLength(1);
-    expect(Number(result[0].test_value)).toBe(1);
+    expect(result[0].test_value).toBe(1);
 
     const tables = await dorisClient.query("SHOW TABLES");
     const tableNames = tables.map((row: any) => Object.values(row)[0]);
@@ -324,7 +324,7 @@ describe("DorisWriter Integration Tests", () => {
       "SELECT COUNT(*) as count FROM traces WHERE id LIKE 'test-trace-batch-%'",
     );
 
-    expect(Number(result[0].count)).toBe(batchSize);
+    expect(result[0].count).toBe(batchSize);
     console.log("✓ 批量数据查询验证成功");
   });
 
@@ -362,7 +362,7 @@ describe("DorisWriter Integration Tests", () => {
       "SELECT COUNT(*) as count FROM traces WHERE id LIKE 'concurrent-trace-%'",
     );
 
-    expect(Number(result[0].count)).toBe(concurrentWrites);
+    expect(result[0].count).toBe(concurrentWrites);
     console.log("✓ 并发数据查询验证成功");
   });
 });

@@ -58,8 +58,8 @@ describe("Ingestion Pipeline", () => {
     }
   });
 
-  // Skipped: OTel ingestion does not enqueue trace-upsert evals yet, so no eval execution is created.
-  it.skip("ingest a trace", async () => {
+  // Sets up a trace-level eval config, then ingests one OTel trace (root span + child span).
+  const ingestTraceWithEvalConfig = async () => {
     const { projectId, auth } = await createOrgProjectAndApiKey();
     const evalTemplate = await prisma.evalTemplate.create({
       data: {
@@ -179,6 +179,13 @@ describe("Ingestion Pipeline", () => {
 
     expect(response.status).toBe(200);
 
+    return { projectId, auth, traceId, spanId };
+  };
+
+  it("ingest a trace", async () => {
+    const { projectId, auth, traceId, spanId } =
+      await ingestTraceWithEvalConfig();
+
     await waitForExpect(
       async () => {
         const traceUrl = `http://localhost:3000/api/public/traces/${traceId}`;
@@ -216,6 +223,11 @@ describe("Ingestion Pipeline", () => {
       60000,
       1000,
     );
+  }, 130000);
+
+  // Skipped: OTel ingestion does not enqueue trace-upsert evals yet, so no eval execution is created.
+  it.skip("creates an eval execution for an ingested trace", async () => {
+    const { projectId, traceId } = await ingestTraceWithEvalConfig();
 
     // check for eval
     await waitForExpect(

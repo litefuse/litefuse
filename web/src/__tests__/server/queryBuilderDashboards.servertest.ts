@@ -413,7 +413,7 @@ describe("selfServeDashboards", () => {
   });
 
   describe("observations-model-cost query", () => {
-    // Skipped: on Doris every trace is also a root span, so ClickHouse-era observation counts are off by one.
+    // Skipped: on Doris a trace is its root span, so the test's trace without observations still adds one observation.
     it.skip("should return observations grouped by model with cost and token metrics", async () => {
       // 1. Define the query for the query builder
       const queryBuilderQuery: QueryType = {
@@ -464,7 +464,7 @@ describe("selfServeDashboards", () => {
       });
     });
 
-    // Skipped: on Doris every trace is also a root span, so ClickHouse-era observation counts are off by one.
+    // Skipped: on Doris a trace is its root span, so the test's trace without observations still adds one observation.
     it.skip("should filter observations by traceName", async () => {
       // 1. Define a query with filter for chat-completion trace
       const queryBuilderQuery: QueryType = {
@@ -503,7 +503,7 @@ describe("selfServeDashboards", () => {
       expect(Number(modelRow.sum_totalTokens)).toBe(20736);
     });
 
-    // Skipped: on Doris every trace is also a root span, so ClickHouse-era observation counts are off by one.
+    // Skipped: on Doris a trace is its root span, so the test's trace without observations still adds one observation.
     it.skip("should filter observations by environment", async () => {
       // 1. Define a query with filter for production environment
       const queryBuilderQuery: QueryType = {

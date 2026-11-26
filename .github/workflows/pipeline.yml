@@ -72,7 +72,7 @@ jobs:
           pnpm i
       - name: Load default env
         run: |
-          grep -v -e '^NEXT_PUBLIC_LITEFUSE_RUN_NEXT_INIT=' .env.dev.example > .env
+          cp .env.dev.example .env
       - name: lint web
         run: pnpm run lint
       - name: i18n check (locale files in sync, zh-CN complete)
@@ -100,7 +100,7 @@ jobs:
           pnpm i
       - name: Load default env
         run: |
-          grep -v -e '^NEXT_PUBLIC_LITEFUSE_RUN_NEXT_INIT=' .env.dev.example > .env
+          cp .env.dev.example .env
       - name: Check formatting on changed files
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -231,6 +231,7 @@ jobs:
           pnpm install
       - name: Load default env
         run: |
+          cp .env.dev${{ matrix.deploy-mode }}.example .env
           grep -v -e '^LITEFUSE_S3_BATCH_EXPORT_ENABLED=' -e '^NEXT_PUBLIC_LITEFUSE_RUN_NEXT_INIT=' .env.dev${{ matrix.deploy-mode }}.example > .env
           echo "LITEFUSE_INGESTION_QUEUE_DELAY_MS=1" >> .env
           echo "LITEFUSE_CACHE_PROMPT_ENABLED=false" >> .env
@@ -416,7 +417,7 @@ jobs:
           which mysql
       - name: Load default env
         run: |
-          grep -v -e '^NEXT_PUBLIC_LITEFUSE_RUN_NEXT_INIT=' .env.dev.example > .env
+          cp .env.dev.example .env
           cp .env.dev.example web/.env
           cp .env.dev.example worker/.env
       - name: Run + migrate
@@ -504,7 +505,7 @@ jobs:
           pnpm install
       - name: Load default env
         run: |
-          grep -v -e '^NEXT_PUBLIC_LITEFUSE_RUN_NEXT_INIT=' .env.dev.example > .env
+          cp .env.dev.example .env
           cp .env.dev.example web/.env
       - name: Ensure mysql client for Doris migrations
         run: |
@@ -576,6 +577,8 @@ jobs:
           which mysql
       - name: Load default env
         run: |
+          # The web init (NEXT_PUBLIC_LITEFUSE_RUN_NEXT_INIT) loads the table-split
+          # cache; without it OTel ingestion answers 500 "split-cache not ready".
           grep -v -e '^NEXT_PUBLIC_LITEFUSE_RUN_NEXT_INIT=' .env.dev.example > .env
       - name: Run + migrate
         run: |

@@ -80,6 +80,8 @@ const insertObservations = async (
 describe("/api/public/observations API Endpoint", () => {
   // Test suite factory to run tests against both implementations
   const runTestSuite = (useEventsTable: boolean) => {
+    // Skips a case on the events table only.
+    const itSkipOnEvents = useEventsTable ? it.skip : it;
     const suiteName = useEventsTable
       ? "with events table"
       : "with observations table";
@@ -171,8 +173,8 @@ describe("/api/public/observations API Endpoint", () => {
       });
 
       describe("GET /api/public/observations", () => {
-        // Skipped: the Doris observation response includes input_trim/output_trim, which the public API schema rejects.
-        it.skip("should fetch all observations", async () => {
+        // Skipped: the events-table observation list includes release/tags, which the public API schema rejects.
+        itSkipOnEvents("should fetch all observations", async () => {
           const traceId = uuidv4();
           const observationId = uuidv4();
 
@@ -229,66 +231,74 @@ describe("/api/public/observations API Endpoint", () => {
           ).toBeGreaterThan(0);
         });
 
-        // Skipped: the Doris observation response includes input_trim/output_trim, which the public API schema rejects.
-        it.skip("should fetch all observations, filtered by generations", async () => {
-          const traceId = uuidv4();
-          const generationId = uuidv4();
-          const spanId = uuidv4();
+        // Skipped: the events-table observation list includes release/tags, which the public API schema rejects.
+        itSkipOnEvents(
+          "should fetch all observations, filtered by generations",
+          async () => {
+            const traceId = uuidv4();
+            const generationId = uuidv4();
+            const spanId = uuidv4();
 
-          const generationObservation = createObservationData(useEventsTable, {
-            id: generationId,
-            trace_id: traceId,
-            project_id: "7a88fb47b4e243b8a06ca5ce950dc53a",
-            model_id: "model-1",
-            provided_model_name: "gpt-3.5-turbo",
-            input: JSON.stringify({ key: "input" }),
-            output: JSON.stringify({ key: "output" }),
-            usage_details: {
-              input: 10,
-              output: 20,
-              total: 30,
-            },
-            version: "2.0.0",
-            type: "GENERATION",
-          });
+            const generationObservation = createObservationData(
+              useEventsTable,
+              {
+                id: generationId,
+                trace_id: traceId,
+                project_id: "7a88fb47b4e243b8a06ca5ce950dc53a",
+                model_id: "model-1",
+                provided_model_name: "gpt-3.5-turbo",
+                input: JSON.stringify({ key: "input" }),
+                output: JSON.stringify({ key: "output" }),
+                usage_details: {
+                  input: 10,
+                  output: 20,
+                  total: 30,
+                },
+                version: "2.0.0",
+                type: "GENERATION",
+              },
+            );
 
-          const spanObservation = createObservationData(useEventsTable, {
-            id: spanId,
-            trace_id: traceId,
-            project_id: "7a88fb47b4e243b8a06ca5ce950dc53a",
-            input: JSON.stringify({ key: "input" }),
-            output: JSON.stringify({ key: "output" }),
-            version: "2.0.0",
-            type: "SPAN",
-          });
+            const spanObservation = createObservationData(useEventsTable, {
+              id: spanId,
+              trace_id: traceId,
+              project_id: "7a88fb47b4e243b8a06ca5ce950dc53a",
+              input: JSON.stringify({ key: "input" }),
+              output: JSON.stringify({ key: "output" }),
+              version: "2.0.0",
+              type: "SPAN",
+            });
 
-          await insertObservations(useEventsTable, [
-            generationObservation,
-            spanObservation,
-          ]);
+            await insertObservations(useEventsTable, [
+              generationObservation,
+              spanObservation,
+            ]);
 
-          const fetchedObservations = await makeZodVerifiedAPICall(
-            GetObservationsV1Response,
-            "GET",
-            `/api/public/observations?type=GENERATION&traceId=${traceId}${queryParam}`,
-            undefined,
-          );
+            const fetchedObservations = await makeZodVerifiedAPICall(
+              GetObservationsV1Response,
+              "GET",
+              `/api/public/observations?type=GENERATION&traceId=${traceId}${queryParam}`,
+              undefined,
+            );
 
-          expect(fetchedObservations.status).toBe(200);
+            expect(fetchedObservations.status).toBe(200);
 
-          expect(fetchedObservations.body.data.length).toBe(1);
-          expect(fetchedObservations.body.data[0]?.traceId).toBe(traceId);
-          expect(fetchedObservations.body.data[0]?.input).toEqual({
-            key: "input",
-          });
-          expect(fetchedObservations.body.data[0]?.output).toEqual({
-            key: "output",
-          });
-          expect(fetchedObservations.body.data[0]?.type).toEqual("GENERATION");
-        });
+            expect(fetchedObservations.body.data.length).toBe(1);
+            expect(fetchedObservations.body.data[0]?.traceId).toBe(traceId);
+            expect(fetchedObservations.body.data[0]?.input).toEqual({
+              key: "input",
+            });
+            expect(fetchedObservations.body.data[0]?.output).toEqual({
+              key: "output",
+            });
+            expect(fetchedObservations.body.data[0]?.type).toEqual(
+              "GENERATION",
+            );
+          },
+        );
 
-        // Skipped: the events path fails the API schema; userId/environment filters time out or count the root span.
-        it.skip.each([
+        // Skipped: the events-table observation list includes release/tags, which the public API schema rejects.
+        itSkipOnEvents.each([
           ["userId", uuidv4()],
           ["traceId", uuidv4()],
           ["name", uuidv4()],
@@ -340,138 +350,141 @@ describe("/api/public/observations API Endpoint", () => {
           },
         );
 
-        // Skipped: the Doris observation response includes input_trim/output_trim, which the public API schema rejects.
-        it.skip("GET /observations with timestamp filters and pagination", async () => {
-          const traceId = uuidv4();
-          const timestamp1 = new Date("2021-01-01T00:00:00.000Z").getTime();
-          const timestamp2 = new Date("2021-02-01T00:00:00.000Z").getTime();
-          const timestamp3 = new Date("2021-03-01T00:00:00.000Z").getTime();
-          const timestamp4 = new Date("2021-04-01T00:00:00.000Z").getTime();
+        // Skipped: the events-table observation list includes release/tags, which the public API schema rejects.
+        itSkipOnEvents(
+          "GET /observations with timestamp filters and pagination",
+          async () => {
+            const traceId = uuidv4();
+            const timestamp1 = new Date("2021-01-01T00:00:00.000Z").getTime();
+            const timestamp2 = new Date("2021-02-01T00:00:00.000Z").getTime();
+            const timestamp3 = new Date("2021-03-01T00:00:00.000Z").getTime();
+            const timestamp4 = new Date("2021-04-01T00:00:00.000Z").getTime();
 
-          const obs1 = createObservationData(useEventsTable, {
-            id: "observation-2021-01-01",
-            trace_id: traceId,
-            name: "generation-name",
-            start_time: timestamp1 * timeMultiplier,
-            event_ts: timestamp1 * timeMultiplier,
-            end_time: timestamp1 * timeMultiplier,
-            project_id: "7a88fb47b4e243b8a06ca5ce950dc53a",
-            type: "GENERATION",
-          });
+            const obs1 = createObservationData(useEventsTable, {
+              id: "observation-2021-01-01",
+              trace_id: traceId,
+              name: "generation-name",
+              start_time: timestamp1 * timeMultiplier,
+              event_ts: timestamp1 * timeMultiplier,
+              end_time: timestamp1 * timeMultiplier,
+              project_id: "7a88fb47b4e243b8a06ca5ce950dc53a",
+              type: "GENERATION",
+            });
 
-          const obs2 = createObservationData(useEventsTable, {
-            id: "observation-2021-02-01",
-            trace_id: traceId,
-            name: "generation-name",
-            start_time: timestamp2 * timeMultiplier,
-            event_ts: timestamp2 * timeMultiplier,
-            end_time: timestamp2 * timeMultiplier,
-            project_id: "7a88fb47b4e243b8a06ca5ce950dc53a",
-            type: "SPAN",
-          });
+            const obs2 = createObservationData(useEventsTable, {
+              id: "observation-2021-02-01",
+              trace_id: traceId,
+              name: "generation-name",
+              start_time: timestamp2 * timeMultiplier,
+              event_ts: timestamp2 * timeMultiplier,
+              end_time: timestamp2 * timeMultiplier,
+              project_id: "7a88fb47b4e243b8a06ca5ce950dc53a",
+              type: "SPAN",
+            });
 
-          const obs3 = createObservationData(useEventsTable, {
-            id: "observation-2021-03-01",
-            trace_id: traceId,
-            name: "generation-name",
-            start_time: timestamp3 * timeMultiplier,
-            event_ts: timestamp3 * timeMultiplier,
-            project_id: "7a88fb47b4e243b8a06ca5ce950dc53a",
-            type: "EVENT",
-          });
+            const obs3 = createObservationData(useEventsTable, {
+              id: "observation-2021-03-01",
+              trace_id: traceId,
+              name: "generation-name",
+              start_time: timestamp3 * timeMultiplier,
+              event_ts: timestamp3 * timeMultiplier,
+              project_id: "7a88fb47b4e243b8a06ca5ce950dc53a",
+              type: "EVENT",
+            });
 
-          const obs4 = createObservationData(useEventsTable, {
-            id: "observation-2021-04-01",
-            trace_id: traceId,
-            name: "generation-name",
-            start_time: timestamp4 * timeMultiplier,
-            event_ts: timestamp4 * timeMultiplier,
-            end_time: timestamp4 * timeMultiplier,
-            project_id: "7a88fb47b4e243b8a06ca5ce950dc53a",
-            type: "GENERATION",
-          });
+            const obs4 = createObservationData(useEventsTable, {
+              id: "observation-2021-04-01",
+              trace_id: traceId,
+              name: "generation-name",
+              start_time: timestamp4 * timeMultiplier,
+              event_ts: timestamp4 * timeMultiplier,
+              end_time: timestamp4 * timeMultiplier,
+              project_id: "7a88fb47b4e243b8a06ca5ce950dc53a",
+              type: "GENERATION",
+            });
 
-          await insertObservations(useEventsTable, [obs1, obs2, obs3, obs4]);
+            await insertObservations(useEventsTable, [obs1, obs2, obs3, obs4]);
 
-          const fromTimestamp = "2021-02-01T00:00:00.000Z";
-          const toTimestamp = "2021-04-01T00:00:00.000Z";
+            const fromTimestamp = "2021-02-01T00:00:00.000Z";
+            const toTimestamp = "2021-04-01T00:00:00.000Z";
 
-          // Test with both fromTimestamp and toTimestamp
-          let fetchedObservations = await makeZodVerifiedAPICall(
-            GetObservationsV1Response,
-            "GET",
-            `/api/public/observations?fromStartTime=${fromTimestamp}&toStartTime=${toTimestamp}&traceId=${traceId}${queryParam}`,
-            undefined,
-          );
+            // Test with both fromTimestamp and toTimestamp
+            let fetchedObservations = await makeZodVerifiedAPICall(
+              GetObservationsV1Response,
+              "GET",
+              `/api/public/observations?fromStartTime=${fromTimestamp}&toStartTime=${toTimestamp}&traceId=${traceId}${queryParam}`,
+              undefined,
+            );
 
-          expect(fetchedObservations.body.data.length).toBe(2);
-          expect(fetchedObservations.body.data[0]?.id).toBe(
-            "observation-2021-03-01",
-          );
-          expect(fetchedObservations.body.data[1]?.id).toBe(
-            "observation-2021-02-01",
-          );
-          expect(fetchedObservations.body.meta.totalItems).toBe(2);
+            expect(fetchedObservations.body.data.length).toBe(2);
+            expect(fetchedObservations.body.data[0]?.id).toBe(
+              "observation-2021-03-01",
+            );
+            expect(fetchedObservations.body.data[1]?.id).toBe(
+              "observation-2021-02-01",
+            );
+            expect(fetchedObservations.body.meta.totalItems).toBe(2);
 
-          // Test with only fromTimestamp
-          fetchedObservations = await makeZodVerifiedAPICall(
-            GetObservationsV1Response,
-            "GET",
-            `/api/public/observations?fromStartTime=${fromTimestamp}&traceId=${traceId}${queryParam}`,
-            undefined,
-          );
+            // Test with only fromTimestamp
+            fetchedObservations = await makeZodVerifiedAPICall(
+              GetObservationsV1Response,
+              "GET",
+              `/api/public/observations?fromStartTime=${fromTimestamp}&traceId=${traceId}${queryParam}`,
+              undefined,
+            );
 
-          expect(fetchedObservations.body.data.length).toBe(3);
-          expect(fetchedObservations.body.data[0]?.id).toBe(
-            "observation-2021-04-01",
-          );
-          expect(fetchedObservations.body.data[1]?.id).toBe(
-            "observation-2021-03-01",
-          );
-          expect(fetchedObservations.body.data[2]?.id).toBe(
-            "observation-2021-02-01",
-          );
-          expect(fetchedObservations.body.meta.totalItems).toBe(3);
+            expect(fetchedObservations.body.data.length).toBe(3);
+            expect(fetchedObservations.body.data[0]?.id).toBe(
+              "observation-2021-04-01",
+            );
+            expect(fetchedObservations.body.data[1]?.id).toBe(
+              "observation-2021-03-01",
+            );
+            expect(fetchedObservations.body.data[2]?.id).toBe(
+              "observation-2021-02-01",
+            );
+            expect(fetchedObservations.body.meta.totalItems).toBe(3);
 
-          // Test with only toTimestamp
-          fetchedObservations = await makeZodVerifiedAPICall(
-            GetObservationsV1Response,
-            "GET",
-            `/api/public/observations?toStartTime=${toTimestamp}&traceId=${traceId}${queryParam}`,
-            undefined,
-          );
+            // Test with only toTimestamp
+            fetchedObservations = await makeZodVerifiedAPICall(
+              GetObservationsV1Response,
+              "GET",
+              `/api/public/observations?toStartTime=${toTimestamp}&traceId=${traceId}${queryParam}`,
+              undefined,
+            );
 
-          expect(fetchedObservations.body.data.length).toBe(3);
-          expect(fetchedObservations.body.data[0]?.id).toBe(
-            "observation-2021-03-01",
-          );
-          expect(fetchedObservations.body.data[1]?.id).toBe(
-            "observation-2021-02-01",
-          );
-          expect(fetchedObservations.body.data[2]?.id).toBe(
-            "observation-2021-01-01",
-          );
-          expect(fetchedObservations.body.meta.totalItems).toBe(3);
+            expect(fetchedObservations.body.data.length).toBe(3);
+            expect(fetchedObservations.body.data[0]?.id).toBe(
+              "observation-2021-03-01",
+            );
+            expect(fetchedObservations.body.data[1]?.id).toBe(
+              "observation-2021-02-01",
+            );
+            expect(fetchedObservations.body.data[2]?.id).toBe(
+              "observation-2021-01-01",
+            );
+            expect(fetchedObservations.body.meta.totalItems).toBe(3);
 
-          // test pagination only
-          fetchedObservations = await makeZodVerifiedAPICall(
-            GetObservationsV1Response,
-            "GET",
-            `/api/public/observations?limit=1&page=2&traceId=${traceId}${queryParam}`,
-            undefined,
-          );
+            // test pagination only
+            fetchedObservations = await makeZodVerifiedAPICall(
+              GetObservationsV1Response,
+              "GET",
+              `/api/public/observations?limit=1&page=2&traceId=${traceId}${queryParam}`,
+              undefined,
+            );
 
-          expect(fetchedObservations.body.data.length).toBe(1);
-          expect(fetchedObservations.body.data[0]?.id).toBe(
-            "observation-2021-03-01",
-          );
-          expect(fetchedObservations.body.meta).toMatchObject({
-            totalItems: 4,
-            totalPages: 4,
-            page: 2,
-            limit: 1,
-          });
-        });
+            expect(fetchedObservations.body.data.length).toBe(1);
+            expect(fetchedObservations.body.data[0]?.id).toBe(
+              "observation-2021-03-01",
+            );
+            expect(fetchedObservations.body.meta).toMatchObject({
+              totalItems: 4,
+              totalPages: 4,
+              page: 2,
+              limit: 1,
+            });
+          },
+        );
       });
     });
   };

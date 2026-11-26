@@ -1175,7 +1175,7 @@ describe("/api/public/scores API Endpoint", () => {
         expect(correctionInResults).toBeUndefined();
       });
 
-      // Skipped: the Doris query does not finish within the test timeout.
+      // Skipped: getScoresByIds on Doris also returns CORRECTION scores, which the v1 API excludes.
       it.skip("should not return CORRECTION score when fetching by ID", async () => {
         const { projectId, auth } = await createOrgProjectAndApiKey();
         const traceId = v4();

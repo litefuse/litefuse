@@ -39,9 +39,12 @@ const C = "t.user_id";
 const norm = (sql: string) =>
   sql.replace(/string(Filter|OptionsFilter)\w+/g, "P");
 
-// Skipped: the Doris filter does not implement emptyEqualsNull yet.
-describe.skip("StringFilter with emptyEqualsNull", () => {
-  it.each<{
+// The emptyEqualsNull flag must not change these cases.
+const isUnchanged = (testCase: { desc: string }) =>
+  testCase.desc.includes("unchanged");
+
+describe("StringFilter with emptyEqualsNull", () => {
+  const cases: {
     desc: string;
     operator:
       | "="
@@ -51,7 +54,7 @@ describe.skip("StringFilter with emptyEqualsNull", () => {
       | "ends with";
     value: string;
     expectedQuery: string;
-  }>([
+  }[] = [
     {
       desc: "= non-empty (unchanged)",
       operator: "=",
@@ -106,7 +109,13 @@ describe.skip("StringFilter with emptyEqualsNull", () => {
       value: "",
       expectedQuery: `(${C} = '' OR ${C} IS NULL)`,
     },
-  ])("$desc", ({ operator, value, expectedQuery }) => {
+  ];
+
+  const check = ({
+    operator,
+    value,
+    expectedQuery,
+  }: (typeof cases)[number]) => {
     const { query, params } = new StringFilter({
       dorisTable: "",
       field: C,
@@ -117,17 +126,21 @@ describe.skip("StringFilter with emptyEqualsNull", () => {
 
     expect(norm(query)).toBe(expectedQuery);
     expect(params).toEqual({});
-  });
+  };
+
+  it.each(cases.filter(isUnchanged))("$desc", check);
+
+  // Skipped: the Doris filters ignore emptyEqualsNull, so only the cases it leaves unchanged pass.
+  it.skip.each(cases.filter((c) => !isUnchanged(c)))("$desc", check);
 });
 
-// Skipped: the Doris filter does not implement emptyEqualsNull yet.
-describe.skip("StringOptionsFilter with emptyEqualsNull", () => {
-  it.each<{
+describe("StringOptionsFilter with emptyEqualsNull", () => {
+  const cases: {
     desc: string;
     operator: "any of" | "none of";
     values: string[];
     expectedQuery: string;
-  }>([
+  }[] = [
     {
       desc: "any of (no empty, unchanged)",
       operator: "any of",
@@ -152,7 +165,13 @@ describe.skip("StringOptionsFilter with emptyEqualsNull", () => {
       values: ["", "a"],
       expectedQuery: `(${C} NOT IN ('', 'a') AND ${C} IS NOT NULL)`,
     },
-  ])("$desc", ({ operator, values, expectedQuery }) => {
+  ];
+
+  const check = ({
+    operator,
+    values,
+    expectedQuery,
+  }: (typeof cases)[number]) => {
     const { query, params } = new StringOptionsFilter({
       dorisTable: "",
       field: C,
@@ -163,10 +182,15 @@ describe.skip("StringOptionsFilter with emptyEqualsNull", () => {
 
     expect(norm(query)).toBe(expectedQuery);
     expect(params).toEqual({});
-  });
+  };
+
+  it.each(cases.filter(isUnchanged))("$desc", check);
+
+  // Skipped: the Doris filters ignore emptyEqualsNull, so only the cases it leaves unchanged pass.
+  it.skip.each(cases.filter((c) => !isUnchanged(c)))("$desc", check);
 });
 
-// Skipped: the Doris filter does not implement emptyEqualsNull yet.
+// Skipped: the Doris NullFilter ignores emptyEqualsNull.
 describe.skip("NullFilter with emptyEqualsNull", () => {
   it.each<{
     desc: string;

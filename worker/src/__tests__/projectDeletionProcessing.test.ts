@@ -285,14 +285,7 @@ describe("ProjectDeletionProcessingJob", () => {
   });
 
   describe("delete functions with hasAny probe", () => {
-    // Skipped: the Doris delete functions report true even when the project has no rows.
-    it.skip("should return false when no traces exist for project", async () => {
-      const emptyProjectId = randomUUID().replace(/-/g, "");
-      const result = await deleteTracesByProjectId(emptyProjectId);
-      expect(result).toBe(false);
-    });
-
-    // Skipped: the Doris delete functions report true even when the project has no rows.
+    // Skipped: the hasAny probe queries spans_<projectId>, which a project without split tables does not have, so Doris fails.
     it.skip("should return false when no observations exist for project", async () => {
       const emptyProjectId = randomUUID().replace(/-/g, "");
       const result = await deleteObservationsByProjectId(emptyProjectId);

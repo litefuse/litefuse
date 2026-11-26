@@ -467,9 +467,9 @@ describe("Playground Jump Full Pipeline", () => {
     // Array must be stringified, not left as object
     if (playgroundMsg && "content" in playgroundMsg) {
       expect(typeof playgroundMsg.content).toBe("string");
-      expect(playgroundMsg.content).toBe(
-        '[{"url":"https://example.com","title":"Example"}]',
-      );
+      expect(JSON.parse(playgroundMsg.content as string)).toEqual([
+        { url: "https://example.com", title: "Example" },
+      ]);
     }
   });
 

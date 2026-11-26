@@ -10,6 +10,12 @@ import {
   type ScoreRecordInsertType,
   type TraceRecordInsertType,
 } from "../repositories/definitions";
+import {
+  deleteTraceSpans,
+  standInRootSpanId,
+  writeObservationSpans,
+  writeTraceRecordSpans,
+} from "./doris-trace-roots";
 import { createObservation, createTrace } from "./tracing-factory";
 
 const STREAM_LOAD_OPTS = {
@@ -135,7 +141,7 @@ export const createTracesCh = async (
       spansRows.push({
         trace_id: trace.id,
         start_time: startTime,
-        span_id: `t-${trace.id}`,
+        span_id: standInRootSpanId(trace.id),
         project_id: projectId,
         parent_span_id: "",
         is_root: 1,
@@ -183,12 +189,16 @@ export const createTracesCh = async (
       });
     }
 
-    if (spansRows.length === 0) continue;
+    if (scalarRows.length === 0) continue;
 
     const spansTable = tableFor(projectId, "spans");
     const scalarTable = tableFor(projectId, "traces_scalar");
 
-    await streamLoadChunked(spansTable, spansRows);
+    await writeTraceRecordSpans({
+      projectId,
+      standIns: spansRows,
+      load: (rows) => streamLoadChunked(spansTable, rows),
+    });
     await streamLoadChunked(scalarTable, scalarRows);
   }
 };
@@ -238,7 +248,7 @@ export const createObservationsCh = async (
         span_id: obs.id,
         project_id: projectId,
         parent_span_id: obs.parent_observation_id ?? "",
-        is_root: 0,
+        is_root: (obs.parent_observation_id ?? "") === "" ? 1 : 0,
         end_time: toMs(obs.end_time),
         completion_start_time: toMs(obs.completion_start_time),
         name: obs.name ?? null,
@@ -288,7 +298,12 @@ export const createObservationsCh = async (
     if (spansRows.length === 0) continue;
 
     const spansTable = tableFor(projectId, "spans");
-    await streamLoadChunked(spansTable, spansRows);
+    await writeObservationSpans({
+      projectId,
+      rows: spansRows,
+      mergeTraceFields: true,
+      load: (rows) => streamLoadChunked(spansTable, rows),
+    });
   }
 };
 
@@ -364,7 +379,12 @@ export const createEventsCh = async (
     }
 
     const spansTable = tableFor(projectId, "spans");
-    await streamLoadChunked(spansTable, spansRows);
+    await writeObservationSpans({
+      projectId,
+      rows: spansRows,
+      mergeTraceFields: false,
+      load: (rows) => streamLoadChunked(spansTable, rows),
+    });
 
     if (scalarRows.length > 0) {
       const scalarTable = tableFor(projectId, "traces_scalar");
@@ -450,11 +470,7 @@ export const upsertTrace = async (
   trace: Partial<FlexibleTraceInput> & { id: string; project_id: string },
 ): Promise<void> => {
   await provisionDorisTestProject(trace.project_id);
-  await commandDoris({
-    query: `DELETE FROM ${tableFor(trace.project_id, "spans")} WHERE project_id = {projectId: String} AND trace_id = {traceId: String}`,
-    params: { projectId: trace.project_id, traceId: trace.id },
-    tags: { feature: "test-utils", kind: "upsert-trace-delete-spans" },
-  });
+  await deleteTraceSpans({ projectId: trace.project_id, traceId: trace.id });
   await commandDoris({
     query: `DELETE FROM ${tableFor(trace.project_id, "traces_scalar")} WHERE project_id = {projectId: String} AND id = {traceId: String}`,
     params: { projectId: trace.project_id, traceId: trace.id },
