@@ -7,8 +7,9 @@ version: 2
 updates:
   - package-ecosystem: npm
     directory: "/" # Location of package manifests
-    rebase-strategy: "disabled" # use dependabot-rebase-stale
-    open-pull-requests-limit: 10
+    # Version updates are paused: Dependabot opens no new pull requests.
+    # Raise the limit (it was 10) to turn them back on.
+    open-pull-requests-limit: 0
     schedule:
       interval: "daily"
     versioning-strategy: "increase"
