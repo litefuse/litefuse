@@ -25,6 +25,9 @@ import { prisma } from "@langfuse/shared/src/db";
 //   return errors;
 // };
 
+// Without a target path, sign-in enters the user's first project.
+const PROJECT_HOME_URL = /\/project\/[^/?#]+$/;
+
 const cleanUpConsoleEventListeners = (page: Page) => {
   page.removeAllListeners("pageerror");
   page.removeAllListeners("console");
@@ -59,6 +62,15 @@ test.describe("Create project", () => {
       throw new Error(`Sign-in failed with error: ${errorText}`);
     }
 
+    await expect(page).toHaveURL(PROJECT_HOME_URL);
+
+    // Go back to the organization overview through the breadcrumb org menu
+    await page
+      .getByRole("navigation", { name: "breadcrumb" })
+      .getByRole("button")
+      .first()
+      .click();
+    await page.getByRole("menuitem", { name: "Organizations" }).click();
     await expect(page).toHaveURL("/");
 
     // Start create org flow
@@ -169,7 +181,7 @@ const signin = async (page: Page) => {
     throw new Error(`Sign-in failed with error: ${errorText}`);
   }
 
-  await expect(page).toHaveURL("/");
+  await expect(page).toHaveURL(PROJECT_HOME_URL);
 };
 
 const checkPageHeaderTitle = async (page: Page, title: string) => {
