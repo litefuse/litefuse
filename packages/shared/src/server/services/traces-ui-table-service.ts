@@ -1179,7 +1179,8 @@ const runAggMetricsFastPath = async (params: {
   // Latency/level formulas mirror OUTER_LATENCY/OUTER_LEVEL in the sync-MV
   // expression shape (identical NULL behavior: an all-open trace yields NULL
   // latency). Every aggregate matches migration 0040 verbatim so the scan
-  // transparently rewrites onto the trace_metrics_agg rollup.
+  // transparently rewrites onto the trace_metrics_agg rollup. The rollup counts
+  // non-root spans; + 1 adds the trace's root span, which is an observation too.
   const query = `
     SELECT
       trace_id AS id,
@@ -1197,7 +1198,7 @@ const runAggMetricsFastPath = async (params: {
       ${AGG_ROLLUP_LEVEL_COUNTS.warningCount} AS warning_count,
       ${AGG_ROLLUP_LEVEL_COUNTS.defaultCount} AS default_count,
       ${AGG_ROLLUP_LEVEL_COUNTS.debugCount} AS debug_count,
-      SUM(CASE WHEN is_root = 0       THEN 1 ELSE 0 END) AS observation_count
+      SUM(CASE WHEN is_root = 0       THEN 1 ELSE 0 END) + 1 AS observation_count
     FROM ${tableFor(projectId, "spans")}
     WHERE ${whereParts.join(" AND ")}
     GROUP BY project_id, trace_id
@@ -1382,7 +1383,8 @@ async function getTracesTableGeneric(props: FetchTracesTableProps) {
         os.warning_count as warning_count,
         os.default_count as default_count,
         os.debug_count as debug_count,
-        os.observation_count as observation_count,
+        -- observations_stats counts non-root spans; + 1 adds the root span.
+        COALESCE(os.observation_count, 0) + 1 as observation_count,
         -- scores for the list are fetched separately (getScoresForTraces) and
         -- merged by trace_id in the tRPC layer; convertToUITableMetrics discards
         -- these, so emit NULL instead of computing a dead scores_avg aggregate.

@@ -6,6 +6,7 @@ import {
 import { createObservation, createTrace } from "@langfuse/shared/src/server";
 import {
   getTracesTable,
+  getTracesTableMetrics,
   type TracesTableUiReturnType,
   type ObservationRecordInsertType,
   type TraceRecordInsertType,
@@ -246,6 +247,60 @@ describe("Traces table API test", () => {
           expect(tableRows[index].public).toEqual(expectedTrace.public);
         }
       });
+    });
+  });
+
+  describe("observation count", () => {
+    // One trace with a root span and one child: both are observations.
+    const seedTraceWithRootAndChild = async () => {
+      const projectId = v4().replace(/-/g, "");
+      const traceId = v4();
+      const rootId = v4();
+      await createTracesCh([
+        createTrace({ id: traceId, project_id: projectId }),
+      ]);
+      await createObservationsCh([
+        createObservation({
+          id: rootId,
+          trace_id: traceId,
+          project_id: projectId,
+          parent_observation_id: null,
+        }),
+        createObservation({
+          trace_id: traceId,
+          project_id: projectId,
+          parent_observation_id: rootId,
+        }),
+      ]);
+      return { projectId, traceId };
+    };
+
+    it("counts the root span on the id-scoped metrics path", async () => {
+      const { projectId, traceId } = await seedTraceWithRootAndChild();
+
+      const metrics = await getTracesTableMetrics({
+        projectId,
+        filter: [
+          {
+            column: "id",
+            type: "stringOptions",
+            operator: "any of",
+            value: [traceId],
+          },
+        ],
+      });
+
+      expect(metrics).toHaveLength(1);
+      expect(metrics[0].observationCount).toBe(BigInt(2));
+    });
+
+    it("counts the root span on the general metrics path", async () => {
+      const { projectId } = await seedTraceWithRootAndChild();
+
+      const metrics = await getTracesTableMetrics({ projectId, filter: [] });
+
+      expect(metrics).toHaveLength(1);
+      expect(metrics[0].observationCount).toBe(BigInt(2));
     });
   });
 });

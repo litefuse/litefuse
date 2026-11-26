@@ -484,6 +484,49 @@ describe("trpc.sessions", () => {
     expect(Number(session2?.session_total_usage)).toBeGreaterThan(0);
   });
 
+  it("counts every span, root included, in total_observations", async () => {
+    const { projectId } = await createOrgProjectAndApiKey();
+    const sessionId = v4();
+    await prisma.traceSession.create({ data: { id: sessionId, projectId } });
+
+    // Two traces, each with a root span and one child: four observations.
+    const traces = [
+      createTrace({ session_id: sessionId, project_id: projectId }),
+      createTrace({ session_id: sessionId, project_id: projectId }),
+    ];
+    const rootIds = traces.map(() => v4());
+    await createTracesCh(traces);
+    await createObservationsCh(
+      traces.flatMap((trace, i) => [
+        createObservation({
+          id: rootIds[i],
+          trace_id: trace.id,
+          project_id: projectId,
+        }),
+        createObservation({
+          trace_id: trace.id,
+          project_id: projectId,
+          parent_observation_id: rootIds[i],
+        }),
+      ]),
+    );
+
+    const sessions = await getSessionsWithMetrics({
+      projectId,
+      filter: [
+        {
+          column: "id",
+          type: "stringOptions",
+          operator: "any of",
+          value: [sessionId],
+        },
+      ],
+    });
+
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]?.total_observations).toBe(4);
+  });
+
   it("LFE-4113: should GET correct metrics for a list of sessions without observations", async () => {
     const { projectId } = await createOrgProjectAndApiKey();
     const sessionId = v4();
