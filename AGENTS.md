@@ -119,9 +119,6 @@ Minimum verification matrix:
   to preserve that sub-path, without a trailing slash. Publish path-specific
   builds under distinct Docker tags; changing runtime env cannot change the
   compiled path.
-- Litefuse Cloud deployments are triggered by pushes to `production` (`.github/workflows/deploy.yml`).
-- Promote `main` to `production` via `.github/workflows/promote-main-to-production.yml` (manual `workflow_dispatch`).
-- Use `pnpm run release:cloud` for CLI-triggered Cloud promotions with preflight branch/migration checks.
 - Do not change release/versioning flow without updating this file and impacted package guides.
 
 ## GitHub Search
