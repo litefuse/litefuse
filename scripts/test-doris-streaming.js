@@ -8,16 +8,12 @@
  */
 
 const path = require("path");
-const mysql = require(path.join(
-  __dirname,
-  "..",
-  "packages/shared/node_modules/mysql2/promise",
-));
-const mysqlCallback = require(path.join(
-  __dirname,
-  "..",
-  "packages/shared/node_modules/mysql2",
-));
+const mysql = require(
+  path.join(__dirname, "..", "packages/shared/node_modules/mysql2/promise"),
+);
+const mysqlCallback = require(
+  path.join(__dirname, "..", "packages/shared/node_modules/mysql2"),
+);
 
 const config = {
   host: process.env.DORIS_HOST || "127.0.0.1",
@@ -29,8 +25,7 @@ const config = {
   dateStrings: false,
 };
 
-const projectId =
-  process.env.DORIS_PROJECT_ID || "cmohzoe670006z407sgvdpn72";
+const projectId = process.env.DORIS_PROJECT_ID || "cmohzoe670006z407sgvdpn72";
 
 // Lightweight columns only — we're testing streaming mechanics, not bandwidth.
 // No LIMIT: scan the whole project (~180k rows) to stress streaming under realistic volume.
@@ -174,7 +169,12 @@ async function streamedAbort() {
 }
 
 (async () => {
-  console.log("Doris:", `${config.host}:${config.port}`, "db:", config.database);
+  console.log(
+    "Doris:",
+    `${config.host}:${config.port}`,
+    "db:",
+    config.database,
+  );
   console.log("project_id:", projectId);
   console.log("SQL:", SQL.replace(/\s+/g, " ").trim());
 

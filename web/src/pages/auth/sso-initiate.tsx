@@ -46,7 +46,7 @@ export default function SSOInitiate() {
     return (
       <>
         <Head>
-          <title>{t("Sign-in Error | Litefuse")}</title>
+          <title>{t("Sign-in Error | DeepTrace")}</title>
         </Head>
         <ErrorPageWithSentry title={t("SSO Sign-in Failed")} message={error} />
       </>
@@ -57,7 +57,7 @@ export default function SSOInitiate() {
   return (
     <>
       <Head>
-        <title>{t("Signing in | Litefuse")}</title>
+        <title>{t("Signing in | DeepTrace")}</title>
       </Head>
       <Spinner message={t("Redirecting to your identity provider...")} />
     </>

@@ -19,7 +19,8 @@ export function superjson(value) {
       meta[path.join(".")] = ["undefined"];
       return null;
     }
-    if (Array.isArray(v)) return v.map((x, i) => walk(x, path.concat(String(i))));
+    if (Array.isArray(v))
+      return v.map((x, i) => walk(x, path.concat(String(i))));
     if (v !== null && typeof v === "object") {
       const o = {};
       for (const k of Object.keys(v)) o[k] = walk(v[k], path.concat(k));
@@ -45,7 +46,10 @@ export function makeTrends(pages) {
   for (const p of pages) {
     for (const proc of p.procs) {
       const key = `${p.name}.${proc}`;
-      trends[key] = new Trend("lat_" + key.replace(/[^A-Za-z0-9_]/g, "_"), true);
+      trends[key] = new Trend(
+        "lat_" + key.replace(/[^A-Za-z0-9_]/g, "_"),
+        true,
+      );
     }
   }
   return trends;
@@ -70,7 +74,9 @@ export function runBatch(pageName, queries, cookie, trends) {
       [`${pageName}/${q.proc} 200`]: (r) => r.status === 200,
     });
     if (!ok && __ENV.DEBUG) {
-      console.error(`${q.proc} -> ${res.status}: ${String(res.body).slice(0, 200)}`);
+      console.error(
+        `${q.proc} -> ${res.status}: ${String(res.body).slice(0, 200)}`,
+      );
     }
   });
   return responses;

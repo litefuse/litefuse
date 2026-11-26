@@ -31,8 +31,8 @@ export function useLayoutMetadata(
 
     // Determine page title from active route
     const title = activePathName
-      ? `${t(activePathName)} | Litefuse`
-      : "Litefuse";
+      ? `${t(activePathName)} | DeepTrace`
+      : "DeepTrace";
 
     // Use dev favicon in DEV region for visual distinction
     // Using SVG for modern browsers with PNG fallback specified in sizes

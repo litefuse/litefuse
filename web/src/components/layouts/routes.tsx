@@ -17,6 +17,9 @@ import {
   ClipboardPen,
   Clock,
   Beaker,
+  Folder,
+  HardDrive,
+  Activity,
 } from "lucide-react";
 import { type ReactNode } from "react";
 import { type Entitlement } from "@/src/features/entitlements/constants/entitlements";
@@ -50,6 +53,7 @@ export enum RouteGroup {
   Observability = "Observability",
   PromptManagement = "Prompt Management",
   Evaluation = "Evaluation",
+  Persisting = "Offline Data Management",
 }
 
 export type Route = {
@@ -200,6 +204,45 @@ export const ROUTES: Route[] = [
     featureFlag: "experimentsV4Enabled",
     group: RouteGroup.Evaluation,
     section: RouteSection.Main,
+  },
+  {
+    title: i18nKey("Datasets"),
+    pathname: `/project/[projectId]/persisting/datasets`,
+    icon: Folder,
+    group: RouteGroup.Persisting,
+    section: RouteSection.Main,
+  },
+  {
+    title: i18nKey("Runs"),
+    pathname: `/project/[projectId]/persisting/runs`,
+    icon: ListTree,
+    group: RouteGroup.Persisting,
+    section: RouteSection.Main,
+  },
+  {
+    title: i18nKey("Analysis"),
+    pathname: `/project/[projectId]/persisting/analysis`,
+    icon: Search,
+    group: RouteGroup.Persisting,
+    section: RouteSection.Main,
+  },
+  {
+    title: i18nKey("Storage"),
+    pathname: `/project/[projectId]/persisting/storage`,
+    icon: HardDrive,
+    group: RouteGroup.Persisting,
+    section: RouteSection.Main,
+    // Temporarily hidden from nav; set to false to restore.
+    hidden: true,
+  },
+  {
+    title: i18nKey("Requests"),
+    pathname: `/project/[projectId]/persisting/requests`,
+    icon: Activity,
+    group: RouteGroup.Persisting,
+    section: RouteSection.Main,
+    // Temporarily hidden from nav; set to false to restore.
+    hidden: true,
   },
   {
     title: i18nKey("Cloud Status"),

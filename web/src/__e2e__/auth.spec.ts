@@ -1,11 +1,14 @@
 import { test, expect } from "@playwright/test";
 
+// Without a target path, sign-in enters the user's first project.
+const PROJECT_HOME_URL = /\/project\/[^/?#]+$/;
+
 test("should redirect to sign-in if not signed in", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveURL(/\/auth\/sign-in(\?.*)?$/);
 });
 
-test("should redirect to home if signed in", async ({ page }) => {
+test("should enter the first project if signed in", async ({ page }) => {
   await page.goto("/auth/sign-in");
   await page.fill('input[name="email"]', "demo@litefuse.ai");
   await page.fill('input[type="password"]', "password");
@@ -25,7 +28,7 @@ test("should redirect to home if signed in", async ({ page }) => {
     throw new Error(`Sign-in failed with error: ${errorText}`);
   }
 
-  await expect(page).toHaveURL("/");
+  await expect(page).toHaveURL(PROJECT_HOME_URL);
 });
 
 test("Successfully sign up & able to go to homepage", async ({ page }) => {
@@ -92,7 +95,7 @@ test("Unauthenticated user should be redirected to target URL after login", asyn
     throw new Error(`Sign-in failed with error: ${errorText}`);
   }
 
-  await expect(page).toHaveURL("/");
+  await expect(page).toHaveURL(PROJECT_HOME_URL);
 
   // project id and prompt from seed.ts
   const promptUrl =
@@ -155,8 +158,8 @@ test("Unauthenticated user should not be redirected to non-relative URLs after l
     throw new Error(`Sign-in failed with error: ${errorText}`);
   }
 
-  // Expect to be redirected to the home page, not the non-relative URL
-  await expect(page).toHaveURL("/");
+  // Expect to enter the first project, not the non-relative URL
+  await expect(page).toHaveURL(PROJECT_HOME_URL);
 
   // Verify we're logged in
   await expect(page.getByRole("button", { name: /Demo User/ })).toBeVisible();

@@ -38,7 +38,9 @@ const HAR_PATH = __ENV.HAR || "scripts/loadtest/traces.har";
 // Override with EXCLUDE="a,b" or EXCLUDE="" to replay everything.
 const NON_DORIS_DEFAULT =
   "TableViewPresets.,comments.,media.,annotationQueues.,datasets.";
-const EXCLUDE = (__ENV.EXCLUDE === undefined ? NON_DORIS_DEFAULT : __ENV.EXCLUDE)
+const EXCLUDE = (
+  __ENV.EXCLUDE === undefined ? NON_DORIS_DEFAULT : __ENV.EXCLUDE
+)
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
@@ -63,7 +65,9 @@ function loadHarRequests() {
     if (seen[path]) continue; // drop exact-duplicate URLs
     seen[path] = true;
     // procedure name = segment between /api/trpc/ and ? (may contain commas if batched)
-    const proc = decodeURIComponent(path.replace(/^\/api\/trpc\//, "").split("?")[0]);
+    const proc = decodeURIComponent(
+      path.replace(/^\/api\/trpc\//, "").split("?")[0],
+    );
     if (EXCLUDE.some((x) => proc.includes(x))) continue; // skip excluded procs
     reqs.push({ proc, path });
   }
@@ -150,7 +154,9 @@ export default function (data) {
     trends[proc].add(res.timings.duration);
     const ok = check(res, { [`${proc} 200`]: (r) => r.status === 200 });
     if (!ok && __ENV.DEBUG) {
-      console.error(`${proc} -> ${res.status}: ${String(res.body).slice(0, 300)}`);
+      console.error(
+        `${proc} -> ${res.status}: ${String(res.body).slice(0, 300)}`,
+      );
     }
   });
 

@@ -15,8 +15,7 @@ import { login } from "./lib/auth.js";
 import { makeTrends, runBatch } from "./lib/trpc.js";
 import { VUS, DURATION, PAGE, SLEEP } from "./lib/config.js";
 
-const selected =
-  PAGE === "all" ? Object.values(PAGES) : [PAGES[PAGE]];
+const selected = PAGE === "all" ? Object.values(PAGES) : [PAGES[PAGE]];
 if (selected.some((p) => !p)) {
   throw new Error(
     `unknown PAGE='${PAGE}'. Known: ${Object.keys(PAGES).join(", ")}, or 'all'.`,
@@ -26,7 +25,9 @@ if (selected.some((p) => !p)) {
 const TRENDS = makeTrends(selected);
 
 export const options = {
-  scenarios: { reads: { executor: "constant-vus", vus: VUS, duration: DURATION } },
+  scenarios: {
+    reads: { executor: "constant-vus", vus: VUS, duration: DURATION },
+  },
   thresholds: {
     http_req_failed: ["rate<0.01"],
     http_req_duration: ["p(95)<2000"],

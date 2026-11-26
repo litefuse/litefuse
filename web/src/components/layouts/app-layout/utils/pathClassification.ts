@@ -4,7 +4,11 @@
  */
 
 export const PATH_CONSTANTS = {
-  withoutNavigation: ["/onboarding", "/auth/reset-password"] as const,
+  withoutNavigation: [
+    "/onboarding",
+    "/auth/reset-password",
+    "/pchronicle",
+  ] as const,
   unauthenticated: [
     "/auth/sign-in",
     "/auth/sign-up",

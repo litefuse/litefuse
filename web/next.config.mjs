@@ -15,13 +15,30 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  * CSP headers
  * img-src https to allow loading images from SSO providers
  */
+const persistingChronicleFrameSrc = (() => {
+  const origins = new Set();
+  if (process.env.NODE_ENV !== "production") {
+    origins.add("http://127.0.0.1:8081");
+    origins.add("http://localhost:8081");
+  }
+  const configured = env.NEXT_PUBLIC_PERSISTING_CHRONICLE_URL;
+  if (configured) {
+    try {
+      origins.add(new URL(configured).origin);
+    } catch {
+      // ignore invalid override; hostname auto-detect still works in the page
+    }
+  }
+  return Array.from(origins).join(" ");
+})();
+
 const cspHeader = `
   default-src 'self' https://*.litefuse.ai https://*.langfuse.dev https://*.posthog.com https://*.sentry.io;
   script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.litefuse.ai https://*.langfuse.dev https://*.posthog.com https://challenges.cloudflare.com https://*.sentry.io  https://static.cloudflareinsights.com https://*.stripe.com https://login.microsoftonline.com https://login.microsoft.com https://*.microsoftonline.com;
   style-src 'self' 'unsafe-inline' https://*.posthog.com https://fonts.googleapis.com https://login.microsoftonline.com https://login.microsoft.com https://*.microsoftonline.com;
   img-src 'self' https: blob: data: http://localhost:* https://*.posthog.com https://prod-uk-services-workspac-workspacefilespublicbuck-vs4gjqpqjkh6.s3.amazonaws.com https://prod-uk-services-attachm-attachmentsbucket28b3ccf-uwfssb4vt2us.s3.eu-west-2.amazonaws.com https://i0.wp.com;
   font-src 'self' https://*.posthog.com;
-  frame-src 'self' https://challenges.cloudflare.com https://*.stripe.com https://login.microsoftonline.com https://login.microsoft.com https://*.microsoftonline.com;
+  frame-src 'self' ${persistingChronicleFrameSrc} https://challenges.cloudflare.com https://*.stripe.com https://login.microsoftonline.com https://login.microsoft.com https://*.microsoftonline.com;
   worker-src 'self' blob: data:;
   object-src 'none';
   base-uri 'self';
@@ -194,6 +211,39 @@ const nextConfig = {
         ],
       },
     ];
+  },
+
+  async rewrites() {
+    // Only the local dev server needs to forward Chronicle assets and APIs.
+    // Production keeps those paths on the Chronicle host.
+    if (process.env.NODE_ENV === "production") {
+      return [];
+    }
+    const origin = "http://127.0.0.1:8081";
+    /** @param {string} source */
+    const proxy = (source) => ({
+      source,
+      destination: `${origin}${source}`,
+    });
+    return {
+      fallback: [
+        proxy("/assets/:path*"),
+        proxy("/api/explorer/:path*"),
+        proxy("/api/ui"),
+        proxy("/api/catalog"),
+        proxy("/api/catalog/:path*"),
+        proxy("/api/physical/:path*"),
+        proxy("/api/query/:path*"),
+        proxy("/api/analysis/:path*"),
+        proxy("/api/requests/:path*"),
+        proxy("/api/runs"),
+        proxy("/api/events"),
+        proxy("/api/storyline"),
+        proxy("/api/trajectory-view"),
+        proxy("/api/health"),
+        proxy("/api/v1/:path*"),
+      ],
+    };
   },
 
   webpack(config, { isServer }) {

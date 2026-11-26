@@ -18,8 +18,7 @@ import { textSummary } from "https://jslib.k6.io/k6-summary/0.0.1/index.js";
 
 // ---- config -----------------------------------------------------------------
 const BASE_URL = __ENV.BASE_URL || "http://localhost:3000";
-const PROJECT_ID =
-  __ENV.PROJECT_ID || "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a";
+const PROJECT_ID = __ENV.PROJECT_ID || "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a";
 const EMAIL = __ENV.EMAIL || "demo@litefuse.ai";
 const PASSWORD = __ENV.PASSWORD || "password";
 const VUS = parseInt(__ENV.VUS || "10", 10);
@@ -27,12 +26,7 @@ const DURATION = __ENV.DURATION || "1m";
 
 // Per-endpoint latency trends. k6 requires metrics to be declared in the init
 // context (module top-level), so we predeclare one Trend per procedure we hit.
-const PROCS = [
-  "traces.all",
-  "traces.countAll",
-  "sessions.all",
-  "traces.byId",
-];
+const PROCS = ["traces.all", "traces.countAll", "sessions.all", "traces.byId"];
 const trends = {};
 for (const p of PROCS)
   trends[p] = new Trend(`lat_${p.replace(/\./g, "_")}`, true);
@@ -103,7 +97,9 @@ function trpcQuery(proc, input, cookie) {
     [`${proc} 200`]: (r) => r.status === 200,
   });
   if (!ok && __ENV.DEBUG) {
-    console.error(`${proc} -> ${res.status}: ${String(res.body).slice(0, 300)}`);
+    console.error(
+      `${proc} -> ${res.status}: ${String(res.body).slice(0, 300)}`,
+    );
   }
   return res;
 }

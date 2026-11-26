@@ -14,16 +14,28 @@ const base = {
 describe("decideOtelRedrive (age guard × redrive budget)", () => {
   it("fresh failure → redrive with incremented counter", () => {
     expect(
-      decideOtelRedrive({ ...base, firstSeenTs: base.now - HOUR, redrivesSoFar: 0 }),
+      decideOtelRedrive({
+        ...base,
+        firstSeenTs: base.now - HOUR,
+        redrivesSoFar: 0,
+      }),
     ).toEqual({ action: "redrive", redrives: 1 });
     expect(
-      decideOtelRedrive({ ...base, firstSeenTs: base.now - HOUR, redrivesSoFar: 4 }),
+      decideOtelRedrive({
+        ...base,
+        firstSeenTs: base.now - HOUR,
+        redrivesSoFar: 4,
+      }),
     ).toEqual({ action: "redrive", redrives: 5 });
   });
 
   it("redrive budget exhausted → poison (deterministic failure)", () => {
     expect(
-      decideOtelRedrive({ ...base, firstSeenTs: base.now - HOUR, redrivesSoFar: 5 }),
+      decideOtelRedrive({
+        ...base,
+        firstSeenTs: base.now - HOUR,
+        redrivesSoFar: 5,
+      }),
     ).toEqual({ action: "poison", cause: "redrives-exhausted" });
   });
 
