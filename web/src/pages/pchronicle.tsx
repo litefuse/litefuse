@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
+import { useTranslation } from "react-i18next";
 import { env } from "@/src/env.mjs";
 
 const ALLOWED_PAGES = new Set([
@@ -19,6 +20,7 @@ const ALLOWED_PAGES = new Set([
  * Dev-only — returns 404 in production.
  */
 export default function PChroniclePreviewPage() {
+  const { t } = useTranslation();
   const router = useRouter();
 
   const src = useMemo(() => {
@@ -32,11 +34,11 @@ export default function PChroniclePreviewPage() {
   return (
     <>
       <Head>
-        <title>Chronicle Preview</title>
+        <title>{t("Chronicle Preview")}</title>
       </Head>
       <iframe
         src={src}
-        title="Chronicle Preview"
+        title={t("Chronicle Preview")}
         style={{
           position: "fixed",
           inset: 0,

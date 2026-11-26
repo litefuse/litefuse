@@ -491,6 +491,7 @@
   "Choose which data sources to export to Mixpanel. Scores are always included.": "选择要导出到 Mixpanel 的数据源。评分始终包含在内。",
   "Choose which data sources to export to PostHog. Scores are always included.": "选择要导出到 PostHog 的数据源。评分始终包含在内。",
   "Choose your cloud storage provider": "选择你的云存储服务商",
+  "Chronicle Preview": "Chronicle 预览",
   "Clear": "清空",
   "Clear {{items}}": "清空{{items}}",
   "Clear {{label}} filter": "清空 {{label}} 筛选",

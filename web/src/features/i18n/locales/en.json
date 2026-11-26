@@ -535,6 +535,7 @@
   "Choose which data sources to export to Mixpanel. Scores are always included.": "Choose which data sources to export to Mixpanel. Scores are always included.",
   "Choose which data sources to export to PostHog. Scores are always included.": "Choose which data sources to export to PostHog. Scores are always included.",
   "Choose your cloud storage provider": "Choose your cloud storage provider",
+  "Chronicle Preview": "Chronicle Preview",
   "Clear": "Clear",
   "Clear {{items}}": "Clear {{items}}",
   "Clear {{label}} filter": "Clear {{label}} filter",
