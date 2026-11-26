@@ -47,7 +47,6 @@ export function AppSidebar({
   userNavProps,
   ...props
 }: AppSidebarProps) {
-  const { t } = useTranslation();
   return (
     <Sidebar collapsible="icon" variant="sidebar" {...props}>
       <SidebarHeader>

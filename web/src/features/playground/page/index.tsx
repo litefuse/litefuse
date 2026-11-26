@@ -16,11 +16,7 @@ import {
 import useProjectIdFromURL from "@/src/hooks/useProjectIdFromURL";
 import { useSession } from "next-auth/react";
 import { useHasProjectAccess } from "@/src/features/rbac/utils/checkProjectAccess";
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@/src/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/src/components/ui/alert";
 
 import { useTranslation } from "react-i18next";
 /**
@@ -135,14 +131,16 @@ export default function PlaygroundPage() {
       <Page
         withPadding={false}
         headerProps={{
-          title: "Playground",
+          title: t("Playground"),
         }}
       >
         <div className="p-4">
           <Alert>
-            <AlertTitle>Access Denied</AlertTitle>
+            <AlertTitle>{t("Access Denied")}</AlertTitle>
             <AlertDescription>
-              You do not have permission to use the Playground in this project.
+              {t(
+                "You do not have permission to use the Playground in this project.",
+              )}
             </AlertDescription>
           </Alert>
         </div>

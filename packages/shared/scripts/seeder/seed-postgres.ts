@@ -45,7 +45,7 @@ async function main() {
   }).values.environment;
 
   const seedOrgId = "seed-org-id";
-  const seedProjectId = "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a";
+  const seedProjectId = "7a88fb47b4e243b8a06ca5ce950dc53a";
   const seedUserId1 = "user-1"; // Owner of org
   const seedUserId2 = "user-2"; // Member of org, admin of project
 

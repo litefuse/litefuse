@@ -85,12 +85,6 @@ export const _handleGenerateScoresForPublicApi = async ({
   const appliedScoresFilter = scoresFilter.apply();
   const appliedTracesFilter = tracesFilter.apply();
 
-  // Determine if trace should be included based on fields parameter
-  const { includeTrace, needsTraceJoin } = determineTraceJoinRequirement(
-    props.fields,
-    tracesFilter.length(),
-  );
-
   // Doris uses UNIQUE KEY model, so no deduplication needed (no LIMIT 1 BY / ROW_NUMBER)
   const query = `
         SELECT
@@ -194,12 +188,6 @@ export const _handleGetScoresCountForPublicApi = async ({
   );
   const appliedScoresFilter = scoresFilter.apply();
   const appliedTracesFilter = tracesFilter.apply();
-
-  // Determine if trace should be included based on fields parameter
-  const { includeTrace, needsTraceJoin } = determineTraceJoinRequirement(
-    props.fields,
-    tracesFilter.length(),
-  );
 
   // Doris uses UNIQUE KEY model, no deduplication needed
   const query = `
@@ -363,17 +351,6 @@ const secureTraceFilterOptions = [
 /**
  * Determines if trace join is needed based on fields parameter and trace filters
  */
-const determineTraceJoinRequirement = (
-  fields: string[] | null | undefined,
-  tracesFilterLength: number,
-) => {
-  const requestedFields = fields ?? ["score", "trace"]; // Default includes both
-  const includeTrace = requestedFields.includes("trace");
-  const needsTraceJoin = includeTrace || tracesFilterLength > 0;
-
-  return { includeTrace, needsTraceJoin };
-};
-
 const generateScoreFilter = (
   filter: ScoreQueryType,
   scoreDataTypes?: readonly ScoreDataTypeType[],

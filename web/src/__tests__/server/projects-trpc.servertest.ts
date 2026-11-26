@@ -12,6 +12,13 @@ jest.mock("../../features/audit-logs/auditLog", () => ({
   auditLog: jest.fn(),
 }));
 
+jest.mock(
+  "../../features/projects/server/seedProjectAnnotationDefaults",
+  () => ({
+    seedProjectAnnotationDefaults: jest.fn().mockResolvedValue(undefined),
+  }),
+);
+
 import { projectsRouter } from "@/src/features/projects/server/projectsRouter";
 import { type Plan, Role } from "@langfuse/shared";
 import { provisionSplitForNewProject } from "@langfuse/shared/src/server";
@@ -75,6 +82,9 @@ const createCaller = ({
         name: "New Project",
       }),
       delete: jest.fn(),
+    },
+    scoreConfig: {
+      createMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
   };
   const transaction = jest.fn(

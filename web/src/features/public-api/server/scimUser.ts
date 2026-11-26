@@ -288,10 +288,7 @@ export function toScimUser({
     meta: {
       resourceType: "User",
       created: user.createdAt?.toISOString(),
-      lastModified: laterOf(
-        user.updatedAt,
-        membershipUpdatedAt,
-      ).toISOString(),
+      lastModified: laterOf(user.updatedAt, membershipUpdatedAt).toISOString(),
     },
   };
 }

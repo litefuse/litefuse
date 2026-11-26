@@ -8,9 +8,9 @@ import {
   fieldTypeAtom,
 } from "store/discover";
 import {
-  AggregatableEnum,
+  type AggregatableEnum,
   AGGREGATABLE,
-  SearchableEnum,
+  type SearchableEnum,
   SEARCHABLE,
 } from "utils/data";
 import { RadioButtonGroup } from "components/ui/radio-button-group";

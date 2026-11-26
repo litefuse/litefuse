@@ -19,7 +19,7 @@ import {
 } from "@langfuse/shared/src/server";
 import { v4 } from "uuid";
 
-const projectId = "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a";
+const projectId = "7a88fb47b4e243b8a06ca5ce950dc53a";
 
 // Helper to add small delays for distinct timestamps
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

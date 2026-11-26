@@ -205,7 +205,7 @@ export function DistributionCategoricalCard() {
           }),
         };
     }
-  }, [data, activeTab, params]);
+  }, [data, activeTab, params, t]);
 
   // Build color mapping for categorical charts
   const chartColors = useMemo(() => {

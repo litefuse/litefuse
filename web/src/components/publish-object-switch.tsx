@@ -23,7 +23,6 @@ export const PublishTraceSwitch = (props: {
   isPublic: boolean;
   size?: "icon" | "icon-xs";
 }) => {
-  const { t } = useTranslation();
   const { isBetaEnabled } = useV4Beta();
   const capture = usePostHogClientCapture();
   const hasAccess = useHasProjectAccess({
@@ -126,7 +125,6 @@ export const PublishSessionSwitch = (props: {
   isPublic: boolean;
   size?: "icon" | "icon-xs";
 }) => {
-  const { t } = useTranslation();
   const capture = usePostHogClientCapture();
   const hasAccess = useHasProjectAccess({
     projectId: props.projectId,

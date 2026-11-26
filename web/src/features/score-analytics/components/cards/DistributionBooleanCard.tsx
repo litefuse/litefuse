@@ -120,7 +120,7 @@ export function DistributionBooleanCard() {
             }),
           };
       }
-    }, [data, activeTab, params]);
+    }, [data, activeTab, params, t]);
 
   // Build color mapping for boolean charts
   const chartColors = useMemo(() => {

@@ -1,7 +1,10 @@
 import { expect, describe, it, beforeEach, afterEach } from "vitest";
 import { randomUUID } from "crypto";
 import { prisma } from "@langfuse/shared/src/db";
-import { createOrgProjectAndApiKey } from "@langfuse/shared/src/server";
+import {
+  createOrgProjectAndApiKey,
+  provisionDorisTestProject,
+} from "@langfuse/shared/src/server";
 import { BatchTraceDeletionCleaner } from "../features/batch-trace-deletion-cleaner";
 
 describe("BatchTraceDeletionCleaner", () => {
@@ -15,6 +18,10 @@ describe("BatchTraceDeletionCleaner", () => {
 
     const result2 = await createOrgProjectAndApiKey();
     projectId2 = result2.projectId;
+
+    // Production provisions split tables at project creation; this Postgres-only helper does not.
+    await provisionDorisTestProject(projectId1);
+    await provisionDorisTestProject(projectId2);
 
     cleaner = new BatchTraceDeletionCleaner();
   });

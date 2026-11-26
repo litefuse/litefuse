@@ -15,7 +15,6 @@ import { useRouter } from "next/router";
 import { cn } from "@/src/utils/tailwind";
 
 import { i18nKey } from "@/src/features/i18n/i18nKey";
-import { useTranslation } from "react-i18next";
 function DatasetAggregateCellWithBaselineDetection({
   value,
   runData,
@@ -126,7 +125,6 @@ function RunAggregateHeader({
   updateRunFilters: (runId: string, filters: FilterState) => void;
   getFiltersForRun: (runId: string) => FilterState;
 }) {
-  const { t } = useTranslation();
   // Debounce updateRunFilters with 500ms delay to prevent immediate table re-renders
   const debouncedUpdateRunFilters = useDebounce(
     (runId: string, filters: FilterState) => updateRunFilters(runId, filters),

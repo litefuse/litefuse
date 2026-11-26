@@ -8,7 +8,7 @@ import {
 describe("convertEventsObservation", () => {
   it("preserves trace context fields on partial v2 conversions", () => {
     const writeRecord = createEvent({
-      project_id: "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a",
+      project_id: "7a88fb47b4e243b8a06ca5ce950dc53a",
       trace_id: "trace-v2-context",
       span_id: "span-v2-context",
       id: "span-v2-context",
@@ -53,7 +53,7 @@ describe("convertEventsObservation", () => {
 
   it("parses Doris string maps, normalizes numeric booleans, and preserves raw io strings in v2", () => {
     const writeRecord = createEvent({
-      project_id: "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a",
+      project_id: "7a88fb47b4e243b8a06ca5ce950dc53a",
       trace_id: "trace-v2-usage",
       span_id: "span-v2-usage",
       id: "span-v2-usage",

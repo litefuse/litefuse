@@ -1,8 +1,8 @@
 // @ts-nocheck
 import React, { Fragment } from "react";
 import {
-  ColumnDef,
-  Row,
+  type ColumnDef,
+  type Row,
   flexRender,
   getCoreRowModel,
   getExpandedRowModel,

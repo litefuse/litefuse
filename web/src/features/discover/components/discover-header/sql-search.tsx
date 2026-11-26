@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { CSSProperties } from "react";
+import React, { type CSSProperties } from "react";
 import { useAtom, useAtomValue } from "jotai";
 // import { useTranslation } from 'react-i18next';
 // import { SQL_OPERATORS } from 'utils/data';
@@ -12,8 +12,8 @@ import {
 import { Input } from "components/ui/input";
 
 export default function SQLSearch({
-  style,
-  onQuerying,
+  style: _style,
+  onQuerying: _onQuerying,
 }: {
   style?: CSSProperties;
   onQuerying: () => void;

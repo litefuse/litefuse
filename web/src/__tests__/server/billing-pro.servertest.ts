@@ -8,6 +8,7 @@ import {
 } from "@/src/features/billing/server/billingCatalogue";
 import {
   getBillingStatus,
+  getStripeClient,
   parseCloudConfig,
   syncSubscriptionToOrganization,
 } from "@/src/features/billing/server/billingService";
@@ -487,17 +488,21 @@ describe("Litefuse Pro billing", () => {
   it("processes Stripe webhooks idempotently", async () => {
     const { org } = await createBillingOrg();
     const customerId = parseCloudConfig(org.cloudConfig)?.stripe?.customerId!;
+    const subscription = createSubscription({
+      orgId: org.id,
+      customerId,
+      status: "active",
+    });
+    const retrieveSpy = jest
+      .spyOn(getStripeClient().subscriptions, "retrieve")
+      .mockResolvedValue(subscription as any);
     const event = {
       id: `evt_${uuidv4()}`,
       object: "event",
       api_version: "2025-01-27.acacia",
       created: 1_700_000_000,
       data: {
-        object: createSubscription({
-          orgId: org.id,
-          customerId,
-          status: "active",
-        }),
+        object: subscription,
       },
       livemode: false,
       pending_webhooks: 1,
@@ -509,35 +514,42 @@ describe("Litefuse Pro billing", () => {
       payload,
       secret: STRIPE_WEBHOOK_SECRET,
     });
+    try {
+      await expect(
+        handleStripeWebhook({ rawBody: payload, signature }),
+      ).resolves.toEqual({ received: true, duplicate: false });
+      await expect(
+        handleStripeWebhook({ rawBody: payload, signature }),
+      ).resolves.toEqual({ received: true, duplicate: true });
 
-    await expect(
-      handleStripeWebhook({ rawBody: payload, signature }),
-    ).resolves.toEqual({ received: true, duplicate: false });
-    await expect(
-      handleStripeWebhook({ rawBody: payload, signature }),
-    ).resolves.toEqual({ received: true, duplicate: true });
-
-    await expect(
-      prisma.stripeWebhookEvent.count({
-        where: { stripeEventId: event.id },
-      }),
-    ).resolves.toBe(1);
+      await expect(
+        prisma.stripeWebhookEvent.count({
+          where: { stripeEventId: event.id },
+        }),
+      ).resolves.toBe(1);
+    } finally {
+      retrieveSpy.mockRestore();
+    }
   });
 
   it("retries a webhook event after a failed attempt", async () => {
     const { org } = await createBillingOrg();
     const customerId = parseCloudConfig(org.cloudConfig)?.stripe?.customerId!;
+    const subscription = createSubscription({
+      orgId: org.id,
+      customerId,
+      status: "active",
+    });
+    const retrieveSpy = jest
+      .spyOn(getStripeClient().subscriptions, "retrieve")
+      .mockResolvedValue(subscription as any);
     const event = {
       id: `evt_${uuidv4()}`,
       object: "event",
       api_version: "2025-01-27.acacia",
       created: 1_700_000_000,
       data: {
-        object: createSubscription({
-          orgId: org.id,
-          customerId,
-          status: "active",
-        }),
+        object: subscription,
       },
       livemode: false,
       pending_webhooks: 1,
@@ -558,14 +570,18 @@ describe("Litefuse Pro billing", () => {
       secret: STRIPE_WEBHOOK_SECRET,
     });
 
-    await expect(
-      handleStripeWebhook({ rawBody: payload, signature }),
-    ).resolves.toEqual({ received: true, duplicate: false });
-    await expect(
-      prisma.stripeWebhookEvent.findUniqueOrThrow({
-        where: { stripeEventId: event.id },
-      }),
-    ).resolves.toMatchObject({ status: "processed", error: null });
+    try {
+      await expect(
+        handleStripeWebhook({ rawBody: payload, signature }),
+      ).resolves.toEqual({ received: true, duplicate: false });
+      await expect(
+        prisma.stripeWebhookEvent.findUniqueOrThrow({
+          where: { stripeEventId: event.id },
+        }),
+      ).resolves.toMatchObject({ status: "processed", error: null });
+    } finally {
+      retrieveSpy.mockRestore();
+    }
   });
 
   it("does not claim a webhook that has a live processing lease", async () => {

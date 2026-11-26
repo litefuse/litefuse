@@ -1,5 +1,5 @@
 // @ts-nocheck
-import {
+import type {
   QueryTableDataParams,
   DataFilterType,
   SurroundingParams,

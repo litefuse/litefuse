@@ -1,4 +1,4 @@
 [codespell]
-skip = .git,*.pdf,*.svg,package-lock.json,*.prisma,pnpm-lock.yaml
-ignore-words-list = afterall,vertx,notIn,alue,allTime
+skip = .git,*.pdf,*.svg,package-lock.json,*.prisma,pnpm-lock.yaml,claude-bpe.json
+ignore-words-list = afterall,vertx,notIn,alue,allTime,ans,feeded
 

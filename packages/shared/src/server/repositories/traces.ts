@@ -643,7 +643,7 @@ export const getTraceById = async ({
   projectId,
   timestamp,
   fromTimestamp,
-  renderingProps = DEFAULT_RENDERING_PROPS,
+  renderingProps: _renderingProps = DEFAULT_RENDERING_PROPS,
   excludeInputOutput = false,
 }: {
   traceId: string;

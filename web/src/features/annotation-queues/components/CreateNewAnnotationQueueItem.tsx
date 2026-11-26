@@ -94,6 +94,7 @@ export const CreateNewAnnotationQueueItem = ({
       objectId,
       objectType,
       utils.annotationQueues,
+      t,
     ],
   );
 

@@ -2,7 +2,6 @@ import {
   BatchExportFileFormat,
   FilterCondition,
   ScoreDataTypeEnum,
-  type ScoreDataTypeType,
   TimeFilter,
   TracingSearchType,
 } from "@langfuse/shared";

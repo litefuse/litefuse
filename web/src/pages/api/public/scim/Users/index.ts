@@ -219,9 +219,7 @@ export default async function handler(
       let role: Role = "NONE";
       if (roles !== undefined && isEmptyRoleValue(roles)) {
         logger.warn("Empty roles provided for SCIM user creation", roles);
-        return res
-          .status(400)
-          .json(scimErrorBody(400, EMPTY_ROLES_DETAIL));
+        return res.status(400).json(scimErrorBody(400, EMPTY_ROLES_DETAIL));
       }
       if (roles && Array.isArray(roles) && roles.length > 0) {
         const requestedRole = parseRequestedRole(roles);

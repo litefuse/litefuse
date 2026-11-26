@@ -80,9 +80,7 @@ async function startServer(
         transferEncoding: req.headers["transfer-encoding"] as
           | string
           | undefined,
-        stripOuterArray: req.headers["strip_outer_array"] as
-          | string
-          | undefined,
+        stripOuterArray: req.headers["strip_outer_array"] as string | undefined,
         readJsonByLine: req.headers["read_json_by_line"] as string | undefined,
         body: Buffer.concat(chunks).toString("utf8"),
       };
@@ -168,7 +166,9 @@ describe("DorisClient.streamLoad — FE→BE redirect connection reuse", () => {
     // overcount stalls the request until timeout, an undercount aborts it).
     // Rows carry their trailing "\n", mirroring DorisWriter's NDJSON framing.
     const rows = [
-      Buffer.from(JSON.stringify({ id: "1", name: "含中文", emoji: "🚀" }) + "\n"),
+      Buffer.from(
+        JSON.stringify({ id: "1", name: "含中文", emoji: "🚀" }) + "\n",
+      ),
       Buffer.from(JSON.stringify({ id: "2", name: "t2" }) + "\n"),
     ];
     const byteLength = rows.reduce((s, b) => s + b.length, 0);

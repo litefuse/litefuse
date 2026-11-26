@@ -85,7 +85,6 @@ export const IOTableCell = ({
   singleLine?: boolean;
   enableExpandOnHover?: boolean;
 }) => {
-  const { t } = useTranslation();
   if (isLoading) {
     return (
       <JsonSkeleton

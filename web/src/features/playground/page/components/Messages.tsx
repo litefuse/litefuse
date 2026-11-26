@@ -22,7 +22,6 @@ import {
 } from "@/src/components/ui/resizable";
 
 export const Messages: React.FC<MessagesContext> = (props) => {
-  const { t } = useTranslation();
   return (
     <div className="flex h-full flex-col space-y-4 pt-2 pr-4">
       <ResizablePanelGroup orientation="vertical">

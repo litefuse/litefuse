@@ -10,20 +10,14 @@ import {
   getDorisProjectIdDefaultFilter,
 } from "../queries/doris-sql/factory";
 import { orderByToDorisSQL } from "../queries/doris-sql/orderby-factory";
-import {
-  dorisSearchCondition,
-  DorisSearchContext,
-} from "../queries/doris-sql/search";
+import { dorisSearchCondition } from "../queries/doris-sql/search";
 import { logger } from "../logger";
 import { InternalServerError, LangfuseNotFoundError } from "../../errors";
 import { prisma } from "../../db";
 import { ObservationRecordReadType } from "./definitions";
 import { FilterState } from "../../types";
 import { FullObservations } from "../queries";
-import {
-  observationsTableTraceUiColumnDefinitionsForDoris,
-  observationsTableUiColumnDefinitionsForDoris,
-} from "../tableMappings";
+import { observationsTableUiColumnDefinitionsForDoris } from "../tableMappings";
 import { OrderByState } from "../../interfaces/orderBy";
 import { getTracesByIds } from "./traces";
 import {
@@ -36,8 +30,6 @@ import {
 } from "./constants";
 import { env } from "../../env";
 import { TracingSearchType } from "../../interfaces/search";
-import { observationsTableCols } from "../../observationsTable";
-import type { AnalyticsGenerationEvent } from "../analytics-integrations/types";
 import { ObservationType } from "../../domain";
 import { recordDistribution } from "../instrumentation";
 import { DEFAULT_RENDERING_PROPS, RenderingProps } from "../utils/rendering";
@@ -467,7 +459,7 @@ const getObservationByIdInternal = async ({
   startTime,
   type,
   traceId,
-  renderingProps = DEFAULT_RENDERING_PROPS,
+  renderingProps: _renderingProps = DEFAULT_RENDERING_PROPS,
 }: {
   id: string;
   projectId: string;
@@ -1039,7 +1031,7 @@ export const getObservationsGroupedByModelId = async (
 export const getObservationsGroupedByName = async (
   projectId: string,
   filter: FilterState,
-  type: ObservationType | null = "GENERATION",
+  _type: ObservationType | null = "GENERATION",
 ) => {
   const { observationsFilter } = getDorisProjectIdDefaultFilter(projectId, {
     tracesPrefix: "t",
@@ -1080,16 +1072,16 @@ export const getObservationsGroupedByName = async (
 };
 
 export const getObservationsGroupedByToolName = async (
-  projectId: string,
-  filter: FilterState,
+  _projectId: string,
+  _filter: FilterState,
 ) => {
   // Doris does not have tool_definitions column; return empty
   return [] as { toolName: string }[];
 };
 
 export const getObservationsGroupedByCalledToolName = async (
-  projectId: string,
-  filter: FilterState,
+  _projectId: string,
+  _filter: FilterState,
 ) => {
   // Doris does not have tool_call_names column; return empty
   return [] as { calledToolName: string }[];

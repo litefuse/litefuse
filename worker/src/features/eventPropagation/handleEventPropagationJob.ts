@@ -31,7 +31,10 @@ export const getLastProcessedPartition = async (): Promise<string | null> => {
   try {
     return await redis!.get(LAST_PROCESSED_PARTITION_KEY);
   } catch (error) {
-    logger.error("[event-propagation] Failed to get last processed partition", error);
+    logger.error(
+      "[event-propagation] Failed to get last processed partition",
+      error,
+    );
     return null;
   }
 };

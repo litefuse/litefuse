@@ -199,7 +199,7 @@ Notes:
 
 6. Open the web app in your browser to start using Litefuse:
    - [Sign up page, http://localhost:3000](http://localhost:3000)
-   - [Demo project, http://localhost:3000/project/7a88fb47-b4e2-43b8-a06c-a5ce950dc53a](http://localhost:3000/project/7a88fb47-b4e2-43b8-a06c-a5ce950dc53a)
+   - [Demo project, http://localhost:3000/project/7a88fb47b4e243b8a06ca5ce950dc53a](http://localhost:3000/project/7a88fb47b4e243b8a06ca5ce950dc53a)
 
 7. Log in as a test user:
    - Username: `demo@litefuse.ai`

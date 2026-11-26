@@ -27,14 +27,12 @@ import { parseMetadataCHRecordToDomain } from "../utils/metadata_conversion";
 import { parseDorisStringArray } from "../utils/dorisArrays";
 import { recordDistribution } from "../instrumentation";
 import { scoresColumnsTableUiColumnDefinitionsForDoris } from "../tableMappings/mapScoresColumnsTable";
-import { scoresTableCols } from "../../tableDefinitions/scoresTable";
 import { convertDateToAnalyticsDateTime, dq } from "./analyticsDateTime";
 import {
   queryDoris,
   upsertDoris,
   commandDoris,
   queryDorisStream,
-  parseDorisUTCDateTimeFormat,
 } from "./doris";
 import {
   createDorisFilterFromFilterState,
@@ -43,21 +41,6 @@ import {
 import { orderByToDorisSQL } from "../queries/doris-sql/orderby-factory";
 import { tableFor } from "../doris/tableRouting";
 
-// Helper function to parse timestamps from different backends
-const parseTimestamp = (timestamp: string | Date): Date => {
-  // Only apply special handling for Doris backend
-  if (timestamp instanceof Date) {
-    return timestamp;
-  }
-
-  // Doris stores timestamps as strings
-  if (typeof timestamp === "string") {
-    return parseDorisUTCDateTimeFormat(timestamp);
-  }
-
-  throw new Error(`Invalid timestamp format: ${typeof timestamp}`);
-};
-
 export const searchExistingAnnotationScore = async (
   projectId: string,
   observationId: string | null,
@@ -65,7 +48,7 @@ export const searchExistingAnnotationScore = async (
   sessionId: string | null,
   name: string | undefined,
   configId: string | undefined,
-  dataType: ScoreDataTypeType,
+  _dataType: ScoreDataTypeType,
 ) => {
   if (!name && !configId) {
     throw new Error("Either name or configId (or both) must be provided.");
@@ -432,7 +415,7 @@ const getScoresForTracesInternal = async <
     projectId,
     traceIds,
     timestamp,
-    dataTypes,
+    dataTypes: _dataTypes,
     limit,
     offset,
     excludeMetadata = false,

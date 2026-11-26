@@ -8,8 +8,8 @@ import { InvalidRequestError } from "@langfuse/shared";
  * Test suite for testing SQL injection vulnerabilities in the QueryBuilder
  */
 describe("QueryBuilder SQL Injection Tests", () => {
-  // Single project ID for all tests
-  const projectId = randomUUID();
+  // Single project ID for all tests (Doris-safe, no hyphens)
+  const projectId = randomUUID().replace(/-/g, "");
 
   // Time references
   const now = new Date();
@@ -109,14 +109,12 @@ describe("QueryBuilder SQL Injection Tests", () => {
         orderBy: null,
       };
 
-      // Should build a valid query using parameterized queries for safety
+      // Should build a valid query with SQL-escaped literals for Doris
       const result = await buildQueryWithoutExecuting(query, projectId);
 
-      // Ensure the value is parameterized and not directly included in the SQL
+      // Ensure the unescaped payload is not directly included in the SQL
       expect(result.query).not.toContain("chat'; DROP TABLE traces; --");
-      expect(Object.values(result.parameters)).toContain(
-        "chat'; DROP TABLE traces; --",
-      );
+      expect(result.query).toContain("'chat''; DROP TABLE traces; --'");
     });
   });
 
@@ -245,14 +243,12 @@ describe("QueryBuilder SQL Injection Tests", () => {
         orderBy: null,
       };
 
-      // Should build a valid query with parameterization
+      // Should build a valid query with SQL-escaped literals for Doris
       const result = await buildQueryWithoutExecuting(query, projectId);
 
-      // Check for parameterization
+      // Ensure the unescaped payload is not directly included in the SQL
       expect(result.query).not.toContain("production'; DROP TABLE traces; --");
-      expect(Object.values(result.parameters)).toContain(
-        "production'; DROP TABLE traces; --",
-      );
+      expect(result.query).toContain("'production''; DROP TABLE traces; --'");
     });
 
     it("should safely handle array values in IN operators", async () => {
@@ -358,16 +354,14 @@ describe("QueryBuilder SQL Injection Tests", () => {
         orderBy: null,
       };
 
-      // Should build a valid query with parameterization
+      // Should build a valid query with SQL-escaped key path for Doris
       const result = await buildQueryWithoutExecuting(query, projectId);
 
-      // Check for parameterization
+      // Ensure the unescaped payload is not directly included in the SQL
       expect(result.query).not.toContain(
         "customer.field'); DROP TABLE traces; --",
       );
-      expect(Object.values(result.parameters)).toContain(
-        "customer.field'); DROP TABLE traces; --",
-      );
+      expect(result.query).toContain("field''); DROP TABLE traces; --");
     });
 
     it("should safely handle special characters in metadata value", async () => {
@@ -391,14 +385,12 @@ describe("QueryBuilder SQL Injection Tests", () => {
         orderBy: null,
       };
 
-      // Should build a valid query with parameterization
+      // Should build a valid query with SQL-escaped metadata value for Doris
       const result = await buildQueryWithoutExecuting(query, projectId);
 
-      // Check for parameterization
+      // Ensure the unescaped payload is not directly included in the SQL
       expect(result.query).not.toContain("test'); DROP TABLE traces; --");
-      expect(Object.values(result.parameters)).toContain(
-        "test'); DROP TABLE traces; --",
-      );
+      expect(result.query).toContain("test''); DROP TABLE traces; --");
     });
 
     it("should prevent SQL injection via metadata filter type", async () => {
@@ -488,15 +480,10 @@ describe("QueryBuilder SQL Injection Tests", () => {
 
       const maliciousProjectId = "fake-id'; DROP TABLE traces; --";
 
-      // Should parameterize the project ID
-      const result = await buildQueryWithoutExecuting(
-        query,
-        maliciousProjectId,
-      );
-
-      // Check for parameterization
-      expect(result.query).not.toContain(maliciousProjectId);
-      expect(Object.values(result.parameters)).toContain(maliciousProjectId);
+      // Doris split-table routing rejects non-alphanumeric project IDs upfront
+      await expect(
+        buildQueryWithoutExecuting(query, maliciousProjectId),
+      ).rejects.toThrow("Invalid Doris split-table project id");
     });
   });
 

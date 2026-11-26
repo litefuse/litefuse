@@ -13,7 +13,7 @@ import {
   surroundingDataFilterAtom,
 } from "store/discover";
 import { OPERATORS } from "utils/data";
-import { FilterContentProps } from "../types";
+import type { FilterContentProps } from "../types";
 import { cn } from "@/src/utils/tailwind";
 
 type FilterFormValues = {

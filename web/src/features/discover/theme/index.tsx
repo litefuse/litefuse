@@ -1,8 +1,8 @@
 // @ts-nocheck
 "use client";
 
-import React, { JSX } from "react";
-import { ConfigProvider, ThemeConfig } from "antd";
+import React, { type JSX } from "react";
+import { ConfigProvider, type ThemeConfig } from "antd";
 
 const withTheme = (node: JSX.Element | React.ReactNode, theme: ThemeConfig) => (
   <>
