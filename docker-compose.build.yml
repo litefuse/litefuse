@@ -123,11 +123,13 @@ services:
     volumes:
       - doris_fe_meta:/opt/apache-doris/fe/doris-meta
       - doris_be_storage:/opt/apache-doris/be/storage
+    # Healthy only once the BE is alive and reports disk capacity; before
+    # that, CREATE TABLE fails with "Failed to find enough backend".
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "mysql -h 127.0.0.1 -P 9030 -uroot -e 'SHOW BACKENDS\\G' 2>/dev/null | grep -q 'Alive: true'",
+          "out=$$(mysql -h 127.0.0.1 -P 9030 -uroot -e 'SHOW BACKENDS\\G' 2>/dev/null); echo \"$$out\" | grep -q 'Alive: true' && echo \"$$out\" | grep -qE 'TotalCapacity:[[:space:]]*[0-9]' && ! echo \"$$out\" | grep -qE 'TotalCapacity:[[:space:]]*0\\.000([[:space:]]|$$)'",
         ]
       interval: 10s
       timeout: 5s
