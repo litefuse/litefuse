@@ -1494,7 +1494,8 @@ export const getTracesForBlobStorageExport = function (
     SELECT
       trace_id AS id,
       start_time AS timestamp,
-      name,
+      -- Same trace name as getTraceById: the explicit trace name, else the root span name.
+      IF(trace_name <> '', trace_name, name) AS name,
       environment,
       project_id,
       json_object_flatten(metadata) AS metadata,
