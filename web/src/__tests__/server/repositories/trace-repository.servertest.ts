@@ -4,6 +4,7 @@ import {
 } from "@langfuse/shared/src/server";
 import {
   getTraceById,
+  getTraceUsageBreakdown,
   getTracesBySessionId,
 } from "@langfuse/shared/src/server";
 import { v4 } from "uuid";
@@ -500,5 +501,39 @@ describe("Clickhouse Traces Repository Test", () => {
       maxTimeStamp: undefined,
     });
     expect(exists).toBe(true);
+  });
+
+  it("should include the root span in the trace usage breakdown", async () => {
+    const traceId = v4();
+    const rootId = v4();
+    await createTracesCh([createTrace({ id: traceId, project_id: projectId })]);
+    await createObservationsCh([
+      createObservation({
+        id: rootId,
+        trace_id: traceId,
+        project_id: projectId,
+        type: "GENERATION",
+        parent_observation_id: null,
+        usage_details: { input: 10, output: 20, total: 30 },
+        cost_details: { input: 1, output: 2, total: 3 },
+      }),
+      createObservation({
+        trace_id: traceId,
+        project_id: projectId,
+        type: "GENERATION",
+        parent_observation_id: rootId,
+        usage_details: { input: 1, output: 2, total: 3 },
+        cost_details: { input: 0.1, output: 0.2, total: 0.3 },
+      }),
+    ]);
+
+    const breakdown = await getTraceUsageBreakdown({ projectId, traceId });
+
+    expect(breakdown.usageDetails).toEqual({
+      input: 11,
+      output: 22,
+      total: 33,
+    });
+    expect(breakdown.costDetails.total).toBeCloseTo(3.3);
   });
 });
