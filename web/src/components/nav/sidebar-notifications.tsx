@@ -14,8 +14,6 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { i18nKey } from "@/src/features/i18n/i18nKey";
 
-const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
-
 type SidebarNotification = {
   id: string; // Add unique ID for each notification
   title: string; // i18nKey, rendered with t()
@@ -36,12 +34,12 @@ const notifications: SidebarNotification[] = [
     description: i18nKey(
       "See the latest releases and help grow the community on GitHub",
     ),
-    link: "https://github.com/selectdb/langfuse-doris",
+    link: "https://github.com/litefuse/litefuse",
     linkContent: (t) => (
       // eslint-disable-next-line @next/next/no-img-element
       <img
         alt={t("Litefuse GitHub stars")}
-        src="https://img.shields.io/github/stars/selectdb/langfuse-doris?label=litefuse&style=social"
+        src="https://img.shields.io/github/stars/litefuse/litefuse?label=litefuse&style=social"
       />
     ),
   },
@@ -56,13 +54,6 @@ export function SidebarNotifications() {
   const [dismissedNotifications, setDismissedNotifications] = useLocalStorage<
     string[]
   >(STORAGE_KEY, []);
-
-  const isExpired = (notif: SidebarNotification) => {
-    if (!notif.createdAt) return false;
-    const created = new Date(notif.createdAt).getTime();
-    const ttl = notif.ttlMs ?? TWO_WEEKS_MS;
-    return Date.now() > created + ttl;
-  };
 
   const dismissNotification = (id: string) => {
     setDismissedNotifications([...dismissedNotifications, id]);

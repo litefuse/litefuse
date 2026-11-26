@@ -19,7 +19,7 @@ describe("getBillingCycleAnchor", () => {
 
     const result = getBillingCycleAnchor(org);
 
-    expect(result).toEqual(new Date("2024-01-15T00:00:00Z")); // start of day
+    expect(result).toEqual(new Date("2024-01-15T10:30:00Z"));
   });
 
   it("falls back to createdAt when cloudBillingCycleAnchor is null", () => {
@@ -31,7 +31,7 @@ describe("getBillingCycleAnchor", () => {
 
     const result = getBillingCycleAnchor(org);
 
-    expect(result).toEqual(new Date("2024-01-01T00:00:00Z")); // start of day
+    expect(result).toEqual(new Date("2024-01-01T10:30:00Z"));
   });
 });
 
@@ -172,7 +172,7 @@ describe("getBillingCycleStart", () => {
     } as Organization;
 
     expect(getBillingCycleStart(org, new Date("2024-02-20T10:00:00Z"))).toEqual(
-      new Date("2024-02-15T00:00:00Z"),
+      new Date("2024-02-15T10:30:00Z"),
     );
   });
 });
@@ -291,7 +291,7 @@ describe("getBillingCycleEnd", () => {
 
     // Feb 20 reference → next cycle is March 15
     expect(getBillingCycleEnd(org, new Date("2024-02-20T10:00:00Z"))).toEqual(
-      new Date("2024-03-15T00:00:00Z"),
+      new Date("2024-03-15T10:30:00Z"),
     );
   });
 });

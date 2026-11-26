@@ -127,7 +127,7 @@ export interface AppRootProps<T = {}> {
 // AppPlugin stub
 // ---------------------------------------------------------------------------
 
-export class AppPlugin<T = {}> {
+export class AppPlugin<_T = {}> {
   setRootPage(_component: any) {
     return this;
   }

@@ -51,6 +51,7 @@ litefuse/
 - Dev all packages: `pnpm run dev`
 - Dev web only: `pnpm run dev:web`
 - Dev worker only: `pnpm run dev:worker`
+- Self-hosted Compose variants: `docker-compose.external.yml` runs Web and Worker with external PostgreSQL, Redis, S3, and Doris. `docker-compose.nginx.yml` includes those dependencies and exposes Nginx on port 80. Copy the matching `.env.external.example` or `.env.nginx.example` and use the startup command at the top of the Compose file.
 - Codex environment bootstrap: `bash scripts/codex/setup.sh`
 - Codex environment maintenance: `bash scripts/codex/maintenance.sh`
 - Lint all: `pnpm run lint`
@@ -112,9 +113,12 @@ Minimum verification matrix:
 - Release workflow is managed at root (`pnpm run release`).
 - Docker Hub publishing is managed by `.github/workflows/docker-publish.yml`
   and targets `litefuse/litefuse-web` and `litefuse/litefuse-worker`.
-- Litefuse Cloud deployments are triggered by pushes to `production` (`.github/workflows/deploy.yml`).
-- Promote `main` to `production` via `.github/workflows/promote-main-to-production.yml` (manual `workflow_dispatch`).
-- Use `pnpm run release:cloud` for CLI-triggered Cloud promotions with preflight branch/migration checks.
+- The Docker workflow's `base_path` input sets the Web image's build-time
+  `NEXT_PUBLIC_BASE_PATH`. Blank uses the repository/environment variable of
+  the same name (root by default); `/` explicitly selects root. Use `/litefuse`
+  to preserve that sub-path, without a trailing slash. Publish path-specific
+  builds under distinct Docker tags; changing runtime env cannot change the
+  compiled path.
 - Do not change release/versioning flow without updating this file and impacted package guides.
 
 ## GitHub Search

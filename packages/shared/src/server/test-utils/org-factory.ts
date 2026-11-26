@@ -20,7 +20,7 @@ export type CreateOrgProjectAndApiKeyOptions = {
 export const createOrgProjectAndApiKey = async (
   props?: CreateOrgProjectAndApiKeyOptions,
 ) => {
-  const projectId = props?.projectId ?? v4();
+  const projectId = props?.projectId ?? v4().replace(/-/g, "");
   const org = await prisma.organization.create({
     data: {
       id: v4(),

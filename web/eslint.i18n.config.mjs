@@ -16,7 +16,7 @@ const noop = { create: () => ({}) };
  *
  * Run it through `pnpm i18n:gate`.
  */
-export default [
+const config = [
   {
     // The source carries `eslint-disable` comments for rules this config does
     // not enable. ESLint errors on an unknown rule name in a disable comment,
@@ -40,3 +40,5 @@ export default [
     },
   },
 ];
+
+export default config;

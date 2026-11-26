@@ -35,7 +35,9 @@ const strAttr = (key: string, v: unknown) =>
       };
 
 const boolAttr = (key: string, v: unknown) =>
-  v === undefined || v === null ? null : { key, value: { boolValue: Boolean(v) } };
+  v === undefined || v === null
+    ? null
+    : { key, value: { boolValue: Boolean(v) } };
 
 const observationType = (type: string): string =>
   type.startsWith("generation")
@@ -68,7 +70,9 @@ export function internalTraceEventsToResourceSpans(
       Object.entries(e.body).filter(([, v]) => v !== undefined && v !== null),
     );
     merged.set(id, {
-      type: e.type.includes("generation") ? "generation-create" : (prev?.type ?? e.type),
+      type: e.type.includes("generation")
+        ? "generation-create"
+        : (prev?.type ?? e.type),
       body: { ...(prev?.body ?? {}), ...cleanBody },
     });
   }
@@ -79,80 +83,96 @@ export function internalTraceEventsToResourceSpans(
     // defensively rather than fail the whole group file.
     .filter(({ body }) => body.id && body.traceId)
     .map(({ type, body }) => {
-    const isRoot = !body.parentObservationId;
-    const attributes: Array<{ key: string; value: any }> = [];
-    const push = (a: { key: string; value: any } | null) => {
-      if (a) attributes.push(a);
-    };
+      const isRoot = !body.parentObservationId;
+      const attributes: Array<{ key: string; value: any }> = [];
+      const push = (a: { key: string; value: any } | null) => {
+        if (a) attributes.push(a);
+      };
 
-    push(strAttr(LangfuseOtelSpanAttributes.OBSERVATION_TYPE, observationType(type)));
-    push(strAttr(LangfuseOtelSpanAttributes.OBSERVATION_INPUT, body.input));
-    push(strAttr(LangfuseOtelSpanAttributes.OBSERVATION_OUTPUT, body.output));
-    push(strAttr(LangfuseOtelSpanAttributes.OBSERVATION_MODEL, body.model));
-    push(
-      strAttr(
-        LangfuseOtelSpanAttributes.OBSERVATION_MODEL_PARAMETERS,
-        body.modelParameters,
-      ),
-    );
-    push(
-      strAttr(
-        LangfuseOtelSpanAttributes.OBSERVATION_USAGE_DETAILS,
-        body.usageDetails ?? body.usage,
-      ),
-    );
-    push(strAttr(LangfuseOtelSpanAttributes.OBSERVATION_LEVEL, body.level));
-    push(
-      strAttr(
-        LangfuseOtelSpanAttributes.OBSERVATION_STATUS_MESSAGE,
-        body.statusMessage,
-      ),
-    );
-    push(
-      strAttr(
-        LangfuseOtelSpanAttributes.OBSERVATION_COMPLETION_START_TIME,
-        body.completionStartTime,
-      ),
-    );
-    push(strAttr(LangfuseOtelSpanAttributes.OBSERVATION_METADATA, body.metadata));
-    push(strAttr(LangfuseOtelSpanAttributes.OBSERVATION_PROMPT_NAME, body.promptName));
-    push(
-      strAttr(
-        LangfuseOtelSpanAttributes.OBSERVATION_PROMPT_VERSION,
-        body.promptVersion,
-      ),
-    );
-    if (opts.environment)
-      push(strAttr(LangfuseOtelSpanAttributes.ENVIRONMENT, opts.environment));
+      push(
+        strAttr(
+          LangfuseOtelSpanAttributes.OBSERVATION_TYPE,
+          observationType(type),
+        ),
+      );
+      push(strAttr(LangfuseOtelSpanAttributes.OBSERVATION_INPUT, body.input));
+      push(strAttr(LangfuseOtelSpanAttributes.OBSERVATION_OUTPUT, body.output));
+      push(strAttr(LangfuseOtelSpanAttributes.OBSERVATION_MODEL, body.model));
+      push(
+        strAttr(
+          LangfuseOtelSpanAttributes.OBSERVATION_MODEL_PARAMETERS,
+          body.modelParameters,
+        ),
+      );
+      push(
+        strAttr(
+          LangfuseOtelSpanAttributes.OBSERVATION_USAGE_DETAILS,
+          body.usageDetails ?? body.usage,
+        ),
+      );
+      push(strAttr(LangfuseOtelSpanAttributes.OBSERVATION_LEVEL, body.level));
+      push(
+        strAttr(
+          LangfuseOtelSpanAttributes.OBSERVATION_STATUS_MESSAGE,
+          body.statusMessage,
+        ),
+      );
+      push(
+        strAttr(
+          LangfuseOtelSpanAttributes.OBSERVATION_COMPLETION_START_TIME,
+          body.completionStartTime,
+        ),
+      );
+      push(
+        strAttr(LangfuseOtelSpanAttributes.OBSERVATION_METADATA, body.metadata),
+      );
+      push(
+        strAttr(
+          LangfuseOtelSpanAttributes.OBSERVATION_PROMPT_NAME,
+          body.promptName,
+        ),
+      );
+      push(
+        strAttr(
+          LangfuseOtelSpanAttributes.OBSERVATION_PROMPT_VERSION,
+          body.promptVersion,
+        ),
+      );
+      if (opts.environment)
+        push(strAttr(LangfuseOtelSpanAttributes.ENVIRONMENT, opts.environment));
 
-    if (isRoot) {
-      push(boolAttr(LangfuseOtelSpanAttributes.AS_ROOT, true));
-      const tb = traceEvent?.body ?? {};
-      push(strAttr(LangfuseOtelSpanAttributes.TRACE_NAME, tb.name ?? body.name));
-      push(strAttr(LangfuseOtelSpanAttributes.TRACE_USER_ID, tb.userId));
-      push(strAttr(LangfuseOtelSpanAttributes.TRACE_SESSION_ID, tb.sessionId));
-      push(strAttr(LangfuseOtelSpanAttributes.TRACE_TAGS, tb.tags));
-      push(strAttr(LangfuseOtelSpanAttributes.TRACE_METADATA, tb.metadata));
-      push(boolAttr(LangfuseOtelSpanAttributes.TRACE_PUBLIC, tb.public));
-      push(strAttr(LangfuseOtelSpanAttributes.TRACE_INPUT, tb.input));
-      push(strAttr(LangfuseOtelSpanAttributes.TRACE_OUTPUT, tb.output));
-    }
+      if (isRoot) {
+        push(boolAttr(LangfuseOtelSpanAttributes.AS_ROOT, true));
+        const tb = traceEvent?.body ?? {};
+        push(
+          strAttr(LangfuseOtelSpanAttributes.TRACE_NAME, tb.name ?? body.name),
+        );
+        push(strAttr(LangfuseOtelSpanAttributes.TRACE_USER_ID, tb.userId));
+        push(
+          strAttr(LangfuseOtelSpanAttributes.TRACE_SESSION_ID, tb.sessionId),
+        );
+        push(strAttr(LangfuseOtelSpanAttributes.TRACE_TAGS, tb.tags));
+        push(strAttr(LangfuseOtelSpanAttributes.TRACE_METADATA, tb.metadata));
+        push(boolAttr(LangfuseOtelSpanAttributes.TRACE_PUBLIC, tb.public));
+        push(strAttr(LangfuseOtelSpanAttributes.TRACE_INPUT, tb.input));
+        push(strAttr(LangfuseOtelSpanAttributes.TRACE_OUTPUT, tb.output));
+      }
 
-    return {
-      // parseId returns string ids verbatim; the reader does
-      // `traceId?.data ?? traceId`, so a bare string is safe.
-      traceId: body.traceId as any,
-      spanId: body.id as any,
-      ...(body.parentObservationId
-        ? { parentSpanId: body.parentObservationId as any }
-        : {}),
-      name: body.name ?? "internal",
-      kind: 1,
-      startTimeUnixNano: isoToNano(body.startTime),
-      endTimeUnixNano: isoToNano(body.endTime),
-      attributes,
-    };
-  });
+      return {
+        // parseId returns string ids verbatim; the reader does
+        // `traceId?.data ?? traceId`, so a bare string is safe.
+        traceId: body.traceId as any,
+        spanId: body.id as any,
+        ...(body.parentObservationId
+          ? { parentSpanId: body.parentObservationId as any }
+          : {}),
+        name: body.name ?? "internal",
+        kind: 1,
+        startTimeUnixNano: isoToNano(body.startTime),
+        endTimeUnixNano: isoToNano(body.endTime),
+        attributes,
+      };
+    });
 
   return [
     {

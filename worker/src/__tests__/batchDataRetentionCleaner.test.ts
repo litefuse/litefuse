@@ -8,16 +8,16 @@ import {
   createOrgProjectAndApiKey,
   createScoresCh,
   createTraceScore,
-  queryClickhouse,
+  queryDoris,
 } from "@langfuse/shared/src/server";
 import { prisma } from "@langfuse/shared/src/db";
 
-async function getClickhouseCount(
+async function getDorisCount(
   table: string,
   projectId: string,
 ): Promise<number> {
-  const result = await queryClickhouse<{ count: number }>({
-    query: `SELECT count() as count FROM ${table} FINAL WHERE project_id = {projectId: String}`,
+  const result = await queryDoris<{ count: number }>({
+    query: `SELECT count(*) as count FROM ${table} WHERE project_id = {projectId: String}`,
     params: { projectId },
   });
   return Number(result[0]?.count ?? 0);
@@ -52,14 +52,14 @@ describe("BatchDataRetentionCleaner", () => {
       ]);
 
       // Verify score exists before deletion
-      expect(await getClickhouseCount(TABLE, projectId)).toBe(1);
+      expect(await getDorisCount(TABLE, projectId)).toBe(1);
 
       // Run processBatch
       const cleaner = new BatchDataRetentionCleaner(TABLE);
       await cleaner.processBatch();
 
       // Verify score was deleted
-      expect(await getClickhouseCount(TABLE, projectId)).toBe(0);
+      expect(await getDorisCount(TABLE, projectId)).toBe(0);
     });
   });
 });

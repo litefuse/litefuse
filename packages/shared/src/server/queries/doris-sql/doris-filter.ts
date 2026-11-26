@@ -297,13 +297,14 @@ export class ArrayOptionsFilter implements Filter {
         // Check array does not contain any of the specified values
         query = `NOT arrays_overlap(${fieldWithPrefix}, array(${escapedValues.join(", ")}))`;
         break;
-      case "all of":
+      case "all of": {
         // Check array contains all specified values
         const allChecks = escapedValues
           .map((value) => `array_contains(${fieldWithPrefix}, ${value})`)
           .join(" AND ");
         query = `(${allChecks})`;
         break;
+      }
       default:
         throw new Error(`Unsupported operator: ${this.operator}`);
     }

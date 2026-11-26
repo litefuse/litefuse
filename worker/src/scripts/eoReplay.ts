@@ -28,7 +28,6 @@ import { prisma } from "@langfuse/shared/src/db";
 import { env as sharedEnv } from "@langfuse/shared/src/env";
 
 const usage = (): never => {
-  // eslint-disable-next-line no-console
   console.error(
     [
       "usage:",
@@ -67,7 +66,6 @@ const main = async () => {
           projectId: arg.split("/")[2] ?? "p",
         },
       });
-      // eslint-disable-next-line no-console
       console.log(`attempt ${i + 1}: admitted=${admitted}`);
     }
   } else if (cmd === "re-add-job") {
@@ -99,7 +97,6 @@ const main = async () => {
       },
       { jobId: arg },
     );
-    // eslint-disable-next-line no-console
     console.log(`re-added job ${arg} with ${entries.length} entries`);
   } else {
     usage();
@@ -109,7 +106,6 @@ const main = async () => {
 };
 
 main().catch((e) => {
-  // eslint-disable-next-line no-console
   console.error(e);
   process.exit(1);
 });

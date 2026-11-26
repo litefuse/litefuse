@@ -10,6 +10,27 @@ import { DorisParameterProcessor } from "../parameterProcessor";
 
 describe("DorisParameterProcessor", () => {
   describe("processQuery with typed params", () => {
+    it.each([
+      [
+        "an unterminated placeholder with long whitespace",
+        "{a:" + " ".repeat(100_000),
+      ],
+      ["many unterminated placeholders", "{0: ".repeat(20_000)],
+    ])("processes %s in linear time", (_name, query) => {
+      const start = Date.now();
+      const result = DorisParameterProcessor.processQuery(query, { a: "x" });
+      expect(Date.now() - start).toBeLessThan(500);
+      expect(result).toBe(query);
+    });
+
+    it("should replace a typed parameter whose type follows a newline", () => {
+      const result = DorisParameterProcessor.processQuery(
+        "SELECT {name:\n  Map(String, String)} AS m",
+        { name: { a: "b" } },
+      );
+      expect(result).not.toContain("{name:");
+    });
+
     it("should replace String typed parameter", () => {
       const result = DorisParameterProcessor.processQuery(
         "SELECT * FROM traces WHERE name = {name: String}",

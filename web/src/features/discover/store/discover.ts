@@ -6,10 +6,10 @@ import { atomWithLocation } from "jotai-location";
 
 import type { Dayjs } from "dayjs";
 import {
-  DataFilterType,
-  DiscoverCurrent,
+  type DataFilterType,
+  type DiscoverCurrent,
   IntervalEnum,
-  ShortcutItem,
+  type ShortcutItem,
 } from "types/type";
 import {
   AggregatableEnum,

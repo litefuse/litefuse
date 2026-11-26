@@ -234,15 +234,15 @@ export function CodeMirrorEditor({
   onChange,
   editable = true,
   lineWrapping = true,
-  lineNumbers = true,
+  lineNumbers: _lineNumbers = true,
   className,
   onBlur,
   mode,
   minHeight,
-  maxHeight,
+  maxHeight: _maxHeight,
   placeholder,
   editorRef,
-  enableSearchKeymap = true,
+  enableSearchKeymap: _enableSearchKeymap = true,
   onEditorMount,
 }: {
   value: string;

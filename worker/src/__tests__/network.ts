@@ -54,7 +54,11 @@ function JsonCompletionHandler(data: object) {
 function MinioCompletionHandler() {
   return http.all("http://localhost:9090*", async (request) => {
     logger.info("minio handler");
-    if ((request.params[0] as string).startsWith("/langfuse/events/")) {
+    const reqPath = request.params[0] as string;
+    if (
+      reqPath.startsWith("/langfuse/events/") ||
+      reqPath.startsWith("/litefuse/events/")
+    ) {
       return new HttpResponse("Success");
     }
     throw new Error("Unexpected path");
@@ -66,6 +70,15 @@ function ClickHouseCompletionHandler() {
     logger.info("clickhouse handler");
     return passthrough();
   });
+}
+
+function DorisCompletionHandler() {
+  return http.all(
+    /^https?:\/\/(localhost|127\.0\.0\.1|172\.\d+\.\d+\.\d+):(8030|8040)\//,
+    async () => {
+      return passthrough();
+    },
+  );
 }
 
 function AzuriteCompletionHandler() {
@@ -102,6 +115,10 @@ export class OpenAIServer {
 
     this.hasActiveKey = hasActiveKey;
     this.internalServer = setupServer(
+      DorisCompletionHandler(),
+      MinioCompletionHandler(),
+      ClickHouseCompletionHandler(),
+      AzuriteCompletionHandler(),
       ...(useDefaultResponse ? [JsonCompletionHandler(DEFAULT_RESPONSE)] : []),
     );
     if (hasActiveKey) {
@@ -126,6 +143,7 @@ export class OpenAIServer {
   respondWithData(data: object) {
     this.internalServer.use(
       JsonCompletionHandler(data),
+      DorisCompletionHandler(),
       MinioCompletionHandler(),
       ClickHouseCompletionHandler(),
       AzuriteCompletionHandler(),

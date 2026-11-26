@@ -417,14 +417,6 @@ export async function getBillingStatus(
           activeStripeClient,
         );
         if (schedule?.phases?.length && schedule.phases.length > 1) {
-          const finalPhase = schedule.phases[schedule.phases.length - 1];
-          const finalKinds = new Set(
-            finalPhase.items.map((item) =>
-              getBillingPriceKind(
-                typeof item.price === "string" ? item.price : item.price.id,
-              ),
-            ),
-          );
           scheduledPlan = "cloud:pro";
         }
       } catch (error) {

@@ -64,7 +64,9 @@ export default function EnterpriseSsoRequiredPage() {
   // lands on the workspace instead of looping back to this page (NextAuth treats
   // an empty callbackUrl as "current page").
   const rawCallbackUrl =
-    typeof router.query.callbackUrl === "string" ? router.query.callbackUrl : "";
+    typeof router.query.callbackUrl === "string"
+      ? router.query.callbackUrl
+      : "";
   const callbackUrl =
     rawCallbackUrl.startsWith("/") && !rawCallbackUrl.startsWith("//")
       ? rawCallbackUrl

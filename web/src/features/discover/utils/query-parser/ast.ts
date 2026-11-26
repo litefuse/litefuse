@@ -3,7 +3,7 @@
 import lucene from "@hyperdx/lucene";
 import { decodeSpecialTokens, encodeSpecialTokens } from "./tokenUtils";
 import { IMPLICIT_FIELD } from "./constants";
-import { EnglishSerializer, Serializer } from "./serializers";
+import { EnglishSerializer, type Serializer } from "./serializers";
 
 export function parse(query: string): lucene.AST {
   return lucene.parse(encodeSpecialTokens(query));

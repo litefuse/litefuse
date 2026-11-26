@@ -162,7 +162,6 @@ function AggregateScoreMetadataPeek({
   scoreId: string;
   projectId: string;
 }) {
-  const { t } = useTranslation();
   const [isOpen, setIsOpen] = React.useState(false);
 
   const { data: metadata } = api.scores.getScoreMetadataById.useQuery(

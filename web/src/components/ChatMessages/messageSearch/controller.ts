@@ -262,7 +262,7 @@ export function createMessageSearchController(
 
       try {
         applyCodeMirrorSearchQuery(target.editorRef, query);
-      } catch (error) {
+      } catch (_error) {
         // Ignore search-related errors during content changes
         // This can happen when the document content changed and searchHighlighter
         // plugin tries to map old positions to new document state

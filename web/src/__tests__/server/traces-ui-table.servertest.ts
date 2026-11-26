@@ -6,6 +6,7 @@ import {
 import { createObservation, createTrace } from "@langfuse/shared/src/server";
 import {
   getTracesTable,
+  getTracesTableMetrics,
   type TracesTableUiReturnType,
   type ObservationRecordInsertType,
   type TraceRecordInsertType,
@@ -14,7 +15,7 @@ import { type FilterState } from "@langfuse/shared";
 
 describe("Traces table API test", () => {
   it("should get a correct trace without observation", async () => {
-    const project_id = v4();
+    const project_id = v4().replace(/-/g, "");
     const trace_id = v4();
 
     const trace = createTrace({ id: trace_id, project_id });
@@ -43,7 +44,7 @@ describe("Traces table API test", () => {
   });
 
   it("#5274: should get a traces in expected default order", async () => {
-    const project_id = v4();
+    const project_id = v4().replace(/-/g, "");
     const trace_id = v4();
 
     // Trace1 happened after Trace2, but Trace2 got updated.
@@ -76,7 +77,7 @@ describe("Traces table API test", () => {
   });
 
   it("should get a correct trace with observations", async () => {
-    const project_id = v4();
+    const project_id = v4().replace(/-/g, "");
     const trace_id = v4();
 
     const trace = createTrace({ id: trace_id, project_id });
@@ -176,7 +177,7 @@ describe("Traces table API test", () => {
     },
   ].forEach(async (testConfig: TestCase) => {
     it(`should get a correct trace with filters ${JSON.stringify(testConfig)}`, async () => {
-      const project_id = v4();
+      const project_id = v4().replace(/-/g, "");
       const trace_id = v4();
 
       const trace = createTrace({
@@ -246,6 +247,60 @@ describe("Traces table API test", () => {
           expect(tableRows[index].public).toEqual(expectedTrace.public);
         }
       });
+    });
+  });
+
+  describe("observation count", () => {
+    // One trace with a root span and one child: both are observations.
+    const seedTraceWithRootAndChild = async () => {
+      const projectId = v4().replace(/-/g, "");
+      const traceId = v4();
+      const rootId = v4();
+      await createTracesCh([
+        createTrace({ id: traceId, project_id: projectId }),
+      ]);
+      await createObservationsCh([
+        createObservation({
+          id: rootId,
+          trace_id: traceId,
+          project_id: projectId,
+          parent_observation_id: null,
+        }),
+        createObservation({
+          trace_id: traceId,
+          project_id: projectId,
+          parent_observation_id: rootId,
+        }),
+      ]);
+      return { projectId, traceId };
+    };
+
+    it("counts the root span on the id-scoped metrics path", async () => {
+      const { projectId, traceId } = await seedTraceWithRootAndChild();
+
+      const metrics = await getTracesTableMetrics({
+        projectId,
+        filter: [
+          {
+            column: "id",
+            type: "stringOptions",
+            operator: "any of",
+            value: [traceId],
+          },
+        ],
+      });
+
+      expect(metrics).toHaveLength(1);
+      expect(metrics[0].observationCount).toBe(BigInt(2));
+    });
+
+    it("counts the root span on the general metrics path", async () => {
+      const { projectId } = await seedTraceWithRootAndChild();
+
+      const metrics = await getTracesTableMetrics({ projectId, filter: [] });
+
+      expect(metrics).toHaveLength(1);
+      expect(metrics[0].observationCount).toBe(BigInt(2));
     });
   });
 });

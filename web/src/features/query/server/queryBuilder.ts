@@ -23,7 +23,6 @@ import {
   FilterList,
   createDorisFilterFromFilterState,
   createFilterFromFilterState,
-  toLogicalTable,
   type Filter,
 } from "@langfuse/shared/src/server";
 import {
@@ -1571,7 +1570,7 @@ export class QueryBuilder {
   public async build(
     query: QueryType,
     projectId: string,
-    enableSingleLevelOptimization: boolean = false,
+    _enableSingleLevelOptimization: boolean = false,
   ): Promise<{ query: string; parameters: Record<string, unknown> }> {
     // Run zod validation
     const parseResult = queryModel.safeParse(query);

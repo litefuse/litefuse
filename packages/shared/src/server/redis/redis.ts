@@ -328,7 +328,6 @@ export const redis = globalThis.redis ?? createRedisClient();
 if (env.NODE_ENV !== "production") globalThis.redis = redis;
 
 declare global {
-  // eslint-disable-next-line no-var
   var litefuseUnprefixedRedis: undefined | Redis | Cluster | null;
 }
 
@@ -351,7 +350,8 @@ let unprefixedRedis: Redis | Cluster | null | undefined;
 export const getUnprefixedRedis = (): Redis | Cluster | null => {
   if (!env.REDIS_KEY_PREFIX) return redis;
   if (unprefixedRedis !== undefined) return unprefixedRedis;
-  unprefixedRedis = globalThis.litefuseUnprefixedRedis ?? createNewRedisInstance();
+  unprefixedRedis =
+    globalThis.litefuseUnprefixedRedis ?? createNewRedisInstance();
   if (env.NODE_ENV !== "production") {
     globalThis.litefuseUnprefixedRedis = unprefixedRedis;
   }

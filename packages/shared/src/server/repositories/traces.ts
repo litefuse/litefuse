@@ -368,6 +368,7 @@ export const getTracesByIds = async (
  * lazily, per trace, when the user hovers. Scoped to a single trace_id it hits
  * one bucket and a handful of observation rows, so we just read their
  * usage_details / cost_details maps and sum them by key in TS — no explode_map.
+ * The root span is an observation too, so its usage counts like any other.
  */
 export const getTraceUsageBreakdown = async ({
   projectId,
@@ -392,7 +393,6 @@ export const getTraceUsageBreakdown = async ({
       FROM ${tableFor(projectId, "spans")}
       WHERE project_id = {projectId: String}
       AND trace_id = {traceId: String}
-      AND is_root = 0
       ${timestamp ? `AND start_time >= DATE_SUB({timestamp: DateTime}, INTERVAL 2 DAY)` : ""}
     `,
     params: {
@@ -643,7 +643,7 @@ export const getTraceById = async ({
   projectId,
   timestamp,
   fromTimestamp,
-  renderingProps = DEFAULT_RENDERING_PROPS,
+  renderingProps: _renderingProps = DEFAULT_RENDERING_PROPS,
   excludeInputOutput = false,
 }: {
   traceId: string;
@@ -1494,7 +1494,8 @@ export const getTracesForBlobStorageExport = function (
     SELECT
       trace_id AS id,
       start_time AS timestamp,
-      name,
+      -- Same trace name as getTraceById: the explicit trace name, else the root span name.
+      IF(trace_name <> '', trace_name, name) AS name,
       environment,
       project_id,
       json_object_flatten(metadata) AS metadata,

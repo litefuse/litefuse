@@ -199,7 +199,7 @@ Notes:
 
 6. Open the web app in your browser to start using Litefuse:
    - [Sign up page, http://localhost:3000](http://localhost:3000)
-   - [Demo project, http://localhost:3000/project/7a88fb47-b4e2-43b8-a06c-a5ce950dc53a](http://localhost:3000/project/7a88fb47-b4e2-43b8-a06c-a5ce950dc53a)
+   - [Demo project, http://localhost:3000/project/7a88fb47b4e243b8a06ca5ce950dc53a](http://localhost:3000/project/7a88fb47b4e243b8a06ca5ce950dc53a)
 
 7. Log in as a test user:
    - Username: `demo@litefuse.ai`
@@ -344,38 +344,9 @@ CD on `main`
 
 - Publish Docker image to GitHub Packages if CI passes. Done on every push to `main` branch. Only released versions are tagged with `latest`.
 
-## Staging environment
-
-We run a staging environment at [https://staging.litefuse.ai](https://staging.litefuse.ai) that is automatically deployed on every push to `main` branch.
-
-The same environment is also used for preview deployments of pull requests. Limitations:
-
-- SSO is not available as dynamic domains are not supported by most SSO providers.
-- When making changes to the database, migrations to the staging database need to be applied manually by a maintainer. If you want to interactively test database changes in the staging environment, please reach out.
-
-You can use the staging environment end-to-end with the Litefuse integrations or SDKs (host: `https://staging.litefuse.ai`). However, please note that the staging environment is not intended for production use and may be reset at any time.
-
 ## Production environment
 
-We run two separate release/deployment processes:
-
-1. **Litefuse Cloud deployment (frequent):**
-   - Every commit on the `production` branch triggers an ECS deployment to Litefuse Cloud.
-   - To deploy current `main` to Litefuse Cloud, promote `main` to `production` via [`promote-main-to-production.yml`](.github/workflows/promote-main-to-production.yml) (instead of force pushing from a local machine).
-2. **Open-source release (less frequent):**
-   - The open-source Docker release process is handled via [`release.yml`](.github/workflows/release.yml) for self-hosted production users.
-
-You can trigger the Litefuse Cloud promotion in either way:
-
-1. Preferred local command:
-
-```bash
-pnpm run release:cloud
-```
-
-This wraps the GitHub CLI trigger and performs preflight checks (main branch/sync checks and migration diff checks against `production`) before dispatching the workflow.
-
-2. GitHub UI: open **Actions** -> **Promote Main to Production** -> **Run workflow**, then set `confirm=promote`.
+The open-source Docker release process is handled via [`release.yml`](.github/workflows/release.yml) for self-hosted production users.
 
 ## Theming
 

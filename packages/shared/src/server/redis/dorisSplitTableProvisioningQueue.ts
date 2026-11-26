@@ -36,9 +36,7 @@ export class DorisSplitTableProvisioningQueue {
           QueueName.DorisSplitTableProvisioningQueue,
           {
             connection: newRedis,
-            prefix: getQueuePrefix(
-              QueueName.DorisSplitTableProvisioningQueue,
-            ),
+            prefix: getQueuePrefix(QueueName.DorisSplitTableProvisioningQueue),
             defaultJobOptions: {
               removeOnComplete: true,
               removeOnFail: 10_000,

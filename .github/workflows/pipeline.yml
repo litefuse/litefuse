@@ -168,7 +168,7 @@ jobs:
 
           ss -ltnp | tee /tmp/docker-diagnostics/host-listeners.txt || true
 
-          for service in langfuse-web langfuse-worker postgres redis minio clickhouse; do
+          for service in litefuse-web litefuse-worker postgres redis minio doris; do
             container_id="$(docker compose -f "$DOCKER_COMPOSE_FILE" ps -q "$service" || true)"
             if [ -z "$container_id" ]; then
               echo "No container found for ${service}" | tee -a /tmp/docker-diagnostics/missing-containers.txt
@@ -177,6 +177,10 @@ jobs:
 
             docker inspect "$container_id" > "/tmp/docker-diagnostics/${service}-inspect.json" || true
             docker logs --timestamps "$container_id" > "/tmp/docker-diagnostics/${service}-docker-logs.txt" 2>&1 || true
+            if [ "$service" = "litefuse-web" ] || [ "$service" = "litefuse-worker" ]; then
+              echo "=== ${service} logs (last 100 lines) ==="
+              tail -n 100 "/tmp/docker-diagnostics/${service}-docker-logs.txt" || true
+            fi
           done
       - name: Upload docker diagnostics
         if: failure()
@@ -193,6 +197,7 @@ jobs:
     if: needs.pre-job.outputs.should_skip != 'true'
     name: tests-web (node${{ matrix.node-version }}, pg${{ matrix.postgres-version }}, mode${{ matrix.deploy-mode }}, shard${{ matrix.shard }}/3)
     strategy:
+      fail-fast: false
       matrix:
         node-version: [24]
         postgres-version: [12, 15]
@@ -200,11 +205,12 @@ jobs:
         shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
-      - name: Install golang-migrate for Clickhouse migrations
+      - name: Ensure mysql client for Doris migrations
         run: |
-          curl -L https://github.com/golang-migrate/migrate/releases/download/v4.19.1/migrate.linux-amd64.tar.gz | tar xvz
-          sudo mv migrate /usr/bin/migrate
-          which migrate
+          if ! command -v mysql >/dev/null 2>&1; then
+            sudo apt-get update && sudo apt-get install -y mysql-client
+          fi
+          which mysql
       - uses: pnpm/action-setup@v3
         with:
           version: 9.5.0
@@ -252,30 +258,19 @@ jobs:
             ${{ runner.os }}-nextjs-web-${{ matrix.node-version }}-
       - name: Run dev containers
         run: |
-          docker compose -f docker-compose.dev${{ matrix.deploy-mode }}.yml up -d
-          sleep 5
-
-          docker compose ps
+          sudo sysctl -w vm.max_map_count=2000000
+          if ! docker compose -f docker-compose.dev${{ matrix.deploy-mode }}.yml up -d --wait --wait-timeout 240; then
+            docker compose -f docker-compose.dev${{ matrix.deploy-mode }}.yml ps -a || true
+            docker compose -f docker-compose.dev${{ matrix.deploy-mode }}.yml logs --tail=200 || true
+            exit 1
+          fi
+          docker compose -f docker-compose.dev${{ matrix.deploy-mode }}.yml ps
         env:
           POSTGRES_VERSION: ${{ matrix.postgres-version }}
       - name: Migrate DB
         run: |
           pnpm run db:migrate
-          pnpm --filter=shared ch:up
-      - name: Download and extract ClickHouse client for dev-tables setup
-        if: matrix.deploy-mode == ''
-        run: |
-          CH_VERSION="24.9.3.128"
-          ARCH="amd64"
-          wget "https://packages.clickhouse.com/deb/pool/main/c/clickhouse/clickhouse-common-static_${CH_VERSION}_${ARCH}.deb" -O clickhouse-client.deb
-
-          # The binary is usually located in ./usr/bin/clickhouse in the archive
-          dpkg-deb -x clickhouse-client.deb ch_client_dir
-          sudo cp ch_client_dir/usr/bin/clickhouse /usr/local/bin/
-      - name: Setup Dev Tables
-        if: matrix.deploy-mode == ''
-        run: |
-          pnpm --filter=shared ch:dev-tables
+          pnpm --filter=shared doris:up
       - name: Build
         run: pnpm run build
         env:
@@ -286,20 +281,33 @@ jobs:
           LITEFUSE_INIT_ORG_ID: "seed-org-id"
           LITEFUSE_INIT_ORG_NAME: "Seed Org"
           LITEFUSE_INIT_ORG_CLOUD_PLAN: "Pro"
-          LITEFUSE_INIT_PROJECT_ID: "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a"
+          LITEFUSE_INIT_PROJECT_ID: "7a88fb47b4e243b8a06ca5ce950dc53a"
           LITEFUSE_INIT_PROJECT_NAME: "Seed Project"
           LITEFUSE_INIT_PROJECT_PUBLIC_KEY: "pk-lf-1234567890"
           LITEFUSE_INIT_PROJECT_SECRET_KEY: "sk-lf-1234567890"
           LITEFUSE_INIT_USER_EMAIL: "demo@litefuse.ai"
           LITEFUSE_INIT_USER_NAME: "Demo User"
           LITEFUSE_INIT_USER_PASSWORD: "password"
+      - name: Wait for Langfuse server health
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:3000/api/public/health >/dev/null && \
+              curl -sf -u pk-lf-1234567890:sk-lf-1234567890 http://localhost:3000/api/public/projects >/dev/null && \
+              curl -sf http://localhost:3030/api/health >/dev/null; then
+              echo "Langfuse web and worker servers are healthy and initialized"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Timed out waiting for Langfuse web/worker servers"
+          exit 1
       - name: run tests
         working-directory: web
-        run: npx cross-env NODE_OPTIONS='--no-experimental-require-module' npx dotenv -e ../.env.test -e ../.env -- npx jest --verbose --runInBand --detectOpenHandles --selectProjects server --shard=${{ matrix.shard }}/3
+        run: npx cross-env NODE_OPTIONS='--no-experimental-require-module' npx dotenv -e ../.env.test -e ../.env -- npx jest --verbose --runInBand --detectOpenHandles --forceExit --selectProjects server --shard=${{ matrix.shard }}/3
       - name: run test-client
         if: matrix.deploy-mode == '' && matrix.shard == 1
         working-directory: web
-        run: npx cross-env NODE_OPTIONS='--no-experimental-require-module' npx dotenv -e ../.env.test -e ../.env -- npx jest --verbose --runInBand --detectOpenHandles --selectProjects client
+        run: npx cross-env NODE_OPTIONS='--no-experimental-require-module' npx dotenv -e ../.env.test -e ../.env -- npx jest --verbose --runInBand --detectOpenHandles --forceExit --selectProjects client
 
   tests-worker:
     timeout-minutes: 20
@@ -309,6 +317,7 @@ jobs:
     if: needs.pre-job.outputs.should_skip != 'true'
     name: tests-worker (node${{ matrix.node-version }}, pg${{ matrix.postgres-version }}, mode${{ matrix.deploy-mode }})
     strategy:
+      fail-fast: false
       matrix:
         node-version: [24]
         postgres-version: [12, 15]
@@ -333,11 +342,12 @@ jobs:
       - name: install dependencies
         run: |
           pnpm install
-      - name: Install golang-migrate for Clickhouse migrations
+      - name: Ensure mysql client for Doris migrations
         run: |
-          curl -L https://github.com/golang-migrate/migrate/releases/download/v4.19.1/migrate.linux-amd64.tar.gz | tar xvz
-          sudo mv migrate /usr/bin/migrate
-          which migrate
+          if ! command -v mysql >/dev/null 2>&1; then
+            sudo apt-get update && sudo apt-get install -y mysql-client
+          fi
+          which mysql
       - name: Load default env
         run: |
           cp .env.dev${{ matrix.deploy-mode }}.example .env
@@ -345,13 +355,18 @@ jobs:
           cp .env.dev${{ matrix.deploy-mode }}.example worker/.env
       - name: Run + migrate
         run: |
-          docker compose -f docker-compose.dev${{ matrix.deploy-mode }}.yml up -d
-          sleep 5
-
-          docker compose ps
+          sudo sysctl -w vm.max_map_count=2000000
+          if ! docker compose -f docker-compose.dev${{ matrix.deploy-mode }}.yml up -d --wait --wait-timeout 240; then
+            docker compose -f docker-compose.dev${{ matrix.deploy-mode }}.yml ps -a || true
+            docker compose -f docker-compose.dev${{ matrix.deploy-mode }}.yml logs --tail=200 || true
+            exit 1
+          fi
+          docker compose -f docker-compose.dev${{ matrix.deploy-mode }}.yml ps
+        env:
+          POSTGRES_VERSION: ${{ matrix.postgres-version }}
       - name: Ensure no unhealthy status
         run: |
-          if docker compose ps | grep "(unhealthy)"; then
+          if docker compose -f docker-compose.dev${{ matrix.deploy-mode }}.yml ps | grep "(unhealthy)"; then
             echo "One or more services are unhealthy"
             exit 1
           else
@@ -361,19 +376,7 @@ jobs:
         run: |
           pnpm run db:migrate
           pnpm --filter=shared run db:seed
-          pnpm run --filter=shared ch:up
-      - name: Download and extract ClickHouse client for dev-tables setup
-        if: matrix.deploy-mode == ''
-        run: |
-          CH_VERSION="24.9.3.128"
-          ARCH="amd64"
-          wget "https://packages.clickhouse.com/deb/pool/main/c/clickhouse/clickhouse-common-static_${CH_VERSION}_${ARCH}.deb" -O clickhouse-client.deb
-          dpkg-deb -x clickhouse-client.deb ch_client_dir
-          sudo cp ch_client_dir/usr/bin/clickhouse /usr/local/bin/
-      - name: Setup Dev Tables
-        if: matrix.deploy-mode == ''
-        run: |
-          pnpm --filter=shared ch:dev-tables
+          pnpm --filter=shared run doris:up
       - name: Build
         run: pnpm --filter=worker... run build
       - name: run tests
@@ -406,11 +409,12 @@ jobs:
       - name: install dependencies
         run: |
           pnpm install
-      - name: Install golang-migrate for Clickhouse migrations
+      - name: Ensure mysql client for Doris migrations
         run: |
-          curl -L https://github.com/golang-migrate/migrate/releases/download/v4.19.1/migrate.linux-amd64.tar.gz | tar xvz
-          sudo mv migrate /usr/bin/migrate
-          which migrate
+          if ! command -v mysql >/dev/null 2>&1; then
+            sudo apt-get update && sudo apt-get install -y mysql-client
+          fi
+          which mysql
       - name: Load default env
         run: |
           cp .env.dev.example .env
@@ -418,15 +422,18 @@ jobs:
           cp .env.dev.example worker/.env
       - name: Run + migrate
         run: |
-          docker compose -f docker-compose.dev.yml up -d
-          sleep 5
-
-          docker compose ps
+          sudo sysctl -w vm.max_map_count=2000000
+          if ! docker compose -f docker-compose.dev.yml up -d --wait --wait-timeout 240; then
+            docker compose -f docker-compose.dev.yml ps -a || true
+            docker compose -f docker-compose.dev.yml logs --tail=200 || true
+            exit 1
+          fi
+          docker compose -f docker-compose.dev.yml ps
         env:
           POSTGRES_VERSION: 15
       - name: Ensure no unhealthy status
         run: |
-          if docker compose ps | grep "(unhealthy)"; then
+          if docker compose -f docker-compose.dev.yml ps | grep "(unhealthy)"; then
             echo "One or more services are unhealthy"
             exit 1
           else
@@ -436,7 +443,7 @@ jobs:
         run: |
           pnpm run db:migrate
           pnpm --filter=shared run db:seed
-          pnpm run --filter=shared ch:up
+          pnpm --filter=shared run doris:up
       - name: Build
         run: pnpm --filter=worker... run build
       - name: run llm connection tests
@@ -454,7 +461,8 @@ jobs:
           LITEFUSE_LLM_CONNECTION_GOOGLEAISTUDIO_KEY: ${{ secrets.LITEFUSE_LLM_CONNECTION_GOOGLEAISTUDIO_KEY }}
 
   e2e-tests:
-    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    runs-on: ubuntu-24.04
     needs:
       - pre-job
     if: needs.pre-job.outputs.should_skip != 'true'
@@ -499,21 +507,25 @@ jobs:
         run: |
           cp .env.dev.example .env
           cp .env.dev.example web/.env
-      - name: Install golang-migrate for Clickhouse migrations
+      - name: Ensure mysql client for Doris migrations
         run: |
-          curl -L https://github.com/golang-migrate/migrate/releases/download/v4.19.1/migrate.linux-amd64.tar.gz | tar xvz
-          sudo mv migrate /usr/bin/migrate
-          which migrate
+          if ! command -v mysql >/dev/null 2>&1; then
+            sudo apt-get update && sudo apt-get install -y mysql-client
+          fi
+          which mysql
       - name: Run + migrate
         run: |
-          docker compose -f docker-compose.dev.yml up -d
-          sleep 5
-
-          docker compose ps
+          sudo sysctl -w vm.max_map_count=2000000
+          if ! docker compose -f docker-compose.dev.yml up -d --wait --wait-timeout 240; then
+            docker compose -f docker-compose.dev.yml ps -a || true
+            docker compose -f docker-compose.dev.yml logs --tail=200 || true
+            exit 1
+          fi
+          docker compose -f docker-compose.dev.yml ps
       - name: Ensure Docker dependencies are healthy
         run: |
-          if docker compose ps | grep "(unhealthy)"; then
-            echo "One or more services are unhealthy" 
+          if docker compose -f docker-compose.dev.yml ps | grep "(unhealthy)"; then
+            echo "One or more services are unhealthy"
             exit 1
           else
             echo "All services are healthy"
@@ -521,18 +533,19 @@ jobs:
       - name: Seed DB
         run: |
           pnpm run db:migrate
-          pnpm --filter=shared run ch:up
+          pnpm --filter=shared run doris:up
           pnpm --filter=shared run db:seed
       - name: Build
         run: pnpm run build
         env:
           NODE_OPTIONS: --max_old_space_size=8192
       - name: Install playwright
-        run: pnpm --filter=web exec playwright install --with-deps
+        run: pnpm --filter=web exec playwright install --with-deps chromium
       - name: Run e2e tests
         run: pnpm --filter=web run test:e2e
 
   e2e-server-tests:
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     needs:
       - pre-job
@@ -556,23 +569,29 @@ jobs:
       - name: install dependencies
         run: |
           pnpm install
-      - name: Install golang-migrate for Clickhouse migrations
+      - name: Ensure mysql client for Doris migrations
         run: |
-          curl -L https://github.com/golang-migrate/migrate/releases/download/v4.19.1/migrate.linux-amd64.tar.gz | tar xvz
-          sudo mv migrate /usr/bin/migrate
-          which migrate
+          if ! command -v mysql >/dev/null 2>&1; then
+            sudo apt-get update && sudo apt-get install -y mysql-client
+          fi
+          which mysql
       - name: Load default env
         run: |
-          cp .env.dev.example .env
+          # The web init (NEXT_PUBLIC_LITEFUSE_RUN_NEXT_INIT) loads the table-split
+          # cache; without it OTel ingestion answers 500 "split-cache not ready".
+          grep -v -e '^NEXT_PUBLIC_LITEFUSE_RUN_NEXT_INIT=' .env.dev.example > .env
       - name: Run + migrate
         run: |
-          docker compose -f docker-compose.dev.yml up -d
-          sleep 5
-
-          docker compose ps
+          sudo sysctl -w vm.max_map_count=2000000
+          if ! docker compose -f docker-compose.dev.yml up -d --wait --wait-timeout 240; then
+            docker compose -f docker-compose.dev.yml ps -a || true
+            docker compose -f docker-compose.dev.yml logs --tail=200 || true
+            exit 1
+          fi
+          docker compose -f docker-compose.dev.yml ps
       - name: Ensure Docker dependencies are healthy
         run: |
-          if docker compose ps | grep "(unhealthy)"; then
+          if docker compose -f docker-compose.dev.yml ps | grep "(unhealthy)"; then
             echo "One or more services are unhealthy"
             exit 1
           else
@@ -581,7 +600,7 @@ jobs:
       - name: Seed DB
         run: |
           pnpm run db:migrate
-          pnpm --filter=shared run ch:up
+          pnpm --filter=shared run doris:up
           pnpm --filter=shared run db:seed:examples
       - name: Build
         run: pnpm run build

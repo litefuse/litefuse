@@ -1,5 +1,4 @@
 import { StringParam, useQueryParam } from "use-query-params";
-import { useTranslation } from "react-i18next";
 import {
   Group,
   Separator,
@@ -48,7 +47,6 @@ export function useDesktopLayoutContext() {
 }
 
 export function TraceLayoutDesktop({ children }: { children: ReactNode }) {
-  const { t } = useTranslation();
   // Get current view mode from URL
   const [viewMode] = useQueryParam("view", StringParam);
   const isTimelineView = viewMode === "timeline";

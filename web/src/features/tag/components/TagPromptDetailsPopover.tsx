@@ -5,7 +5,6 @@ import { type RouterOutput } from "@/src/utils/types";
 import TagManager from "@/src/features/tag/components/TagManager";
 import { trpcErrorToast } from "@/src/utils/trpcErrorToast";
 
-import { useTranslation } from "react-i18next";
 type TagPromptDetailsPopoverProps = {
   tags: string[];
   availableTags: string[];
@@ -21,7 +20,6 @@ export function TagPromptDetailsPopover({
   promptName,
   className,
 }: TagPromptDetailsPopoverProps) {
-  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const hasAccess = useHasProjectAccess({ projectId, scope: "objects:tag" });
 

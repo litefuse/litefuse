@@ -19,24 +19,24 @@ import {
 } from "@langfuse/shared";
 import { prisma } from "@langfuse/shared/src/db";
 import { IngestionService } from "../../services/IngestionService";
-import * as clickhouseWriterExports from "../../services/ClickhouseWriter";
+import * as dorisWriterExports from "../../services/DorisWriter";
 
-// Mock ClickhouseWriter to avoid actual database writes
-const mockAddToClickhouseWriter = vi.fn();
-vi.mock("../../services/ClickhouseWriter", async (importOriginal) => {
+// Mock DorisWriter to avoid actual database writes
+const mockAddToDorisWriter = vi.fn();
+vi.mock("../../services/DorisWriter", async (importOriginal) => {
   const original = (await importOriginal()) as object;
   return {
     ...original,
-    ClickhouseWriter: {
+    DorisWriter: {
       getInstance: () => ({
-        addToQueue: mockAddToClickhouseWriter,
+        addToQueue: mockAddToDorisWriter,
       }),
     },
   };
 });
 
-// Mock ClickhouseClient to return empty results (no existing records)
-const mockClickhouseClient = {
+// Mock DorisClient to return empty results (no existing records)
+const mockDorisClient = {
   query: async () => ({
     json: async () => [],
     query_id: "test-query-id",
@@ -50,8 +50,8 @@ const mockClickhouseClient = {
 const ingestionService = new IngestionService(
   null as any,
   prisma,
-  clickhouseWriterExports.ClickhouseWriter.getInstance() as any,
-  mockClickhouseClient as any,
+  dorisWriterExports.DorisWriter.getInstance() as any,
+  mockDorisClient as any,
 );
 
 /**

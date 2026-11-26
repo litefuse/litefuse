@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { genWhereSQL, parse } from "./ast";
-import { SQLSerializer } from "./serializers";
+import type { SQLSerializer } from "./serializers";
 
 export { parse, genWhereSQL, genEnglishExplanation } from "./ast";
 export { SQLSerializer, CustomSchemaSQLSerializerV2 } from "./serializers";

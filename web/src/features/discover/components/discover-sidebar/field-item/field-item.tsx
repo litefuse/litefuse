@@ -19,6 +19,12 @@ export default function FieldItem(props: FieldItemProps) {
   const setTopDataFieldName = useSetAtom(topDataFieldNameAtom);
   const [show, setShow] = useState(false);
   field.key = field.Field;
+  // Trigger fetch when show becomes true (genuine user open)
+  useEffect(() => {
+    if (!field.children && show) {
+      setTopDataFieldName(field.Field);
+    }
+  }, [show, field.children, field.Field, setTopDataFieldName]);
   if (field.children) {
     field.icon = <div className="text-n4 w-4 text-sm leading-8">{}</div>;
     return (
@@ -28,12 +34,6 @@ export default function FieldItem(props: FieldItemProps) {
       </div>
     );
   }
-  // Trigger fetch when show becomes true (genuine user open)
-  useEffect(() => {
-    if (show) {
-      setTopDataFieldName(field.Field);
-    }
-  }, [show, field.Field, setTopDataFieldName]);
   return (
     <div>
       <Toggletip

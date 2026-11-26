@@ -4,7 +4,7 @@
 import { showErrorToast } from "@/src/features/notifications/showErrorToast";
 import type { Row, ColumnDef } from "@tanstack/react-table";
 import JsonView from "@uiw/react-json-view";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ColumnStyleWrapper,
   HoverStyle,
@@ -93,13 +93,16 @@ export default function SurroundingLogs() {
     },
   ]);
 
-  function handleRemove(field: any) {
-    const index = selectedSurroundingFields.findIndex(
-      (item: any) => item.Field === field.Field,
-    );
-    selectedSurroundingFields.splice(index, 1);
-    setSelectedSurroundingFields([...selectedSurroundingFields]);
-  }
+  const handleRemove = useCallback(
+    (field: any) => {
+      const index = selectedSurroundingFields.findIndex(
+        (item: any) => item.Field === field.Field,
+      );
+      selectedSurroundingFields.splice(index, 1);
+      setSelectedSurroundingFields([...selectedSurroundingFields]);
+    },
+    [selectedSurroundingFields, setSelectedSurroundingFields],
+  );
 
   const {
     loading: getAfterSurroundingDataLoading,
@@ -600,7 +603,6 @@ export default function SurroundingLogs() {
       ];
     }
     return dynamicColumns;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     currentTimeField,
     handleRemove,

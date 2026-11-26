@@ -433,18 +433,19 @@ export function CreateLLMApiKeyForm({
           {/* Provider preset (create mode only; update mode locks adapter+provider) */}
           {mode === "create" && (
             <div className="space-y-2">
-              <Label>Provider preset</Label>
+              <Label>{t("Provider preset")}</Label>
               <p className="text-muted-foreground text-sm">
-                Prefills the adapter, base URL and model names for a provider.
-                Choose “Custom” to configure the connection entirely by hand.
+                {t(
+                  "Prefills the adapter, base URL and model names for a provider. Choose “Custom” to configure the connection entirely by hand.",
+                )}
               </p>
               <Select value={presetId} onValueChange={applyPreset}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a provider" />
+                  <SelectValue placeholder={t("Select a provider")} />
                 </SelectTrigger>
                 <SelectContent className="max-h-[50vh]">
                   <SelectItem value={CUSTOM_PRESET_ID}>
-                    Custom (configure manually)
+                    {t("Custom (configure manually)")}
                   </SelectItem>
                   {groupLlmProviderPresets().map(
                     ({ group, label, presets }) => (
@@ -469,7 +470,7 @@ export function CreateLLMApiKeyForm({
                     rel="noreferrer"
                     className="underline"
                   >
-                    Docs
+                    {t("Docs")}
                   </a>
                   {" · "}
                   <a
@@ -478,7 +479,7 @@ export function CreateLLMApiKeyForm({
                     rel="noreferrer"
                     className="underline"
                   >
-                    Get an API key
+                    {t("Get an API key")}
                   </a>
                 </p>
               )}

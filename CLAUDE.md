@@ -200,7 +200,7 @@ When running locally with seed data:
 
 - Username: `demo@litefuse.ai`
 - Password: `password`
-- Demo project URL: `http://localhost:3000/project/7a88fb47-b4e2-43b8-a06c-a5ce950dc53a`
+- Demo project URL: `http://localhost:3000/project/7a88fb47b4e243b8a06ca5ce950dc53a`
 
 ## Linear MCP
 

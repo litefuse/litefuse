@@ -19,7 +19,7 @@ describe("Create and get comments", () => {
     const traces = [
       createTrace({
         name: "trace-name",
-        project_id: "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a",
+        project_id: "7a88fb47b4e243b8a06ca5ce950dc53a",
         id: "1234",
       }),
     ];
@@ -36,7 +36,7 @@ describe("Create and get comments", () => {
         content: "hello",
         objectId: "1234",
         objectType: "TRACE",
-        projectId: "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a",
+        projectId: "7a88fb47b4e243b8a06ca5ce950dc53a",
         authorUserId: "user-1",
       },
     );
@@ -52,7 +52,7 @@ describe("Create and get comments", () => {
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
       id: commentId,
-      projectId: "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a",
+      projectId: "7a88fb47b4e243b8a06ca5ce950dc53a",
       objectId: "1234",
       objectType: "TRACE",
       content: "hello",
@@ -73,12 +73,12 @@ describe("Create and get comments", () => {
           content: "hello",
           objectId: "invalid-trace-id",
           objectType: "TRACE",
-          projectId: "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a",
+          projectId: "7a88fb47b4e243b8a06ca5ce950dc53a",
         },
       );
     } catch (error) {
       expect((error as Error).message).toBe(
-        `API call did not return 200, returned status 404, body {\"message\":\"Reference object, TRACE: invalid-trace-id not found in Clickhouse. Skipping creating comment.\",\"error\":\"LangfuseNotFoundError\"}`,
+        `API call did not return 200, returned status 404, body {\"message\":\"Reference object, TRACE: invalid-trace-id not found in Doris. Skipping creating comment.\",\"error\":\"LangfuseNotFoundError\"}`,
       );
     }
   });
@@ -96,7 +96,7 @@ describe("Create and get comments", () => {
           content: "",
           objectId: "1234",
           objectType: "TRACE",
-          projectId: "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a",
+          projectId: "7a88fb47b4e243b8a06ca5ce950dc53a",
         },
       );
     } catch (error) {
@@ -119,7 +119,7 @@ describe("Create and get comments", () => {
           content: "a".repeat(5001),
           objectId: "1234",
           objectType: "TRACE",
-          projectId: "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a",
+          projectId: "7a88fb47b4e243b8a06ca5ce950dc53a",
         },
       );
     } catch (error) {
@@ -135,7 +135,7 @@ describe("GET /api/public/comments API Endpoint", () => {
     const traces = [
       createTrace({
         name: "trace-1",
-        project_id: "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a",
+        project_id: "7a88fb47b4e243b8a06ca5ce950dc53a",
         id: "1234",
       }),
     ];
@@ -144,7 +144,7 @@ describe("GET /api/public/comments API Endpoint", () => {
 
     const observation = createObservation({
       name: "generation-1",
-      project_id: "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a",
+      project_id: "7a88fb47b4e243b8a06ca5ce950dc53a",
       id: "5678",
       type: "GENERATION",
       trace_id: "1234",
@@ -158,7 +158,7 @@ describe("GET /api/public/comments API Endpoint", () => {
         {
           id: "comment-2021-01-01",
           createdAt: new Date("2021-01-01T00:00:00Z"),
-          projectId: "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a",
+          projectId: "7a88fb47b4e243b8a06ca5ce950dc53a",
           content: "comment-1",
           objectId: "1234",
           objectType: "TRACE",
@@ -167,7 +167,7 @@ describe("GET /api/public/comments API Endpoint", () => {
         {
           id: "comment-2021-02-01",
           createdAt: new Date("2021-02-01T00:00:00Z"),
-          projectId: "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a",
+          projectId: "7a88fb47b4e243b8a06ca5ce950dc53a",
           content: "comment-2",
           objectId: "5678",
           objectType: "OBSERVATION",
@@ -176,7 +176,7 @@ describe("GET /api/public/comments API Endpoint", () => {
         {
           id: "comment-2021-03-01",
           createdAt: new Date("2021-03-01T00:00:00Z"),
-          projectId: "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a",
+          projectId: "7a88fb47b4e243b8a06ca5ce950dc53a",
           content: "comment-3",
           objectId: "1234",
           objectType: "TRACE",
@@ -185,7 +185,7 @@ describe("GET /api/public/comments API Endpoint", () => {
         {
           id: "comment-2021-04-01",
           createdAt: new Date("2021-04-01T00:00:00Z"),
-          projectId: "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a",
+          projectId: "7a88fb47b4e243b8a06ca5ce950dc53a",
           content: "comment-4",
           objectId: "1234",
           objectType: "TRACE",
@@ -193,7 +193,7 @@ describe("GET /api/public/comments API Endpoint", () => {
         {
           id: "comment-2021-05-01",
           createdAt: new Date("2021-05-01T00:00:00Z"),
-          projectId: "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a",
+          projectId: "7a88fb47b4e243b8a06ca5ce950dc53a",
           content: "comment-5",
           objectId: "1234",
           objectType: "TRACE",
@@ -343,7 +343,7 @@ describe("Public API does NOT process mentions", () => {
     const traces = [
       createTrace({
         name: "trace-for-no-mention-processing",
-        project_id: "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a",
+        project_id: "7a88fb47b4e243b8a06ca5ce950dc53a",
         id: "no-mention-processing-trace",
       }),
     ];
@@ -361,7 +361,7 @@ describe("Public API does NOT process mentions", () => {
           "Hey @[FakeAdmin](user:user-1) and @[InvalidUser](user:invalid-id), check this!",
         objectId: "no-mention-processing-trace",
         objectType: "TRACE",
-        projectId: "7a88fb47-b4e2-43b8-a06c-a5ce950dc53a",
+        projectId: "7a88fb47b4e243b8a06ca5ce950dc53a",
         authorUserId: "user-1",
       },
     );
