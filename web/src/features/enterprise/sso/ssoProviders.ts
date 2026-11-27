@@ -1,4 +1,5 @@
 import { type Provider } from "next-auth/providers/index";
+import { env } from "@/src/env.mjs";
 import GoogleProvider from "next-auth/providers/google";
 import GitHubProvider from "next-auth/providers/github";
 import GitLabProvider from "next-auth/providers/gitlab";
@@ -135,12 +136,38 @@ export async function buildSsoProviders(): Promise<Provider[]> {
   return providers;
 }
 
+/** Parse separately from login settings so a malformed logout URL cannot block sign-in. */
+export function readCustomLogoutConfig() {
+  const raw = env.AUTH_CUSTOM_LOGOUT_CONFIG;
+  if (!raw) return undefined;
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    value = null;
+  }
+  return ssoLogoutConfigSchema.safeParse(value);
+}
+
 /** Resolve logout settings only for the exact provider used by this browser session. */
 export async function getSsoLogoutConfig(providerId: string): Promise<{
   clientId: string;
   logout: SsoLogoutConfig;
   binding: string;
 } | null> {
+  if (providerId === "custom") {
+    const config = readCustomLogoutConfig();
+    if (!config) return null;
+    if (!config.success) throw config.error;
+    const clientId = env.AUTH_CUSTOM_CLIENT_ID;
+    const issuer = env.AUTH_CUSTOM_ISSUER;
+    if (!clientId || !issuer) return null;
+    return {
+      clientId,
+      logout: config.data,
+      binding: getSsoLogoutBinding(providerId, { clientId, issuer }),
+    };
+  }
   if (!isMultiTenantSsoAvailable) return null;
   const separator = providerId.lastIndexOf(".");
   if (separator < 1) return null;

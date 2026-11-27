@@ -56,6 +56,7 @@ services:
     environment:
       <<: *app-env
       PORT: "3000"
+      AUTH_CUSTOM_LOGOUT_CONFIG: ${AUTH_CUSTOM_LOGOUT_CONFIG:-}
     ports:
       - "3000:3000"
     healthcheck:

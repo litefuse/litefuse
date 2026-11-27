@@ -67,7 +67,7 @@ export async function rememberSsoSession({
   const options = provider?.options as
     | (SsoLoginIdentity & { logout?: unknown })
     | undefined;
-  if (!options) return token;
+  if (!options?.logout) return token;
   token.ssoLogoutBinding = getSsoLogoutBinding(account.provider, options);
   const logout = ssoLogoutConfigSchema.safeParse(options.logout);
   if (!logout.success || !logoutUsesIdToken(logout.data) || !account.id_token)
