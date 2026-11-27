@@ -53,6 +53,7 @@ import {
 import { getOrganizationPlanServerSide } from "@/src/features/entitlements/server/getPlan";
 import {
   buildSsoProviders,
+  readCustomLogoutConfig,
   resolveSsoProviderIdForDomain,
   resolveMultiTenantSsoConfig,
 } from "@/src/features/enterprise/sso/ssoProviders";
@@ -183,9 +184,11 @@ if (
   env.AUTH_CUSTOM_CLIENT_SECRET &&
   env.AUTH_CUSTOM_ISSUER &&
   env.AUTH_CUSTOM_NAME // name required by front-end, ignored here
-)
+) {
+  const logoutConfig = readCustomLogoutConfig();
   staticProviders.push(
     CustomSSOProvider({
+      ...(logoutConfig?.success ? { logout: logoutConfig.data } : {}),
       clientId: env.AUTH_CUSTOM_CLIENT_ID,
       clientSecret: env.AUTH_CUSTOM_CLIENT_SECRET,
       issuer: env.AUTH_CUSTOM_ISSUER,
@@ -201,6 +204,7 @@ if (
       ...(env.AUTH_CUSTOM_CHECKS ? { checks: env.AUTH_CUSTOM_CHECKS } : {}),
     }),
   );
+}
 
 if (env.AUTH_GOOGLE_CLIENT_ID && env.AUTH_GOOGLE_CLIENT_SECRET)
   staticProviders.push(
@@ -685,8 +689,7 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
       maxAge: env.AUTH_SESSION_MAX_AGE * 60, // convert minutes to seconds, default is set in env.mjs
     },
     callbacks: {
-      jwt: (params) =>
-        rememberSsoSession({ ...params, providers: dynamicSsoProviders }),
+      jwt: (params) => rememberSsoSession({ ...params, providers }),
       async session({ session, token }): Promise<Session> {
         return instrumentAsync({ name: "next-auth-session" }, async (span) => {
           const dbUser = await prisma.user.findUnique({
