@@ -205,6 +205,7 @@ export const env = createEnv({
     AUTH_CUSTOM_ISSUER: z.string().url().optional(),
     AUTH_CUSTOM_NAME: z.string().optional(),
     AUTH_CUSTOM_SCOPE: z.string().optional(),
+    AUTH_CUSTOM_LOGOUT_CONFIG: z.string().optional(),
     AUTH_CUSTOM_CLIENT_AUTH_METHOD: zAuthMethod,
     AUTH_CUSTOM_CHECKS: zAuthChecks,
     AUTH_CUSTOM_ALLOW_ACCOUNT_LINKING: z.enum(["true", "false"]).optional(),
@@ -622,6 +623,7 @@ export const env = createEnv({
     AUTH_CUSTOM_ISSUER: process.env.AUTH_CUSTOM_ISSUER,
     AUTH_CUSTOM_NAME: process.env.AUTH_CUSTOM_NAME,
     AUTH_CUSTOM_SCOPE: process.env.AUTH_CUSTOM_SCOPE,
+    AUTH_CUSTOM_LOGOUT_CONFIG: process.env.AUTH_CUSTOM_LOGOUT_CONFIG,
     AUTH_CUSTOM_CLIENT_AUTH_METHOD: process.env.AUTH_CUSTOM_CLIENT_AUTH_METHOD,
     AUTH_CUSTOM_CHECKS: process.env.AUTH_CUSTOM_CHECKS,
     AUTH_CUSTOM_ALLOW_ACCOUNT_LINKING:

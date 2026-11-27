@@ -6,6 +6,12 @@ mapping. There are no provider-specific logout handlers. An omitted `logout`
 keeps sign-out local to Litefuse. Logout configuration does not change the
 enterprise's sign-in flow.
 
+The instance-wide `custom` login button accepts the same logout object in the
+Web environment variable `AUTH_CUSTOM_LOGOUT_CONFIG`. Supply the JSON object
+directly, with `url` and optional `params` at the top level. The external
+Compose example includes a GLO mapping. It uses `AUTH_CUSTOM_CLIENT_ID` and
+returns to the deployment's sign-in page. An empty setting keeps logout local.
+
 For sessions established after the upgrade, the acceptance criterion is: after a
 user explicitly clicks **Sign out**, their next **Enterprise SSO** login must
 require fresh authentication at the configured IdP.
