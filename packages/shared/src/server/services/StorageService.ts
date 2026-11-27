@@ -55,6 +55,8 @@ type UploadFileBuffered = {
   fileType: string;
   data: Readable;
   partSizeBytes: number;
+  // Opt-in override for the S3 SDK fallback when custom buffering is disabled.
+  s3SdkPartSizeBytes?: number;
 };
 
 type UploadWithSignedUrl = UploadFile & {
@@ -594,13 +596,14 @@ class S3StorageService implements StorageService {
     fileType,
     data,
     partSizeBytes,
+    s3SdkPartSizeBytes,
   }: UploadFileBuffered): Promise<void> {
     if (env.LITEFUSE_S3_UPLOAD_ENABLE_BUFFERED !== "true") {
       return this.uploadFile({
         fileName,
         fileType,
         data,
-        partSize: partSizeBytes,
+        partSize: s3SdkPartSizeBytes,
       });
     }
 

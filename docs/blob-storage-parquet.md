@@ -17,6 +17,16 @@ boundary can appear in adjacent files.
 Parquet uses internal Snappy compression. The integration's gzip flag and
 observation field groups have no effect on the Parquet files.
 
+## S3 upload part size
+
+Scheduled exports use the AWS SDK's 5 MiB part size by default. For larger
+files, set `LITEFUSE_BLOB_STORAGE_EXPORT_S3_SDK_PART_SIZE_MIB=100` on the
+worker. This setting accepts whole numbers from 5 to 100 MiB and applies to
+all scheduled export formats that use the S3 SDK uploader. Larger parts
+increase upload memory usage and allow larger files within the part-count limit.
+The custom buffered uploader, enabled with `LITEFUSE_S3_UPLOAD_ENABLE_BUFFERED=true`,
+uses 100 MiB parts for scheduled exports.
+
 ## Row groups and statistics
 
 Worker row groups default to at most 10,000 rows and a target of 64 MiB

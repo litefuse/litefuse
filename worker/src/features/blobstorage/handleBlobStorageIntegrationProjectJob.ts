@@ -199,6 +199,8 @@ const processBlobStorageExport = async (config: {
         : timestampIso.substring(0, 19);
     const filePath = `${config.prefix ?? ""}${config.projectId}/${config.table}/${timestamp}.${blobStorageProps.extension}`;
 
+    const s3SdkPartSizeMib =
+      env.LITEFUSE_BLOB_STORAGE_EXPORT_S3_SDK_PART_SIZE_MIB;
     const upload = (data: Readable) =>
       storageService.uploadFileBuffered({
         fileName: filePath,
@@ -206,6 +208,10 @@ const processBlobStorageExport = async (config: {
         data,
         // 100 MiB parts keep large files within S3's 10,000-part limit.
         partSizeBytes: 100 * 1024 * 1024,
+        s3SdkPartSizeBytes:
+          s3SdkPartSizeMib === undefined
+            ? undefined
+            : s3SdkPartSizeMib * 1024 * 1024,
       });
     const readRows = (options?: { parquet: boolean; signal: AbortSignal }) =>
       exportQueries[config.table](

@@ -286,6 +286,12 @@ const EnvSchema = z.object({
     .enum(["true", "false"])
     .default("false"),
 
+  LITEFUSE_BLOB_STORAGE_EXPORT_S3_SDK_PART_SIZE_MIB: z.coerce
+    .number()
+    .int()
+    .min(5)
+    .max(100)
+    .optional(),
   LITEFUSE_BLOB_STORAGE_EXPORT_PARQUET_ROW_GROUP_MAX_ROWS: z.coerce
     .number()
     .int()

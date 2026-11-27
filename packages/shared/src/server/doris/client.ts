@@ -114,6 +114,32 @@ export interface DorisClientConfig {
 
 export type DorisClientType = DorisClient;
 
+function getStreamConnection(
+  pool: mysql.Pool,
+  signal?: AbortSignal,
+): Promise<mysql.PoolConnection> {
+  if (!signal) return pool.getConnection();
+  signal.throwIfAborted();
+
+  return new Promise((resolve, reject) => {
+    const abort = () => reject(signal.reason);
+    signal.addEventListener("abort", abort, { once: true });
+
+    void pool.getConnection().then(
+      (connection) => {
+        signal.removeEventListener("abort", abort);
+        // mysql2 still delivers queued connections after the caller aborts.
+        if (signal.aborted) connection.release();
+        else resolve(connection);
+      },
+      (error: unknown) => {
+        signal.removeEventListener("abort", abort);
+        reject(error);
+      },
+    );
+  });
+}
+
 /**
  * DorisClient provides HTTP-based data loading and JDBC-based querying capabilities for Apache Doris
  * Focuses on Stream Load functionality for high-performance data ingestion and MySQL protocol for queries
@@ -501,8 +527,7 @@ export class DorisClient {
 
     const highWaterMark = options.highWaterMark ?? 1000;
     const startTime = Date.now();
-    options.signal?.throwIfAborted();
-    const conn = await this.connectionPool.getConnection();
+    const conn = await getStreamConnection(this.connectionPool, options.signal);
     let completed = false;
     let abort: (() => void) | undefined;
 
