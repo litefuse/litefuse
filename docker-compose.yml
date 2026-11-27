@@ -115,6 +115,9 @@ services:
       - 127.0.0.1:3030:3030
     environment:
       <<: *litefuse-web-env
+      LITEFUSE_BLOB_STORAGE_EXPORT_S3_SDK_PART_SIZE_MIB: ${LITEFUSE_BLOB_STORAGE_EXPORT_S3_SDK_PART_SIZE_MIB:-}
+      LITEFUSE_BLOB_STORAGE_EXPORT_PARQUET_ROW_GROUP_MAX_ROWS: ${LITEFUSE_BLOB_STORAGE_EXPORT_PARQUET_ROW_GROUP_MAX_ROWS:-10000}
+      LITEFUSE_BLOB_STORAGE_EXPORT_PARQUET_ROW_GROUP_TARGET_BYTES: ${LITEFUSE_BLOB_STORAGE_EXPORT_PARQUET_ROW_GROUP_TARGET_BYTES:-67108864}
 
   # Doris is deployed as separate FE and BE containers (not the all-in-one
   # image) — the split topology with static IPs + disable_backend_black_list

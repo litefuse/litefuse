@@ -1,3 +1,4 @@
+import { type BlobStorageExportOptions } from "./blobStorageExportProjection";
 import {
   ScoreDataTypeType,
   ScoreDomain,
@@ -1592,6 +1593,7 @@ export const getScoresForBlobStorageExport = function (
   projectId: string,
   minTimestamp: Date,
   maxTimestamp: Date,
+  options?: BlobStorageExportOptions,
 ) {
   const query = `
       SELECT
@@ -1616,6 +1618,8 @@ export const getScoresForBlobStorageExport = function (
 
   const records = queryDorisStream<Record<string, unknown>>({
     query,
+    signal: options?.signal,
+    highWaterMark: options?.parquet ? 16 : undefined,
     params: {
       projectId,
       minTimestamp: convertDateToAnalyticsDateTime(minTimestamp),

@@ -286,6 +286,24 @@ const EnvSchema = z.object({
     .enum(["true", "false"])
     .default("false"),
 
+  LITEFUSE_BLOB_STORAGE_EXPORT_S3_SDK_PART_SIZE_MIB: z.coerce
+    .number()
+    .int()
+    .min(5)
+    .max(100)
+    .optional(),
+  LITEFUSE_BLOB_STORAGE_EXPORT_PARQUET_ROW_GROUP_MAX_ROWS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(10_000),
+  // Estimated uncompressed field bytes, not a file-size or process-memory limit.
+  LITEFUSE_BLOB_STORAGE_EXPORT_PARQUET_ROW_GROUP_TARGET_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(64 * 1024 * 1024),
+
   // Comma-separated list of project IDs that should only export traces table (skip observations and scores)
   LITEFUSE_BLOB_STORAGE_EXPORT_TRACE_ONLY_PROJECT_IDS: z
     .string()

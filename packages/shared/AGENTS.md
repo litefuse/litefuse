@@ -85,6 +85,9 @@ consumers are registered by `worker/src/app.ts`.
 - Do not hand-edit generated artifacts under `prisma/generated/*` or `dist/*`.
 - Avoid exposing server-only modules through `src/index.ts` if they must remain
   frontend-safe.
+- `StorageService.uploadFileBuffered` uses `partSizeBytes` for custom buffering.
+  Its S3 SDK fallback uses the SDK default unless the caller supplies
+  `s3SdkPartSizeBytes`.
 - Never construct a Doris split-table identifier in business code. All telemetry
   reads/writes are per-project split tables: use `tableFor` for a single
   project and `executeDorisProjectFanout` for project sets. Cross-project

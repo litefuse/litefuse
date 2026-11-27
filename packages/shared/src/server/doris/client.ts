@@ -114,6 +114,32 @@ export interface DorisClientConfig {
 
 export type DorisClientType = DorisClient;
 
+function getStreamConnection(
+  pool: mysql.Pool,
+  signal?: AbortSignal,
+): Promise<mysql.PoolConnection> {
+  if (!signal) return pool.getConnection();
+  signal.throwIfAborted();
+
+  return new Promise((resolve, reject) => {
+    const abort = () => reject(signal.reason);
+    signal.addEventListener("abort", abort, { once: true });
+
+    void pool.getConnection().then(
+      (connection) => {
+        signal.removeEventListener("abort", abort);
+        // mysql2 still delivers queued connections after the caller aborts.
+        if (signal.aborted) connection.release();
+        else resolve(connection);
+      },
+      (error: unknown) => {
+        signal.removeEventListener("abort", abort);
+        reject(error);
+      },
+    );
+  });
+}
+
 /**
  * DorisClient provides HTTP-based data loading and JDBC-based querying capabilities for Apache Doris
  * Focuses on Stream Load functionality for high-performance data ingestion and MySQL protocol for queries
@@ -487,13 +513,13 @@ export class DorisClient {
    * Borrows a single connection from the pool, runs the raw SQL with the
    * mysql2 callback API's `.query(sql).stream()` (the promise wrapper hides
    * `.stream()`, so we reach through `conn.connection`), and yields each row
-   * as it arrives over the wire. Connection is released back to the pool in
-   * the finally block whether the consumer drains the stream, breaks early,
-   * or throws.
+   * as it arrives over the wire. Return a fully drained connection to the pool.
+   * Destroy connections with an unfinished result so a paused query cannot
+   * block the next borrower.
    */
   async *queryStream<T = any>(
     sql: string,
-    options: { highWaterMark?: number } = {},
+    options: { highWaterMark?: number; signal?: AbortSignal } = {},
   ): AsyncGenerator<T> {
     if (!this.connectionPool) {
       throw new Error("MySQL connection pool not initialized");
@@ -501,20 +527,26 @@ export class DorisClient {
 
     const highWaterMark = options.highWaterMark ?? 1000;
     const startTime = Date.now();
-    const conn = await this.connectionPool.getConnection();
+    const conn = await getStreamConnection(this.connectionPool, options.signal);
+    let completed = false;
+    let abort: (() => void) | undefined;
 
     try {
+      options.signal?.throwIfAborted();
       // mysql2/promise's PoolConnection wraps a callback Connection. The
       // promise wrapper does not expose `.stream()`, but we can reach the
       // underlying callback connection at `.connection`.
       const underlying = (conn as unknown as { connection: any }).connection;
       const stream = underlying.query(sql).stream({ highWaterMark });
+      abort = () => stream.destroy(options.signal?.reason);
+      options.signal?.addEventListener("abort", abort, { once: true });
 
       let rowCount = 0;
       for await (const row of stream) {
         rowCount++;
         yield row as T;
       }
+      completed = true;
 
       const durationMs = Date.now() - startTime;
       logger.debug("Doris stream query completed", {
@@ -531,7 +563,10 @@ export class DorisClient {
       logger.error(`Doris stream query failed: ${errMsg}, SQL: ${sql}`);
       throw error;
     } finally {
-      conn.release();
+      if (abort) options.signal?.removeEventListener("abort", abort);
+      // A cancelled result can leave the protocol stream paused mid-query.
+      if (completed || !abort) conn.release();
+      else conn.destroy();
     }
   }
 

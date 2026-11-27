@@ -1,3 +1,8 @@
+import {
+  type BlobStorageExportOptions,
+  blobStorageMetadata,
+  blobStorageJson,
+} from "./blobStorageExportProjection";
 import { convertDateToAnalyticsDateTime, dq } from "./analyticsDateTime";
 import {
   createDorisFilterFromFilterState,
@@ -1489,6 +1494,7 @@ export const getTracesForBlobStorageExport = function (
   projectId: string,
   minTimestamp: Date,
   maxTimestamp: Date,
+  options?: BlobStorageExportOptions,
 ) {
   const query = `
     SELECT
@@ -1498,14 +1504,14 @@ export const getTracesForBlobStorageExport = function (
       IF(trace_name <> '', trace_name, name) AS name,
       environment,
       project_id,
-      json_object_flatten(metadata) AS metadata,
+      ${blobStorageMetadata("metadata", options?.parquet)},
       user_id,
       session_id,
       ${dq("release")},
       version,
       ${dq("public")},
       bookmarked,
-      tags,
+      ${blobStorageJson("tags", "tags", options?.parquet)},
       input,
       output
     FROM ${tableFor(projectId, "spans")}
@@ -1517,6 +1523,8 @@ export const getTracesForBlobStorageExport = function (
 
   const records = queryDorisStream<Record<string, unknown>>({
     query,
+    signal: options?.signal,
+    highWaterMark: options?.parquet ? 16 : undefined,
     params: {
       projectId,
       minTimestamp: convertDateToAnalyticsDateTime(minTimestamp),

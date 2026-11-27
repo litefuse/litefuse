@@ -1,4 +1,5 @@
 import { Readable } from "stream";
+import { pipeline } from "node:stream/promises";
 import {
   DeleteObjectsCommand,
   GetObjectCommand,
@@ -54,6 +55,8 @@ type UploadFileBuffered = {
   fileType: string;
   data: Readable;
   partSizeBytes: number;
+  // Opt-in override for the S3 SDK fallback when custom buffering is disabled.
+  s3SdkPartSizeBytes?: number;
 };
 
 type UploadWithSignedUrl = UploadFile & {
@@ -593,9 +596,15 @@ class S3StorageService implements StorageService {
     fileType,
     data,
     partSizeBytes,
+    s3SdkPartSizeBytes,
   }: UploadFileBuffered): Promise<void> {
     if (env.LITEFUSE_S3_UPLOAD_ENABLE_BUFFERED !== "true") {
-      return this.uploadFile({ fileName, fileType, data });
+      return this.uploadFile({
+        fileName,
+        fileType,
+        data,
+        partSize: s3SdkPartSizeBytes,
+      });
     }
 
     const strategy = new S3ChunkedUploadStrategy({
@@ -862,18 +871,8 @@ class GoogleCloudStorageService implements StorageService {
         await file.save(data, options);
         return;
       } else if (data instanceof Readable) {
-        return new Promise((resolve, reject) => {
-          const writeStream = file.createWriteStream(options);
-
-          data
-            .pipe(writeStream)
-            .on("error", (err: unknown) => {
-              reject(err);
-            })
-            .on("finish", () => {
-              resolve();
-            });
-        });
+        await pipeline(data, file.createWriteStream(options));
+        return;
       } else {
         throw new Error("Unsupported data type. Must be Readable or string.");
       }
